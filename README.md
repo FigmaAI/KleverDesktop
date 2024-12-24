@@ -89,10 +89,14 @@ KleverDesktop/
 2. **프로젝트 실행**
 
 ```bash
-gradle run
-```
-```
-./gradlew :app:run
+# Gradle 래퍼 실행 권한 부여
+chmod +x gradlew
+
+# 프로젝트 빌드
+./gradlew build
+
+# 프로젝트 실행
+./gradlew run
 ```
 
 ## 개발 로드맵
