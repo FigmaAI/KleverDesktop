@@ -1,49 +1,56 @@
 plugins {
     kotlin("jvm")
-    id("org.openjfx.javafxplugin")
     application
+    id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
-group = "com.klever.desktop"
-version = "1.0-SNAPSHOT"
+repositories {
+    mavenCentral()
+    google()
+}
 
 dependencies {
     // Kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     
     // JavaFX
-    implementation("org.openjfx:javafx-controls:21.0.1")
-    implementation("org.openjfx:javafx-fxml:21.0.1")
+    implementation("org.openjfx:javafx-controls:21.0.2")
+    implementation("org.openjfx:javafx-fxml:21.0.2")
+    implementation("org.openjfx:javafx-graphics:21.0.2")
+    implementation("org.openjfx:javafx-base:21.0.2")
     
     // Selenium
     implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
-    implementation("io.github.bonigarcia:webdrivermanager:5.6.3")
+    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.18.1")
+    implementation("org.seleniumhq.selenium:selenium-support:4.18.1")
     
-    // WebSocket
-    implementation("org.java-websocket:Java-WebSocket:1.5.4")
+    // WebDriverManager
+    implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
     
-    // JSON 처리
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.3")
+    // OpenCV
+    implementation("org.openpnp:opencv:4.7.0-0")
     
-    // 로깅
-    implementation("ch.qos.logback:logback-classic:1.4.14")
-    
-    // 테스트
-    testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.1")
-    testImplementation("io.mockk:mockk:1.13.9")
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
 }
 
 javafx {
-    version = "21.0.1"
-    modules = listOf("javafx.controls", "javafx.fxml")
-}
-
-application {
-    mainClass.set("com.klever.desktop.AppKt")
+    version = "21.0.2"
+    modules = listOf("javafx.controls", "javafx.fxml", "javafx.graphics", "javafx.base")
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+application {
+    mainClass.set("com.klever.desktop.App")
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }

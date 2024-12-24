@@ -32,21 +32,33 @@ KleverDesktop/
 │   ├── build.gradle.kts                # 앱 모듈 빌드 설정
 │   └── src/
 │       ├── main/
-│       │   └── kotlin/
-│       │       └── com/
-│       │           └── klever/
-│       │               └── desktop/
-│       │                   ├── App.kt              # 메인 애플리케이션
-│       │                   ├── websocket/          # WebSocket 관련 클래스
-│       │                   ├── browser/            # Selenium 브라우저 제어
-│       │                   ├── ui/                 # JavaFX UI 컴포넌트
-│       │                   └── utils/              # 유틸리티 클래스
+│       │   ├── kotlin/
+│       │   │   └── com/
+│       │   │       └── klever/
+│       │   │           └── desktop/
+│       │   │               ├── App.kt                  # 메인 애플리케이션
+│       │   │               ├── config/                 # 설정 관리
+│       │   │               │   └── AppConfig.kt        # 설정 저장 및 로드
+│       │   │               ├── model/                  # 데이터 모델
+│       │   │               │   ├── Settings.kt         # 설정 데이터
+│       │   │               │   └── ExplorationData.kt  # 탐색 데이터
+│       │   │               ├── ui/                     # UI 컴포넌트
+│       │   │               │   ├── MainView.kt         # 메인 화면
+│       │   │               │   ├── SettingsView.kt     # 설정 화면
+│       │   │               │   ├── URLInputView.kt     # URL 입력 (Step 1)
+│       │   │               │   └── TaskInputView.kt    # Task 입력 (Step 2)
+│       │   │               ├── browser/                # 브라우저 제어
+│       │   │               │   └── SeleniumController.kt
+│       │   │               └── utils/                  # 유틸리티
+│       │   │                   └── FileUtils.kt
+│       │   └── resources/
+│       │       └── styles.css                         # UI 스타일
 │       └── test/
 │           └── kotlin/
 │               └── com/
 │                   └── klever/
 │                       └── desktop/
-│                           └── AppTest.kt          # 테스트 클래스
+│                           └── AppTest.kt
 ├── build.gradle.kts                    # 루트 프로젝트 빌드 설정
 └── settings.gradle.kts                 # Gradle 설정
 ```
