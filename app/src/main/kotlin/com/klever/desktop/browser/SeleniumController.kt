@@ -30,8 +30,10 @@ class SeleniumController(
     
     fun initialize() {
         try {
+            logger.info { "Starting browser initialization..." }
             WebDriverManager.chromedriver().setup()
             
+            logger.debug { "Setting up Chrome options..." }
             val options = ChromeOptions().apply {
                 addArguments("--start-maximized")
                 addArguments("--remote-allow-origins=*")
@@ -40,16 +42,22 @@ class SeleniumController(
                 setExperimentalOption("detach", true)
             }
             
+            logger.info { "Creating ChromeDriver instance..." }
             driver = ChromeDriver(options)
             wait = WebDriverWait(driver!!, Duration.ofSeconds(10))
             
+            logger.info { "Navigating to URL: $url" }
             driver?.get(url)
             
             // Handle password protection if needed
+            logger.info { "Checking for password protection..." }
             handlePasswordProtection()
+            
+            logger.info { "Browser initialization completed successfully" }
             
         } catch (e: Exception) {
             logger.error(e) { "Failed to initialize browser: ${e.message}" }
+            logger.error { "Stack trace: ${e.stackTraceToString()}" }
             throw RuntimeException("Browser initialization failed", e)
         }
     }
@@ -58,29 +66,32 @@ class SeleniumController(
         if (password == null) return
         
         try {
-            val passwordForm = wait?.until(
-                ExpectedConditions.presenceOfElementLocated(By.id("link-password-form"))
-            ) ?: return
-            
-            val passwordInput = passwordForm.findElement(By.name("password"))
-            passwordInput.sendKeys(password)
-            
-            val continueButton = passwordForm.findElement(
-                By.xpath("//button[@type='submit']")
-            )
-            continueButton.click()
-            
-            // Check if password was incorrect
-            try {
-                wait?.until(ExpectedConditions.presenceOfElementLocated(By.id("link-password-form")))
-                throw RuntimeException("The provided password is incorrect")
+            // 짧은 대기 시간으로 패스워드 폼 확인
+            val passwordForm = try {
+                wait?.until(
+                    ExpectedConditions.presenceOfElementLocated(By.id("link-password-form"))
+                ) ?: return
             } catch (e: TimeoutException) {
-                // Password was correct, continue
+                return
             }
             
+            // 패스워드 입력
+            val passwordInput = passwordForm.findElement(By.name("password"))
+                ?: throw RuntimeException("Password input field not found")
+            passwordInput.sendKeys(password)
+            
+            // 제출
+            val continueButton = passwordForm.findElement(
+                By.xpath("//button[@type='submit']")
+            ) ?: throw RuntimeException("Submit button not found")
+            continueButton.click()
+            
+            // 페이지 로딩 대기
+            Thread.sleep(2000)
+            
         } catch (e: Exception) {
-            if (e is RuntimeException) throw e
-            logger.error(e) { "Error handling password protection: ${e.message}" }
+            if (e is TimeoutException) return
+            throw RuntimeException("Failed to handle password protection", e)
         }
     }
 
@@ -284,6 +295,7 @@ class SeleniumController(
         for (node in nodes) {
             if (node["type"] == "CANVAS") {
                 val currentCanvasId = node["id"] as String
+                logger.debug { "Found canvas with ID: $currentCanvasId" }
             }
             
             if (node["id"] == nodeId) {

@@ -3,11 +3,14 @@ package com.klever.desktop.server.handlers
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import mu.KotlinLogging
+import com.klever.desktop.browser.SeleniumController
 
 private val logger = KotlinLogging.logger {}
 private val mapper = jacksonObjectMapper()
 
 class MessageHandler {
+    private var seleniumController: SeleniumController? = null
+
     fun handle(message: String): Map<String, Any> {
         val request = parseMessage(message)
         
@@ -15,6 +18,8 @@ class MessageHandler {
             "connect" -> handleConnect(request)
             "startTest" -> handleStartTest(request)
             "executeAction" -> handleExecuteAction(request)
+            "INIT" -> handleInit(request)
+            "CLOSE" -> handleClose(request)
             else -> handleUnknownMessage(request)
         }
     }
@@ -52,6 +57,67 @@ class MessageHandler {
             "type" to "executeAction",
             "message" to "Action executed"
         )
+    }
+
+    private fun handleInit(request: Map<String, Any>): Map<String, Any> {
+        return try {
+            logger.debug("Handling INIT request with payload: ${request["payload"]}")
+            
+            val url = request["payload"]?.let { 
+                (it as Map<*, *>)["url"] as String 
+            } ?: throw IllegalArgumentException("URL is required")
+            
+            val password = request["payload"]?.let { 
+                (it as Map<*, *>)["password"] as String? 
+            }
+            
+            seleniumController?.close()
+            seleniumController = SeleniumController(url, password)
+            seleniumController?.initialize()
+            
+            logger.info("Browser initialized successfully for URL: $url")
+            
+            mapOf(
+                "type" to "INIT",
+                "status" to "success",
+                "payload" to mapOf(
+                    "message" to "Browser initialized successfully"
+                )
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to initialize browser: ${e.message}" }
+            mapOf(
+                "type" to "INIT",
+                "status" to "error",
+                "payload" to mapOf(
+                    "message" to "Failed to initialize browser: ${e.message}"
+                )
+            )
+        }
+    }
+
+    private fun handleClose(request: Map<String, Any>): Map<String, Any> {
+        return try {
+            seleniumController?.close()
+            seleniumController = null
+            
+            mapOf(
+                "type" to "CLOSE",
+                "status" to "success",
+                "payload" to mapOf(
+                    "message" to "Browser session closed successfully"
+                )
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to close browser: ${e.message}" }
+            mapOf(
+                "type" to "CLOSE",
+                "status" to "error",
+                "payload" to mapOf(
+                    "message" to "Failed to close browser: ${e.message}"
+                )
+            )
+        }
     }
 
     private fun handleUnknownMessage(request: Map<String, Any>): Map<String, Any> {
