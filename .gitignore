@@ -15,3 +15,6 @@ build
 
 # Ignore IDEA build output directory
 out/
+
+# Ignore figma-client directory
+figma-client/
