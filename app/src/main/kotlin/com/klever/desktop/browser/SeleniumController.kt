@@ -18,12 +18,17 @@ import javax.imageio.ImageIO
 import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.Base64
 
 private val logger = KotlinLogging.logger {}
 
 class SeleniumController(
     private val url: String,
-    private val password: String? = null
+    private val password: String? = null,
+    private val screenWidth: Int? = null,
+    private val screenHeight: Int? = null
 ) {
     private var driver: WebDriver? = null
     private var wait: WebDriverWait? = null
@@ -207,19 +212,29 @@ class SeleniumController(
     }
 
     // Screenshot & Image Processing
-    fun takeScreenshot(outputPath: String): File {
+    fun takeScreenshot(x: Int, y: Int, width: Int, height: Int, outputPath: String): File {
         try {
-            // 전체 화면 캡처
-            val screenRect = Rectangle(Toolkit.getDefaultToolkit().screenSize)
-            val capture = Robot().createScreenCapture(screenRect)
+            // Canvas 요소 찾기
+            val canvas = wait?.until(ExpectedConditions.presenceOfElementLocated(By.tagName("canvas")))
+                ?: throw RuntimeException("Canvas element not found")
+            
+            // Canvas의 스크린샷 가져오기
+            val screenshot = canvas.getScreenshotAs(OutputType.BYTES)
+            
+            // ByteArray를 BufferedImage로 변환
+            val img = ImageIO.read(ByteArrayInputStream(screenshot))
+            
+            // 지정된 영역으로 이미지 크롭
+            val croppedImg = img.getSubimage(x, y, width, height)
             
             // 파일 저장
             val file = File(outputPath)
             file.parentFile?.mkdirs()
-            ImageIO.write(capture, "png", file)
+            ImageIO.write(croppedImg, "png", file)
             
             logger.info { "Screenshot saved to: $outputPath" }
             return file
+            
         } catch (e: Exception) {
             logger.error(e) { "Failed to take screenshot: ${e.message}" }
             throw RuntimeException("Screenshot failed", e)
