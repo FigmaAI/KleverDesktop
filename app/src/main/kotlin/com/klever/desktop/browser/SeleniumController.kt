@@ -437,4 +437,8 @@ class SeleniumController(
             }
         }
     }
+
+    fun getCurrentUrl(): String? {
+        return driver?.currentUrl
+    }
 } 
