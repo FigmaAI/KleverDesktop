@@ -53,19 +53,13 @@ class MessageHandler {
             val currentUrl = seleniumController?.getCurrentUrl()
                 ?: throw IllegalStateException("Failed to get current URL")
             
-            // Extract and convert nodeId
-            val nodeId = Regex("node-id=([^&]+)").find(currentUrl)?.groupValues?.get(1)
-                ?.replace("-", ":")
-                ?: throw IllegalStateException("Failed to extract node ID from URL")
-            
             // Extract file key
             val fileKey = Regex("/(file|proto)/(.*?)/").find(currentUrl)?.groupValues?.get(2)
                 ?: throw IllegalStateException("Failed to extract file key from URL")
             
             // Create directory structure
-            val rootDir = File("./")
-            val demosDir = File(rootDir, "demos").apply { mkdirs() }
-            val fileDir = File(demosDir, fileKey).apply { mkdirs() }
+            val rootDir = File("demos")
+            val fileDir = File(rootDir, fileKey).apply { mkdirs() }
             
             // Create task directory with timestamp
             val timestamp = System.currentTimeMillis()
@@ -91,7 +85,6 @@ class MessageHandler {
             mapOf(
                 "status" to "success",
                 "fileKey" to fileKey,
-                "nodeId" to nodeId,
                 "taskDir" to taskDir.absolutePath,
                 "screenshotArea" to mapOf(
                     "x" to currentScreenshotArea!!.x,
@@ -109,36 +102,51 @@ class MessageHandler {
         }
     }
 
-    private fun captureCanvasScreenshot(prefix: String, round: Int = 1): Map<String, Any> {
+    private fun getImageAsBase64(imagePath: String): String {
         return try {
-            val taskDir = currentTaskDir
-                ?: throw IllegalStateException("Task directory not set up")
+            val file = File(imagePath)
+            if (!file.exists()) {
+                throw IllegalArgumentException("Image file not found: $imagePath")
+            }
+            val bytes = file.readBytes()
+            java.util.Base64.getEncoder().encodeToString(bytes)
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to encode image to base64: ${e.message}" }
+            throw e
+        }
+    }
+
+    private fun captureCanvasScreenshot(prefix: String): Map<String, Any> {
+        return try {
             val screenshotArea = currentScreenshotArea
                 ?: throw IllegalStateException("Screenshot area not set up")
             
-            // Get current URL and extract node ID
-            val currentUrl = seleniumController?.getCurrentUrl()
-                ?: throw IllegalStateException("Failed to get current URL")
-            val nodeId = Regex("""node-id=([^&]+)""").find(currentUrl)?.groupValues?.get(1)
-                ?: throw IllegalStateException("Failed to extract node ID from URL")
+            // 임시 파일로 스크린샷 저장
+            val tempFile = File.createTempFile("screenshot", ".png").apply { deleteOnExit() }
             
-            // Take screenshot using stored screenshot area
-            val screenshotPath = File(taskDir, "${round}_${prefix}.png").absolutePath
+            // 스크린샷 캡처
             seleniumController?.takeScreenshot(
                 x = screenshotArea.x,
                 y = screenshotArea.y,
                 width = screenshotArea.width,
                 height = screenshotArea.height,
-                outputPath = screenshotPath
+                outputPath = tempFile.absolutePath
             ) ?: throw IllegalStateException("Failed to take screenshot")
+            
+            // 현재 활성화된 노드 ID 가져오기
+            val nodeId = seleniumController?.getCurrentActiveNodeId()
+                ?: throw IllegalStateException("Failed to get active node ID")
+            
+            // 이미지를 Base64로 인코딩하고 임시 파일 삭제
+            val imageBase64 = getImageAsBase64(tempFile.absolutePath)
+            tempFile.delete()
             
             mapOf(
                 "type" to "SCREENSHOT",
                 "status" to "success",
                 "payload" to mapOf(
                     "nodeId" to nodeId,
-                    "screenshotPath" to screenshotPath,
-                    "round" to round
+                    "imageData" to "data:image/png;base64,$imageBase64"
                 )
             )
         } catch (e: Exception) {
@@ -146,9 +154,7 @@ class MessageHandler {
             mapOf(
                 "type" to "SCREENSHOT",
                 "status" to "error",
-                "payload" to mapOf(
-                    "message" to "Failed to capture canvas screenshot: ${e.message}"
-                )
+                "payload" to mapOf("message" to "Failed to capture screenshot: ${e.message}")
             )
         }
     }
@@ -179,7 +185,6 @@ class MessageHandler {
                     "message" to "Browser initialized and task setup completed",
                     "fileKey" to (setupResult["fileKey"] ?: ""),
                     "taskDir" to (setupResult["taskDir"] ?: ""),
-                    "nodeId" to (setupResult["nodeId"] ?: ""),
                     "screenshotArea" to (setupResult["screenshotArea"] ?: mapOf<String, Any>())
                 )
             )
@@ -196,16 +201,18 @@ class MessageHandler {
     private fun handleScreenshot(payload: Map<String, Any>): WebSocketResponse {
         return try {
             val prefix = payload["prefix"] as String
-            val round = payload["round"] as? Int ?: 1  // 기본값 1
-            val result = captureCanvasScreenshot(prefix, round)
+            val result = captureCanvasScreenshot(prefix)
             
             if (result["status"] == "error") {
-                throw IllegalStateException(result["message"] as String)
+                throw IllegalStateException(
+                    (result["payload"] as? Map<String, Any>)?.get("message") as? String 
+                    ?: "Unknown error"
+                )
             }
 
             createResponse(
                 type = MessageType.GET_SCREENSHOT,
-                payload = result
+                payload = (result["payload"] as Map<String, Any>)
             )
         } catch (e: Exception) {
             createResponse(

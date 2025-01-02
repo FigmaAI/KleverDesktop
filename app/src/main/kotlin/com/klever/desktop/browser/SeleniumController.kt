@@ -441,4 +441,22 @@ class SeleniumController(
     fun getCurrentUrl(): String? {
         return driver?.currentUrl
     }
+
+    fun getCurrentActiveNodeId(): String? {
+        try {
+            val currentUrl = driver?.currentUrl ?: return null
+            
+            // Extract node-id from URL
+            val nodeIdMatch = Regex("""node-id=([^&]+)""").find(currentUrl)
+            if (nodeIdMatch != null) {
+                // Convert format from 11-1403 to 11:1403
+                return nodeIdMatch.groupValues[1].replace("-", ":")
+            }
+            
+            return null
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to get current active node ID: ${e.message}" }
+            return null
+        }
+    }
 } 
