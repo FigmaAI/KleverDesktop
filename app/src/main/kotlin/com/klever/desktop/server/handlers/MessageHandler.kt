@@ -14,7 +14,8 @@ private val mapper = jacksonObjectMapper()
 enum class MessageType {
     INIT,
     CLOSE,
-    GET_SCREENSHOT
+    GET_SCREENSHOT,
+    EXECUTE_ACTION
 }
 
 data class WebSocketMessage(
@@ -246,6 +247,52 @@ class MessageHandler {
         }
     }
 
+    private fun handleExecuteAction(payload: Map<String, Any>): WebSocketResponse {
+        return try {
+            val action = payload["action"] as String
+            val centerX = payload["centerX"] as Int
+            val centerY = payload["centerY"] as Int
+
+            when (action) {
+                "tap" -> {
+                    seleniumController?.tap(centerX, centerY)
+                }
+                "long_press" -> {
+                    seleniumController?.longPress(centerX, centerY)
+                }
+                "swipe" -> {
+                    val direction = SeleniumController.SwipeDirection.valueOf(
+                        (payload["direction"] as String).uppercase()
+                    )
+                    val distance = SeleniumController.SwipeDistance.valueOf(
+                        (payload["distance"] as String).uppercase()
+                    )
+                    seleniumController?.swipe(centerX, centerY, direction, distance)
+                }
+            }
+
+            // 액션 실행 후 성공 응답
+            createResponse(
+                type = MessageType.EXECUTE_ACTION,
+                payload = mapOf(
+                    "message" to "Action executed successfully",
+                    "action" to action,
+                    "coordinates" to mapOf(
+                        "x" to centerX,
+                        "y" to centerY
+                    )
+                )
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to execute action: ${e.message}" }
+            createResponse(
+                type = MessageType.EXECUTE_ACTION,
+                status = "error",
+                payload = mapOf("message" to "Failed to execute action: ${e.message}")
+            )
+        }
+    }
+
     private fun parseMessage(message: String): WebSocketMessage {
         return try {
             mapper.readValue(message)
@@ -263,6 +310,7 @@ class MessageHandler {
                 MessageType.INIT -> handleInit(request.payload)
                 MessageType.CLOSE -> handleClose()
                 MessageType.GET_SCREENSHOT -> handleScreenshot(request.payload)
+                MessageType.EXECUTE_ACTION -> handleExecuteAction(request.payload)
             }
         } catch (e: Exception) {
             logger.error(e) { "Error handling message: ${e.message}" }
