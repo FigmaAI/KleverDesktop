@@ -25,7 +25,7 @@ data class WebSocketMessage(
 
 data class WebSocketResponse(
     val type: MessageType,
-    val status: String,
+    val status: String = "success",
     val payload: Map<String, Any>
 )
 
