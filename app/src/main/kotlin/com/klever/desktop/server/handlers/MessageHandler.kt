@@ -250,15 +250,29 @@ class MessageHandler {
     private fun handleExecuteAction(payload: Map<String, Any>): WebSocketResponse {
         return try {
             val action = payload["action"] as String
-            val centerX = payload["centerX"] as Int
-            val centerY = payload["centerY"] as Int
+            val bbox = payload["bbox"] as Map<String, Number>
+            val screenshotArea = payload["screenshotArea"] as Map<String, Number>
 
+            // bbox와 screenshotArea를 이용해서 실제 클릭 좌표 계산
+            val centerX = bbox["x"]!!.toInt() + (bbox["width"]!!.toInt() / 2) + screenshotArea["x"]!!.toInt()
+            val centerY = bbox["y"]!!.toInt() + (bbox["height"]!!.toInt() / 2) + screenshotArea["y"]!!.toInt()
+
+            logger.info { "🎯 Received action request:" }
+            logger.info { "  - Action type: $action" }
+            logger.info { "  - Element bbox: $bbox" }
+            logger.info { "  - Screenshot area: $screenshotArea" }
+            logger.info { "  - Calculated target coordinates: ($centerX, $centerY)" }
+            
             when (action) {
                 "tap" -> {
+                    logger.info { "📍 Executing tap..." }
                     seleniumController?.tap(centerX, centerY)
+                    Thread.sleep(1000)
                 }
                 "long_press" -> {
+                    logger.info { "📍 Executing long press..." }
                     seleniumController?.longPress(centerX, centerY)
+                    Thread.sleep(1500)
                 }
                 "swipe" -> {
                     val direction = SeleniumController.SwipeDirection.valueOf(
@@ -267,11 +281,15 @@ class MessageHandler {
                     val distance = SeleniumController.SwipeDistance.valueOf(
                         (payload["distance"] as String).uppercase()
                     )
+                    logger.info { "📍 Executing swipe..." }
+                    logger.info { "  - Direction: $direction" }
+                    logger.info { "  - Distance: $distance" }
                     seleniumController?.swipe(centerX, centerY, direction, distance)
+                    Thread.sleep(1500)
                 }
             }
 
-            // 액션 실행 후 성공 응답
+            logger.info { "✅ Action executed successfully" }
             createResponse(
                 type = MessageType.EXECUTE_ACTION,
                 payload = mapOf(
@@ -284,7 +302,8 @@ class MessageHandler {
                 )
             )
         } catch (e: Exception) {
-            logger.error(e) { "Failed to execute action: ${e.message}" }
+            logger.error(e) { "❌ Action execution failed: ${e.message}" }
+            logger.error { "Payload was: $payload" }
             createResponse(
                 type = MessageType.EXECUTE_ACTION,
                 status = "error",

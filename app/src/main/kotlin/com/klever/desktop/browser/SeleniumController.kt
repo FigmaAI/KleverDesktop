@@ -111,56 +111,59 @@ class SeleniumController(
     }
 
     // Canvas related functions
-    fun getCanvasSize(): Pair<Int, Int> {
-        try {
-            wait = WebDriverWait(driver!!, Duration.ofSeconds(20))
-            val canvas = wait?.until(ExpectedConditions.presenceOfElementLocated(By.tagName("canvas")))
-                ?: throw RuntimeException("Canvas element not found")
-                
-            val style = canvas.getAttribute("style")
-                ?: throw RuntimeException("Canvas style not found")
-                
-            logger.debug { "Canvas style: $style" }
-            
-            val widthMatch = Regex("""width: (\d+(?:\.\d+)?)px""").find(style)
-            val heightMatch = Regex("""height: (\d+(?:\.\d+)?)px""").find(style)
-            
-            if (widthMatch == null || heightMatch == null) {
-                throw RuntimeException("Cannot find width or height in style attribute")
-            }
-            
-            val width = widthMatch.groupValues[1].toFloat().toInt()
-            val height = heightMatch.groupValues[1].toFloat().toInt()
-            
-            return Pair(width, height)
-        } catch (e: Exception) {
-            throw RuntimeException("Failed to get canvas size: ${e.message}")
-        }
+    fun getCanvasElement(): WebElement {
+        return wait?.until(ExpectedConditions.presenceOfElementLocated(By.tagName("canvas")))
+            ?: throw RuntimeException("Canvas element not found")
     }
 
     // Mouse/Keyboard Actions
     fun tap(x: Int, y: Int) {
         try {
+            val canvas = getCanvasElement()
+            val rect = canvas.rect
+            
+            // 캔버스의 실제 위치를 고려한 좌표 계산
+            val actualX = rect.x + x
+            val actualY = rect.y + y
+            
+            logger.info { "🖱️ Tap Action:" }
+            logger.info { "  - Canvas position: (${rect.x}, ${rect.y})" }
+            logger.info { "  - Input coordinates: ($x, $y)" }
+            logger.info { "  - Actual click at: ($actualX, $actualY)" }
+            
             val actions = Actions(driver!!)
-            actions.moveByOffset(x, y)
+            actions
+                .moveByOffset(actualX, actualY)
                 .click()
-                .moveByOffset(-x, -y)  // Reset position
+                .moveByOffset(-actualX, -actualY)
                 .perform()
+                
+            logger.info { "✅ Tap completed" }
+            Thread.sleep(500)
         } catch (e: Exception) {
-            logger.error(e) { "Failed to perform tap at ($x, $y): ${e.message}" }
+            logger.error(e) { "❌ Failed to perform tap at ($x, $y): ${e.message}" }
             throw RuntimeException("Tap action failed", e)
         }
     }
 
     fun longPress(x: Int, y: Int, duration: Long = 1000) {
         try {
+            val canvas = getCanvasElement()
+            val rect = canvas.rect
+            
+            val actualX = rect.x + x
+            val actualY = rect.y + y
+            
             val actions = Actions(driver!!)
-            actions.moveByOffset(x, y)
+            actions
+                .moveByOffset(actualX, actualY)
                 .clickAndHold()
-                .pause(duration)
+                .pause(Duration.ofMillis(duration))
                 .release()
-                .moveByOffset(-x, -y)  // Reset position
+                .moveByOffset(-actualX, -actualY)
                 .perform()
+                
+            Thread.sleep(500)
         } catch (e: Exception) {
             logger.error(e) { "Failed to perform long press at ($x, $y): ${e.message}" }
             throw RuntimeException("Long press action failed", e)
@@ -169,23 +172,43 @@ class SeleniumController(
 
     fun swipe(x: Int, y: Int, direction: SwipeDirection, distance: SwipeDistance = SwipeDistance.MEDIUM) {
         try {
-            val (width, height) = getCanvasSize()
-            val offset = when (direction) {
-                SwipeDirection.UP -> Pair(0, -height * distance.factor)
-                SwipeDirection.DOWN -> Pair(0, height * distance.factor)
-                SwipeDirection.LEFT -> Pair(-width * distance.factor, 0)
-                SwipeDirection.RIGHT -> Pair(width * distance.factor, 0)
+            val canvas = getCanvasElement()
+            val rect = canvas.rect
+            
+            val actualX = rect.x + x
+            val actualY = rect.y + y
+            
+            // 스와이프 거리 계산
+            val (offsetX, offsetY) = when (direction) {
+                SwipeDirection.UP -> Pair(0, -(rect.height * distance.factor).toInt())
+                SwipeDirection.DOWN -> Pair(0, (rect.height * distance.factor).toInt())
+                SwipeDirection.LEFT -> Pair(-(rect.width * distance.factor).toInt(), 0)
+                SwipeDirection.RIGHT -> Pair((rect.width * distance.factor).toInt(), 0)
             }
-
+            
+            logger.info { "👆 Swipe Action:" }
+            logger.info { "  - Canvas position: (${rect.x}, ${rect.y})" }
+            logger.info { "  - Start point: ($actualX, $actualY)" }
+            logger.info { "  - Direction: $direction" }
+            logger.info { "  - Distance: $distance (${distance.factor})" }
+            logger.info { "  - Offset: ($offsetX, $offsetY)" }
+            logger.info { "  - End point: (${actualX + offsetX}, ${actualY + offsetY})" }
+            
             val actions = Actions(driver!!)
-            actions.moveByOffset(x, y)
+            actions
+                .moveByOffset(actualX, actualY)
                 .clickAndHold()
-                .moveByOffset(offset.first.toInt(), offset.second.toInt())
+                .pause(Duration.ofMillis(200))
+                .moveByOffset(offsetX, offsetY)
+                .pause(Duration.ofMillis(200))
                 .release()
-                .moveByOffset(-x - offset.first.toInt(), -y - offset.second.toInt())  // Reset position
+                .moveByOffset(-actualX - offsetX, -actualY - offsetY)
                 .perform()
+                
+            logger.info { "✅ Swipe completed" }
+            Thread.sleep(500)
         } catch (e: Exception) {
-            logger.error(e) { "Failed to perform swipe at ($x, $y): ${e.message}" }
+            logger.error(e) { "❌ Failed to perform swipe at ($x, $y): ${e.message}" }
             throw RuntimeException("Swipe action failed", e)
         }
     }
@@ -457,6 +480,18 @@ class SeleniumController(
         } catch (e: Exception) {
             logger.error(e) { "Failed to get current active node ID: ${e.message}" }
             return null
+        }
+    }
+
+    // Canvas size 관련 메서드 추가
+    fun getCanvasSize(): Pair<Int, Int> {
+        try {
+            val canvas = getCanvasElement()
+            val rect = canvas.rect
+            return Pair(rect.width.toInt(), rect.height.toInt())
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to get canvas size: ${e.message}" }
+            throw RuntimeException("Failed to get canvas size", e)
         }
     }
 } 
