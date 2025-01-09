@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    id("org.jetbrains.compose") version "1.6.0"
     application
 }
 
@@ -33,6 +34,9 @@ dependencies {
     
     // Config
     implementation("com.typesafe:config:1.4.2")
+    
+    implementation(compose.desktop.currentOs)
+    implementation(compose.material3)
 }
 
 application {

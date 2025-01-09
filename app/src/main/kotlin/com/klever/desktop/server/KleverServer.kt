@@ -13,15 +13,18 @@ private val mapper = jacksonObjectMapper()
 
 class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     private val messageHandler = MessageHandler()
-    private val connections = mutableSetOf<WebSocket>()
+    private val _connections = mutableSetOf<WebSocket>()
+
+    val connections: Set<WebSocket>
+        get() = _connections.toSet()
 
     override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
-        connections.add(conn)
+        _connections.add(conn)
         logger.info { "New connection established from: ${conn.remoteSocketAddress}" }
     }
 
     override fun onClose(conn: WebSocket, code: Int, reason: String, remote: Boolean) {
-        connections.remove(conn)
+        _connections.remove(conn)
         logger.info { "Connection closed: $reason (code: $code)" }
     }
 
