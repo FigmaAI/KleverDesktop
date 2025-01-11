@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose") version "1.6.0"
+    kotlin("plugin.serialization") version "1.9.22"
     application
 }
 
@@ -37,6 +38,9 @@ dependencies {
     
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    
+    // JSON Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
 
 application {

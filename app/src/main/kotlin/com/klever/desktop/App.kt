@@ -100,7 +100,7 @@ fun main() = application {
             title = "Klever Desktop",
             state = rememberWindowState(
                 width = 800.dp,
-                height = 600.dp
+                height = 800.dp
             ),
             visible = isVisible
         ) {
