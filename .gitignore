@@ -19,4 +19,4 @@ out/
 # Ignore figma-client directory
 figma-client/
 /app/User_Data
-config.yaml
+/app/config/model_config.json
