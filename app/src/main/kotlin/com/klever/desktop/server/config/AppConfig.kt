@@ -1,4 +1,4 @@
-package com.klever.desktop.config
+package com.klever.desktop.server.config
 
 import com.typesafe.config.ConfigFactory
 

@@ -126,10 +126,13 @@ class SeleniumController(
             val actualX = rect.x + x
             val actualY = rect.y + y
             
-            logger.info { "🖱️ Tap Action:" }
-            logger.info { "  - Canvas position: (${rect.x}, ${rect.y})" }
-            logger.info { "  - Input coordinates: ($x, $y)" }
-            logger.info { "  - Actual click at: ($actualX, $actualY)" }
+            logger.info { "🖱️ Tap Action Details:" }
+            logger.info { "  Canvas Info:" }
+            logger.info { "    - Position: (${rect.x}, ${rect.y})" }
+            logger.info { "    - Size: ${rect.width}x${rect.height}" }
+            logger.info { "  Coordinates:" }
+            logger.info { "    - Requested: ($x, $y)" }
+            logger.info { "    - Actual: ($actualX, $actualY)" }
             
             val actions = Actions(driver!!)
             actions
@@ -138,10 +141,10 @@ class SeleniumController(
                 .moveByOffset(-actualX, -actualY)
                 .perform()
                 
-            logger.info { "✅ Tap completed" }
+            logger.info { "✅ Tap action completed successfully" }
             Thread.sleep(500)
         } catch (e: Exception) {
-            logger.error(e) { "❌ Failed to perform tap at ($x, $y): ${e.message}" }
+            logger.error(e) { "❌ Tap action failed at ($x, $y): ${e.message}" }
             throw RuntimeException("Tap action failed", e)
         }
     }
@@ -186,13 +189,16 @@ class SeleniumController(
                 SwipeDirection.RIGHT -> Pair((rect.width * distance.factor).toInt(), 0)
             }
             
-            logger.info { "👆 Swipe Action:" }
-            logger.info { "  - Canvas position: (${rect.x}, ${rect.y})" }
-            logger.info { "  - Start point: ($actualX, $actualY)" }
-            logger.info { "  - Direction: $direction" }
-            logger.info { "  - Distance: $distance (${distance.factor})" }
-            logger.info { "  - Offset: ($offsetX, $offsetY)" }
-            logger.info { "  - End point: (${actualX + offsetX}, ${actualY + offsetY})" }
+            logger.info { "👆 Swipe Action Details:" }
+            logger.info { "  Canvas Info:" }
+            logger.info { "    - Position: (${rect.x}, ${rect.y})" }
+            logger.info { "    - Size: ${rect.width}x${rect.height}" }
+            logger.info { "  Movement:" }
+            logger.info { "    - Start: ($actualX, $actualY)" }
+            logger.info { "    - Direction: $direction" }
+            logger.info { "    - Distance Factor: ${distance.factor}" }
+            logger.info { "    - Offset: ($offsetX, $offsetY)" }
+            logger.info { "    - End: (${actualX + offsetX}, ${actualY + offsetY})" }
             
             val actions = Actions(driver!!)
             actions
@@ -205,10 +211,10 @@ class SeleniumController(
                 .moveByOffset(-actualX - offsetX, -actualY - offsetY)
                 .perform()
                 
-            logger.info { "✅ Swipe completed" }
+            logger.info { "✅ Swipe action completed successfully" }
             Thread.sleep(500)
         } catch (e: Exception) {
-            logger.error(e) { "❌ Failed to perform swipe at ($x, $y): ${e.message}" }
+            logger.error(e) { "❌ Swipe action failed at ($x, $y): ${e.message}" }
             throw RuntimeException("Swipe action failed", e)
         }
     }

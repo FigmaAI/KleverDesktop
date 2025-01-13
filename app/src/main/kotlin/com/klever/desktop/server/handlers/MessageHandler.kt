@@ -7,6 +7,22 @@ import com.klever.desktop.browser.SeleniumController
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import com.klever.desktop.server.models.AIModel
+import com.klever.desktop.server.models.OpenAIModel
+// import com.klever.desktop.server.models.QwenModel
+import com.klever.desktop.server.config.ModelConfig
+import com.klever.desktop.server.config.OpenAIConfig
+// import com.klever.desktop.server.config.QwenConfig
+import com.klever.desktop.server.repositories.ModelConfigRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import com.klever.desktop.server.models.AzureModel
+import com.klever.desktop.server.config.AzureConfig
+import com.klever.desktop.server.config.OllamaConfig
+import com.klever.desktop.server.models.OllamaModel
+import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
 private val mapper = jacksonObjectMapper()
@@ -15,7 +31,9 @@ enum class MessageType {
     INIT,
     CLOSE,
     GET_SCREENSHOT,
-    EXECUTE_ACTION
+    EXECUTE_ACTION,
+    EXPLORE,
+    REFLECT
 }
 
 data class WebSocketMessage(
@@ -29,6 +47,11 @@ data class WebSocketResponse(
     val payload: Map<String, Any>
 )
 
+data class ExploreRequest(
+    val prompt: String,
+    val imageBase64: List<String>
+)
+
 private fun createResponse(
     type: MessageType,
     status: String = "success",
@@ -40,6 +63,14 @@ class MessageHandler {
     private var currentTaskDir: File? = null
     private var currentFileKey: String? = null
     private var currentScreenshotArea: ScreenshotArea? = null
+    private var modelInstance: AIModel? = null
+    private val repository = ModelConfigRepository()
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val configChangeListener = repository.addConfigChangeListener { 
+        scope.launch {
+            initializeModel()
+        }
+    }
 
     data class ScreenshotArea(
         val x: Int,          // 캔버스 내에서의 스크린샷 시작 x 좌표
@@ -122,8 +153,10 @@ class MessageHandler {
             val screenshotArea = currentScreenshotArea
                 ?: throw IllegalStateException("Screenshot area not set up")
             
-            // 임시 파일로 스크린샷 저장
-            val tempFile = File.createTempFile("screenshot", ".png").apply { deleteOnExit() }
+            // prefix를 사용하여 임시 파일 이름 생성
+            val tempFile = File.createTempFile("screenshot_${prefix}_", ".png").apply { 
+                deleteOnExit() 
+            }
             
             // 스크린샷 캡처
             seleniumController?.takeScreenshot(
@@ -160,13 +193,80 @@ class MessageHandler {
         }
     }
 
+    private suspend fun handleModelRequest(
+        type: MessageType,
+        payload: Map<String, Any>
+    ): WebSocketResponse {
+        return try {
+            if (modelInstance == null) {
+                logger.info { "Model instance is null, initializing..." }
+                initializeModel()
+            }
+            
+            // 모델 요청을 새로운 코루틴 스코프에서 실행
+            withContext(scope.coroutineContext) {
+                val request = ExploreRequest(
+                    prompt = payload["prompt"] as String,
+                    imageBase64 = when (val img = payload["imageBase64"]) {
+                        is List<*> -> img.filterIsInstance<String>()
+                        is String -> listOf(img)
+                        else -> throw IllegalArgumentException("Invalid imageBase64 format")
+                    }
+                )
+                
+                val (success, response) = modelInstance?.get_model_response(
+                    prompt = request.prompt,
+                    images = request.imageBase64
+                ) ?: (false to "Model not initialized")
+                
+                createResponse(
+                    type = type,
+                    status = if (success) "success" else "error",
+                    payload = mapOf("response" to response)
+                )
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to handle $type request: ${e.message}" }
+            createResponse(
+                type = type,
+                status = "error",
+                payload = mapOf("response" to "Error: ${e.message}")
+            )
+        }
+    }
+
+    private suspend fun handleExplore(payload: Map<String, Any>): WebSocketResponse {
+        return handleModelRequest(MessageType.EXPLORE, payload)
+    }
+
+    private suspend fun handleReflect(payload: Map<String, Any>): WebSocketResponse {
+        return handleModelRequest(MessageType.REFLECT, payload)
+    }
+
+    private suspend fun initializeModel() {
+        try {
+            val config = repository.loadCurrentConfig() 
+                ?: throw IllegalStateException("No model configuration found")
+            
+            modelInstance = when (config) {
+                is OpenAIConfig -> OpenAIModel(config)
+                is AzureConfig -> AzureModel(config)
+                is OllamaConfig -> OllamaModel(config)
+                else -> throw IllegalStateException("Unknown config type: ${config::class.simpleName}")
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to initialize AI model" }
+            throw e
+        }
+    }
+
     private fun handleInit(payload: Map<String, Any>): WebSocketResponse {
         return try {
             // 1. Initialize browser
             seleniumController?.close()
             seleniumController = SeleniumController(
                 url = payload["url"] as String,
-                password = payload["password"] as? String
+                password = (payload["password"] as? String) ?: ""  // null일 경우 빈 문자열 반환
             ).apply { initialize() }
 
             // 2. Setup task directory and screenshot area
@@ -179,18 +279,17 @@ class MessageHandler {
                 throw IllegalStateException(setupResult["message"] as String)
             }
 
-            // setupResult의 모든 정보를 응답에 포함
+            // suspend 함수를 코루틴 스코프 내에서 호출
+            scope.launch {
+                initializeModel()
+            }
+            
             createResponse(
                 type = MessageType.INIT,
-                payload = mapOf(
-                    "message" to "Browser initialized and task setup completed",
-                    "fileKey" to (setupResult["fileKey"] ?: ""),
-                    "taskDir" to (setupResult["taskDir"] ?: ""),
-                    "screenshotArea" to (setupResult["screenshotArea"] ?: mapOf<String, Any>())
-                )
+                payload = setupResult  // setupTaskDirectory의 결과를 그대로 사용
             )
         } catch (e: Exception) {
-            logger.error(e) { "Failed to initialize: ${e.message}" }
+            logger.error(e) { "❌ Initialization failed: ${e.message}" }
             createResponse(
                 type = MessageType.INIT,
                 status = "error",
@@ -226,10 +325,12 @@ class MessageHandler {
 
     private fun handleClose(): WebSocketResponse {
         return try {
+            repository.removeConfigChangeListener(configChangeListener)
             seleniumController?.close()
             seleniumController = null
             currentTaskDir = null
             currentFileKey = null
+            modelInstance = null
             
             createResponse(
                 type = MessageType.CLOSE,
@@ -249,13 +350,27 @@ class MessageHandler {
 
     private fun handleExecuteAction(payload: Map<String, Any>): WebSocketResponse {
         return try {
-            val action = payload["action"] as String
-            val bbox = payload["bbox"] as Map<String, Number>
-            val screenshotArea = payload["screenshotArea"] as Map<String, Number>
+            val action = payload["action"] as? String
+                ?: throw IllegalArgumentException("Missing or invalid action")
+            
+            @Suppress("UNCHECKED_CAST")
+            val bbox = payload["bbox"] as? Map<String, Any>
+                ?: throw IllegalArgumentException("Missing or invalid bbox")
+            
+            @Suppress("UNCHECKED_CAST")
+            val screenshotArea = payload["screenshotArea"] as? Map<String, Any>
+                ?: throw IllegalArgumentException("Missing or invalid screenshotArea")
 
-            // bbox와 screenshotArea를 이용해서 실제 클릭 좌표 계산
-            val centerX = bbox["x"]!!.toInt() + (bbox["width"]!!.toInt() / 2) + screenshotArea["x"]!!.toInt()
-            val centerY = bbox["y"]!!.toInt() + (bbox["height"]!!.toInt() / 2) + screenshotArea["y"]!!.toInt()
+            // Calculate click coordinates with null safety
+            val centerX = ((bbox["x"] as? Number)?.toInt() ?: 0).plus(
+                ((bbox["width"] as? Number)?.toInt() ?: 0) / 2
+            ).plus((screenshotArea["x"] as? Number)?.toInt() ?: 0)
+                ?: throw IllegalArgumentException("Invalid x coordinate calculation")
+            
+            val centerY = ((bbox["y"] as? Number)?.toInt() ?: 0).plus(
+                ((bbox["height"] as? Number)?.toInt() ?: 0) / 2
+            ).plus((screenshotArea["y"] as? Number)?.toInt() ?: 0)
+                ?: throw IllegalArgumentException("Invalid y coordinate calculation")
 
             logger.info { "🎯 Received action request:" }
             logger.info { "  - Action type: $action" }
@@ -276,10 +391,12 @@ class MessageHandler {
                 }
                 "swipe" -> {
                     val direction = SeleniumController.SwipeDirection.valueOf(
-                        (payload["direction"] as String).uppercase()
+                        (payload["direction"] as? String)?.uppercase()
+                            ?: throw IllegalArgumentException("Missing or invalid swipe direction")
                     )
                     val distance = SeleniumController.SwipeDistance.valueOf(
-                        (payload["distance"] as String).uppercase()
+                        (payload["distance"] as? String)?.uppercase()
+                            ?: throw IllegalArgumentException("Missing or invalid swipe distance")
                     )
                     logger.info { "📍 Executing swipe..." }
                     logger.info { "  - Direction: $direction" }
@@ -321,7 +438,7 @@ class MessageHandler {
         }
     }
 
-    fun handle(message: String): WebSocketResponse {
+    suspend fun handle(message: String): WebSocketResponse {
         val request = parseMessage(message)
         
         return try {
@@ -330,6 +447,8 @@ class MessageHandler {
                 MessageType.CLOSE -> handleClose()
                 MessageType.GET_SCREENSHOT -> handleScreenshot(request.payload)
                 MessageType.EXECUTE_ACTION -> handleExecuteAction(request.payload)
+                MessageType.EXPLORE -> handleExplore(request.payload)
+                MessageType.REFLECT -> handleReflect(request.payload)
             }
         } catch (e: Exception) {
             logger.error(e) { "Error handling message: ${e.message}" }
@@ -338,6 +457,19 @@ class MessageHandler {
                 status = "error",
                 payload = mapOf("message" to (e.message ?: "Unknown error"))
             )
+        }
+    }
+
+    fun close() {
+        try {
+            repository.removeConfigChangeListener(configChangeListener)
+            seleniumController?.close()
+            seleniumController = null
+            currentTaskDir = null
+            currentFileKey = null
+            modelInstance = null
+        } catch (e: Exception) {
+            logger.error(e) { "Error during MessageHandler cleanup" }
         }
     }
 }

@@ -7,6 +7,11 @@ import java.net.InetSocketAddress
 import mu.KotlinLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.klever.desktop.server.handlers.MessageHandler
+import com.klever.desktop.server.config.AppConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 private val logger = KotlinLogging.logger {}
 private val mapper = jacksonObjectMapper()
@@ -14,6 +19,7 @@ private val mapper = jacksonObjectMapper()
 class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     private val messageHandler = MessageHandler()
     private val _connections = mutableSetOf<WebSocket>()
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     val connections: Set<WebSocket>
         get() = _connections.toSet()
@@ -29,17 +35,14 @@ class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     }
 
     override fun onMessage(conn: WebSocket, message: String) {
-        try {
-            logger.debug { "Received message: $message" }
-            val response = messageHandler.handle(message)
-            conn.send(mapper.writeValueAsString(response))
-        } catch (e: Exception) {
-            logger.error(e) { "Error processing message: ${e.message}" }
-            val errorResponse = mapOf(
-                "status" to "error",
-                "message" to e.message
-            )
-            conn.send(mapper.writeValueAsString(errorResponse))
+        scope.launch {
+            try {
+                val response = messageHandler.handle(message)
+                val jsonResponse = mapper.writeValueAsString(response)
+                conn.send(jsonResponse)
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to handle message" }
+            }
         }
     }
 

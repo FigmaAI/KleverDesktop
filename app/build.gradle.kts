@@ -41,6 +41,24 @@ dependencies {
     
     // JSON Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    
+    // HTTP Client
+    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+    
+    // JSON Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0")
+    
+    // Logging
+    implementation("io.github.microutils:kotlin-logging:2.0.11")
+    
+    // Ktor client 의존성
+    val ktorVersion = "2.3.7"
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-json:$ktorVersion")
+    implementation("io.ktor:ktor-client-apache:$ktorVersion")
 }
 
 application {

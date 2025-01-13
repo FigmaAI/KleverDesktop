@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.klever.desktop.server.KleverServer
-import com.klever.desktop.config.AppConfig
+import com.klever.desktop.server.config.AppConfig
 import com.klever.desktop.ui.MainWindow
 import mu.KotlinLogging
 import androidx.compose.ui.unit.dp
