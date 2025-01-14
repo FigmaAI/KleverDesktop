@@ -73,10 +73,10 @@ class MessageHandler {
     }
 
     data class ScreenshotArea(
-        val x: Int,          // 캔버스 내에서의 스크린샷 시작 x 좌표
-        val y: Int,          // 캔버스 내에서의 스크린샷 시작 y 좌표
-        val width: Int,      // 스크린샷 영역의 너비
-        val height: Int      // 스크린샷 영역의 높이
+        val x: Int,          // screenshot start x coordinate within canvas
+        val y: Int,          // screenshot start y coordinate within canvas
+        val width: Int,      // screenshot area width
+        val height: Int      // screenshot area height
     )
 
     private fun setupTaskDirectory(requestedWidth: Int, requestedHeight: Int): Map<String, Any> {
@@ -153,12 +153,12 @@ class MessageHandler {
             val screenshotArea = currentScreenshotArea
                 ?: throw IllegalStateException("Screenshot area not set up")
             
-            // prefix를 사용하여 임시 파일 이름 생성
+            // create temporary file name using prefix
             val tempFile = File.createTempFile("screenshot_${prefix}_", ".png").apply { 
                 deleteOnExit() 
             }
             
-            // 스크린샷 캡처
+            // capture screenshot
             seleniumController?.takeScreenshot(
                 x = screenshotArea.x,
                 y = screenshotArea.y,
@@ -167,11 +167,11 @@ class MessageHandler {
                 outputPath = tempFile.absolutePath
             ) ?: throw IllegalStateException("Failed to take screenshot")
             
-            // 현재 활성화된 노드 ID 가져오기
+            // get current active node ID
             val nodeId = seleniumController?.getCurrentActiveNodeId()
                 ?: throw IllegalStateException("Failed to get active node ID")
             
-            // 이미지를 Base64로 인코딩하고 임시 파일 삭제
+            // encode image to Base64 and delete temporary file
             val imageBase64 = getImageAsBase64(tempFile.absolutePath)
             tempFile.delete()
             
@@ -268,7 +268,7 @@ class MessageHandler {
             seleniumController?.close()
             seleniumController = SeleniumController(
                 url = payload["url"] as String,
-                password = (payload["password"] as? String) ?: ""  // null일 경우 빈 문자열 반환
+                password = (payload["password"] as? String) ?: ""  // If null, return empty string
             ).apply { initialize() }
 
             // 2. Setup task directory and screenshot area
@@ -281,14 +281,14 @@ class MessageHandler {
                 throw IllegalStateException(setupResult["message"] as String)
             }
 
-            // suspend 함수를 코루틴 스코프 내에서 호출
+            // call suspend function within coroutine scope
             scope.launch {
                 initializeModel()
             }
             
             createResponse(
                 type = MessageType.INIT,
-                payload = setupResult  // setupTaskDirectory의 결과를 그대로 사용
+                payload = setupResult  // use setupTaskDirectory result directly
             )
         } catch (e: Exception) {
             logger.error(e) { "❌ Initialization failed: ${e.message}" }

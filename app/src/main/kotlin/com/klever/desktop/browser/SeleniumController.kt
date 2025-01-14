@@ -71,7 +71,7 @@ class SeleniumController(
         if (password == null) return
         
         try {
-            // 짧은 대기 시간으로 패스워드 폼 확인
+            // Check if the password form is present
             val passwordForm = try {
                 wait?.until(
                     ExpectedConditions.presenceOfElementLocated(By.id("link-password-form"))
@@ -80,18 +80,18 @@ class SeleniumController(
                 return
             }
             
-            // 패스워드 입력
+            // Enter the password
             val passwordInput = passwordForm.findElement(By.name("password"))
                 ?: throw RuntimeException("Password input field not found")
             passwordInput.sendKeys(password)
             
-            // 제출
+            // Submit the password
             val continueButton = passwordForm.findElement(
                 By.xpath("//button[@type='submit']")
             ) ?: throw RuntimeException("Submit button not found")
             continueButton.click()
             
-            // 페이지 로딩 대기
+            // Wait for the page to load
             Thread.sleep(2000)
             
         } catch (e: Exception) {
@@ -122,7 +122,7 @@ class SeleniumController(
             val canvas = getCanvasElement()
             val rect = canvas.rect
             
-            // 캔버스의 실제 위치를 고려한 좌표 계산
+            // Calculate the actual coordinates considering the canvas's position
             val actualX = rect.x + x
             val actualY = rect.y + y
             
@@ -181,7 +181,7 @@ class SeleniumController(
             val actualX = rect.x + x
             val actualY = rect.y + y
             
-            // 스와이프 거리 계산
+            // Calculate the swipe distance
             val (offsetX, offsetY) = when (direction) {
                 SwipeDirection.UP -> Pair(0, -(rect.height * distance.factor).toInt())
                 SwipeDirection.DOWN -> Pair(0, (rect.height * distance.factor).toInt())
@@ -243,20 +243,20 @@ class SeleniumController(
     // Screenshot & Image Processing
     fun takeScreenshot(x: Int, y: Int, width: Int, height: Int, outputPath: String): File {
         try {
-            // Canvas 요소 찾기
+            // Find the canvas element
             val canvas = wait?.until(ExpectedConditions.presenceOfElementLocated(By.tagName("canvas")))
                 ?: throw RuntimeException("Canvas element not found")
             
-            // Canvas의 스크린샷 가져오기
+            // Get the screenshot of the canvas
             val screenshot = canvas.getScreenshotAs(OutputType.BYTES)
             
-            // ByteArray를 BufferedImage로 변환
+            // Convert ByteArray to BufferedImage
             val img = ImageIO.read(ByteArrayInputStream(screenshot))
             
-            // 지정된 영역으로 이미지 크롭
+            // Crop the image to the specified area
             val croppedImg = img.getSubimage(x, y, width, height)
             
-            // 파일 저장
+            // Save the file
             val file = File(outputPath)
             file.parentFile?.mkdirs()
             ImageIO.write(croppedImg, "png", file)
@@ -489,7 +489,7 @@ class SeleniumController(
         }
     }
 
-    // Canvas size 관련 메서드 추가
+    // Canvas size related methods
     fun getCanvasSize(): Pair<Int, Int> {
         try {
             val canvas = getCanvasElement()

@@ -93,7 +93,7 @@ class OpenAIModel(
                         ?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
                         ?: throw Exception("Invalid response format")
                     
-                    // 토큰 사용량 로깅 (비용 관련이므로 남겨둠)
+                    // Logging token usage (keeping for cost-related)
                     jsonResponse["usage"]?.jsonObject?.let { usage ->
                         val promptTokens = usage["prompt_tokens"]?.jsonPrimitive?.int ?: 0
                         val completionTokens = usage["completion_tokens"]?.jsonPrimitive?.int ?: 0

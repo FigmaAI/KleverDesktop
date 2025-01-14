@@ -8,5 +8,5 @@ class AppConfig {
     val port: Int
         get() = config.getInt("server.port")
     
-    // 추가 설정이 필요한 경우 여기에 추가
+    // Additional settings if needed
 } 

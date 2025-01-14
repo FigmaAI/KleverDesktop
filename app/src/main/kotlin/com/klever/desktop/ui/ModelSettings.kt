@@ -29,7 +29,7 @@ fun ModelSettings() {
     val snackbarHostState = remember { SnackbarHostState() }
     var isTestSuccessful by remember { mutableStateOf(false) }
     
-    // 컴포넌트가 처음 로드될 때와 다시 표시될 때마다 설정을 로드
+    // Load settings when the component is first loaded and when it is displayed again
     DisposableEffect(Unit) {
         val listener = repository.addConfigChangeListener {
             currentConfig = repository.loadCurrentConfig()
@@ -39,7 +39,7 @@ fun ModelSettings() {
         }
     }
     
-    // 현재 설정이 없으면 기본 OpenAI 설정으로 초기화
+    // If no current config, initialize with default OpenAI settings
     LaunchedEffect(Unit) {
         if (currentConfig == null) {
             currentConfig = OpenAIConfig(
@@ -51,7 +51,7 @@ fun ModelSettings() {
         }
     }
     
-    // UI 상태를 currentConfig와 동기화
+    // Sync UI state with currentConfig
     var modelType by remember(currentConfig) { mutableStateOf(
         when (currentConfig) {
             is OpenAIConfig -> "OpenAI"
@@ -80,7 +80,7 @@ fun ModelSettings() {
     ) }
     var expanded by remember { mutableStateOf(false) }
 
-    // 설정이 변경될 때마다 UI 업데이트
+    // Update UI when settings change
     LaunchedEffect(currentConfig) {
         if (currentConfig != null) {
             apiKey = currentConfig?.apiKey ?: ""
