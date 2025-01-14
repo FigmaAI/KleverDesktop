@@ -193,18 +193,20 @@ class MessageHandler {
         }
     }
 
+    private fun createRequestScope() = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private suspend fun handleModelRequest(
         type: MessageType,
         payload: Map<String, Any>
     ): WebSocketResponse {
-        return try {
-            if (modelInstance == null) {
-                logger.info { "Model instance is null, initializing..." }
-                initializeModel()
-            }
-            
-            // 모델 요청을 새로운 코루틴 스코프에서 실행
-            withContext(scope.coroutineContext) {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (modelInstance == null) {
+                    logger.info { "Model instance is null, initializing..." }
+                    initializeModel()
+                }
+                
+                logger.info { "📤 Processing ${type.name} request..." }
                 val request = ExploreRequest(
                     prompt = payload["prompt"] as String,
                     imageBase64 = when (val img = payload["imageBase64"]) {
@@ -224,14 +226,14 @@ class MessageHandler {
                     status = if (success) "success" else "error",
                     payload = mapOf("response" to response)
                 )
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to handle $type request: ${e.message}" }
+                createResponse(
+                    type = type,
+                    status = "error",
+                    payload = mapOf("response" to "Error: ${e.message}")
+                )
             }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to handle $type request: ${e.message}" }
-            createResponse(
-                type = type,
-                status = "error",
-                payload = mapOf("response" to "Error: ${e.message}")
-            )
         }
     }
 
