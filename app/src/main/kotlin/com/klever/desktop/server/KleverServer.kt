@@ -7,6 +7,8 @@ import java.net.InetSocketAddress
 import mu.KotlinLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.klever.desktop.server.handlers.MessageHandler
+import com.klever.desktop.server.handlers.MessageType
+import com.klever.desktop.server.handlers.WebSocketResponse
 import com.klever.desktop.server.config.AppConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,12 +39,39 @@ class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     override fun onMessage(conn: WebSocket, message: String) {
         scope.launch {
             try {
+                logger.info { "📥 Received message: ${message.take(100)}..." }
+                
                 val response = messageHandler.handle(message)
                 val jsonResponse = mapper.writeValueAsString(response)
-                conn.send(jsonResponse)
+                
+                if (conn.isOpen) {
+                    logger.info { "📤 Sending response..." }
+                    conn.send(jsonResponse)
+                    logger.info { "✅ Response sent successfully" }
+                } else {
+                    logger.error { "WebSocket connection closed before sending response" }
+                }
             } catch (e: Exception) {
                 logger.error(e) { "Failed to handle message" }
+                if (conn.isOpen) {
+                    val errorResponse = WebSocketResponse(
+                        type = parseMessageType(message),
+                        status = "error",
+                        payload = mapOf("error" to (e.message ?: "Unknown error"))
+                    )
+                    conn.send(mapper.writeValueAsString(errorResponse))
+                }
             }
+        }
+    }
+
+    private fun parseMessageType(message: String): MessageType {
+        return try {
+            val jsonNode = mapper.readTree(message)
+            MessageType.valueOf(jsonNode.get("type").asText())
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to parse message type, defaulting to INIT" }
+            MessageType.INIT
         }
     }
 

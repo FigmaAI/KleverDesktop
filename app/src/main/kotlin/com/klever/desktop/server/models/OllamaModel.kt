@@ -72,71 +72,68 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
     override suspend fun get_model_response(
         prompt: String,
         images: List<String>
-    ): Pair<Boolean, String> {
-        logger.info { "🤖 OllamaModel: Starting model response" }
-        logger.info { "   Images count: ${images.size}" }
-        
-        return try {
-            val combinedImage = if (images.size > 1) {
-                logger.info { "Combining ${images.size} images into one..." }
-                combineImages(images)
-            } else {
-                images.first()
-            }
-            
-            val formattedPrompt = """
-                $prompt
-                
-                Important: Format your response exactly as follows:
-                1. DO NOT use any markdown formatting (no *, _, #, `, etc.)
-                2. Each action MUST contain its own number
-            """.trimIndent()
-            
-            logger.info { "📤 Sending request to Ollama API..." }
+    ): Pair<Boolean, String> = 
+        withContext(Dispatchers.IO) {
             try {
-                val response = client.post("${config.baseUrl}/api/generate") {
-                    contentType(ContentType.Application.Json)
-                    setBody(buildJsonObject {
-                        put("model", config.model)
-                        put("prompt", formattedPrompt)
+                logger.info { "🤖 OllamaModel: Starting model response" }
+                logger.info { "   Images count: ${images.size}" }
+                
+                val finalPrompt = """
+                    $prompt
+                    
+                    IMPORTANT: Do not use any markdown syntax (such as **, ##, etc.) in your response. 
+                    Use plain text only.
+                """.trimIndent()
+                
+                val payload = buildJsonObject {
+                    put("model", config.model)
+                    put("prompt", finalPrompt)
+                    if (images.isNotEmpty()) {
                         putJsonArray("images") {
-                            add(combinedImage)
+                            add(if (images.size > 1) combineImages(images) else images.first())
                         }
-                        put("stream", false)
-                        putJsonObject("options") {
-                            put("temperature", config.temperature)
-                            put("num_predict", config.maxTokens)
-                        }
-                    }.toString())
-                }
-                
-                logger.info { "📥 Received response from Ollama API" }
-                val responseText = response.bodyAsText()
-                logger.info { "   Response text: $responseText" }
-                
-                val jsonResponse = Json.parseToJsonElement(responseText).jsonObject
-                if (!jsonResponse.containsKey("response")) {
-                    logger.error { "❌ Unexpected response format: $jsonResponse" }
-                    if (jsonResponse.containsKey("error")) {
-                        return false to "Error: ${jsonResponse["error"]?.jsonPrimitive?.content ?: "Unknown error"}"
                     }
-                    return false to "Error: Unexpected response format from Ollama"
+                    put("stream", false)
+                    putJsonObject("options") {
+                        put("temperature", config.temperature)
+                        put("num_predict", config.maxTokens)
+                    }
                 }
-                
-                true to (jsonResponse["response"]?.jsonPrimitive?.content ?: throw Exception("No response content"))
-            } catch (e: java.net.ConnectException) {
-                logger.error(e) { "❌ Failed to connect to Ollama server" }
-                false to "Error: Ollama server is not running. Please start the Ollama server and try again."
+
+                logger.info { "📤 Sending request to Ollama API..." }
+                try {
+                    val response = client.post("${config.baseUrl}/api/generate") {
+                        contentType(ContentType.Application.Json)
+                        setBody(payload.toString())
+                    }
+                    
+                    logger.info { "📥 Received response from Ollama API" }
+                    val responseText = response.bodyAsText()
+                    logger.info { "   Response text: $responseText" }
+                    
+                    val jsonResponse = Json.parseToJsonElement(responseText).jsonObject
+                    if (!jsonResponse.containsKey("response")) {
+                        logger.error { "❌ Unexpected response format: $jsonResponse" }
+                        if (jsonResponse.containsKey("error")) {
+                            return@withContext false to "Error: ${jsonResponse["error"]?.jsonPrimitive?.content ?: "Unknown error"}"
+                        }
+                        return@withContext false to "Error: Unexpected response format from Ollama"
+                    }
+                    
+                    true to (jsonResponse["response"]?.jsonPrimitive?.content ?: throw Exception("No response content"))
+                } catch (e: java.net.ConnectException) {
+                    logger.error(e) { "❌ Failed to connect to Ollama server" }
+                    false to "Error: Ollama server is not running. Please start the Ollama server and try again."
+                } catch (e: Exception) {
+                    logger.error(e) { "❌ Error in Ollama response: ${e.message}" }
+                    false to "Error: ${e.message}"
+                }
             } catch (e: Exception) {
-                logger.error(e) { "❌ Error in Ollama response: ${e.message}" }
-                false to "Error: ${e.message}"
+                logger.error(e) { "❌ Unexpected error in Ollama model: ${e.message}" }
+                logger.error { "   Stack trace: ${e.stackTraceToString()}" }
+                false to "Error: Failed to process images: ${e.message}"
             }
-        } catch (e: Exception) {
-            logger.error(e) { "❌ Unexpected error in Ollama model: ${e.message}" }
-            logger.error { "   Stack trace: ${e.stackTraceToString()}" }
-            false to "Error: Failed to process images: ${e.message}"
         }
-    }
 
     override suspend fun translate_to_english(text: String): Pair<Boolean, String> = 
         withContext(Dispatchers.IO) {
