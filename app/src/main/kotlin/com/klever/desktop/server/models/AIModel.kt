@@ -5,4 +5,8 @@ interface AIModel {
         prompt: String,
         images: List<String>
     ): Pair<Boolean, String>
+    
+    suspend fun translate_to_english(
+        text: String
+    ): Pair<Boolean, String>
 } 

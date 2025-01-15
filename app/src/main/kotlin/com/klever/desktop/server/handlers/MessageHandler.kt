@@ -60,8 +60,6 @@ private fun createResponse(
 
 class MessageHandler {
     private var seleniumController: SeleniumController? = null
-    private var currentTaskDir: File? = null
-    private var currentFileKey: String? = null
     private var currentScreenshotArea: ScreenshotArea? = null
     private var modelInstance: AIModel? = null
     private val repository = ModelConfigRepository()
@@ -79,29 +77,29 @@ class MessageHandler {
         val height: Int      // screenshot area height
     )
 
-    private fun setupTaskDirectory(requestedWidth: Int, requestedHeight: Int): Map<String, Any> {
+    private fun setupScreenshotArea(requestedWidth: Int, requestedHeight: Int): Map<String, Any> {
         return try {
-            // Get current URL and extract file key
-            val currentUrl = seleniumController?.getCurrentUrl()
-                ?: throw IllegalStateException("Failed to get current URL")
+            // // Get current URL and extract file key
+            // val currentUrl = seleniumController?.getCurrentUrl()
+            //     ?: throw IllegalStateException("Failed to get current URL")
             
-            // Extract file key
-            val fileKey = Regex("/(file|proto)/(.*?)/").find(currentUrl)?.groupValues?.get(2)
-                ?: throw IllegalStateException("Failed to extract file key from URL")
+            // // Extract file key
+            // val fileKey = Regex("/(file|proto)/(.*?)/").find(currentUrl)?.groupValues?.get(2)
+            //     ?: throw IllegalStateException("Failed to extract file key from URL")
             
-            // Create directory structure
-            val rootDir = File("demos")
-            val fileDir = File(rootDir, fileKey).apply { mkdirs() }
+            // // Create directory structure
+            // val rootDir = File("demos")
+            // val fileDir = File(rootDir, fileKey).apply { mkdirs() }
             
-            // Create task directory with timestamp
-            val timestamp = System.currentTimeMillis()
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
-            val taskName = "self_explore_${dateFormat.format(Date(timestamp))}"
-            val taskDir = File(fileDir, taskName).apply { mkdirs() }
+            // // Create task directory with timestamp
+            // val timestamp = System.currentTimeMillis()
+            // val dateFormat = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss")
+            // val taskName = "self_explore_${dateFormat.format(Date(timestamp))}"
+            // val taskDir = File(fileDir, taskName).apply { mkdirs() }
             
-            // Store directory info
-            currentTaskDir = taskDir
-            currentFileKey = fileKey
+            // // Store directory info
+            // currentTaskDir = taskDir
+            // currentFileKey = fileKey
             
             // Calculate screenshot area
             val (canvasWidth, canvasHeight) = seleniumController?.getCanvasSize()
@@ -116,8 +114,6 @@ class MessageHandler {
             
             mapOf(
                 "status" to "success",
-                "fileKey" to fileKey,
-                "taskDir" to taskDir.absolutePath,
                 "screenshotArea" to mapOf(
                     "x" to currentScreenshotArea!!.x,
                     "y" to currentScreenshotArea!!.y,
@@ -126,10 +122,10 @@ class MessageHandler {
                 )
             )
         } catch (e: Exception) {
-            logger.error(e) { "Failed to setup task directory: ${e.message}" }
+            logger.error(e) { "Failed to setup screenshot area: ${e.message}" }
             mapOf(
                 "status" to "error",
-                "message" to "Failed to setup task directory: ${e.message}"
+                "message" to "Failed to setup screenshot area: ${e.message}"
             )
         }
     }
@@ -254,7 +250,7 @@ class MessageHandler {
                 is OpenAIConfig -> OpenAIModel(config)
                 is AzureConfig -> AzureModel(config)
                 is OllamaConfig -> OllamaModel(config)
-                else -> throw IllegalStateException("Unknown config type: ${config::class.simpleName}")
+                // else -> throw IllegalStateException("Unknown config type: ${config::class.simpleName}")
             }
         } catch (e: Exception) {
             logger.error(e) { "Failed to initialize AI model" }
@@ -268,11 +264,11 @@ class MessageHandler {
             seleniumController?.close()
             seleniumController = SeleniumController(
                 url = payload["url"] as String,
-                password = (payload["password"] as? String) ?: ""  // If null, return empty string
+                password = (payload["password"] as? String) ?: ""
             ).apply { initialize() }
 
-            // 2. Setup task directory and screenshot area
-            val setupResult = setupTaskDirectory(
+            // 2. Setup screenshot area
+            val setupResult = setupScreenshotArea(
                 requestedWidth = payload["width"] as Int,
                 requestedHeight = payload["height"] as Int
             )
@@ -288,7 +284,7 @@ class MessageHandler {
             
             createResponse(
                 type = MessageType.INIT,
-                payload = setupResult  // use setupTaskDirectory result directly
+                payload = setupResult + mapOf("maxRounds" to 30)  // Add maxRounds to response
             )
         } catch (e: Exception) {
             logger.error(e) { "❌ Initialization failed: ${e.message}" }
@@ -300,6 +296,7 @@ class MessageHandler {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun handleScreenshot(payload: Map<String, Any>): WebSocketResponse {
         return try {
             val prefix = payload["prefix"] as String
@@ -307,7 +304,7 @@ class MessageHandler {
             
             if (result["status"] == "error") {
                 throw IllegalStateException(
-                    (result["payload"] as? Map<String, Any>)?.get("message") as? String 
+                    (result["payload"] as? Map<*, *>)?.get("message")?.toString()
                     ?: "Unknown error"
                 )
             }
@@ -330,8 +327,6 @@ class MessageHandler {
             repository.removeConfigChangeListener(configChangeListener)
             seleniumController?.close()
             seleniumController = null
-            currentTaskDir = null
-            currentFileKey = null
             modelInstance = null
             
             createResponse(
@@ -367,12 +362,10 @@ class MessageHandler {
             val centerX = ((bbox["x"] as? Number)?.toInt() ?: 0).plus(
                 ((bbox["width"] as? Number)?.toInt() ?: 0) / 2
             ).plus((screenshotArea["x"] as? Number)?.toInt() ?: 0)
-                ?: throw IllegalArgumentException("Invalid x coordinate calculation")
-            
+
             val centerY = ((bbox["y"] as? Number)?.toInt() ?: 0).plus(
                 ((bbox["height"] as? Number)?.toInt() ?: 0) / 2
             ).plus((screenshotArea["y"] as? Number)?.toInt() ?: 0)
-                ?: throw IllegalArgumentException("Invalid y coordinate calculation")
 
             logger.info { "🎯 Received action request:" }
             logger.info { "  - Action type: $action" }
@@ -436,7 +429,7 @@ class MessageHandler {
             mapper.readValue(message)
         } catch (e: Exception) {
             logger.error(e) { "Failed to parse message: $message" }
-            WebSocketMessage(MessageType.INIT, emptyMap()) // 기본값
+            WebSocketMessage(MessageType.INIT, emptyMap())  // default message
         }
     }
 
@@ -467,11 +460,41 @@ class MessageHandler {
             repository.removeConfigChangeListener(configChangeListener)
             seleniumController?.close()
             seleniumController = null
-            currentTaskDir = null
-            currentFileKey = null
             modelInstance = null
         } catch (e: Exception) {
-            logger.error(e) { "Error during MessageHandler cleanup" }
+            logger.error(e) { "Error during MessageHandler close: ${e.message}" }
         }
+    }
+
+    // Helper function to split text into segments
+    private fun splitIntoSegments(text: String): List<Pair<String, Boolean>> {
+        val segments = mutableListOf<Pair<String, Boolean>>()
+        var currentSegment = StringBuilder()
+        var currentIsNonEnglish = false
+        
+        fun addCurrentSegment() {
+            if (currentSegment.isNotEmpty()) {
+                segments.add(currentSegment.toString() to currentIsNonEnglish)
+                currentSegment.clear()
+            }
+        }
+        
+        text.forEach { char ->
+            val isNonEnglishChar = char.isLetter() && !char.toString().matches(Regex("[a-zA-Z]"))
+            
+            if (currentSegment.isEmpty()) {
+                currentIsNonEnglish = isNonEnglishChar
+                currentSegment.append(char)
+            } else if (isNonEnglishChar == currentIsNonEnglish) {
+                currentSegment.append(char)
+            } else {
+                addCurrentSegment()
+                currentIsNonEnglish = isNonEnglishChar
+                currentSegment.append(char)
+            }
+        }
+        
+        addCurrentSegment()
+        return segments
     }
 }

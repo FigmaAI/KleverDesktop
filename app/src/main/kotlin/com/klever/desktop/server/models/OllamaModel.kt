@@ -17,6 +17,9 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 import java.util.Base64
 import java.awt.Graphics2D
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import mu.KotlinLogging
 
 class OllamaModel(private val config: OllamaConfig) : AIModel {
     private val client = HttpClient(CIO) {
@@ -134,6 +137,55 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
             false to "Error: Failed to process images: ${e.message}"
         }
     }
+
+    override suspend fun translate_to_english(text: String): Pair<Boolean, String> = 
+        withContext(Dispatchers.IO) {
+            try {
+                logger.info { "Starting translation to English" }
+                
+                val response = client.post("${config.baseUrl}/api/generate") {
+                    contentType(ContentType.Application.Json)
+                    setBody(buildJsonObject {
+                        put("model", config.model)
+                        put("prompt", """
+                            You are a translator. Your task is to translate non-English text to English while preserving any English text unchanged. 
+                            For example:
+                            Input: "Hello 안녕하세요 World"
+                            Output: "Hello hello World"
+                            
+                            Only translate the non-English parts and keep English parts exactly as they are.
+                            
+                            Text to translate:
+                            $text
+                        """.trimIndent())
+                        put("stream", false)
+                        putJsonObject("options") {
+                            put("temperature", 0.3)
+                            put("num_predict", config.maxTokens)
+                        }
+                    })
+                }
+
+                val responseText = response.bodyAsText()
+                val jsonResponse = Json.parseToJsonElement(responseText).jsonObject
+                
+                if (!jsonResponse.containsKey("response")) {
+                    logger.error { "Unexpected response format: $jsonResponse" }
+                    if (jsonResponse.containsKey("error")) {
+                        return@withContext false to "Translation error: ${jsonResponse["error"]?.jsonPrimitive?.content ?: "Unknown error"}"
+                    }
+                    return@withContext false to "Error: Unexpected response format from Ollama"
+                }
+                
+                val translatedText = jsonResponse["response"]?.jsonPrimitive?.content
+                    ?: throw Exception("No response content")
+                
+                true to translatedText.trim()
+            } catch (e: Exception) {
+                logger.error(e) { "Translation failed: ${e.message}" }
+                false to "Translation error: ${e.message}"
+            }
+        }
 
     fun close() {
         client.close()

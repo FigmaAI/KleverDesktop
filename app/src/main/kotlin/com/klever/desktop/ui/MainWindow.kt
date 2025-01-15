@@ -14,6 +14,26 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.ui.window.FrameWindowScope
 import com.klever.desktop.ui.ModelSettings
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
+import java.util.Locale
+
+// List of supported languages
+private val supportedLocales = listOf(
+    Locale.ENGLISH,
+    Locale.KOREAN,
+    Locale.JAPANESE,
+    Locale.CHINESE,
+    Locale.FRENCH,
+    Locale.GERMAN,
+    Locale("ms"),  // Malay
+    Locale("th"),  // Thai
+    Locale("id"),  // Indonesian
+    Locale("es")   // Spanish
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,6 +159,11 @@ private fun WebSocketSettingsContent(
     onStopServer: () -> Unit,
     onMinimizeToTray: () -> Unit
 ) {
+    var maxRounds by remember { mutableStateOf(30) }
+    var maxRoundsText by remember { mutableStateOf("30") }
+    var selectedLocale by remember { mutableStateOf(Locale.ENGLISH) }
+    var isLanguageDropdownExpanded by remember { mutableStateOf(false) }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -148,8 +173,60 @@ private fun WebSocketSettingsContent(
             style = MaterialTheme.typography.titleMedium
         )
         
+        // Language Dropdown
+        Box {
+            OutlinedButton(
+                onClick = { isLanguageDropdownExpanded = true },
+                modifier = Modifier.width(200.dp)
+            ) {
+                Text(selectedLocale.displayLanguage)
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Select Language",
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+            
+            DropdownMenu(
+                expanded = isLanguageDropdownExpanded,
+                onDismissRequest = { isLanguageDropdownExpanded = false }
+            ) {
+                supportedLocales.forEach { locale ->
+                    DropdownMenuItem(
+                        text = { Text(locale.displayLanguage) },
+                        onClick = {
+                            selectedLocale = locale
+                            isLanguageDropdownExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        
+        OutlinedTextField(
+            value = maxRoundsText,
+            onValueChange = { text ->
+                if (text.isEmpty() || text.all { it.isDigit() }) {
+                    maxRoundsText = text
+                    text.toIntOrNull()?.let { value ->
+                        if (value in 10..50) {
+                            maxRounds = value
+                        }
+                    }
+                }
+            },
+            label = { Text("Max Rounds (10-50)") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.width(200.dp)
+        )
+        
         Button(
-            onClick = if (isServerRunning) onStopServer else onStartServer,
+            onClick = if (isServerRunning) onStopServer else { 
+                { 
+                    onStartServer() 
+                }
+            },
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isServerRunning) MaterialTheme.colorScheme.error 
                                else MaterialTheme.colorScheme.primary
