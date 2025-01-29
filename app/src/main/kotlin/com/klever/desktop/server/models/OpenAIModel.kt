@@ -34,6 +34,9 @@ class OpenAIModel(
     override suspend fun get_model_response(prompt: String, images: List<String>): Pair<Boolean, String> = 
         withContext(Dispatchers.IO) {
             try {
+                logger.info { "OpenAIModel - Using baseUrl: $baseUrl" }
+                logger.info { "OpenAIModel - Using model: $model" }
+                
                 val messages = buildJsonArray {
                     // System message with prompt
                     addJsonObject {
@@ -68,7 +71,7 @@ class OpenAIModel(
                     put("max_tokens", maxTokens)
                 }
 
-                // logger.debug { "Request payload: $payload" }
+                logger.info { "OpenAIModel - Request payload: $payload" }
 
                 val request = Request.Builder()
                     .url(baseUrl)

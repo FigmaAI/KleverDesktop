@@ -88,20 +88,6 @@ fun MainWindow(
                                     bottomEnd = 24.dp
                                 )
                             )
-                            Spacer(Modifier.height(16.dp))
-                            NavigationDrawerItem(
-                                modifier = Modifier.height(40.dp),
-                                icon = { Icon(Icons.Default.Edit, "Prompts") },
-                                label = { Text("Prompts") },
-                                selected = selectedCategory == "Prompts",
-                                onClick = { selectedCategory = "Prompts" },
-                                shape = RoundedCornerShape(
-                                    topStart = 0.dp,
-                                    bottomStart = 0.dp,
-                                    topEnd = 24.dp,
-                                    bottomEnd = 24.dp
-                                )
-                            )
                         }
                     }
                 }
@@ -113,7 +99,7 @@ fun MainWindow(
                                 when (selectedCategory) {
                                     "WebSocket" -> "WebSocket Settings"
                                     "Model" -> "Model Settings"
-                                    else -> "Prompts Settings"
+                                    else -> "Settings"
                                 }
                             )
                         },
@@ -142,7 +128,6 @@ fun MainWindow(
                                     onMinimizeToTray = onMinimizeToTray
                                 )
                                 "Model" -> ModelSettings()
-                                "Prompts" -> Text("Prompts settings coming soon...")
                             }
                         }
                     }

@@ -233,17 +233,19 @@ fun ModelSettings() {
                             onClick = {
                                 scope.launch {
                                     try {
-                                        logger.info { "Creating config for model type: $modelType" }
+                                        logger.info { "Starting test with modelType: $modelType" }
+                                        logger.info { "Current values - apiKey: ${apiKey.take(5)}..., baseUrl: $baseUrl, model: $model" }
+                                        
                                         val config = when (modelType) {
                                             "OpenAI" -> OpenAIConfig(
+                                                model = model,
                                                 apiKey = apiKey,
-                                                baseUrl = baseUrl,
-                                                model = model
+                                                baseUrl = baseUrl
                                             ).also { logger.info { "Created OpenAI config: $it" } }
                                             "Azure" -> AzureConfig(
+                                                model = model,
                                                 apiKey = apiKey,
-                                                baseUrl = baseUrl,
-                                                model = model
+                                                baseUrl = baseUrl
                                             ).also { logger.info { "Created Azure config: $it" } }
                                             "Ollama" -> OllamaConfig(
                                                 model = model,
@@ -297,14 +299,14 @@ fun ModelSettings() {
                                     try {
                                         val newConfig = when (modelType) {
                                             "OpenAI" -> OpenAIConfig(
+                                                model = model,
                                                 apiKey = apiKey,
-                                                baseUrl = baseUrl,
-                                                model = model
+                                                baseUrl = baseUrl
                                             )
                                             "Azure" -> AzureConfig(
+                                                model = model,
                                                 apiKey = apiKey,
-                                                baseUrl = baseUrl,
-                                                model = model
+                                                baseUrl = baseUrl
                                             )
                                             "Ollama" -> OllamaConfig(
                                                 model = model,
@@ -336,6 +338,238 @@ fun ModelSettings() {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModelSettingsDialog(
+    onClose: () -> Unit
+) {
+    var isTestSuccessful by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 기존 ModelSettings 컴포넌트 사용
+            ModelSettings(
+                onTestSuccess = { isTestSuccessful = true },
+                onTestFailure = { isTestSuccessful = false },
+                snackbarHostState = snackbarHostState
+            )
+
+            // 하단 버튼 영역
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+            ) {
+                OutlinedButton(
+                    onClick = onClose
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = onClose,
+                    enabled = isTestSuccessful
+                ) {
+                    Text("Save & Close")
+                }
+            }
+        }
+
+        // 스낵바
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ModelSettings(
+    onTestSuccess: () -> Unit = {},
+    onTestFailure: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+) {
+    val repository = remember { ModelConfigRepository() }
+    var currentConfig by remember { mutableStateOf(repository.loadCurrentConfig()) }
+    val scope = rememberCoroutineScope()
+    var isTestSuccessful by remember { mutableStateOf(false) }
+    
+    // 기존 상태 관리 코드 유지
+    var modelType by remember(currentConfig) { mutableStateOf(
+        when (currentConfig) {
+            is OpenAIConfig -> "OpenAI"
+            is AzureConfig -> "Azure"
+            is OllamaConfig -> "Ollama"
+            else -> "OpenAI"
+        }
+    ) }
+    var apiKey by remember(currentConfig) { mutableStateOf(currentConfig?.apiKey ?: "") }
+    var baseUrl by remember(currentConfig) { mutableStateOf(
+        when (currentConfig) {
+            is OpenAIConfig -> (currentConfig as OpenAIConfig).baseUrl
+            is AzureConfig -> (currentConfig as AzureConfig).baseUrl
+            is OllamaConfig -> (currentConfig as OllamaConfig).baseUrl
+            else -> "https://api.openai.com/v1/chat/completions"
+        }
+    ) }
+    var model by remember(currentConfig) { mutableStateOf(
+        when (currentConfig) {
+            is OpenAIConfig -> (currentConfig as OpenAIConfig).model
+            is AzureConfig -> (currentConfig as AzureConfig).model
+            is OllamaConfig -> (currentConfig as OllamaConfig).model
+            else -> "gpt-4"
+        }
+    ) }
+    var expanded by remember { mutableStateOf(false) }
+
+    // 기존 UI 컴포넌트들
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Model Type Dropdown
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it }
+        ) {
+            OutlinedTextField(
+                value = modelType,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Model Type") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                listOf("OpenAI", "Azure", "Ollama").forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type) },
+                        onClick = {
+                            modelType = type
+                            when (type) {
+                                "OpenAI" -> {
+                                    model = "gpt-4"
+                                    baseUrl = "https://api.openai.com/v1/chat/completions"
+                                }
+                                "Azure" -> {
+                                    model = "gpt-4"
+                                    baseUrl = ""
+                                }
+                                "Ollama" -> {
+                                    model = "llama2"
+                                    baseUrl = "http://localhost:11434"
+                                }
+                            }
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // API Key (Ollama 제외)
+        if (modelType != "Ollama") {
+            OutlinedTextField(
+                value = apiKey,
+                onValueChange = { apiKey = it },
+                label = { Text("API Key") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Base URL & Model
+        OutlinedTextField(
+            value = baseUrl,
+            onValueChange = { baseUrl = it },
+            label = { Text("Base URL") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = model,
+            onValueChange = { model = it },
+            label = { Text("Model") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Test & Save 버튼
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        try {
+                            val config = when (modelType) {
+                                "OpenAI" -> OpenAIConfig(
+                                    model = model,
+                                    apiKey = apiKey,
+                                    baseUrl = baseUrl
+                                )
+                                "Azure" -> AzureConfig(
+                                    model = model,
+                                    apiKey = apiKey,
+                                    baseUrl = baseUrl
+                                )
+                                "Ollama" -> OllamaConfig(
+                                    model = model,
+                                    apiKey = "",
+                                    baseUrl = baseUrl
+                                )
+                                else -> null
+                            }
+
+                            if (config != null) {
+                                val testModel = when (config) {
+                                    is OpenAIConfig -> OpenAIModel(config)
+                                    is AzureConfig -> AzureModel(config)
+                                    is OllamaConfig -> OllamaModel(config)
+                                    else -> null
+                                }
+
+                                testModel?.let {
+                                    val (success, response) = it.get_model_response("Test message", emptyList())
+                                    if (success) {
+                                        isTestSuccessful = true
+                                        onTestSuccess()
+                                        snackbarHostState.showSnackbar("Test successful!")
+                                    } else {
+                                        isTestSuccessful = false
+                                        onTestFailure()
+                                        throw Exception(response)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            isTestSuccessful = false
+                            onTestFailure()
+                            snackbarHostState.showSnackbar("Test failed: ${e.message}")
+                        }
+                    }
+                }
+            ) {
+                Text("Test Connection")
             }
         }
     }

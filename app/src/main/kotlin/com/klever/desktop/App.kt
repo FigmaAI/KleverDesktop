@@ -1,13 +1,17 @@
 package com.klever.desktop
 
 import androidx.compose.runtime.*
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.klever.desktop.server.KleverServer
 import com.klever.desktop.server.config.AppConfig
 import com.klever.desktop.ui.MainWindow
+import com.klever.desktop.ui.ModelSettingsDialog
 import mu.KotlinLogging
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.TrayState
@@ -15,6 +19,8 @@ import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.res.painterResource
 import java.awt.Dimension
+import androidx.compose.ui.window.DialogWindow
+import androidx.compose.ui.window.rememberDialogState
 
 private val logger = KotlinLogging.logger {}
 
@@ -50,6 +56,7 @@ fun main() = application {
     val app = remember { App() }
     var isServerRunning by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
+    var showModelSettings by remember { mutableStateOf(false) }
     val trayState = remember { TrayState() }
 
     LaunchedEffect(Unit) {
@@ -66,10 +73,11 @@ fun main() = application {
         state = trayState,
         icon = painterResource("icon.png"),
         menu = {
-            Item(
-                text = "Show Window",
-                onClick = { isVisible = true }
-            )
+            // Show Window 메뉴 항목 임시 비활성화
+            // Item(
+            //     text = "Show Window",
+            //     onClick = { isVisible = true }
+            // )
             Item(
                 text = if (isServerRunning) "Stop Server" else "Start Server",
                 onClick = {
@@ -83,6 +91,11 @@ fun main() = application {
                 }
             )
             Item(
+                text = "Model Settings",
+                onClick = { showModelSettings = true }
+            )
+            Separator()
+            Item(
                 text = "Exit",
                 onClick = {
                     app.stopServer()
@@ -94,14 +107,9 @@ fun main() = application {
 
     if (isVisible) {
         Window(
-            onCloseRequest = {
-                isVisible = false
-            },
+            onCloseRequest = { isVisible = false },
             title = "Klever Desktop",
-            state = rememberWindowState(
-                width = 800.dp,
-                height = 800.dp
-            ),
+            state = rememberWindowState(width = 800.dp, height = 800.dp),
             visible = isVisible
         ) {
             MainWindow(
@@ -118,6 +126,27 @@ fun main() = application {
                     isVisible = false
                 }
             )
+        }
+    }
+
+    if (showModelSettings) {
+        DialogWindow(
+            onCloseRequest = { showModelSettings = false },
+            title = "Model Settings",
+            state = rememberDialogState(
+                width = 600.dp,
+                height = 700.dp
+            ),
+            resizable = false
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                ModelSettingsDialog(
+                    onClose = { showModelSettings = false }
+                )
+            }
         }
     }
 }
