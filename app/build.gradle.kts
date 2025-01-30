@@ -68,29 +68,63 @@ compose.desktop {
         mainClass = "com.klever.desktop.AppKt"
         
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Msi)
+            packageName = "KleverDesktop"
+            packageVersion = "1.0.0"
+            
+            windows {
+                menuGroup = "Klever Desktop"
+                // Windows 관련 설정
+                iconFile.set(project.file("src/main/resources/icon.ico"))
+                upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
+                msiPackageVersion = "1.0.0"
+            }
             
             macOS {
                 bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
                 
-                // 백그라운드 앱 설정 임시 제거
-                // infoPlist {
-                //     extraKeysRawXml = """
-                //         <key>LSUIElement</key>
-                //         <string>1</string>
-                //         <key>LSBackgroundOnly</key>
-                //         <string>1</string>
-                //         <key>CFBundlePackageType</key>
-                //         <string>APPL</string>
-                //         <key>CFBundleSignature</key>
-                //         <string>????</string>
-                //     """
-                // }
+                // macOS 배포 설정
+                signing {
+                    sign.set(false)  // 개발 단계에서는 서명 비활성화
+                }
                 
-                // jvmArgs += listOf("-Dapple.awt.UIElement=true")
+                // 추가 JVM 옵션
+                jvmArgs += listOf(
+                    "-Dapple.awt.application.appearance=system"
+                )
+                
+                // Info.plist 추가 설정
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>CFBundlePackageType</key>
+                        <string>APPL</string>
+                        <key>CFBundleSignature</key>
+                        <string>????</string>
+                        <key>LSApplicationCategoryType</key>
+                        <string>public.app-category.developer-tools</string>
+                        <key>LSMinimumSystemVersion</key>
+                        <string>10.13</string>
+                        <key>NSAppleEventsUsageDescription</key>
+                        <string>KleverDesktop needs to control the browser.</string>
+                        <key>NSHighResolutionCapable</key>
+                        <true/>
+                        <key>com.apple.security.automation.apple-events</key>
+                        <true/>
+                    """
+                }
             }
+
+            // 공통 배포 설정
+            modules("java.sql")
+            modules("java.net.http")
+            modules("jdk.crypto.ec")
+            
+            // 패키지 정보
+            description = "Klever Desktop Application"
+            copyright = "© 2024 Klever. All rights reserved."
+            vendor = "Klever"
         }
     }
 }

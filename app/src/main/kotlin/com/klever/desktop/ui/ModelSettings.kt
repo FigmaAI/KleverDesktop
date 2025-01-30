@@ -548,8 +548,8 @@ fun ModelSettings(
                                     else -> null
                                 }
 
-                                testModel?.let {
-                                    val (success, response) = it.get_model_response("Test message", emptyList())
+                                if (testModel != null) {
+                                    val (success, response) = testModel.get_model_response("Test message", emptyList())
                                     if (success) {
                                         isTestSuccessful = true
                                         onTestSuccess()

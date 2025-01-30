@@ -1,0 +1,49 @@
+name: Build Distributions
+
+on:
+  push:
+    branches: [ main ]  # main 브랜치에 push될 때
+  pull_request:
+    branches: [ main ]  # main 브랜치로의 PR이 있을 때
+  workflow_dispatch:    # 수동 실행 가능
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+        include:
+          - os: macos-latest
+            task: packageDmg
+          - os: windows-latest
+            task: packageMsi packageExe
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+    
+    - name: Grant execute permission for gradlew
+      if: runner.os != 'Windows'
+      run: chmod +x gradlew
+    
+    - name: Build with Gradle
+      run: ./gradlew ${{ matrix.task }} --no-configuration-cache
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: KleverDesktop-${{ runner.os }}
+        path: |
+          app/build/compose/binaries/main/dmg/
+          app/build/compose/binaries/main/msi/
+          app/build/compose/binaries/main/exe/
+        if-no-files-found: error 

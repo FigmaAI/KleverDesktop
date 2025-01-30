@@ -21,6 +21,7 @@ import java.awt.Toolkit
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Base64
+import java.nio.file.Path
 
 private val logger = KotlinLogging.logger {}
 
@@ -39,10 +40,24 @@ class SeleniumController(
             WebDriverManager.chromedriver().setup()
             
             logger.debug { "Setting up Chrome options..." }
+            val userDataDir = Path.of(
+                System.getProperty("user.home"),
+                "Library",
+                "Application Support",
+                "KleverDesktop",
+                "User_Data"
+            ).toFile()
+
+            // 디렉토리가 없으면 생성
+            if (!userDataDir.exists()) {
+                userDataDir.mkdirs()
+                logger.debug { "Created user data directory: ${userDataDir.absolutePath}" }
+            }
+            
             val options = ChromeOptions().apply {
                 addArguments("--start-maximized")
                 addArguments("--remote-allow-origins=*")
-                addArguments("user-data-dir=./User_Data")
+                addArguments("--user-data-dir=${userDataDir.absolutePath}")
                 addArguments("disable-blink-features=AutomationControlled")
                 setExperimentalOption("detach", true)
             }
