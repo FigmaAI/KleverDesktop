@@ -1,11 +1,11 @@
-name: Build Distributions
+name: Build Beta Distributions
 
 on:
   push:
-    branches: [ main ]  # main 브랜치에 push될 때
+    branches: [ main ]  # push to main branch
   pull_request:
-    branches: [ main ]  # main 브랜치로의 PR이 있을 때
-  workflow_dispatch:    # 수동 실행 가능
+    branches: [ main ]  # PR to main branch
+  workflow_dispatch:    # manual run
 
 jobs:
   build:
@@ -41,7 +41,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: KleverDesktop-${{ runner.os }}
+        name: KleverDesktop-Beta-${{ runner.os }}
         path: |
           app/build/compose/binaries/main/dmg/
           app/build/compose/binaries/main/msi/

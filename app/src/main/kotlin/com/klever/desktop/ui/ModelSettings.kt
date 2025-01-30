@@ -358,14 +358,14 @@ fun ModelSettingsDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 기존 ModelSettings 컴포넌트 사용
+            // Use existing ModelSettings component
             ModelSettings(
                 onTestSuccess = { isTestSuccessful = true },
                 onTestFailure = { isTestSuccessful = false },
                 snackbarHostState = snackbarHostState
             )
 
-            // 하단 버튼 영역
+            // Bottom button area
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -387,7 +387,7 @@ fun ModelSettingsDialog(
             }
         }
 
-        // 스낵바
+        // Snackbar
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -409,7 +409,7 @@ fun ModelSettings(
     val scope = rememberCoroutineScope()
     var isTestSuccessful by remember { mutableStateOf(false) }
     
-    // 기존 상태 관리 코드 유지
+    // Keep existing state management code
     var modelType by remember(currentConfig) { mutableStateOf(
         when (currentConfig) {
             is OpenAIConfig -> "OpenAI"
@@ -437,7 +437,7 @@ fun ModelSettings(
     ) }
     var expanded by remember { mutableStateOf(false) }
 
-    // 기존 UI 컴포넌트들
+    // Existing UI components
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -487,7 +487,7 @@ fun ModelSettings(
             }
         }
 
-        // API Key (Ollama 제외)
+        // API Key (except Ollama) 
         if (modelType != "Ollama") {
             OutlinedTextField(
                 value = apiKey,
@@ -511,7 +511,7 @@ fun ModelSettings(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Test & Save 버튼
+        // Test & Save buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,

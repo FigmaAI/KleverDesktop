@@ -53,7 +53,7 @@ dependencies {
     // Logging
     implementation("io.github.microutils:kotlin-logging:2.0.11")
     
-    // Ktor client 의존성
+    // Ktor client dependencies
     val ktorVersion = "2.3.7"
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
@@ -70,32 +70,30 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Msi)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.0-beta"
             
             windows {
-                menuGroup = "Klever Desktop"
-                // Windows 관련 설정
+                menuGroup = "Klever Desktop (Beta)"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
-                msiPackageVersion = "1.0.0"
+                msiPackageVersion = "1.0.0-beta"
             }
             
             macOS {
                 bundleID = "com.klever.desktop"
-                dockName = "Klever Desktop"
+                dockName = "Klever Desktop (Beta)"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
                 
-                // macOS 배포 설정
                 signing {
-                    sign.set(false)  // 개발 단계에서는 서명 비활성화
+                    sign.set(false)  // disable signing
                 }
                 
-                // 추가 JVM 옵션
+                // additional JVM options
                 jvmArgs += listOf(
                     "-Dapple.awt.application.appearance=system"
                 )
                 
-                // Info.plist 추가 설정
+                // additional Info.plist settings
                 infoPlist {
                     extraKeysRawXml = """
                         <key>CFBundlePackageType</key>
@@ -106,6 +104,10 @@ compose.desktop {
                         <string>public.app-category.developer-tools</string>
                         <key>LSMinimumSystemVersion</key>
                         <string>10.13</string>
+                        <key>CFBundleShortVersionString</key>
+                        <string>1.0.0-beta</string>
+                        <key>CFBundleVersion</key>
+                        <string>1.0.0-beta</string>
                         <key>NSAppleEventsUsageDescription</key>
                         <string>KleverDesktop needs to control the browser.</string>
                         <key>NSHighResolutionCapable</key>
@@ -116,14 +118,14 @@ compose.desktop {
                 }
             }
 
-            // 공통 배포 설정
+            // common distribution settings
             modules("java.sql")
             modules("java.net.http")
             modules("jdk.crypto.ec")
             
-            // 패키지 정보
+            // package information
             description = "Klever Desktop Application"
-            copyright = "© 2024 Klever. All rights reserved."
+            copyright = "© 2025 Klever. All rights reserved."
             vendor = "Klever"
         }
     }

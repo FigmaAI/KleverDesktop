@@ -57,11 +57,11 @@ class BrowserActions(
 
     fun takeScreenshot(path: String): File {
         try {
-            // 전체 화면 캡처
+            // Capture entire screen
             val screenRect = Rectangle(Toolkit.getDefaultToolkit().screenSize)
             val capture = Robot().createScreenCapture(screenRect)
             
-            // 파일 저장
+            // Save file
             val file = File(path)
             file.parentFile?.mkdirs()
             ImageIO.write(capture, "png", file)

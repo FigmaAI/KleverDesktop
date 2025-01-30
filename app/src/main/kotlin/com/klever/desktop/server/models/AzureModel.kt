@@ -70,7 +70,7 @@ class AzureModel(
                 val request = Request.Builder()
                     .url(baseUrl)
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("api-key", apiKey)  // Azure는 'api-key' 헤더 사용
+                    .addHeader("api-key", apiKey)  // Azure uses 'api-key' header
                     .post(payload.toString().toRequestBody(jsonMediaType))
                     .build()
 
@@ -89,7 +89,7 @@ class AzureModel(
                         ?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
                         ?: throw Exception("Invalid response format")
                     
-                    // 토큰 사용량 로깅
+                    // Log token usage
                     jsonResponse["usage"]?.jsonObject?.let { usage ->
                         val promptTokens = usage["prompt_tokens"]?.jsonPrimitive?.int ?: 0
                         val completionTokens = usage["completion_tokens"]?.jsonPrimitive?.int ?: 0

@@ -34,7 +34,7 @@ data class AzureConfig(
 @SerialName("Ollama")
 data class OllamaConfig(
     override val model: String = "llama3.2-vision",
-    override val apiKey: String = "",  // Ollama는 API 키가 필요 없지만 상속 구조상 포함
+    override val apiKey: String = "",  // Ollama does not require an API key, but it is included for inheritance purposes
     override val baseUrl: String = "http://localhost:11434",
     val temperature: Float = 0.0f,
     val maxTokens: Int = 300

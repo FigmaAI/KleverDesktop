@@ -48,7 +48,7 @@ class SeleniumController(
                 "User_Data"
             ).toFile()
 
-            // 디렉토리가 없으면 생성
+            // Create directory if it doesn't exist
             if (!userDataDir.exists()) {
                 userDataDir.mkdirs()
                 logger.debug { "Created user data directory: ${userDataDir.absolutePath}" }

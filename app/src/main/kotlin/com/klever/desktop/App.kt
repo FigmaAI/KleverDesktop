@@ -73,7 +73,7 @@ fun main() = application {
         state = trayState,
         icon = painterResource("icon.png"),
         menu = {
-            // Show Window 메뉴 항목 임시 비활성화
+            // Show Window menu item temporarily disabled
             // Item(
             //     text = "Show Window",
             //     onClick = { isVisible = true }
