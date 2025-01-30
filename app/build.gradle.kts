@@ -70,19 +70,21 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Msi)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.0-beta"
+            packageVersion = "1.0.0"
             
             windows {
                 menuGroup = "Klever Desktop (Beta)"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
-                msiPackageVersion = "1.0.0-beta"
+                msiPackageVersion = "1.0.0"
+                exePackageVersion = "1.0.0"
             }
             
             macOS {
                 bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop (Beta)"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
+                dmgPackageVersion = "1.0.0"
                 
                 signing {
                     sign.set(false)  // disable signing
