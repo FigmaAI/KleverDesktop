@@ -1,15 +1,97 @@
-# KleverDesktop
+<p align="center">
+  <img src="app/src/main/resources/icon.png" width="128" height="128" alt="KleverDesktop Logo">
+</p>
 
-A WebSocket server application that integrates with Figma plugins, providing browser automation capabilities through Selenium WebDriver.
+<h1 align="center">KleverDesktop</h1>
 
-## Key Features
+<p align="center">
+  <b>A desktop companion for Figma plugins with browser automation capabilities</b>
+  <br>
+  <i>Currently in Beta</i>
+</p>
 
-- **Real-time WebSocket Server**: Bidirectional communication with Figma plugin
-- **Browser Automation**: Chrome browser control via Selenium WebDriver
-- **Screenshot Management**: Capture and process browser screenshots
-- **Action Simulation**: Mouse and keyboard event simulation
+<p align="center">
+  <a href="#installation">Installation</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#features">Features</a> •
+  <a href="#troubleshooting">Troubleshooting</a>
+</p>
 
-## Project Structure
+## Installation
+
+### macOS (Recommended)
+1. Download the latest `KleverDesktop-Beta-macOS.dmg` from [Releases](../../releases)
+2. Open the DMG file
+3. Drag KleverDesktop to your Applications folder
+4. First launch: Right-click and select "Open" to bypass Gatekeeper
+5. Grant necessary permissions when prompted
+
+### Windows (Beta)
+1. Download `KleverDesktop-Beta-Windows.msi` from [Releases](../../releases)
+2. Run the installer
+3. Follow the installation wizard
+4. Launch KleverDesktop from the Start menu
+
+## Getting Started
+
+1. **Launch KleverDesktop**
+   - The application will start and initialize the browser
+
+2. **Install Figma Plugin**
+   - Install [Klever Desktop Beta](https://www.figma.com/community/plugin/1466767342108031572/klever-desktop-beta-next-gen-ai-usability-testing)
+   - Plugin will automatically connect to KleverDesktop
+
+3. **Verify Connection**
+   - Check the connection status in both KleverDesktop and Figma plugin
+   - Green indicator shows successful connection
+
+## Features
+
+- 🔄 Real-time sync with Figma plugins
+- 🌐 Automated browser control
+- 📸 Screenshot capabilities
+- 🖱️ Mouse and keyboard simulation
+- 🎨 Canvas interaction
+
+## System Requirements
+
+- **macOS**: 10.13 or later (Primary platform)
+- **Windows**: Windows 10 or later (Beta support)
+- **Memory**: 8GB RAM recommended
+- **Storage**: 500MB free space
+- **Browser**: Chrome (will be installed if not present)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Browser Launch Failed**
+   - Ensure Chrome is installed
+   - Check permissions in System Preferences/Settings
+   - Restart KleverDesktop
+
+2. **Connection Issues**
+   - Verify KleverDesktop is running
+   - Check firewall settings
+   - Restart both Figma and KleverDesktop
+
+3. **Permission Errors**
+   - macOS: Grant permissions in System Preferences > Security & Privacy
+   - Windows: Run as administrator if needed
+
+## Help Us Improve
+We value your feedback! Please share your experience and report any issues:
+- 🐛 [Report a bug](https://github.com/FigmaAI/KleverDesktop/issues/new?labels=bug&template=bug_report.md)
+- 💡 [Suggest a feature](https://github.com/FigmaAI/KleverDesktop/issues/new?labels=enhancement&template=feature_request.md)
+- 📝 [View existing issues](https://github.com/FigmaAI/KleverDesktop/issues)
+
+
+## For Developers
+
+<details>
+<summary>Click to expand development details</summary>
+
+### Project Structure
 ```
 KleverDesktop/
 ├── app/                    # Main application
@@ -17,113 +99,30 @@ KleverDesktop/
 │   │   └── main/kotlin/   # Kotlin source code
 │   └── User_Data/         # Chrome user data
 ├── figma-client/          # Figma plugin (submodule)
-│   └── ...
-└── config/               # Configuration files
+└── config/                # Configuration files
 ```
 
-## Getting Started
+### Building from Source
+```bash
+# Clone repository with submodules
+git clone --recursive [repository-url]
 
-1. **Prerequisites**
-   - JDK 17 or higher
-   - Chrome browser and ChromeDriver
-   - Gradle 8.x
-
-2. **Installation**
-   ```bash
-   # Clone repository with submodules
-   git clone --recursive [repository-url]
-   
-   # Build project
-   ./gradlew build
-   ```
-
-3. **Running the Server**
-   ```bash
-   ./gradlew run
-   ```
-
-## System Architecture
-
-### Core Components
-1. **WebSocket Server**
-   - Handles plugin communication
-   - Manages browser control requests
-   - Default port: 8080
-
-2. **Browser Controller**
-   - Selenium WebDriver integration
-   - Screenshot capture
-   - Action execution
-
-3. **Configuration Management**
-   - Server settings
-   - Browser options
-   - Screenshot handling
-
-### Communication Flow
-
-```mermaid
-sequenceDiagram
-    participant Figma Plugin
-    participant WebSocket Server
-    participant Browser Controller
-    participant Chrome Browser
-
-    Figma Plugin->>WebSocket Server: Connect WebSocket
-    WebSocket Server-->>Figma Plugin: Connection Established
-
-    rect rgb(200, 220, 250)
-        Note over Figma Plugin,Chrome Browser: Initialization
-        Figma Plugin->>WebSocket Server: Init Request
-        WebSocket Server->>Browser Controller: Launch Browser
-        Browser Controller->>Chrome Browser: Start Session
-        Chrome Browser-->>Browser Controller: Session Ready
-        Browser Controller-->>WebSocket Server: Browser Ready
-        WebSocket Server-->>Figma Plugin: Init Success
-    end
-
-    rect rgb(220, 250, 220)
-        Note over Figma Plugin,Chrome Browser: Task Execution
-        Figma Plugin->>WebSocket Server: Task Request
-        WebSocket Server->>Browser Controller: Execute Action
-        Browser Controller->>Chrome Browser: Perform Action
-        Chrome Browser-->>Browser Controller: Action Result
-        Browser Controller->>Browser Controller: Capture Screenshot
-        Browser Controller-->>WebSocket Server: Action Complete
-        WebSocket Server-->>Figma Plugin: Task Result
-    end
-
-    rect rgb(250, 220, 220)
-        Note over Figma Plugin,Chrome Browser: Cleanup
-        Figma Plugin->>WebSocket Server: Close Request
-        WebSocket Server->>Browser Controller: Cleanup
-        Browser Controller->>Chrome Browser: Close Session
-        WebSocket Server-->>Figma Plugin: Connection Closed
-    end
+# Build project
+./gradlew build
 ```
 
-## Configuration
-
-Edit `config.json` to configure:
-- WebSocket server port
-- Browser options
-- Screenshot save path
-- Log level
-
-## Development
-
-- Written in Kotlin
-- Uses Java-WebSocket for real-time communication
+### Architecture
+- WebSocket Server for plugin communication
 - Selenium WebDriver for browser control
-- Jackson for JSON processing
-- Gradle for build management
-
-## Git Configuration
-
-- `.gitignore`: Excludes build outputs, IDE files, and user data
-- `.gitattributes`: Manages line endings for cross-platform compatibility
-- `.gitmodules`: Includes Figma client as a submodule
+- Kotlin/JVM backend
+</details>
 
 ## License
 
-MIT License
+MIT License - see [LICENSE](LICENSE) for details
+
+---
+
+<p align="center">
+  <sub>Beta Version - Primarily tested on macOS</sub>
+</p>

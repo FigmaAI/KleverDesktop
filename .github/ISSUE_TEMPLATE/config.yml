@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: KleverDesktop Documentation
+    url: https://github.com/FigmaAI/KleverDesktop#readme
+    about: Check our documentation first
+  - name: Classic Klever Plugin
+    url: https://www.figma.com/community/plugin/1383457529531594701
+    about: Looking for the classic version? 
