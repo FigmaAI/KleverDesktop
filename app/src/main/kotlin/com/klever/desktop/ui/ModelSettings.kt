@@ -75,7 +75,7 @@ fun ModelSettings() {
             is OpenAIConfig -> (currentConfig as OpenAIConfig).model
             is AzureConfig -> (currentConfig as AzureConfig).model
             is OllamaConfig -> (currentConfig as OllamaConfig).model
-            else -> "gpt-4"
+            else -> "gpt-4o"
         }
     ) }
     var expanded by remember { mutableStateOf(false) }
@@ -94,7 +94,7 @@ fun ModelSettings() {
                 is OpenAIConfig -> (currentConfig as OpenAIConfig).model
                 is AzureConfig -> (currentConfig as AzureConfig).model
                 is OllamaConfig -> (currentConfig as OllamaConfig).model
-                else -> "gpt-4"
+                else -> "gpt-4o"
             }
             modelType = when (currentConfig) {
                 is OpenAIConfig -> "OpenAI"
@@ -124,6 +124,7 @@ fun ModelSettings() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Box {
+                    @OptIn(ExperimentalMaterial3Api::class)
                     ExposedDropdownMenuBox(
                         expanded = expanded,
                         onExpandedChange = { expanded = it }
@@ -229,6 +230,36 @@ fun ModelSettings() {
                         modifier = Modifier.align(Alignment.CenterEnd),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Reset button
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val defaultConfig = OpenAIConfig(
+                                            model = "gpt-4o",
+                                            apiKey = "",
+                                            baseUrl = "https://api.openai.com/v1/chat/completions"
+                                        )
+                                        repository.saveConfig(defaultConfig)
+                                        currentConfig = defaultConfig
+                                        isTestSuccessful = false
+                                        snackbarHostState.showSnackbar(
+                                            "Settings reset to default",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    } catch (e: Exception) {
+                                        snackbarHostState.showSnackbar(
+                                            "Failed to reset settings: ${e.message}",
+                                            duration = SnackbarDuration.Long
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Text("Reset to Default")
+                        }
+
+                        // Existing Test button
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
@@ -350,6 +381,15 @@ fun ModelSettingsDialog(
 ) {
     var isTestSuccessful by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val repository = remember { ModelConfigRepository() }
+    val scope = rememberCoroutineScope()
+    
+    var currentConfig by remember { mutableStateOf(repository.loadCurrentConfig()) }
+    
+    LaunchedEffect(Unit) {
+        currentConfig = repository.loadCurrentConfig()
+        isTestSuccessful = false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -358,14 +398,20 @@ fun ModelSettingsDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Use existing ModelSettings component
             ModelSettings(
                 onTestSuccess = { isTestSuccessful = true },
                 onTestFailure = { isTestSuccessful = false },
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                initialConfig = currentConfig,
+                onConfigChange = { newConfig -> 
+                    currentConfig = newConfig
+                    scope.launch {
+                        repository.saveConfig(newConfig)
+                    }
+                }
             )
 
-            // Bottom button area
+            // Bottom buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -379,7 +425,11 @@ fun ModelSettingsDialog(
                 }
 
                 Button(
-                    onClick = onClose,
+                    onClick = {
+                        if (isTestSuccessful) {
+                            onClose()
+                        }
+                    },
                     enabled = isTestSuccessful
                 ) {
                     Text("Save & Close")
@@ -387,7 +437,6 @@ fun ModelSettingsDialog(
             }
         }
 
-        // Snackbar
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
@@ -402,14 +451,14 @@ fun ModelSettingsDialog(
 fun ModelSettings(
     onTestSuccess: () -> Unit = {},
     onTestFailure: () -> Unit = {},
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    initialConfig: ModelConfig? = null,
+    onConfigChange: (ModelConfig) -> Unit = {}
 ) {
-    val repository = remember { ModelConfigRepository() }
-    var currentConfig by remember { mutableStateOf(repository.loadCurrentConfig()) }
     val scope = rememberCoroutineScope()
-    var isTestSuccessful by remember { mutableStateOf(false) }
+    var currentConfig by remember(initialConfig) { mutableStateOf(initialConfig) }
     
-    // Keep existing state management code
+    // Initialize UI state from currentConfig
     var modelType by remember(currentConfig) { mutableStateOf(
         when (currentConfig) {
             is OpenAIConfig -> "OpenAI"
@@ -418,6 +467,7 @@ fun ModelSettings(
             else -> "OpenAI"
         }
     ) }
+    
     var apiKey by remember(currentConfig) { mutableStateOf(currentConfig?.apiKey ?: "") }
     var baseUrl by remember(currentConfig) { mutableStateOf(
         when (currentConfig) {
@@ -432,12 +482,34 @@ fun ModelSettings(
             is OpenAIConfig -> (currentConfig as OpenAIConfig).model
             is AzureConfig -> (currentConfig as AzureConfig).model
             is OllamaConfig -> (currentConfig as OllamaConfig).model
-            else -> "gpt-4"
+            else -> "gpt-4o"
         }
     ) }
     var expanded by remember { mutableStateOf(false) }
 
-    // Existing UI components
+    // Update config when UI changes
+    LaunchedEffect(modelType, apiKey, baseUrl, model) {
+        val newConfig = when (modelType) {
+            "OpenAI" -> OpenAIConfig(
+                model = model,
+                apiKey = apiKey,
+                baseUrl = baseUrl
+            )
+            "Azure" -> AzureConfig(
+                model = model,
+                apiKey = apiKey,
+                baseUrl = baseUrl
+            )
+            "Ollama" -> OllamaConfig(
+                model = model,
+                apiKey = "",
+                baseUrl = baseUrl
+            )
+            else -> null
+        }
+        newConfig?.let { onConfigChange(it) }
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -468,11 +540,11 @@ fun ModelSettings(
                             modelType = type
                             when (type) {
                                 "OpenAI" -> {
-                                    model = "gpt-4"
+                                    model = "gpt-4o"
                                     baseUrl = "https://api.openai.com/v1/chat/completions"
                                 }
                                 "Azure" -> {
-                                    model = "gpt-4"
+                                    model = "gpt-4o"
                                     baseUrl = ""
                                 }
                                 "Ollama" -> {
@@ -487,7 +559,7 @@ fun ModelSettings(
             }
         }
 
-        // API Key (except Ollama) 
+        // API Key (except Ollama)
         if (modelType != "Ollama") {
             OutlinedTextField(
                 value = apiKey,
@@ -511,12 +583,43 @@ fun ModelSettings(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Test & Save buttons
+        // Test and Reset buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            OutlinedButton(
+                onClick = {
+                    scope.launch {
+                        try {
+                            val defaultConfig = OpenAIConfig(
+                                model = "gpt-4o",
+                                apiKey = "",
+                                baseUrl = "https://api.openai.com/v1/chat/completions"
+                            )
+                            modelType = "OpenAI"
+                            model = defaultConfig.model
+                            apiKey = defaultConfig.apiKey
+                            baseUrl = defaultConfig.baseUrl
+                            onTestFailure()
+                            snackbarHostState.showSnackbar(
+                                "Settings reset to default",
+                                duration = SnackbarDuration.Short
+                            )
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar(
+                                "Failed to reset settings: ${e.message}",
+                                duration = SnackbarDuration.Long
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text("Reset to Default")
+            }
+            
             OutlinedButton(
                 onClick = {
                     scope.launch {
@@ -549,20 +652,19 @@ fun ModelSettings(
                                 }
 
                                 if (testModel != null) {
-                                    val (success, response) = testModel.get_model_response("Test message", emptyList())
+                                    logger.info { "Sending test request to model" }
+                                    val (success, response) = testModel.get_model_response("Hello, world!", emptyList())
+                                    logger.info { "Got response - success: $success, response: $response" }
                                     if (success) {
-                                        isTestSuccessful = true
                                         onTestSuccess()
                                         snackbarHostState.showSnackbar("Test successful!")
                                     } else {
-                                        isTestSuccessful = false
                                         onTestFailure()
                                         throw Exception(response)
                                     }
                                 }
                             }
                         } catch (e: Exception) {
-                            isTestSuccessful = false
                             onTestFailure()
                             snackbarHostState.showSnackbar("Test failed: ${e.message}")
                         }

@@ -26,7 +26,7 @@ private val logger = KotlinLogging.logger {}
 
 class App {
     private var server: KleverServer? = null
-    private val config = AppConfig()
+    val config = AppConfig()
 
     fun startServer() {
         try {
@@ -59,7 +59,14 @@ fun main() = application {
     var showModelSettings by remember { mutableStateOf(false) }
     val trayState = remember { TrayState() }
 
+    // Check if model settings are configured
     LaunchedEffect(Unit) {
+        if (!app.config.isModelConfigured()) {
+            showModelSettings = true
+            logger.info { "No model configuration found, showing settings dialog" }
+            return@LaunchedEffect
+        }
+        
         try {
             app.startServer()
             isServerRunning = true
@@ -135,7 +142,7 @@ fun main() = application {
             title = "Model Settings",
             state = rememberDialogState(
                 width = 600.dp,
-                height = 700.dp
+                height = 600.dp
             ),
             resizable = false
         ) {
