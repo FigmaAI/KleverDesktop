@@ -82,7 +82,7 @@ compose.desktop {
 
         // Use explicit configuration for nativeDistributions
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
             packageVersion = "1.0.1"
             
@@ -98,9 +98,10 @@ compose.desktop {
             }
 
             windows {
-                iconFile.set(project.file("src/main/resources/icon.ico"))
-                menuGroup = "Klever Desktop"
+                dirChooser = true
+                menuGroup = "KleverDesktop"
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
+                iconFile.set(project.file("src/main/resources/icon.ico"))
             }
         }
     }
