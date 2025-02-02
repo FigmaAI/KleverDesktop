@@ -15,8 +15,10 @@ jobs:
         include:
           - os: macos-latest
             task: packageDmg
+            artifact_path: app/build/compose/binaries/main/dmg/
           - os: windows-latest
             task: packageMsi packageExe
+            artifact_path: app/build/compose/binaries/main/
     
     runs-on: ${{ matrix.os }}
     
@@ -38,12 +40,25 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew ${{ matrix.task }} --no-configuration-cache
     
+    # Windows의 경우 파일을 임시 디렉토리로 복사
+    - name: Prepare Windows artifacts
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path "artifacts"
+        Copy-Item "app/build/compose/binaries/main/msi/*" -Destination "artifacts" -Force
+        Copy-Item "app/build/compose/binaries/main/exe/*" -Destination "artifacts" -Force
+    
+    # macOS의 경우 기존 경로 사용
+    - name: Prepare macOS artifacts
+      if: runner.os == 'macOS'
+      run: |
+        mkdir -p artifacts
+        cp app/build/compose/binaries/main/dmg/* artifacts/
+    
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: KleverDesktop-Beta-${{ runner.os }}
-        path: |
-          app/build/compose/binaries/main/dmg/
-          app/build/compose/binaries/main/msi/
-          app/build/compose/binaries/main/exe/
+        path: artifacts/
         if-no-files-found: error 
