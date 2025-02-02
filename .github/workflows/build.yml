@@ -39,7 +39,7 @@ jobs:
       run: ./gradlew ${{ matrix.task }} --no-configuration-cache
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: KleverDesktop-Beta-${{ runner.os }}
         path: |
