@@ -2,8 +2,21 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose") version "1.6.0"
+    id("org.jetbrains.compose")
     kotlin("plugin.serialization") version "1.9.22"
+}
+
+// Add Gradle 9.0 compatibility settings
+kotlin {
+    jvmToolchain(17) // Use explicit JVM toolchain
+}
+
+// Use type-safe configuration
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
+    }
 }
 
 dependencies {
@@ -66,76 +79,30 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.klever.desktop.AppKt"
-        
+
+        // Use explicit configuration for nativeDistributions
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Msi)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
             
-            windows {
-                menuGroup = "Klever Desktop (Beta)"
-                iconFile.set(project.file("src/main/resources/icon.ico"))
-                upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
-                msiPackageVersion = "1.0.0"
-                exePackageVersion = "1.0.0"
-            }
-            
+            modules("java.instrument", "java.management", "jdk.unsupported")
+
             macOS {
                 bundleID = "com.klever.desktop"
-                dockName = "Klever Desktop (Beta)"
+                dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
-                dmgPackageVersion = "1.0.0"
-                
                 signing {
-                    sign.set(false)  // disable signing
-                }
-                
-                // additional JVM options
-                jvmArgs += listOf(
-                    "-Dapple.awt.application.appearance=system"
-                )
-                
-                // additional Info.plist settings
-                infoPlist {
-                    extraKeysRawXml = """
-                        <key>CFBundlePackageType</key>
-                        <string>APPL</string>
-                        <key>CFBundleSignature</key>
-                        <string>????</string>
-                        <key>LSApplicationCategoryType</key>
-                        <string>public.app-category.developer-tools</string>
-                        <key>LSMinimumSystemVersion</key>
-                        <string>10.13</string>
-                        <key>CFBundleShortVersionString</key>
-                        <string>1.0.0-beta</string>
-                        <key>CFBundleVersion</key>
-                        <string>1.0.0-beta</string>
-                        <key>NSAppleEventsUsageDescription</key>
-                        <string>KleverDesktop needs to control the browser.</string>
-                        <key>NSHighResolutionCapable</key>
-                        <true/>
-                        <key>com.apple.security.automation.apple-events</key>
-                        <true/>
-                    """
+                    sign.set(false) // Explicitly set signing option
                 }
             }
 
-            // common distribution settings
-            modules("java.sql")
-            modules("java.net.http")
-            modules("jdk.crypto.ec")
-            
-            // package information
-            description = "Klever Desktop Application"
-            copyright = "© 2025 Klever. All rights reserved."
-            vendor = "Klever"
+            windows {
+                iconFile.set(project.file("src/main/resources/icon.ico"))
+                menuGroup = "Klever Desktop"
+                upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
+            }
         }
-    }
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
     }
 }
 
@@ -145,4 +112,27 @@ sourceSets {
             exclude("**/figma-client/**")
         }
     }
+}
+
+// Use type-safe task configuration
+tasks.register<Copy>("copyResources") {
+    description = "Copies resources to the build directory"
+    group = "build"
+    
+    from("src/main/resources")
+    into(layout.buildDirectory.dir("resources/main"))
+}
+
+tasks.withType<Jar>().configureEach {
+    setDuplicatesStrategy(org.gradle.api.file.DuplicatesStrategy.EXCLUDE)
+    
+    dependsOn("copyResources")
+    
+    from("src/main/resources") {
+        include("**/*")
+    }
+}
+
+tasks.named("build") {
+    dependsOn("copyResources")
 }

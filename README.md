@@ -23,8 +23,37 @@
 1. Download the latest `KleverDesktop-Beta-macOS.dmg` from [Releases](../../releases)
 2. Open the DMG file
 3. Drag KleverDesktop to your Applications folder
-4. First launch: Right-click and select "Open" to bypass Gatekeeper
-5. Grant necessary permissions when prompted
+
+4. **Important**: First Launch Security Guide
+   
+   When you first try to open KleverDesktop, you'll see these security messages. This is normal for beta software! Here's how to proceed:
+
+   <details>
+   <summary>Step-by-step security bypass guide (with screenshots)</summary>
+
+   1. If you see this message:
+      <img width="306" alt="First security warning" src="https://github.com/user-attachments/assets/9e170e58-0c8c-4e4c-90d3-fe752bc20143" />
+      
+      **Don't click "Move to Trash"!** Instead:
+      - Right-click (or Control-click) on KleverDesktop in Applications
+      - Select "Open" from the context menu
+
+   2. You'll see this dialog:
+      <img width="294" alt="Security bypass dialog" src="https://github.com/user-attachments/assets/3aa18c9c-bae4-4938-b781-05bdb5b27f10" />
+      
+      - Click "Open"
+      - This step creates a security exception for KleverDesktop
+
+   3. For system permissions:
+      <img width="740" alt="System permissions" src="https://github.com/user-attachments/assets/73cc3bfd-4851-40d5-86b7-1966a742c92a" />
+      
+      - Click "Open System Settings"
+      - Grant the requested permissions
+   </details>
+
+   > **Why these warnings?** These security messages appear because KleverDesktop is currently in beta and not yet registered with Apple's notarization service. The app is safe to use, and following the steps above will create a permanent security exception.
+
+5. After completing these steps, KleverDesktop will launch normally
 
 ### Windows (Beta)
 1. Download `KleverDesktop-Beta-Windows.msi` from [Releases](../../releases)
