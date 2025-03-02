@@ -39,15 +39,15 @@ class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     override fun onMessage(conn: WebSocket, message: String) {
         scope.launch {
             try {
-                logger.info { "📥 Received message: ${message.take(100)}..." }
+                logger.info { "[IN] Received message: ${message.take(100)}..." }
                 
                 val response = messageHandler.handle(message)
                 val jsonResponse = mapper.writeValueAsString(response)
                 
                 if (conn.isOpen) {
-                    logger.info { "📤 Sending response..." }
+                    logger.info { "[OUT] Sending response..." }
                     conn.send(jsonResponse)
-                    logger.info { "✅ Response sent successfully" }
+                    logger.info { "[OK] Response sent successfully" }
                 } else {
                     logger.error { "WebSocket connection closed before sending response" }
                 }

@@ -75,7 +75,7 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
     ): Pair<Boolean, String> = 
         withContext(Dispatchers.IO) {
             try {
-                logger.info { "🤖 OllamaModel: Starting model response" }
+                logger.info { "[MODEL] OllamaModel: Starting model response" }
                 logger.info { "   Images count: ${images.size}" }
                 
                 val finalPrompt = """
@@ -100,20 +100,20 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
                     }
                 }
 
-                logger.info { "📤 Sending request to Ollama API..." }
+                logger.info { "[OUT] Sending request to Ollama API..." }
                 try {
                     val response = client.post("${config.baseUrl}/api/generate") {
                         contentType(ContentType.Application.Json)
                         setBody(payload.toString())
                     }
                     
-                    logger.info { "📥 Received response from Ollama API" }
+                    logger.info { "[IN] Received response from Ollama API" }
                     val responseText = response.bodyAsText()
                     logger.info { "   Response text: $responseText" }
                     
                     val jsonResponse = Json.parseToJsonElement(responseText).jsonObject
                     if (!jsonResponse.containsKey("response")) {
-                        logger.error { "❌ Unexpected response format: $jsonResponse" }
+                        logger.error { "[ERROR] Unexpected response format: $jsonResponse" }
                         if (jsonResponse.containsKey("error")) {
                             return@withContext false to "Error: ${jsonResponse["error"]?.jsonPrimitive?.content ?: "Unknown error"}"
                         }
@@ -122,14 +122,14 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
                     
                     true to (jsonResponse["response"]?.jsonPrimitive?.content ?: throw Exception("No response content"))
                 } catch (e: java.net.ConnectException) {
-                    logger.error(e) { "❌ Failed to connect to Ollama server" }
+                    logger.error(e) { "[ERROR] Failed to connect to Ollama server" }
                     false to "Error: Ollama server is not running. Please start the Ollama server and try again."
                 } catch (e: Exception) {
-                    logger.error(e) { "❌ Error in Ollama response: ${e.message}" }
+                    logger.error(e) { "[ERROR] Error in Ollama response: ${e.message}" }
                     false to "Error: ${e.message}"
                 }
             } catch (e: Exception) {
-                logger.error(e) { "❌ Unexpected error in Ollama model: ${e.message}" }
+                logger.error(e) { "[ERROR] Unexpected error in Ollama model: ${e.message}" }
                 logger.error { "   Stack trace: ${e.stackTraceToString()}" }
                 false to "Error: Failed to process images: ${e.message}"
             }
@@ -186,7 +186,7 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
 
     fun close() {
         client.close()
-        logger.info { "🔚 OllamaModel: Client closed" }
+        logger.info { "[END] OllamaModel: Client closed" }
     }
 
     companion object : KLogging()

@@ -105,9 +105,31 @@ class MessageHandler {
             val (canvasWidth, canvasHeight) = seleniumController?.getCanvasSize()
                 ?: throw IllegalStateException("Failed to get canvas size")
             
+            logger.info { "[INFO] Canvas dimensions: ${canvasWidth}x${canvasHeight}" }
+            logger.info { "[INFO] Requested screenshot size: ${requestedWidth}x${requestedHeight}" }
+            
+            // Validate requested dimensions
+            if (requestedWidth > canvasWidth || requestedHeight > canvasHeight) {
+                throw IllegalArgumentException(
+                    "Requested screenshot size (${requestedWidth}x${requestedHeight}) " +
+                    "exceeds canvas size (${canvasWidth}x${canvasHeight})"
+                )
+            }
+            
             // Calculate centered position
             val x = (canvasWidth - requestedWidth) / 2
             val y = (canvasHeight - requestedHeight) / 2
+            
+            // Validate calculated position
+            if (x < 0 || y < 0) {
+                throw IllegalArgumentException(
+                    "Invalid screenshot position ($x, $y) calculated for " +
+                    "canvas size (${canvasWidth}x${canvasHeight}) and " +
+                    "requested size (${requestedWidth}x${requestedHeight})"
+                )
+            }
+            
+            logger.info { "[INFO] Calculated screenshot position: ($x, $y)" }
             
             // Store screenshot area for reuse
             currentScreenshotArea = ScreenshotArea(x, y, requestedWidth, requestedHeight)
@@ -198,11 +220,11 @@ class MessageHandler {
         return withContext(Dispatchers.IO) {
             try {
                 if (modelInstance == null) {
-                    logger.info { "Model instance is null, initializing..." }
+                    logger.info { "[OUT] Model instance is null, initializing..." }
                     initializeModel()
                 }
                 
-                logger.info { "📤 Processing ${type.name} request..." }
+                logger.info { "[OUT] Processing ${type.name} request..." }
                 val request = ExploreRequest(
                     prompt = payload["prompt"] as String,
                     imageBase64 = when (val img = payload["imageBase64"]) {
@@ -223,7 +245,7 @@ class MessageHandler {
                     payload = mapOf("response" to response)
                 )
             } catch (e: Exception) {
-                logger.error(e) { "Failed to handle $type request: ${e.message}" }
+                logger.error(e) { "[ERROR] Failed to handle $type request: ${e.message}" }
                 createResponse(
                     type = type,
                     status = "error",
@@ -253,7 +275,7 @@ class MessageHandler {
                 // else -> throw IllegalStateException("Unknown config type: ${config::class.simpleName}")
             }
         } catch (e: Exception) {
-            logger.error(e) { "Failed to initialize AI model" }
+            logger.error(e) { "[ERROR] Failed to initialize AI model" }
             throw e
         }
     }
@@ -287,7 +309,7 @@ class MessageHandler {
                 payload = setupResult + mapOf("maxRounds" to 30)  // Add maxRounds to response
             )
         } catch (e: Exception) {
-            logger.error(e) { "❌ Initialization failed: ${e.message}" }
+            logger.error(e) { "[ERROR] Initialization failed: ${e.message}" }
             createResponse(
                 type = MessageType.INIT,
                 status = "error",
@@ -367,7 +389,7 @@ class MessageHandler {
                 ((bbox["height"] as? Number)?.toInt() ?: 0) / 2
             ).plus((screenshotArea["y"] as? Number)?.toInt() ?: 0)
 
-            logger.info { "🎯 Received action request:" }
+            logger.info { "[ACTION] Received action request:" }
             logger.info { "  - Action type: $action" }
             logger.info { "  - Element bbox: $bbox" }
             logger.info { "  - Screenshot area: $screenshotArea" }
@@ -375,12 +397,12 @@ class MessageHandler {
             
             when (action) {
                 "tap" -> {
-                    logger.info { "📍 Executing tap..." }
+                    logger.info { "[TAP] Executing tap..." }
                     seleniumController?.tap(centerX, centerY)
                     Thread.sleep(1000)
                 }
                 "long_press" -> {
-                    logger.info { "📍 Executing long press..." }
+                    logger.info { "[TAP] Executing long press..." }
                     seleniumController?.longPress(centerX, centerY)
                     Thread.sleep(1500)
                 }
@@ -393,7 +415,7 @@ class MessageHandler {
                         (payload["distance"] as? String)?.uppercase()
                             ?: throw IllegalArgumentException("Missing or invalid swipe distance")
                     )
-                    logger.info { "📍 Executing swipe..." }
+                    logger.info { "[SWIPE] Executing swipe..." }
                     logger.info { "  - Direction: $direction" }
                     logger.info { "  - Distance: $distance" }
                     seleniumController?.swipe(centerX, centerY, direction, distance)
@@ -401,7 +423,7 @@ class MessageHandler {
                 }
             }
 
-            logger.info { "✅ Action executed successfully" }
+            logger.info { "[OK] Action executed successfully" }
             createResponse(
                 type = MessageType.EXECUTE_ACTION,
                 payload = mapOf(
@@ -414,7 +436,7 @@ class MessageHandler {
                 )
             )
         } catch (e: Exception) {
-            logger.error(e) { "❌ Action execution failed: ${e.message}" }
+            logger.error(e) { "[ERROR] Action execution failed: ${e.message}" }
             logger.error { "Payload was: $payload" }
             createResponse(
                 type = MessageType.EXECUTE_ACTION,

@@ -141,7 +141,7 @@ class SeleniumController(
             val actualX = rect.x + x
             val actualY = rect.y + y
             
-            logger.info { "🖱️ Tap Action Details:" }
+            logger.info { "[MOUSE] Tap Action Details:" }
             logger.info { "  Canvas Info:" }
             logger.info { "    - Position: (${rect.x}, ${rect.y})" }
             logger.info { "    - Size: ${rect.width}x${rect.height}" }
@@ -156,10 +156,10 @@ class SeleniumController(
                 .moveByOffset(-actualX, -actualY)
                 .perform()
                 
-            logger.info { "✅ Tap action completed successfully" }
+            logger.info { "[OK] Tap action completed successfully" }
             Thread.sleep(500)
         } catch (e: Exception) {
-            logger.error(e) { "❌ Tap action failed at ($x, $y): ${e.message}" }
+            logger.error(e) { "[ERROR] Tap action failed at ($x, $y): ${e.message}" }
             throw RuntimeException("Tap action failed", e)
         }
     }
@@ -268,6 +268,19 @@ class SeleniumController(
             // Convert ByteArray to BufferedImage
             val img = ImageIO.read(ByteArrayInputStream(screenshot))
             
+            // Log dimensions for debugging
+            logger.info { "[INFO] Screenshot dimensions:" }
+            logger.info { "  - Original image: ${img.width}x${img.height}" }
+            logger.info { "  - Requested crop: ($x, $y) ${width}x$height" }
+            
+            // Validate coordinates
+            if (x < 0 || y < 0 || x + width > img.width || y + height > img.height) {
+                throw IllegalArgumentException(
+                    "Invalid crop coordinates: ($x, $y, $width, $height) " +
+                    "for image size: (${img.width}, ${img.height})"
+                )
+            }
+            
             // Crop the image to the specified area
             val croppedImg = img.getSubimage(x, y, width, height)
             
@@ -276,11 +289,11 @@ class SeleniumController(
             file.parentFile?.mkdirs()
             ImageIO.write(croppedImg, "png", file)
             
-            logger.info { "Screenshot saved to: $outputPath" }
+            logger.info { "[OK] Screenshot saved to: $outputPath" }
             return file
             
         } catch (e: Exception) {
-            logger.error(e) { "Failed to take screenshot: ${e.message}" }
+            logger.error(e) { "[ERROR] Failed to take screenshot: ${e.message}" }
             throw RuntimeException("Screenshot failed", e)
         }
     }
