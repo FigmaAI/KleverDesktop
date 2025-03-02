@@ -110,9 +110,17 @@ class MessageHandler {
             
             // Validate requested dimensions
             if (requestedWidth > canvasWidth || requestedHeight > canvasHeight) {
-                throw IllegalArgumentException(
-                    "Requested screenshot size (${requestedWidth}x${requestedHeight}) " +
-                    "exceeds canvas size (${canvasWidth}x${canvasHeight})"
+                val errorMessage = "Requested screenshot size (${requestedWidth}x${requestedHeight}) " +
+                    "exceeds canvas size (${canvasWidth}x${canvasHeight}). " +
+                    "Please try again with a smaller size."
+                logger.error { "[ERROR] $errorMessage" }
+                return mapOf(
+                    "status" to "error",
+                    "message" to errorMessage,
+                    "canvasSize" to mapOf(
+                        "width" to canvasWidth,
+                        "height" to canvasHeight
+                    )
                 )
             }
             
@@ -122,10 +130,17 @@ class MessageHandler {
             
             // Validate calculated position
             if (x < 0 || y < 0) {
-                throw IllegalArgumentException(
-                    "Invalid screenshot position ($x, $y) calculated for " +
+                val errorMessage = "Invalid screenshot position ($x, $y) calculated for " +
                     "canvas size (${canvasWidth}x${canvasHeight}) and " +
-                    "requested size (${requestedWidth}x${requestedHeight})"
+                    "requested size (${requestedWidth}x${requestedHeight})."
+                logger.error { "[ERROR] $errorMessage" }
+                return mapOf(
+                    "status" to "error",
+                    "message" to errorMessage,
+                    "canvasSize" to mapOf(
+                        "width" to canvasWidth,
+                        "height" to canvasHeight
+                    )
                 )
             }
             
@@ -141,13 +156,21 @@ class MessageHandler {
                     "y" to currentScreenshotArea!!.y,
                     "width" to currentScreenshotArea!!.width,
                     "height" to currentScreenshotArea!!.height
+                ),
+                "canvasSize" to mapOf(
+                    "width" to canvasWidth,
+                    "height" to canvasHeight
                 )
             )
         } catch (e: Exception) {
             logger.error(e) { "Failed to setup screenshot area: ${e.message}" }
             mapOf(
                 "status" to "error",
-                "message" to "Failed to setup screenshot area: ${e.message}"
+                "message" to "Failed to setup screenshot area: ${e.message}",
+                "canvasSize" to mapOf(
+                    "width" to -1,
+                    "height" to -1
+                )
             )
         }
     }
@@ -296,6 +319,7 @@ class MessageHandler {
             )
 
             if (setupResult["status"] == "error") {
+                logger.error { "[ERROR] Screenshot setup failed: ${setupResult["message"]}" }
                 throw IllegalStateException(setupResult["message"] as String)
             }
 
@@ -313,9 +337,27 @@ class MessageHandler {
             createResponse(
                 type = MessageType.INIT,
                 status = "error",
-                payload = mapOf("message" to "Failed to initialize: ${e.message}")
+                payload = mapOf(
+                    "message" to "Failed to initialize: ${e.message}",
+                    "canvasSize" to extractCanvasSizeFromError(e)
+                )
             )
         }
+    }
+
+    private fun extractCanvasSizeFromError(e: Exception): Map<String, Int> {
+        if (e is IllegalStateException) {
+            val regex = "canvas size \\((\\d+)x(\\d+)\\)".toRegex()
+            val matchResult = regex.find(e.message ?: "")
+            if (matchResult != null) {
+                val (width, height) = matchResult.destructured
+                return mapOf(
+                    "width" to width.toInt(),
+                    "height" to height.toInt()
+                )
+            }
+        }
+        return mapOf("width" to -1, "height" to -1)
     }
 
     @Suppress("UNCHECKED_CAST")
