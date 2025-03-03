@@ -7,10 +7,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.grabtaxi.klever.desktop.server.KleverServer
-import com.grabtaxi.klever.desktop.server.config.AppConfig
-import com.grabtaxi.klever.desktop.ui.MainWindow
-import com.grabtaxi.klever.desktop.ui.ModelSettingsDialog
+import com.grabtaxi.klever.server.KleverServer
+import com.grabtaxi.klever.server.config.AppConfig
+import com.grabtaxi.klever.ui.MainWindow
+import com.grabtaxi.klever.ui.ModelSettingsDialog
 import mu.KotlinLogging
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.Tray
