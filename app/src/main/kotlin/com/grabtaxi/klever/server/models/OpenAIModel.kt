@@ -1,4 +1,4 @@
-package com.klever.desktop.server.models
+package com.grabtaxi.klever.server.models
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -8,8 +8,11 @@ import kotlinx.serialization.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import com.klever.desktop.server.config.ModelConfig
-import com.klever.desktop.server.config.OpenAIConfig
+import com.grabtaxi.klever.server.config.OpenAIConfig
+import java.util.Base64
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 private val logger = KotlinLogging.logger {}
 

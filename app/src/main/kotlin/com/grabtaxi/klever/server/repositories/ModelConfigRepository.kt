@@ -1,4 +1,4 @@
-package com.klever.desktop.server.repositories
+package com.grabtaxi.klever.server.repositories
 
 import java.util.prefs.Preferences
 import kotlinx.serialization.json.Json
@@ -7,10 +7,10 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
-import com.klever.desktop.server.config.ModelConfig
-import com.klever.desktop.server.config.OpenAIConfig
-import com.klever.desktop.server.config.AzureConfig
-import com.klever.desktop.server.config.OllamaConfig
+import com.grabtaxi.klever.server.config.ModelConfig
+import com.grabtaxi.klever.server.config.OpenAIConfig
+import com.grabtaxi.klever.server.config.AzureConfig
+import com.grabtaxi.klever.server.config.OllamaConfig
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}

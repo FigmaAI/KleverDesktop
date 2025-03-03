@@ -1,4 +1,4 @@
-package com.klever.desktop.server.models
+package com.grabtaxi.klever.server.models
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -8,7 +8,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
-import com.klever.desktop.server.config.OllamaConfig
+import com.grabtaxi.klever.server.config.OllamaConfig
 import mu.KLogging
 import kotlin.time.Duration.Companion.minutes
 import java.awt.image.BufferedImage
@@ -20,6 +20,7 @@ import java.awt.Graphics2D
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import java.io.File
 
 class OllamaModel(private val config: OllamaConfig) : AIModel {
     private val client = HttpClient(CIO) {
