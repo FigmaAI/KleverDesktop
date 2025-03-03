@@ -77,7 +77,38 @@
 - **Windows**: Windows 10 or later (Beta support)
 - **Memory**: 8GB RAM recommended
 - **Storage**: 500MB free space
-- **Browser**: Chrome (will be installed if not present)
+- **Browser**: Google Chrome (required)
+- **Java**: Java 17 or later required (JDK or JRE)
+
+### Java Environment Setup
+
+KleverDesktop requires Java 17 or later to run. If you don't have Java installed, you can download it from:
+
+- [Eclipse Temurin (Recommended)](https://adoptium.net/temurin/releases/?version=17)
+- [Oracle Java](https://www.oracle.com/java/technologies/downloads/#java17)
+
+#### Verifying Java Installation
+
+To verify your Java installation, open a terminal or command prompt and run:
+
+```bash
+java -version
+```
+
+You should see output indicating Java 17 or later, for example:
+```
+openjdk version "17.0.7" 2023-04-18
+OpenJDK Runtime Environment Temurin-17.0.7+7 (build 17.0.7+7)
+OpenJDK 64-Bit Server VM Temurin-17.0.7+7 (build 17.0.7+7, mixed mode)
+```
+
+### Chrome Browser Setup
+
+KleverDesktop requires Google Chrome to be installed. If you don't have Chrome installed, you can download it from:
+
+- [Google Chrome Download Page](https://www.google.com/chrome/)
+
+After installation, make sure Chrome is set as your default browser or at least accessible from your system PATH.
 
 ## Troubleshooting
 
@@ -96,6 +127,26 @@
 3. **Permission Errors**
    - macOS: Grant permissions in System Preferences > Security & Privacy
    - Windows: Run as administrator if needed
+
+4. **Chrome Browser Issues**
+   - Error message: "Chrome browser check failed. Google Chrome is required."
+   - Solution: Install Google Chrome (see Chrome Browser Setup section)
+   - Make sure Chrome is not running in the background when starting KleverDesktop
+   - If Chrome is installed but not detected, try reinstalling Chrome
+   - On Windows, ensure Chrome is installed for all users or the current user
+
+5. **Java Environment Issues**
+   - Error message: "Java environment check failed. Minimum Java 17 required."
+   - Solution: Install Java 17 or later (see Java Environment Setup section)
+   - Windows: After installing Java, you may need to restart your computer
+   - macOS: Ensure Java is properly installed with `java -version` command
+   - If you have multiple Java versions installed, ensure Java 17+ is the default
+
+6. **ChromeDriver Issues**
+   - If you see errors related to ChromeDriver, try:
+     - Updating Chrome to the latest version
+     - Clearing the KleverDesktop cache folder (located at `~/.kleverdesktop/webdriver`)
+     - Reinstalling KleverDesktop
 
 ## Help Us Improve
 We value your feedback! Please share your experience and report any issues:

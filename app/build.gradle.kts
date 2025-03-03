@@ -87,6 +87,16 @@ compose.desktop {
             packageVersion = "1.0.1"
             
             modules("java.instrument", "java.management", "jdk.unsupported")
+            
+            // Add required JDK modules (include JRE in distribution)
+            includeAllModules = true
+            
+            // Runtime image compression settings
+            // Use the newer syntax for JDK configuration
+            javaHome = System.getProperty("java.home")
+            
+            // Memory settings
+            jvmArgs += listOf("-Xmx2g")
 
             macOS {
                 bundleID = "com.klever.desktop"
@@ -102,6 +112,8 @@ compose.desktop {
                 menuGroup = "KleverDesktop"
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
+                // Add Windows-specific JVM arguments
+                jvmArgs += listOf("-Djava.library.path=runtime/bin")
             }
         }
     }

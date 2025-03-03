@@ -37,16 +37,77 @@ class SeleniumController(
     fun initialize() {
         try {
             logger.info { "Starting browser initialization..." }
-            WebDriverManager.chromedriver().setup()
+            
+            // Improve WebDriverManager setup
+            try {
+                // Set cache path (store in user home directory)
+                val wdmCachePath = Path.of(
+                    System.getProperty("user.home"),
+                    ".kleverdesktop",
+                    "webdriver"
+                ).toString()
+                
+                System.setProperty("wdm.cachePath", wdmCachePath)
+                
+                // Increase timeout settings
+                System.setProperty("wdm.timeout", "60")
+                
+                // Configure logging
+                System.setProperty("wdm.log", "true")
+                
+                // Setup Chrome driver
+                WebDriverManager.chromedriver()
+                    .clearDriverCache() // Prevent cache issues
+                    .clearResolutionCache() // Prevent resolution cache issues
+                    .setup()
+                
+                logger.info { "WebDriverManager setup completed successfully" }
+            } catch (e: Exception) {
+                logger.error(e) { "WebDriverManager setup failed, attempting fallback: ${e.message}" }
+                
+                // Fallback: Try to find ChromeDriver in system PATH
+                val chromeDriverPath = findChromeDriverInPath()
+                if (chromeDriverPath != null) {
+                    System.setProperty("webdriver.chrome.driver", chromeDriverPath)
+                    logger.info { "Using ChromeDriver from PATH: $chromeDriverPath" }
+                } else {
+                    logger.error { "ChromeDriver not found in PATH, will rely on WebDriverManager" }
+                    // Try default WebDriverManager setup
+                    WebDriverManager.chromedriver().setup()
+                }
+            }
             
             logger.debug { "Setting up Chrome options..." }
-            val userDataDir = Path.of(
-                System.getProperty("user.home"),
-                "Library",
-                "Application Support",
-                "KleverDesktop",
-                "User_Data"
-            ).toFile()
+            val userDataDir = when {
+                System.getProperty("os.name").toLowerCase().contains("win") -> {
+                    // Windows path
+                    Path.of(
+                        System.getProperty("user.home"),
+                        "AppData",
+                        "Local",
+                        "KleverDesktop",
+                        "User_Data"
+                    ).toFile()
+                }
+                System.getProperty("os.name").toLowerCase().contains("mac") -> {
+                    // macOS path
+                    Path.of(
+                        System.getProperty("user.home"),
+                        "Library",
+                        "Application Support",
+                        "KleverDesktop",
+                        "User_Data"
+                    ).toFile()
+                }
+                else -> {
+                    // Linux and other OS paths
+                    Path.of(
+                        System.getProperty("user.home"),
+                        ".kleverdesktop",
+                        "User_Data"
+                    ).toFile()
+                }
+            }
 
             // Create directory if it doesn't exist
             if (!userDataDir.exists()) {
@@ -55,11 +116,32 @@ class SeleniumController(
             }
             
             val options = ChromeOptions().apply {
-                addArguments("--start-maximized")
+                // Common options
                 addArguments("--remote-allow-origins=*")
                 addArguments("--user-data-dir=${userDataDir.absolutePath}")
                 addArguments("disable-blink-features=AutomationControlled")
                 setExperimentalOption("detach", true)
+                
+                // Add platform-specific options
+                when {
+                    System.getProperty("os.name").toLowerCase().contains("win") -> {
+                        // Windows-specific options
+                        addArguments("--start-maximized")
+                        // Additional options needed for Windows
+                        addArguments("--disable-gpu") // Prevent GPU acceleration issues on Windows
+                        addArguments("--no-sandbox") // Required in some Windows environments
+                    }
+                    System.getProperty("os.name").toLowerCase().contains("mac") -> {
+                        // macOS-specific options
+                        addArguments("--start-maximized")
+                        // Additional options needed for macOS
+                    }
+                    else -> {
+                        // Linux and other OS-specific options
+                        addArguments("--start-maximized")
+                        addArguments("--no-sandbox")
+                    }
+                }
             }
             
             logger.info { "Creating ChromeDriver instance..." }
@@ -527,5 +609,19 @@ class SeleniumController(
             logger.error(e) { "Failed to get canvas size: ${e.message}" }
             throw RuntimeException("Failed to get canvas size", e)
         }
+    }
+
+    // Helper method to find ChromeDriver in system PATH
+    private fun findChromeDriverInPath(): String? {
+        val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        val chromeDriverName = if (isWindows) "chromedriver.exe" else "chromedriver"
+        
+        val pathEnv = System.getenv("PATH") ?: return null
+        val pathSeparator = if (isWindows) ";" else ":"
+        
+        return pathEnv.split(pathSeparator)
+            .map { File(it, chromeDriverName) }
+            .firstOrNull { it.exists() && it.canExecute() }
+            ?.absolutePath
     }
 } 
