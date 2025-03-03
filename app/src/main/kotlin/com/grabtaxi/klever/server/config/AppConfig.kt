@@ -1,7 +1,7 @@
-package com.klever.desktop.server.config
+package com.grabtaxi.klever.server.config
 
 import com.typesafe.config.ConfigFactory
-import com.klever.desktop.server.repositories.ModelConfigRepository
+import com.grabtaxi.klever.server.repositories.ModelConfigRepository
 
 class AppConfig {
     private val config = ConfigFactory.load("config/config.json")
