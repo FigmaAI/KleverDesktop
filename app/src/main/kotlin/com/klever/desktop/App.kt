@@ -138,7 +138,7 @@ class App {
 
     fun stopServer() {
         try {
-            server?.stop()
+            server?.stop(1000)
             server = null
             logger.info { "KleverDesktop server stopped" }
         } catch (e: Exception) {
@@ -146,22 +146,27 @@ class App {
         }
     }
 
-    fun isServerRunning(): Boolean = server != null && server!!.connections.isNotEmpty()
+    fun isServerRunning(): Boolean = server != null
 
     fun startTalkToFigmaServer() {
         try {
+            if (talkToFigmaServer != null) {
+                logger.warn { "TalkToFigma server is already running." }
+                return
+            }
             talkToFigmaServer = TalkToFigmaServer(3055)
             talkToFigmaServer?.start()
-            logger.info { "TalkToFigma server started on port 3055" }
+            logger.info { "TalkToFigma server starting on port 3055" }
         } catch (e: Exception) {
             logger.error(e) { "Failed to start TalkToFigma server: ${e.message}" }
+            talkToFigmaServer = null
             throw e
         }
     }
 
     fun stopTalkToFigmaServer() {
         try {
-            talkToFigmaServer?.stop()
+            talkToFigmaServer?.stop(1000)
             talkToFigmaServer = null
             logger.info { "TalkToFigma server stopped" }
         } catch (e: Exception) {
@@ -181,6 +186,26 @@ fun main() = application {
     var showEnvironmentWarning by remember { mutableStateOf(false) }
     var environmentCheckResult by remember { mutableStateOf<EnvironmentCheckResult?>(null) }
     val trayState = remember { TrayState() }
+
+    // Add a JVM shutdown hook to ensure servers are stopped gracefully.
+    DisposableEffect(Unit) {
+        val shutdownHook = Thread {
+            logger.info { "JVM Shutdown Hook: Stopping servers..." }
+            app.stopServer()
+            app.stopTalkToFigmaServer()
+            logger.info { "JVM Shutdown Hook: Servers stopped." }
+        }
+        Runtime.getRuntime().addShutdownHook(shutdownHook)
+        onDispose {
+            try {
+                // Attempt to remove the hook when the composition is disposed
+                Runtime.getRuntime().removeShutdownHook(shutdownHook)
+            } catch (e: IllegalStateException) {
+                // This can happen if the JVM is already shutting down. It's safe to ignore.
+                logger.warn { "Could not remove shutdown hook, maybe shutdown is in progress." }
+            }
+        }
+    }
 
     // Check environment (Java and Chrome)
     LaunchedEffect(Unit) {
@@ -350,13 +375,10 @@ fun main() = application {
 
             Item("Model Settings", onClick = {
                 showModelSettings = true
-                isVisible = true
             })
 
             Separator()
             Item("Exit", onClick = {
-                app.stopServer()
-                app.stopTalkToFigmaServer()
                 exitApplication()
             })
         }
@@ -364,11 +386,7 @@ fun main() = application {
 
     if (isVisible) {
         Window(
-            onCloseRequest = {
-                app.stopServer()
-                app.stopTalkToFigmaServer()
-                exitApplication()
-            },
+            onCloseRequest = { exitApplication() },
             state = rememberWindowState(width = 1000.dp, height = 700.dp),
             title = "Klever Desktop",
             icon = painterResource("icon.png"),
@@ -381,11 +399,7 @@ fun main() = application {
                         onClick = { isVisible = !isVisible }
                     )
                     Separator()
-                    Item("Exit", onClick = {
-                        app.stopServer()
-                        app.stopTalkToFigmaServer()
-                        exitApplication()
-                    })
+                    Item("Exit", onClick = { exitApplication() })
                 }
             }
 

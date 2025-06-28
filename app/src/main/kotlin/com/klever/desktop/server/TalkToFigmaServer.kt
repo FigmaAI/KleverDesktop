@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap
 private val logger = KotlinLogging.logger {}
 private val mapper = jacksonObjectMapper()
 
-class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
+class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.1", port)) {
 
     private val channels = ConcurrentHashMap<String, MutableSet<WebSocket>>()
     private val clientChannels = ConcurrentHashMap<WebSocket, String>()
@@ -37,10 +37,42 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
 
             when (type) {
                 "join" -> handleJoin(conn, data)
-                "message" -> handleMessage(conn, data)
+                "message" -> {
+                    val channelName = clientChannels[conn]
+                    if (channelName == null) {
+                        conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "You must join a channel first")))
+                        return
+                    }
+
+                    // A command from server.ts is nested in a "message" field.
+                    // A result from the client is likely at the top level.
+                    // We broadcast the relevant part of the payload.
+                    val payloadToBroadcast = data["message"] ?: data
+
+                    val broadcastMessage = mapOf(
+                        "type" to "broadcast",
+                        "message" to payloadToBroadcast,
+                        "sender" to "user", // Simplified sender logic
+                        "channel" to channelName
+                    )
+                    broadcastToChannel(conn, channelName, mapper.writeValueAsString(broadcastMessage))
+                }
+                "pong" -> {
+                    logger.debug { "[TalkToFigma] Pong received from ${conn.remoteSocketAddress}" }
+                    // No action needed, the traffic itself keeps the connection alive
+                }
                 else -> {
-                    logger.warn { "[TalkToFigma] Unknown message type: $type" }
-                    conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "Unknown message type")))
+                    logger.warn { "[TalkToFigma] Unknown message type: $type. Broadcasting it anyway." }
+                    val channelName = clientChannels[conn]
+                    if (channelName != null) {
+                         val broadcastPayload = mapOf(
+                            "type" to "broadcast",
+                            "message" to data, // Broadcast the whole thing
+                            "sender" to "user",
+                            "channel" to channelName
+                        )
+                        broadcastToChannel(conn, channelName, mapper.writeValueAsString(broadcastPayload))
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -68,7 +100,7 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
         // Notify client of successful join
         conn.send(mapper.writeValueAsString(mapOf(
             "type" to "system",
-            "message" to "Joined channel: $channelName",
+            "message" to mapOf("result" to "Connected to channel: $channelName"),
             "channel" to channelName
         )))
 
@@ -79,23 +111,6 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
             "channel" to channelName
         )
         broadcastToChannel(conn, channelName, mapper.writeValueAsString(notification))
-    }
-
-    private fun handleMessage(conn: WebSocket, data: Map<String, Any>) {
-        val channelName = clientChannels[conn]
-        if (channelName == null) {
-            conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "You must join a channel first")))
-            return
-        }
-
-        val messageContent = data["message"]
-        val broadcastMessage = mapOf(
-            "type" to "broadcast",
-            "message" to messageContent,
-            "sender" to "user", // Simplified sender logic
-            "channel" to channelName
-        )
-        broadcastToChannel(conn, channelName, mapper.writeValueAsString(broadcastMessage))
     }
 
     private fun removeClientFromChannel(conn: WebSocket) {
