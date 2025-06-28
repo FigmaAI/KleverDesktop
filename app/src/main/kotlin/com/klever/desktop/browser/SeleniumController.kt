@@ -22,6 +22,11 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Base64
 import java.nio.file.Path
+import java.net.URLEncoder
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 private val logger = KotlinLogging.logger {}
 
@@ -79,7 +84,7 @@ class SeleniumController(
             
             logger.debug { "Setting up Chrome options..." }
             val userDataDir = when {
-                System.getProperty("os.name").toLowerCase().contains("win") -> {
+                System.getProperty("os.name").lowercase().contains("win") -> {
                     // Windows path
                     Path.of(
                         System.getProperty("user.home"),
@@ -89,7 +94,7 @@ class SeleniumController(
                         "User_Data"
                     ).toFile()
                 }
-                System.getProperty("os.name").toLowerCase().contains("mac") -> {
+                System.getProperty("os.name").lowercase().contains("mac") -> {
                     // macOS path
                     Path.of(
                         System.getProperty("user.home"),
@@ -124,14 +129,14 @@ class SeleniumController(
                 
                 // Add platform-specific options
                 when {
-                    System.getProperty("os.name").toLowerCase().contains("win") -> {
+                    System.getProperty("os.name").lowercase().contains("win") -> {
                         // Windows-specific options
                         addArguments("--start-maximized")
                         // Additional options needed for Windows
                         addArguments("--disable-gpu") // Prevent GPU acceleration issues on Windows
                         addArguments("--no-sandbox") // Required in some Windows environments
                     }
-                    System.getProperty("os.name").toLowerCase().contains("mac") -> {
+                    System.getProperty("os.name").lowercase().contains("mac") -> {
                         // macOS-specific options
                         addArguments("--start-maximized")
                         // Additional options needed for macOS
@@ -613,7 +618,7 @@ class SeleniumController(
 
     // Helper method to find ChromeDriver in system PATH
     private fun findChromeDriverInPath(): String? {
-        val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+        val isWindows = System.getProperty("os.name").lowercase().contains("win")
         val chromeDriverName = if (isWindows) "chromedriver.exe" else "chromedriver"
         
         val pathEnv = System.getenv("PATH") ?: return null

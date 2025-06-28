@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.klever.desktop.server.KleverServer
+import com.klever.desktop.server.TalkToFigmaServer
 import com.klever.desktop.server.config.AppConfig
 import com.klever.desktop.ui.MainWindow
 import com.klever.desktop.ui.ModelSettingsDialog
@@ -67,7 +68,7 @@ fun checkEnvironment(): EnvironmentCheckResult {
         val chromeLocation: String?
         
         when {
-            System.getProperty("os.name").toLowerCase().contains("win") -> {
+            System.getProperty("os.name").lowercase().contains("win") -> {
                 // Windows Chrome locations
                 val possibleLocations = listOf(
                     File("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"),
@@ -79,7 +80,7 @@ fun checkEnvironment(): EnvironmentCheckResult {
                 isChromeOk = chromeFile != null
                 chromeLocation = chromeFile?.absolutePath
             }
-            System.getProperty("os.name").toLowerCase().contains("mac") -> {
+            System.getProperty("os.name").lowercase().contains("mac") -> {
                 // macOS Chrome location
                 val chromeFile = File("/Applications/Google Chrome.app")
                 isChromeOk = chromeFile.exists()
@@ -121,6 +122,7 @@ fun checkEnvironment(): EnvironmentCheckResult {
 
 class App {
     private var server: KleverServer? = null
+    private var talkToFigmaServer: TalkToFigmaServer? = null
     val config = AppConfig()
 
     fun startServer() {
@@ -145,11 +147,35 @@ class App {
     }
 
     fun isServerRunning(): Boolean = server != null && server!!.connections.isNotEmpty()
+
+    fun startTalkToFigmaServer() {
+        try {
+            talkToFigmaServer = TalkToFigmaServer(3055)
+            talkToFigmaServer?.start()
+            logger.info { "TalkToFigma server started on port 3055" }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to start TalkToFigma server: ${e.message}" }
+            throw e
+        }
+    }
+
+    fun stopTalkToFigmaServer() {
+        try {
+            talkToFigmaServer?.stop()
+            talkToFigmaServer = null
+            logger.info { "TalkToFigma server stopped" }
+        } catch (e: Exception) {
+            logger.error(e) { "Error stopping TalkToFigma server: ${e.message}" }
+        }
+    }
+
+    fun isTalkToFigmaServerRunning(): Boolean = talkToFigmaServer != null
 }
 
 fun main() = application {
     val app = remember { App() }
     var isServerRunning by remember { mutableStateOf(false) }
+    var isTalkToFigmaServerRunning by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     var showModelSettings by remember { mutableStateOf(false) }
     var showEnvironmentWarning by remember { mutableStateOf(false) }
@@ -280,53 +306,98 @@ fun main() = application {
     }
 
     Tray(
-        state = trayState,
         icon = painterResource("icon.png"),
+        state = trayState,
+        tooltip = "Klever Desktop",
+        onAction = { isVisible = !isVisible },
         menu = {
-            // Show Window menu item temporarily disabled
-            // Item(
-            //     text = "Show Window",
-            //     onClick = { isVisible = true }
-            // )
-            Item(
-                text = if (isServerRunning) "Stop Server" else "Start Server",
-                onClick = {
-                    if (isServerRunning) {
-                        app.stopServer()
-                        isServerRunning = false
-                    } else {
+            if (isServerRunning) {
+                Item("Stop Klever Server", onClick = {
+                    app.stopServer()
+                    isServerRunning = false
+                })
+            } else {
+                Item("Start Klever Server", onClick = {
+                    try {
+                        if (!app.config.isModelConfigured()) {
+                            showModelSettings = true
+                            isVisible = true
+                            return@Item
+                        }
                         app.startServer()
                         isServerRunning = true
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to start server from tray" }
                     }
-                }
-            )
-            Item(
-                text = "Model Settings",
-                onClick = { showModelSettings = true }
-            )
+                })
+            }
+
+            if (isTalkToFigmaServerRunning) {
+                Item("Stop TalkToFigma Server", onClick = {
+                    app.stopTalkToFigmaServer()
+                    isTalkToFigmaServerRunning = false
+                })
+            } else {
+                Item("Start TalkToFigma Server", onClick = {
+                    try {
+                        app.startTalkToFigmaServer()
+                        isTalkToFigmaServerRunning = true
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to start TalkToFigma server from tray" }
+                    }
+                })
+            }
+
+            Item("Model Settings", onClick = {
+                showModelSettings = true
+                isVisible = true
+            })
+
             Separator()
-            Item(
-                text = "Exit",
-                onClick = {
-                    app.stopServer()
-                    exitApplication()
-                }
-            )
+            Item("Exit", onClick = {
+                app.stopServer()
+                app.stopTalkToFigmaServer()
+                exitApplication()
+            })
         }
     )
 
     if (isVisible) {
         Window(
-            onCloseRequest = { isVisible = false },
+            onCloseRequest = {
+                app.stopServer()
+                app.stopTalkToFigmaServer()
+                exitApplication()
+            },
+            state = rememberWindowState(width = 1000.dp, height = 700.dp),
             title = "Klever Desktop",
-            state = rememberWindowState(width = 800.dp, height = 800.dp),
-            visible = isVisible
+            icon = painterResource("icon.png"),
+            visible = isVisible,
         ) {
+            MenuBar {
+                Menu("File", mnemonic = 'F') {
+                    Item(
+                        "Show/Hide Window",
+                        onClick = { isVisible = !isVisible }
+                    )
+                    Separator()
+                    Item("Exit", onClick = {
+                        app.stopServer()
+                        app.stopTalkToFigmaServer()
+                        exitApplication()
+                    })
+                }
+            }
+
             MainWindow(
                 isServerRunning = isServerRunning,
                 onStartServer = {
-                    app.startServer()
-                    isServerRunning = true
+                    try {
+                        app.startServer()
+                        isServerRunning = true
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to start server from UI" }
+                    }
                 },
                 onStopServer = {
                     app.stopServer()
@@ -334,6 +405,19 @@ fun main() = application {
                 },
                 onMinimizeToTray = {
                     isVisible = false
+                },
+                isTalkToFigmaServerRunning = isTalkToFigmaServerRunning,
+                onStartTalkToFigmaServer = {
+                    try {
+                        app.startTalkToFigmaServer()
+                        isTalkToFigmaServerRunning = true
+                    } catch (e: Exception) {
+                        logger.error(e) { "Failed to start TalkToFigma server from UI" }
+                    }
+                },
+                onStopTalkToFigmaServer = {
+                    app.stopTalkToFigmaServer()
+                    isTalkToFigmaServerRunning = false
                 }
             )
         }

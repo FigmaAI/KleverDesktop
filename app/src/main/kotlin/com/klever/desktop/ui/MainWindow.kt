@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+// import androidx.compose.material.icons.filled.Chat
 import androidx.compose.ui.window.FrameWindowScope
 import com.klever.desktop.ui.ModelSettings
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,7 +42,10 @@ fun MainWindow(
     isServerRunning: Boolean,
     onStartServer: () -> Unit,
     onStopServer: () -> Unit,
-    onMinimizeToTray: () -> Unit
+    onMinimizeToTray: () -> Unit,
+    isTalkToFigmaServerRunning: Boolean,
+    onStartTalkToFigmaServer: () -> Unit,
+    onStopTalkToFigmaServer: () -> Unit
 ) {
     var selectedCategory by remember { mutableStateOf("WebSocket") }
 
@@ -88,6 +92,19 @@ fun MainWindow(
                                     bottomEnd = 24.dp
                                 )
                             )
+                            NavigationDrawerItem(
+                                modifier = Modifier.height(40.dp),
+                                icon = { Icon(Icons.Default.Edit, "TalkToFigma") },
+                                label = { Text("TalkToFigma") },
+                                selected = selectedCategory == "TalkToFigma",
+                                onClick = { selectedCategory = "TalkToFigma" },
+                                shape = RoundedCornerShape(
+                                    topStart = 0.dp,
+                                    bottomStart = 0.dp,
+                                    topEnd = 24.dp,
+                                    bottomEnd = 24.dp
+                                )
+                            )
                         }
                     }
                 }
@@ -97,8 +114,9 @@ fun MainWindow(
                         title = {
                             Text(
                                 when (selectedCategory) {
-                                    "WebSocket" -> "WebSocket Settings"
+                                    "WebSocket" -> "Klever Server Settings"
                                     "Model" -> "Model Settings"
+                                    "TalkToFigma" -> "TalkToFigma Server Settings"
                                     else -> "Settings"
                                 }
                             )
@@ -128,6 +146,11 @@ fun MainWindow(
                                     onMinimizeToTray = onMinimizeToTray
                                 )
                                 "Model" -> ModelSettings()
+                                "TalkToFigma" -> TalkToFigmaSettingsContent(
+                                    isServerRunning = isTalkToFigmaServerRunning,
+                                    onStartServer = onStartTalkToFigmaServer,
+                                    onStopServer = onStopTalkToFigmaServer
+                                )
                             }
                         }
                     }
@@ -154,7 +177,7 @@ private fun WebSocketSettingsContent(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = if (isServerRunning) "Server Status: Running" else "Server Status: Stopped",
+            text = if (isServerRunning) "Klever Server Status: Running" else "Klever Server Status: Stopped",
             style = MaterialTheme.typography.titleMedium
         )
         
@@ -217,7 +240,7 @@ private fun WebSocketSettingsContent(
                                else MaterialTheme.colorScheme.primary
             )
         ) {
-            Text(if (isServerRunning) "Stop Server" else "Start Server")
+            Text(if (isServerRunning) "Stop Klever Server" else "Start Klever Server")
         }
 
         OutlinedButton(
@@ -230,6 +253,35 @@ private fun WebSocketSettingsContent(
                 modifier = Modifier.padding(end = 8.dp)
             )
             Text("Minimize to Tray")
+        }
+    }
+}
+
+@Composable
+private fun TalkToFigmaSettingsContent(
+    isServerRunning: Boolean,
+    onStartServer: () -> Unit,
+    onStopServer: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = if (isServerRunning) "TalkToFigma Server Status: Running on Port 3055" else "TalkToFigma Server Status: Stopped",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Button(
+            onClick = if (isServerRunning) onStopServer else onStartServer,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isServerRunning) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text(if (isServerRunning) "Stop Server" else "Start Server")
         }
     }
 }
