@@ -226,10 +226,11 @@ fun main() = application {
         
         try {
             app.startServer()
+            app.startTalkToFigmaServer()
             isServerRunning = true
-            logger.info { "Auto-started server on application launch" }
+            logger.info { "Auto-started Klever and TalkToFigma servers on application launch" }
         } catch (e: Exception) {
-            logger.error(e) { "Failed to auto-start server" }
+            logger.error(e) { "Failed to auto-start servers" }
         }
     }
 

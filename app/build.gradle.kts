@@ -84,7 +84,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.1"
+            packageVersion = "1.1.0"
             
             modules("java.instrument", "java.management", "jdk.unsupported")
             

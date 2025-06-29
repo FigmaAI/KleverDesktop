@@ -35,45 +35,19 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.
             val data: Map<String, Any> = mapper.readValue(message)
             val type = data["type"] as? String
 
-            when (type) {
-                "join" -> handleJoin(conn, data)
-                "message" -> {
-                    val channelName = clientChannels[conn]
-                    if (channelName == null) {
-                        conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "You must join a channel first")))
-                        return
-                    }
-
-                    // A command from server.ts is nested in a "message" field.
-                    // A result from the client is likely at the top level.
-                    // We broadcast the relevant part of the payload.
-                    val payloadToBroadcast = data["message"] ?: data
-
-                    val broadcastMessage = mapOf(
-                        "type" to "broadcast",
-                        "message" to payloadToBroadcast,
-                        "sender" to "user", // Simplified sender logic
-                        "channel" to channelName
-                    )
-                    broadcastToChannel(conn, channelName, mapper.writeValueAsString(broadcastMessage))
+            if (type == "join") {
+                handleJoin(conn, data)
+            } else {
+                // This handles all other message types:
+                // - "execute-command" requests from the MCP server
+                // - "result", "error", and "progress_update" responses from the Figma plugin
+                // We just relay them without modification.
+                val channelName = clientChannels[conn]
+                if (channelName == null) {
+                    conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "You must join a channel first")))
+                    return
                 }
-                "pong" -> {
-                    logger.debug { "[TalkToFigma] Pong received from ${conn.remoteSocketAddress}" }
-                    // No action needed, the traffic itself keeps the connection alive
-                }
-                else -> {
-                    logger.warn { "[TalkToFigma] Unknown message type: $type. Broadcasting it anyway." }
-                    val channelName = clientChannels[conn]
-                    if (channelName != null) {
-                         val broadcastPayload = mapOf(
-                            "type" to "broadcast",
-                            "message" to data, // Broadcast the whole thing
-                            "sender" to "user",
-                            "channel" to channelName
-                        )
-                        broadcastToChannel(conn, channelName, mapper.writeValueAsString(broadcastPayload))
-                    }
-                }
+                broadcastToChannel(conn, channelName, message)
             }
         } catch (e: Exception) {
             logger.error(e) { "[TalkToFigma] Error handling message" }
@@ -83,6 +57,8 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.
 
     private fun handleJoin(conn: WebSocket, data: Map<String, Any>) {
         val channelName = data["channel"] as? String
+        val requestId = data["id"] as? String
+
         if (channelName.isNullOrBlank()) {
             conn.send(mapper.writeValueAsString(mapOf("type" to "error", "message" to "Channel name is required")))
             return
@@ -95,12 +71,19 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.
         channels.computeIfAbsent(channelName) { ConcurrentHashMap.newKeySet() }.add(conn)
         clientChannels[conn] = channelName
 
-        logger.info { "[TalkToFigma] Client ${conn.remoteSocketAddress} joined channel: $channelName" }
+        logger.info { "[TalkToFigma] Client ${conn.remoteSocketAddress} joined channel: '$channelName'" }
 
-        // Notify client of successful join
+        // Notify client of successful join, including the original request ID
+        val responsePayload = mutableMapOf<String, Any>(
+            "result" to "Connected to channel: $channelName"
+        )
+        if (requestId != null) {
+            responsePayload["id"] = requestId
+        }
+
         conn.send(mapper.writeValueAsString(mapOf(
             "type" to "system",
-            "message" to mapOf("result" to "Connected to channel: $channelName"),
+            "message" to responsePayload,
             "channel" to channelName
         )))
 
@@ -118,7 +101,7 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.
         if (channelName != null) {
             val clients = channels[channelName]
             clients?.remove(conn)
-            logger.info { "[TalkToFigma] Client ${conn.remoteSocketAddress} removed from channel: $channelName" }
+            logger.info { "[TalkToFigma] Client ${conn.remoteSocketAddress} removed from channel: '$channelName'" }
 
             // Notify remaining clients
             val notification = mapOf(
@@ -131,7 +114,7 @@ class TalkToFigmaServer(port: Int) : WebSocketServer(InetSocketAddress("127.0.0.
             // Clean up empty channel
             if (clients?.isEmpty() == true) {
                 channels.remove(channelName)
-                logger.info { "[TalkToFigma] Channel removed: $channelName" }
+                logger.info { "[TalkToFigma] Channel removed: '$channelName'" }
             }
         }
     }
