@@ -337,12 +337,12 @@ fun main() = application {
         tooltip = "Klever Desktop",
         onAction = { isVisible = !isVisible },
         menu = {
-            if (isServerRunning) {
+                    if (isServerRunning) {
                 Item("Stop Klever Server", onClick = {
-                    app.stopServer()
-                    isServerRunning = false
+                        app.stopServer()
+                        isServerRunning = false
                 })
-            } else {
+                    } else {
                 Item("Start Klever Server", onClick = {
                     try {
                         if (!app.config.isModelConfigured()) {
@@ -380,7 +380,7 @@ fun main() = application {
 
             Separator()
             Item("Exit", onClick = {
-                exitApplication()
+                    exitApplication()
             })
         }
     )
@@ -408,8 +408,8 @@ fun main() = application {
                 isServerRunning = isServerRunning,
                 onStartServer = {
                     try {
-                        app.startServer()
-                        isServerRunning = true
+                    app.startServer()
+                    isServerRunning = true
                     } catch (e: Exception) {
                         logger.error(e) { "Failed to start server from UI" }
                     }
