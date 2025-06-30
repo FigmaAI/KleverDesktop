@@ -155,3 +155,13 @@ tasks.withType<Jar>().configureEach {
 tasks.named("build") {
     dependsOn("copyResources")
 }
+
+// Simple version print task - configuration cache compatible
+tasks.register("printVersion") {
+    // Disable configuration cache for this task
+    notCompatibleWithConfigurationCache("This task uses script properties and println")
+
+    doLast {
+        println(appVersion)
+    }
+}
