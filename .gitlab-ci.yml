@@ -23,14 +23,8 @@ variables:
   # Windows build control - set to "true" to enable Windows builds
   WINDOWS_BUILD: "false"
   
-  # Model configuration (will be used by the app on first run)
-  # These can be overridden in GitLab CI/CD Settings > Variables if needed
-  MODEL_TYPE: "Azure"
-  OPENAI_API_MODEL: "gpt-4o"
-  OPENAI_API_BASE: "https://public-api.grabgpt.managed.catwalk-k8s.stg-myteksi.com/v1/chat/completions"
-  # OPENAI_API_KEY should be set in GitLab CI/CD Settings > Variables (masked and protected)
-  TEMPERATURE: "0.0"
-  MAX_TOKENS: "300"
+  # Model-related variables (MODEL_TYPE, OPENAI_API_MODEL, OPENAI_API_BASE, TEMPERATURE, MAX_TOKENS, OPENAI_API_KEY)
+  # are expected to be provided via GitLab CI/CD → Settings → Variables, so no defaults are set here.
 
 # Use cache between builds
 cache:
