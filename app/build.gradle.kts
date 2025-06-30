@@ -84,7 +84,9 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.klever.desktop.AppKt"
+        // Determine package namespace (default public), allows internal build to switch easily
+        val pkgNs = System.getenv("PACKAGE_NS") ?: "com.klever.desktop"
+        mainClass = "$pkgNs.AppKt"
 
         // Use explicit configuration for nativeDistributions
         nativeDistributions {
@@ -105,7 +107,7 @@ compose.desktop {
             jvmArgs += listOf("-Xmx2g")
 
             macOS {
-                bundleID = "com.klever.desktop"
+                bundleID = pkgNs
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
 
@@ -118,8 +120,6 @@ compose.desktop {
                         println("macOS signing ENABLED (SIGN_MAC=$signFlag)")
                         sign.set(true)
                         identity.set(devId)
-                        // Hardened runtime + secure timestamp for all embedded binaries
-                        options.addAll(listOf("runtime", "timestamp"))
                     } else {
                         println("macOS signing DISABLED. SIGN_MAC=$signFlag, APPLE_DEVELOPER_ID present=${!devId.isNullOrBlank()}")
                         sign.set(false)
