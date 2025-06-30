@@ -6,6 +6,12 @@ plugins {
     kotlin("plugin.serialization") version "1.9.22"
 }
 
+// Project version - centralized version management
+// Use environment variable CI_COMMIT_TAG if available, otherwise use default
+val appVersion = System.getenv("CI_COMMIT_TAG")
+    // Parse the actual app version from the tag (e.g., "v1.0.2-prod" -> "1.0.2")
+    ?.let { version -> version.split("-").first().split("v").last() } ?: "1.1.0"
+
 // Add Gradle 9.0 compatibility settings
 kotlin {
     jvmToolchain(17) // Use explicit JVM toolchain
@@ -84,7 +90,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
-            packageVersion = "1.1.0"
+            packageVersion = appVersion
             
             modules("java.instrument", "java.management", "jdk.unsupported")
             

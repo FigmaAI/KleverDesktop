@@ -21,3 +21,17 @@ figma-client/
 /app/User_Data
 /app/config/model_config.json
 korean_comments_log.txt
+
+#Build
+/builds
+/cache/
+/dist/
+
+#Certificates and provisioning profiles
+*.p12
+*.provisioningprofile
+
+# Local environment variables
+.envrc
+.envrc.template
+
