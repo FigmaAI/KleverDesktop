@@ -123,6 +123,12 @@ def main() -> None:
             if _replace_in_file(file_path, replacements):
                 modified_files.append(file_path)
 
+    # Additionally update Gradle build scripts at the module root (e.g., build.gradle.kts)
+    gradle_files = [project_root / "app" / "build.gradle.kts", project_root / "build.gradle.kts"]
+    for gradle_file in gradle_files:
+        if gradle_file.exists() and _replace_in_file(gradle_file, replacements):
+            modified_files.append(gradle_file)
+
     # Move directory structure if necessary (affects Kotlin source only)
     kotlin_root = app_src_root / "main" / "kotlin"
     _move_source_directory(kotlin_root, old_path, new_path)
