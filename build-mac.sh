@@ -85,13 +85,46 @@ if [ ! -f "$DMG_INPUT_PATH" ]; then
     fi
 fi
 
-# Notarize the DMG
-echo "Submitting for notarization..."
-xcrun notarytool submit "$DMG_INPUT_PATH" --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+# ---------------- Notarization & Stapling ----------------
+echo "Submitting for notarization (this may take a few minutes)..."
 
-# Staple the notarization ticket to the DMG
+# Capture submission result as JSON so we can extract the request ID and status
+SUBMIT_RESULT=$(xcrun notarytool submit "$DMG_INPUT_PATH" \
+  --apple-id "$APPLE_ID" \
+  --password "$APPLE_APP_PASSWORD" \
+  --team-id "$APPLE_TEAM_ID" \
+  --wait \
+  --output-format json)
+
+# Basic status parsing without external tools (jq may not be available)
+REQUEST_ID=$(echo "$SUBMIT_RESULT" | grep -m1 '"id"' | sed -E 's/.*"id"[ ]*:[ ]*"([^"]+)".*/\1/')
+REQUEST_STATUS=$(echo "$SUBMIT_RESULT" | grep -m1 '"status"' | sed -E 's/.*"status"[ ]*:[ ]*"([^"]+)".*/\1/')
+
+echo "Notarization request ID: $REQUEST_ID"
+echo "Notarization status    : $REQUEST_STATUS"
+
+if [[ "$REQUEST_STATUS" != "Accepted" ]]; then
+  echo "Notarization failed (status: $REQUEST_STATUS). Fetching detailed log..."
+  xcrun notarytool log "$REQUEST_ID" \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_APP_PASSWORD" \
+    --team-id "$APPLE_TEAM_ID" || true
+  echo "Aborting due to failed notarization."
+  rm build.properties
+  exit 1
+fi
+
+# Staple the notarization ticket to the DMG (retry once if it fails)
 echo "Stapling notarization ticket..."
-xcrun stapler staple "$DMG_INPUT_PATH"
+if ! xcrun stapler staple "$DMG_INPUT_PATH"; then
+  echo "Stapler failed. Attempting to fetch log and exit."
+  xcrun notarytool log "$REQUEST_ID" \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_APP_PASSWORD" \
+    --team-id "$APPLE_TEAM_ID" || true
+  rm build.properties
+  exit 1
+fi
 
 # Set output path if not already set
 if [ -z "$DMG_OUTPUT_PATH" ]; then
