@@ -227,6 +227,7 @@ fun main() = application {
         try {
             app.startServer()
             app.startTalkToFigmaServer()
+            isTalkToFigmaServerRunning = true
             isServerRunning = true
             logger.info { "Auto-started Klever and TalkToFigma servers on application launch" }
         } catch (e: Exception) {
