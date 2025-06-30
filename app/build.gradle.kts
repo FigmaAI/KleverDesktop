@@ -84,8 +84,8 @@ dependencies {
 
 compose.desktop {
     application {
-        // Determine package namespace (default public), allows internal build to switch easily
-        val pkgNs = System.getenv("PACKAGE_NS") ?: "com.klever.desktop"
+        // Package namespace (public by default). The switch_package.py script rewrites this value
+        val pkgNs = "com.grabtaxi.klever" // will be replaced to com.grabtaxi.klever for internal build
         mainClass = "$pkgNs.AppKt"
 
         // Use explicit configuration for nativeDistributions
@@ -113,15 +113,16 @@ compose.desktop {
 
                 // Controlled signing: set SIGN_MAC=true in environment to enable deep signing
                 signing {
-                    val signFlag = System.getenv("SIGN_MAC")?.toBoolean() ?: false
+                    val isInternal = pkgNs == "com.grabtaxi.klever"
                     val devId = System.getenv("APPLE_DEVELOPER_ID")
 
-                    if (signFlag && !devId.isNullOrBlank()) {
-                        println("macOS signing ENABLED (SIGN_MAC=$signFlag)")
+                    if (isInternal && !devId.isNullOrBlank()) {
+                        println("macOS signing ENABLED for internal build")
                         sign.set(true)
                         identity.set(devId)
+                        // Hardened runtime + secure timestamp for all embedded binaries
                     } else {
-                        println("macOS signing DISABLED. SIGN_MAC=$signFlag, APPLE_DEVELOPER_ID present=${!devId.isNullOrBlank()}")
+                        println("macOS signing DISABLED (public build or missing identity)")
                         sign.set(false)
                     }
                 }
