@@ -108,8 +108,22 @@ compose.desktop {
                 bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
+
+                // Controlled signing: set SIGN_MAC=true in environment to enable deep signing
                 signing {
-                    sign.set(false) // Explicitly set signing option
+                    val signFlag = System.getenv("SIGN_MAC")?.toBoolean() ?: false
+                    val devId = System.getenv("APPLE_DEVELOPER_ID")
+
+                    if (signFlag && !devId.isNullOrBlank()) {
+                        println("macOS signing ENABLED (SIGN_MAC=$signFlag)")
+                        sign.set(true)
+                        identity.set(devId)
+                        // Hardened runtime + secure timestamp for all embedded binaries
+                        options.addAll(listOf("runtime", "timestamp"))
+                    } else {
+                        println("macOS signing DISABLED. SIGN_MAC=$signFlag, APPLE_DEVELOPER_ID present=${!devId.isNullOrBlank()}")
+                        sign.set(false)
+                    }
                 }
             }
 
