@@ -1,4 +1,4 @@
-// package com.grabtaxi.klever.server.models
+// package com.klever.desktop.server.models
 
 // import okhttp3.OkHttpClient
 // import okhttp3.Request
@@ -7,8 +7,8 @@
 // import kotlinx.serialization.json.*
 // import kotlinx.coroutines.Dispatchers
 // import kotlinx.coroutines.withContext
-// import com.grabtaxi.klever.server.config.ModelConfig
-// import com.grabtaxi.klever.server.config.QwenConfig
+// import com.klever.desktop.server.config.ModelConfig
+// import com.klever.desktop.server.config.QwenConfig
 // import com.fasterxml.jackson.databind.ObjectMapper
 
 // class QwenModel(private val config: QwenConfig) : AIModel {

@@ -84,7 +84,7 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "com.grabtaxi.klever.AppKt"
+        mainClass = "com.klever.desktop.AppKt"
 
         // Use explicit configuration for nativeDistributions
         nativeDistributions {
@@ -105,7 +105,7 @@ compose.desktop {
             jvmArgs += listOf("-Xmx2g")
 
             macOS {
-                bundleID = "com.grabtaxi.klever"
+                bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
                 signing {

@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server.models
+package com.klever.desktop.server.models
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -8,7 +8,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
-import com.grabtaxi.klever.server.config.OllamaConfig
+import com.klever.desktop.server.config.OllamaConfig
 import mu.KLogging
 import kotlin.time.Duration.Companion.minutes
 import java.awt.image.BufferedImage

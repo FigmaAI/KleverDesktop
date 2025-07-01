@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.ui
+package com.klever.desktop.ui
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,7 +14,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 // import androidx.compose.material.icons.filled.Chat
 import androidx.compose.ui.window.FrameWindowScope
-import com.grabtaxi.klever.ui.ModelSettings
+import com.klever.desktop.ui.ModelSettings
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.DropdownMenu

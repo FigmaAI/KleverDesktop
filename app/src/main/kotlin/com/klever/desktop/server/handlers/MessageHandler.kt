@@ -1,27 +1,27 @@
-package com.grabtaxi.klever.server.handlers
+package com.klever.desktop.server.handlers
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import mu.KotlinLogging
-import com.grabtaxi.klever.browser.SeleniumController
+import com.klever.desktop.browser.SeleniumController
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
-import com.grabtaxi.klever.server.models.AIModel
-import com.grabtaxi.klever.server.models.OpenAIModel
-// import com.grabtaxi.klever.server.models.QwenModel
-import com.grabtaxi.klever.server.config.ModelConfig
-import com.grabtaxi.klever.server.config.OpenAIConfig
-// import com.grabtaxi.klever.server.config.QwenConfig
-import com.grabtaxi.klever.server.repositories.ModelConfigRepository
+import com.klever.desktop.server.models.AIModel
+import com.klever.desktop.server.models.OpenAIModel
+// import com.klever.desktop.server.models.QwenModel
+import com.klever.desktop.server.config.ModelConfig
+import com.klever.desktop.server.config.OpenAIConfig
+// import com.klever.desktop.server.config.QwenConfig
+import com.klever.desktop.server.repositories.ModelConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import com.grabtaxi.klever.server.models.AzureModel
-import com.grabtaxi.klever.server.config.AzureConfig
-import com.grabtaxi.klever.server.config.OllamaConfig
-import com.grabtaxi.klever.server.models.OllamaModel
+import com.klever.desktop.server.models.AzureModel
+import com.klever.desktop.server.config.AzureConfig
+import com.klever.desktop.server.config.OllamaConfig
+import com.klever.desktop.server.models.OllamaModel
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}

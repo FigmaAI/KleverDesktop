@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server.models
+package com.klever.desktop.server.models
 
 interface AIModel {
     suspend fun get_model_response(

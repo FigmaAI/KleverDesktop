@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server
+package com.klever.desktop.server
 
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
@@ -6,10 +6,10 @@ import org.java_websocket.server.WebSocketServer
 import java.net.InetSocketAddress
 import mu.KotlinLogging
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.grabtaxi.klever.server.handlers.MessageHandler
-import com.grabtaxi.klever.server.handlers.MessageType
-import com.grabtaxi.klever.server.handlers.WebSocketResponse
-import com.grabtaxi.klever.server.config.AppConfig
+import com.klever.desktop.server.handlers.MessageHandler
+import com.klever.desktop.server.handlers.MessageType
+import com.klever.desktop.server.handlers.WebSocketResponse
+import com.klever.desktop.server.config.AppConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

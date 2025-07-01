@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server.config
+package com.klever.desktop.server.config
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName

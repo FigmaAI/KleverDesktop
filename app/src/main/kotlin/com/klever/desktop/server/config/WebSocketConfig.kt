@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server.config
+package com.klever.desktop.server.config
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File

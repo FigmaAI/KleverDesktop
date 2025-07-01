@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.server.models
+package com.klever.desktop.server.models
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -8,19 +8,18 @@ import kotlinx.serialization.json.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import com.grabtaxi.klever.server.config.ModelConfig
-import com.grabtaxi.klever.server.config.OpenAIConfig
+import com.klever.desktop.server.config.AzureConfig
 
 private val logger = KotlinLogging.logger {}
 
-class OpenAIModel(
+class AzureModel(
     private val baseUrl: String,
     private val apiKey: String,
     private val model: String,
     private val temperature: Float,
     private val maxTokens: Int
 ) : AIModel {
-    constructor(config: OpenAIConfig) : this(
+    constructor(config: AzureConfig) : this(
         baseUrl = config.baseUrl,
         apiKey = config.apiKey,
         model = config.model,
@@ -34,9 +33,6 @@ class OpenAIModel(
     override suspend fun get_model_response(prompt: String, images: List<String>): Pair<Boolean, String> = 
         withContext(Dispatchers.IO) {
             try {
-                logger.info { "OpenAIModel - Using baseUrl: $baseUrl" }
-                logger.info { "OpenAIModel - Using model: $model" }
-                
                 val messages = buildJsonArray {
                     // System message with prompt
                     addJsonObject {
@@ -71,18 +67,15 @@ class OpenAIModel(
                     put("max_tokens", maxTokens)
                 }
 
-                logger.info { "OpenAIModel - Request payload: $payload" }
-
                 val request = Request.Builder()
                     .url(baseUrl)
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("api-key", apiKey)  // Azure uses 'api-key' header
                     .post(payload.toString().toRequestBody(jsonMediaType))
                     .build()
 
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string() ?: throw Exception("Empty response")
-                // logger.debug { "Raw response: $responseBody" }
                 
                 val jsonResponse = Json.parseToJsonElement(responseBody).jsonObject
 
@@ -96,12 +89,11 @@ class OpenAIModel(
                         ?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
                         ?: throw Exception("Invalid response format")
                     
-                    // Logging token usage (keeping for cost-related)
+                    // Log token usage
                     jsonResponse["usage"]?.jsonObject?.let { usage ->
                         val promptTokens = usage["prompt_tokens"]?.jsonPrimitive?.int ?: 0
                         val completionTokens = usage["completion_tokens"]?.jsonPrimitive?.int ?: 0
-                        val cost = (promptTokens / 1000.0 * 0.01) + (completionTokens / 1000.0 * 0.03)
-                        logger.info { "Request cost is $${String.format("%.2f", cost)}" }
+                        logger.info { "Token usage - Prompt: $promptTokens, Completion: $completionTokens" }
                     }
                     
                     Pair(true, content)
@@ -120,12 +112,17 @@ class OpenAIModel(
                     addJsonObject {
                         put("role", "system")
                         put("content", """
-                            You are a translator. Your task is to translate non-English text to English while preserving any English text unchanged. 
-                            For example:
-                            Input: "Hello 안녕하세요 World"
-                            Output: "Hello hello World"
+                            You are a precise translator that only translates non-English text to English.
+                            Rules:
+                            1. Keep all English text exactly as is
+                            2. Only translate text that is not in English
+                            3. Preserve all formatting, spaces, and special characters
+                            4. Do not add any explanations or notes
+                            5. Do not modify the structure of the text
                             
-                            Only translate the non-English parts and keep English parts exactly as they are.
+                            Example:
+                            Input: "Click here to 새로운 메시지를 작성하세요 and send"
+                            Output: "Click here to write new message and send"
                         """.trimIndent())
                     }
                     // User message
@@ -138,19 +135,23 @@ class OpenAIModel(
                 val payload = buildJsonObject {
                     put("model", model)
                     put("messages", messages)
-                    put("temperature", 0.3)  // Lower temperature for more consistent translations
+                    put("temperature", 0.3)
                     put("max_tokens", maxTokens)
                 }
 
+                logger.info { "Sending translation request for text: '$text'" }
+                
                 val request = Request.Builder()
                     .url(baseUrl)
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("api-key", apiKey)
                     .post(payload.toString().toRequestBody(jsonMediaType))
                     .build()
 
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string() ?: throw Exception("Empty response")
+                
+                logger.debug { "Raw response: $responseBody" }
                 
                 val jsonResponse = Json.parseToJsonElement(responseBody).jsonObject
 
@@ -164,6 +165,7 @@ class OpenAIModel(
                         ?.jsonObject?.get("message")?.jsonObject?.get("content")?.jsonPrimitive?.content
                         ?: throw Exception("Invalid response format")
                     
+                    logger.info { "Translation completed: '$text' -> '$translatedText'" }
                     Pair(true, translatedText.trim())
                 }
             } catch (e: Exception) {

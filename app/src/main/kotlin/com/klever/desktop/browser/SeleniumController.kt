@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.browser
+package com.klever.desktop.browser
 
 import io.github.bonigarcia.wdm.WebDriverManager
 import org.openqa.selenium.*

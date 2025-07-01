@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.browser
+package com.klever.desktop.browser
 
 import mu.KotlinLogging
 import org.openqa.selenium.By

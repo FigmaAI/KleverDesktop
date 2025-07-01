@@ -1,4 +1,4 @@
-package com.grabtaxi.klever.ui
+package com.klever.desktop.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -6,17 +6,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
-import com.grabtaxi.klever.server.config.ModelConfig
-import com.grabtaxi.klever.server.config.OpenAIConfig
-import com.grabtaxi.klever.server.repositories.ModelConfigRepository
+import com.klever.desktop.server.config.ModelConfig
+import com.klever.desktop.server.config.OpenAIConfig
+import com.klever.desktop.server.repositories.ModelConfigRepository
 import kotlinx.coroutines.launch
 import mu.KotlinLogging
-import com.grabtaxi.klever.server.models.AIModel
-import com.grabtaxi.klever.server.models.OpenAIModel
-import com.grabtaxi.klever.server.config.AzureConfig
-import com.grabtaxi.klever.server.models.AzureModel
-import com.grabtaxi.klever.server.config.OllamaConfig
-import com.grabtaxi.klever.server.models.OllamaModel
+import com.klever.desktop.server.models.AIModel
+import com.klever.desktop.server.models.OpenAIModel
+import com.klever.desktop.server.config.AzureConfig
+import com.klever.desktop.server.models.AzureModel
+import com.klever.desktop.server.config.OllamaConfig
+import com.klever.desktop.server.models.OllamaModel
 
 private val logger = KotlinLogging.logger {}
 
