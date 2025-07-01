@@ -48,20 +48,14 @@ if [ -z "$DMG_INPUT_PATH" ]; then
     DMG_INPUT_PATH="app/build/compose/binaries/main/dmg/KleverDesktop-${BUILD_VERSION}.dmg"
 fi
 
-# Skip Gradle build if DMG_INPUT_PATH already exists and we're in CI environment
-if [ -f "$DMG_INPUT_PATH" ] && [ ! -z "$CI_JOB_ID" ]; then
-    echo "Using existing DMG from previous build stage: $DMG_INPUT_PATH"
-else
-    # Check if DMG already exists for clean build
-    if [ -f "$DMG_INPUT_PATH" ]; then
-        echo "Removing existing DMG file: $DMG_INPUT_PATH"
-        rm "$DMG_INPUT_PATH"
-    fi
-
-    # Run Gradle build to create DMG
-    echo "Running Gradle build..."
-    ./gradlew packageDmg --no-daemon
+# Always run Gradle build to ensure the .app bundle exists for deep signing
+if [ -f "$DMG_INPUT_PATH" ]; then
+    echo "Existing DMG detected ($DMG_INPUT_PATH); it will be regenerated to allow deep signing."
+    rm "$DMG_INPUT_PATH"
 fi
+
+echo "Running Gradle build to produce fresh DMG and app bundle..."
+./gradlew packageDmg --no-daemon
 
 # Check if DMG was created
 if [ ! -f "$DMG_INPUT_PATH" ]; then
@@ -83,6 +77,50 @@ if [ ! -f "$DMG_INPUT_PATH" ]; then
         rm build.properties
         exit 1
     fi
+fi
+
+# ---------------- Recursive Code Signing ----------------
+# Sign all Mach-O binaries, dylibs, and JARs that contain native executables
+
+echo "Recursively signing embedded binaries in the application bundle..."
+
+# Path to the temp working app bundle (it lives inside the DMG build workspace)
+APP_BUNDLE_PATH="app/build/compose/tmp/dmg/KleverDesktop.app"
+
+# If the expected tmp path does not exist (Gradle version differences), try to locate the .app dynamically
+if [ ! -d "$APP_BUNDLE_PATH" ]; then
+  APP_BUNDLE_PATH=$(find app/build/compose -type d -name "KleverDesktop.app" | head -n 1 || true)
+fi
+
+if [ -z "$APP_BUNDLE_PATH" ] || [ ! -d "$APP_BUNDLE_PATH" ]; then
+  echo "Warning: Could not locate temporary .app bundle to perform deep signing. Skipping recursive signing step."
+else
+  echo "Found app bundle at: $APP_BUNDLE_PATH"
+
+  # Helper to sign individual files safely
+  sign_file() {
+    local file="$1"
+    if codesign -dv "$file" 2>/dev/null; then
+      # Already signed – force re-sign to ensure hardened runtime & timestamp
+      :
+    fi
+    codesign --force --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "$file" || {
+      echo "Failed to sign $file";
+    }
+  }
+
+  # Sign all Mach-O executables, dylibs, and native libs
+  find "$APP_BUNDLE_PATH" -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" -o -name "*.jnilib" \) | while read -r bin; do
+    sign_file "$bin"
+  done
+
+  # Sign JARs that may contain binaries (e.g., Selenium Manager)
+  find "$APP_BUNDLE_PATH" -type f -name "*.jar" | while read -r jar; do
+    sign_file "$jar"
+  done
+
+  # Finally, re-sign the top-level .app bundle with --deep to ensure all nested items are sealed
+  codesign --force --deep --options runtime --timestamp -s "$APPLE_DEVELOPER_ID" "$APP_BUNDLE_PATH"
 fi
 
 # ---------------- Notarization & Stapling ----------------
