@@ -33,3 +33,6 @@ korean_comments_log.txt
 
 # Enviroment variables
 .envrc
+
+notarization-log.json
+app/klever-desktop.log
