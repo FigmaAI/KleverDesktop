@@ -36,3 +36,57 @@ korean_comments_log.txt
 
 notarization-log.json
 app/klever-desktop.log
+
+# Gradle files
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA files
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Mac OS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Build artifacts
+app/build/
+dist/
+*.dmg
+*.exe
+*.msi
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Log files
+*.log
+*.log.*
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# Environment files
+.env
+.envrc
+*.env
+
+# Generated files
+build.info
+entitlements.plist
