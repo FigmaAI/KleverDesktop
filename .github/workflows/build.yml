@@ -37,23 +37,77 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
+    - name: Extract version information
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          # Extract version from tag (e.g., v1.1.0 -> 1.1.0)
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "Using version from tag: $VERSION"
+        else
+          # Extract version from Gradle
+          VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
+          echo "Using version from Gradle: $VERSION"
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
     - name: Build with Gradle
       run: ./gradlew build
       
+    - name: Create distributable with embedded Java runtime
+      run: |
+        # Create distributable with embedded JDK
+        ./gradlew createDistributable --no-daemon -PembedJava=true
+        
+        # Verify Java runtime is included
+        if [ -d "app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime" ]; then
+          echo "✅ Java runtime is successfully embedded"
+          ls -la app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime
+        else
+          echo "❌ Java runtime is missing!"
+          exit 1
+        fi
+      
     - name: Package DMG
       run: ./gradlew packageDmg
+      
+    - name: Rename DMG with version
+      run: |
+        DMG_PATH=$(find app/build/compose/binaries/main/dmg -name "*.dmg" | head -n 1)
+        if [ -n "$DMG_PATH" ]; then
+          mkdir -p dist
+          cp "$DMG_PATH" "dist/KleverDesktop-${{ env.VERSION }}.dmg"
+          echo "DMG file copied to dist/KleverDesktop-${{ env.VERSION }}.dmg"
+        else
+          echo "No DMG file found"
+          exit 1
+        fi
       
     - name: Upload DMG artifact
       uses: actions/upload-artifact@v3
       with:
         name: kleverdesktop-dmg
-        path: app/build/compose/binaries/main/dmg/*.dmg
+        path: dist/KleverDesktop-${{ env.VERSION }}.dmg
         
     - name: Create Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: app/build/compose/binaries/main/dmg/*.dmg
+        files: dist/KleverDesktop-${{ env.VERSION }}.dmg
+        name: "KleverDesktop ${{ env.VERSION }}"
+        body: |
+          # KleverDesktop ${{ env.VERSION }}
+          
+          ## 📝 Release Notes
+          
+          This version includes:
+          - Embedded Java runtime (no separate Java installation required)
+          - Bug fixes and performance improvements
+          
+          ## ⚠️ Important Note
+          This build is signed but NOT notarized. Users will need to manually allow the app in Security & Privacy settings.
         draft: false
         prerelease: false
       env:

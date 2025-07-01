@@ -16,6 +16,8 @@ variables:
   APP_VERSION: ${CI_COMMIT_TAG}
   # Windows build control - set to "true" to enable Windows builds
   WINDOWS_BUILD: "false"
+  # Java runtime embedding - set to "true" to embed Java runtime
+  EMBED_JAVA: "true"
   
   # Model-related variables (MODEL_TYPE, OPENAI_API_MODEL, OPENAI_API_BASE, TEMPERATURE, MAX_TOKENS, OPENAI_API_KEY)
   # are expected to be provided via GitLab CI/CD → Settings → Variables, so no defaults are set here.
@@ -67,13 +69,35 @@ package-mac:
   tags:
     - macos
   script:
-    - ./gradlew packageDmg
+    # Create distributable with embedded Java runtime if EMBED_JAVA is true
+    - |
+      if [ "$EMBED_JAVA" = "true" ]; then
+        echo "Creating distributable with embedded Java runtime..."
+        ./gradlew createDistributable --no-daemon -PembedJava=true
+        
+        # Verify Java runtime is included
+        if [ -d "app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime" ]; then
+          echo "✅ Java runtime is successfully embedded"
+          ls -la app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime
+        else
+          echo "❌ Java runtime is missing!"
+          exit 1
+        fi
+      else
+        echo "Creating distributable without Java runtime..."
+        ./gradlew createDistributable --no-daemon
+      fi
+    
+    # Package DMG
+    - ./gradlew packageDmg --no-daemon
+    
     # Store Gradle version info for build phase
     - export BUILD_VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
     - echo "BUILD_VERSION=$BUILD_VERSION" > build.info
   artifacts:
     paths:
       - app/build/compose/binaries/main/dmg
+      - app/build/compose/binaries/main/app
       - build.info
   rules:
     - if: $CI_COMMIT_TAG
@@ -85,9 +109,19 @@ package-windows:
   tags:
     - windows
   script:
-    - ./gradlew packageMsi
-    # Add EXE packaging since it's referenced in the release
-    - ./gradlew packageExe
+    # Create distributable with embedded Java runtime if EMBED_JAVA is true
+    - |
+      if [ "$EMBED_JAVA" = "true" ]; then
+        echo "Creating distributable with embedded Java runtime..."
+        ./gradlew createDistributable --no-daemon -PembedJava=true
+      else
+        echo "Creating distributable without Java runtime..."
+        ./gradlew createDistributable --no-daemon
+      fi
+    
+    # Package MSI and EXE
+    - ./gradlew packageMsi --no-daemon
+    - ./gradlew packageExe --no-daemon
   artifacts:
     paths:
       - app/build/compose/binaries/main/msi
@@ -221,6 +255,11 @@ release:
     name: "Release $CI_COMMIT_TAG"
     description: |
       KleverDesktop Release $CI_COMMIT_TAG (macOS only build)
+      
+      ## Features
+      
+      - Embedded Java runtime (no separate Java installation required)
+      - Bug fixes and performance improvements
       
       ## Downloads
       

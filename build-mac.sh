@@ -17,9 +17,17 @@ echo "Developer ID: $APPLE_DEVELOPER_ID"
 APP_VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
 echo "Building KleverDesktop version $APP_VERSION"
 
-# Build the app
-echo "Building app bundle..."
-./gradlew createDistributable --no-daemon
+# Build the app with embedded Java runtime
+echo "Building app bundle with embedded Java runtime..."
+./gradlew createDistributable --no-daemon -PembedJava=true
+
+# Verify Java runtime is included
+if [ -d "app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime" ]; then
+  echo "✅ Java runtime is successfully embedded"
+else
+  echo "❌ Java runtime is missing!"
+  exit 1
+fi
 
 # App bundle path
 APP_BUNDLE="app/build/compose/binaries/main/app/KleverDesktop.app"
@@ -82,6 +90,12 @@ sign_file() {
 echo "🔍 Signing key binaries..."
 sign_file "$APP_BUNDLE/Contents/MacOS/KleverDesktop"
 sign_file "$APP_BUNDLE/Contents/app/libskiko-macos-arm64.dylib"
+
+# Sign Java runtime binaries
+echo "🔍 Signing Java runtime binaries..."
+find "$APP_BUNDLE/Contents/runtime" -type f -perm +111 | while read -r binary; do
+  sign_file "$binary"
+done
 
 # Sign entire app bundle
 echo "📦 Signing complete app bundle..."

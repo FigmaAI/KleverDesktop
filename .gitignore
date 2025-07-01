@@ -59,7 +59,9 @@ Desktop.ini
 
 # Build artifacts
 app/build/
+builds/
 dist/
+cache/
 *.dmg
 *.exe
 *.msi
@@ -74,6 +76,9 @@ dist/
 *.log
 *.log.*
 logs/
+korean_comments_log.txt
+notarization-log.json
+app/klever-desktop.log
 
 # Temporary files
 *.tmp
@@ -86,6 +91,7 @@ local.properties
 .env
 .envrc
 *.env
+.envrc.template
 
 # Generated files
 build.info
