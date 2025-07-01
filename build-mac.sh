@@ -116,6 +116,31 @@ else
 
   # Sign JARs that may contain binaries (e.g., Selenium Manager)
   find "$APP_BUNDLE_PATH" -type f -name "*.jar" | while read -r jar; do
+    echo "Processing JAR: $jar"
+    # Temporary work dir for jar extraction
+    tmpdir=$(mktemp -d)
+    # Extract only executable candidates to save time
+    unzip -q "$jar" -d "$tmpdir"
+
+    native_found=false
+    # Find executable Mach-O or shared libs inside jar
+    while IFS= read -r -d '' native; do
+      native_found=true
+      echo "  Signing native binary inside jar: $native"
+      sign_file "$native"
+    done < <(find "$tmpdir" -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" -o -name "*.jnilib" \) -print0)
+
+    if [ "$native_found" = true ]; then
+      # Update jar with signed binaries (paths relative to tmpdir)
+      pushd "$tmpdir" >/dev/null
+      jar uf "$jar" $(find . -type f \( -perm -u+x -o -name "*.dylib" -o -name "*.so" -o -name "*.jnilib" \))
+      popd >/dev/null
+    fi
+
+    # Clean up
+    rm -rf "$tmpdir"
+
+    # Finally sign the jar itself so its signature matches new content
     sign_file "$jar"
   done
 
