@@ -7,23 +7,23 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 env:
   PACKAGE_NAME: com.klever.desktop
   BUILD_TYPE: public
 
 jobs:
-  build:
+  build-macos:
     runs-on: macos-latest
-    
     steps:
     - uses: actions/checkout@v4
-      
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        
     - name: Cache Gradle packages
       uses: actions/cache@v4
       with:
@@ -33,82 +33,133 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
-          
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-      
     - name: Extract version information
       id: version
+      shell: bash
       run: |
         if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-          # Extract version from tag (e.g., v1.1.0 -> 1.1.0)
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           echo "Using version from tag: $VERSION"
         else
-          # Extract version from Gradle
           VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
           echo "Using version from Gradle: $VERSION"
         fi
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-      
     - name: Build with Gradle
       run: ./gradlew build
-      
     - name: Create distributable with embedded Java runtime
       run: |
-        # Create distributable with embedded JDK
         ./gradlew createDistributable --no-daemon -PembedJava=true
-        
-        # Verify Java runtime is included
         if [ -d "app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime" ]; then
           echo "✅ Java runtime is successfully embedded"
-          ls -la app/build/compose/binaries/main/app/KleverDesktop.app/Contents/runtime
         else
           echo "❌ Java runtime is missing!"
           exit 1
         fi
-      
     - name: Package DMG
       run: ./gradlew packageDmg
-      
     - name: Rename DMG with version
       run: |
         DMG_PATH=$(find app/build/compose/binaries/main/dmg -name "*.dmg" | head -n 1)
         if [ -n "$DMG_PATH" ]; then
           mkdir -p dist
-          cp "$DMG_PATH" "dist/KleverDesktop-$VERSION.dmg"
-          echo "DMG file copied to dist/KleverDesktop-$VERSION.dmg"
+          cp "$DMG_PATH" "dist/KleverDesktop-${{ env.VERSION }}.dmg"
         else
           echo "No DMG file found"
           exit 1
         fi
-      
     - name: Upload DMG artifact
       uses: actions/upload-artifact@v4
       with:
         name: kleverdesktop-dmg
         path: dist/KleverDesktop-*.dmg
-        
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
       with:
-        files: dist/KleverDesktop-*.dmg
-        name: "KleverDesktop ${{ steps.version.outputs.version }}"
-        body: |
-          # KleverDesktop ${{ steps.version.outputs.version }}
-          
-          ## 📝 Release Notes
-          
-          This version includes:
-          - Embedded Java runtime (no separate Java installation required)
-          - Bug fixes and performance improvements
-          
-          ## ⚠️ Important Note
-          This build is signed but NOT notarized. Users will need to manually allow the app in Security & Privacy settings.
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          .gradle/caches
+          .gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+    - name: Extract version information
+      id: version
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          echo "Using version from tag: $VERSION"
+        else
+          VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
+          echo "Using version from Gradle: $VERSION"
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+    - name: Build with Gradle
+      run: ./gradlew.bat build
+    - name: Create distributable with embedded Java runtime
+      run: ./gradlew.bat createDistributable --no-daemon -PembedJava=true
+    - name: Package MSI and EXE
+      run: ./gradlew.bat packageMsi packageExe
+    - name: Rename installers with version
+      shell: pwsh
+      run: |
+        $msi_path = (Get-ChildItem -Path app/build/compose/binaries/main/msi -Recurse -Filter *.msi).FullName
+        $exe_path = (Get-ChildItem -Path app/build/compose/binaries/main/exe -Recurse -Filter *.exe).FullName
+        New-Item -ItemType Directory -Path dist
+        Copy-Item $msi_path -Destination "dist/KleverDesktop-${{ env.VERSION }}.msi"
+        Copy-Item $exe_path -Destination "dist/KleverDesktop-${{ env.VERSION }}.exe"
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-artifacts
+        path: dist/
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Get version
+        id: get_version
+        run: echo "version=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/kleverdesktop-dmg/*.dmg
+            artifacts/windows-artifacts/*.msi
+            artifacts/windows-artifacts/*.exe
+          name: "KleverDesktop ${{ steps.get_version.outputs.version }}"
+          body: |
+            # KleverDesktop ${{ steps.get_version.outputs.version }}
+            
+            ## 📝 Release Notes
+            
+            This version includes:
+            - Embedded Java runtime (no separate Java installation required)
+            - Bug fixes and performance improvements
+            
+            ## ⚠️ Important Note (macOS)
+            This build is signed but NOT notarized. Users will need to manually allow the app in Security & Privacy settings.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
