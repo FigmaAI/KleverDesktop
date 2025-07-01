@@ -30,3 +30,6 @@ korean_comments_log.txt
 #Certificates and provisioning profiles
 *.p12
 *.provisioningprofile
+
+# Enviroment variables
+.envrc
