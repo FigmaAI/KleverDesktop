@@ -19,6 +19,7 @@ jobs:
     runs-on: macos-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -89,6 +90,8 @@ jobs:
     runs-on: windows-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      msi_sha256: ${{ steps.package.outputs.msi_sha256 }}
+      exe_sha256: ${{ steps.package.outputs.exe_sha256 }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -124,16 +127,19 @@ jobs:
     - name: Create distributable with embedded Java runtime
       run: ./gradlew.bat createDistributable --no-daemon -PembedJava=true
     - name: Package and checksum installers
+      id: package
+      shell: pwsh
       run: |
         ./gradlew.bat packageMsi packageExe
-        mkdir -p dist
+        New-Item -ItemType Directory -Path dist
         $msi_path = (Get-ChildItem -Path app/build/compose/binaries/main/msi -Recurse -Filter *.msi).FullName
         $exe_path = (Get-ChildItem -Path app/build/compose/binaries/main/exe -Recurse -Filter *.exe).FullName
         Copy-Item $msi_path -Destination "dist/KleverDesktop-${{ steps.version.outputs.version }}.msi"
         Copy-Item $exe_path -Destination "dist/KleverDesktop-${{ steps.version.outputs.version }}.exe"
-        Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.msi" | Out-File -FilePath "dist/msi-sha256.txt"
-        Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.exe" | Out-File -FilePath "dist/exe-sha256.txt"
-      shell: pwsh
+        $MsiHash = (Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.msi").Hash
+        $ExeHash = (Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.exe").Hash
+        echo "msi_sha256=$MsiHash" >> $env:GITHUB_OUTPUT
+        echo "exe_sha256=$ExeHash" >> $env:GITHUB_OUTPUT
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -141,8 +147,6 @@ jobs:
         path: |
           dist/KleverDesktop-*.msi
           dist/KleverDesktop-*.exe
-          dist/msi-sha256.txt
-          dist/exe-sha256.txt
 
   release-and-update-tap:
     name: Create Release and Update Homebrew Tap
@@ -177,13 +181,13 @@ jobs:
             ### macOS (Apple Silicon)
             - **DMG:** `KleverDesktop-${{ steps.get_version.outputs.version }}.dmg`
             - **SHA256:** `${{ needs.build-macos.outputs.sha256 }}`
-            - **Homebrew:** `brew install figmaai/klever/klever-desktop`
+            - **Homebrew:** `brew install figmaai/klever/klever`
 
             ### Windows
             - **MSI:** `KleverDesktop-${{ steps.get_version.outputs.version }}.msi`
-            - **SHA256:** `(SHA from windows artifact)`
+            - **SHA256:** `${{ needs.build-windows.outputs.msi_sha256 }}`
             - **EXE:** `KleverDesktop-${{ steps.get_version.outputs.version }}.exe`
-            - **SHA256:** `(SHA from windows artifact)`
+            - **SHA256:** `${{ needs.build-windows.outputs.exe_sha256 }}`
 
             ## ⚠️ Important Note (macOS)
             This build is signed but NOT notarized. Users will need to manually allow the app in Security & Privacy settings.
