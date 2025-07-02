@@ -1,58 +1,17 @@
-# Ignore Gradle project-specific cache directory
-.gradle
-
-# Ignore Gradle build output directory
-build
-
-# Ignore IDEA project-specific cache directory
-.idea
-
-# Ignore IDEA build output directory
-*.iml
-
-# Ignore macOS file system metadata
-.DS_Store
-
-# Ignore IDEA build output directory
-out/
-
-# Ignore figma-client directory
-figma-client/
-/app/User_Data
-/app/config/model_config.json
-korean_comments_log.txt
-
-#Build
-/builds
-/cache/
-/dist/
-
-#Certificates and provisioning profiles
-*.p12
-*.provisioningprofile
-
-# Enviroment variables
-.envrc
-
-notarization-log.json
-app/klever-desktop.log
-
-# Gradle files
+# Gradle
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
-# IntelliJ IDEA files
+# IntelliJ IDEA
 .idea/
 *.iml
-*.ipr
-*.iws
 out/
 
-# Mac OS files
+# macOS
 .DS_Store
 
-# Windows files
+# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
@@ -87,12 +46,11 @@ app/klever-desktop.log
 *~.nib
 local.properties
 
-# Environment files
-.env
-.envrc
-*.env
-.envrc.template
-
 # Generated files
 build.info
 entitlements.plist
+
+# Figma client and app data
+figma-client/
+/app/User_Data
+/app/config/model_config.json

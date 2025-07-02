@@ -1,5 +1,0 @@
-export CI_COMMIT_TAG="1.1.0" 
-export APPLE_DEVELOPER_ID=""
-export APPLE_ID=""
-export APPLE_APP_PASSWORD=""
-export APPLE_TEAM_ID=""
