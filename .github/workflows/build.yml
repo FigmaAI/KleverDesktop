@@ -17,6 +17,8 @@ env:
 jobs:
   build-macos:
     runs-on: macos-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -47,6 +49,7 @@ jobs:
           VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
           echo "Using version from Gradle: $VERSION"
         fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "VERSION=$VERSION" >> $GITHUB_ENV
     - name: Build with Gradle
       run: ./gradlew build
@@ -59,26 +62,33 @@ jobs:
           echo "❌ Java runtime is missing!"
           exit 1
         fi
-    - name: Package DMG
-      run: ./gradlew packageDmg
-    - name: Rename DMG with version
+    - name: Package and checksum DMG
+      id: package
       run: |
+        ./gradlew packageDmg
         DMG_PATH=$(find app/build/compose/binaries/main/dmg -name "*.dmg" | head -n 1)
-        if [ -n "$DMG_PATH" ]; then
-          mkdir -p dist
-          cp "$DMG_PATH" "dist/KleverDesktop-${{ env.VERSION }}.dmg"
-        else
+        if [ -z "$DMG_PATH" ]; then
           echo "No DMG file found"
           exit 1
         fi
-    - name: Upload DMG artifact
+        mkdir -p dist
+        cp "$DMG_PATH" "dist/KleverDesktop-${{ steps.version.outputs.version }}.dmg"
+        cd dist
+        shasum -a 256 "KleverDesktop-${{ steps.version.outputs.version }}.dmg" > sha256.txt
+        SHA256=$(cat sha256.txt | awk '{print $1}')
+        echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+    - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
-        name: kleverdesktop-dmg
-        path: dist/KleverDesktop-*.dmg
+        name: macos-artifact
+        path: |
+          dist/KleverDesktop-*.dmg
+          dist/sha256.txt
 
   build-windows:
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up JDK 17
@@ -107,28 +117,35 @@ jobs:
           VERSION=$(./gradlew -q printVersion --no-configuration-cache | tail -n 1)
           echo "Using version from Gradle: $VERSION"
         fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "VERSION=$VERSION" >> $GITHUB_ENV
     - name: Build with Gradle
       run: ./gradlew.bat build
     - name: Create distributable with embedded Java runtime
       run: ./gradlew.bat createDistributable --no-daemon -PembedJava=true
-    - name: Package MSI and EXE
-      run: ./gradlew.bat packageMsi packageExe
-    - name: Rename installers with version
-      shell: pwsh
+    - name: Package and checksum installers
       run: |
+        ./gradlew.bat packageMsi packageExe
+        mkdir -p dist
         $msi_path = (Get-ChildItem -Path app/build/compose/binaries/main/msi -Recurse -Filter *.msi).FullName
         $exe_path = (Get-ChildItem -Path app/build/compose/binaries/main/exe -Recurse -Filter *.exe).FullName
-        New-Item -ItemType Directory -Path dist
-        Copy-Item $msi_path -Destination "dist/KleverDesktop-${{ env.VERSION }}.msi"
-        Copy-Item $exe_path -Destination "dist/KleverDesktop-${{ env.VERSION }}.exe"
+        Copy-Item $msi_path -Destination "dist/KleverDesktop-${{ steps.version.outputs.version }}.msi"
+        Copy-Item $exe_path -Destination "dist/KleverDesktop-${{ steps.version.outputs.version }}.exe"
+        Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.msi" | Out-File -FilePath "dist/msi-sha256.txt"
+        Get-FileHash -Algorithm SHA256 "dist/KleverDesktop-${{ steps.version.outputs.version }}.exe" | Out-File -FilePath "dist/exe-sha256.txt"
+      shell: pwsh
     - name: Upload Windows artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-artifacts
-        path: dist/
+        path: |
+          dist/KleverDesktop-*.msi
+          dist/KleverDesktop-*.exe
+          dist/msi-sha256.txt
+          dist/exe-sha256.txt
 
-  release:
+  release-and-update-tap:
+    name: Create Release and Update Homebrew Tap
     runs-on: ubuntu-latest
     needs: [build-macos, build-windows]
     if: startsWith(github.ref, 'refs/tags/')
@@ -137,29 +154,45 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Get version
+      - name: Get Version
         id: get_version
         run: echo "version=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
       - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/kleverdesktop-dmg/*.dmg
-            artifacts/windows-artifacts/*.msi
-            artifacts/windows-artifacts/*.exe
+            artifacts/macos-artifact/KleverDesktop-*.dmg
+            artifacts/windows-artifacts/KleverDesktop-*.msi
+            artifacts/windows-artifacts/KleverDesktop-*.exe
           name: "KleverDesktop ${{ steps.get_version.outputs.version }}"
           body: |
             # KleverDesktop ${{ steps.get_version.outputs.version }}
             
             ## 📝 Release Notes
+            This version includes bug fixes and performance improvements.
+            Java runtime is now embedded in all builds.
             
-            This version includes:
-            - Embedded Java runtime (no separate Java installation required)
-            - Bug fixes and performance improvements
-            
+            ## Installers
+            ### macOS (Apple Silicon)
+            - **DMG:** `KleverDesktop-${{ steps.get_version.outputs.version }}.dmg`
+            - **SHA256:** `${{ needs.build-macos.outputs.sha256 }}`
+            - **Homebrew:** `brew install figmaai/klever/klever-desktop`
+
+            ### Windows
+            - **MSI:** `KleverDesktop-${{ steps.get_version.outputs.version }}.msi`
+            - **SHA256:** `(SHA from windows artifact)`
+            - **EXE:** `KleverDesktop-${{ steps.get_version.outputs.version }}.exe`
+            - **SHA256:** `(SHA from windows artifact)`
+
             ## ⚠️ Important Note (macOS)
             This build is signed but NOT notarized. Users will need to manually allow the app in Security & Privacy settings.
-          draft: false
-          prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Homebrew Tap
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: FigmaAI/homebrew-klever
+          event-type: new-release
+          client-payload: '{"version": "${{ steps.get_version.outputs.version }}", "sha256": "${{ needs.build-macos.outputs.sha256 }}"}' 
