@@ -1,9 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.compose")
-    kotlin("plugin.serialization") version "1.9.22"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose)
 }
 
 // Project version - centralized version management
@@ -28,58 +28,57 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 dependencies {
     // Kotlin
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(libs.kotlin.stdlib.jdk8)
     
     // WebSocket
-    implementation("org.java-websocket:Java-WebSocket:1.5.4")
-    implementation("com.typesafe:config:1.4.2")
+    implementation(libs.java.websocket)
+    implementation(libs.typesafe.config)
     
     // JSON Processing
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin)
     
     // Selenium
-    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
-    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.18.1")
-    implementation("org.seleniumhq.selenium:selenium-support:4.18.1")
+    implementation(libs.selenium.java)
+    implementation(libs.selenium.chrome.driver)
+    implementation(libs.selenium.support)
     
     // WebDriverManager
-    implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
+    implementation(libs.webdrivermanager)
     
     // Logging
-    implementation("ch.qos.logback:logback-classic:1.4.11")
-    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation(libs.logback.classic)
+    implementation(libs.kotlin.logging3)
     
     // OpenCV
-    implementation("org.openpnp:opencv:4.7.0-0")
+    implementation(libs.opencv)
     
     // Config
-    implementation("com.typesafe:config:1.4.2")
+    implementation(libs.typesafe.config)
     
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.foundation)
     
     // JSON Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation(libs.kotlinx.serialization.json16)
     
     // HTTP Client
-    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+    implementation(libs.okhttp)
     
-    // JSON Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0")
+    // JSON Serialization (older version)
+    implementation(libs.kotlinx.serialization.json13)
     
-    // Logging
-    implementation("io.github.microutils:kotlin-logging:2.0.11")
+    // Logging (older version)
+    implementation(libs.kotlin.logging2)
     
     // Ktor client dependencies
-    val ktorVersion = "2.3.7"
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-client-json:$ktorVersion")
-    implementation("io.ktor:ktor-client-apache:$ktorVersion")
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.json)
+    implementation(libs.ktor.client.apache)
 }
 
 compose.desktop {

@@ -6,8 +6,9 @@
  */
 
 plugins {
-    kotlin("jvm") version "1.9.22" apply false
-    id("org.jetbrains.compose") version "1.6.0" apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.compose) apply false
 }
 
 allprojects {
