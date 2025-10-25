@@ -112,7 +112,7 @@ class MessageHandler {
             if (requestedWidth > canvasWidth || requestedHeight > canvasHeight) {
                 val errorMessage = "Requested screenshot size (${requestedWidth}x${requestedHeight}) " +
                     "exceeds canvas size (${canvasWidth}x${canvasHeight}). " +
-                    "Please try again with a smaller size."
+                    "Please maximize the browser window or use a smaller screenshot size."
                 logger.error { "[ERROR] $errorMessage" }
                 return mapOf(
                     "status" to "error",
@@ -188,7 +188,7 @@ class MessageHandler {
             throw e
         }
     }
-
+    
     private fun captureCanvasScreenshot(prefix: String): Map<String, Any> {
         return try {
             val screenshotArea = currentScreenshotArea
@@ -199,7 +199,7 @@ class MessageHandler {
                 deleteOnExit() 
             }
             
-            // capture screenshot
+            // capture screenshot using stored coordinates
             seleniumController?.takeScreenshot(
                 x = screenshotArea.x,
                 y = screenshotArea.y,

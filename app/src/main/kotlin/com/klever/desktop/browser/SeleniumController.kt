@@ -9,12 +9,14 @@ import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import java.time.Duration
 import mu.KotlinLogging
-import org.opencv.core.Point
-import org.opencv.core.Scalar
-import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.Imgproc
 import java.io.File
 import javax.imageio.ImageIO
+import java.awt.Color
+import java.awt.Font
+import java.awt.Graphics2D
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.awt.BasicStroke
 import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.Toolkit
@@ -338,6 +340,7 @@ class SeleniumController(
     }
 
     // Screenshot & Image Processing
+    
     fun takeScreenshot(x: Int, y: Int, width: Int, height: Int, outputPath: String): File {
         try {
             // Find the canvas element
@@ -387,40 +390,50 @@ class SeleniumController(
         darkMode: Boolean = false
     ) {
         try {
-            val image = Imgcodecs.imread(imagePath)
+            // 이미지 읽기 (Java AWT 사용)
+            val image: BufferedImage = ImageIO.read(File(imagePath))
+            val g2d: Graphics2D = image.createGraphics()
+            
+            // 안티앨리어싱 활성화 (더 부드러운 렌더링)
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            
+            // 색상 설정
+            val color = if (darkMode) {
+                Color(255, 250, 250) // 밝은 색상 (다크모드용)
+            } else {
+                Color(10, 10, 10) // 어두운 색상
+            }
+            g2d.color = color
+            g2d.stroke = BasicStroke(2.0f)
+            
             var count = 1
             
             predictions.forEach { prediction ->
                 try {
                     val left = (prediction.x - prediction.width / 2).toInt()
                     val top = (prediction.y - prediction.height / 2).toInt()
-                    val right = (prediction.x + prediction.width / 2).toInt()
-                    val bottom = (prediction.y + prediction.height / 2).toInt()
+                    val width = prediction.width.toInt()
+                    val height = prediction.height.toInt()
                     
-                    // Draw rectangle
-                    val color = if (darkMode) 
-                        Scalar(255.0, 250.0, 250.0) 
-                    else 
-                        Scalar(10.0, 10.0, 10.0)
+                    // 사각형 그리기
+                    g2d.drawRect(left, top, width, height)
                     
-                    Imgproc.rectangle(
-                        image,
-                        Point(left.toDouble(), top.toDouble()),
-                        Point(right.toDouble(), bottom.toDouble()),
-                        color,
-                        2
-                    )
+                    // 텍스트 라벨 추가
+                    g2d.font = Font("Arial", Font.BOLD, 24)
+                    val label = count.toString()
                     
-                    // Add label
-                    Imgproc.putText(
-                        image,
-                        count.toString(),
-                        Point(left.toDouble(), (top - 10).toDouble()),
-                        Imgproc.FONT_HERSHEY_SIMPLEX,
-                        0.9,
-                        color,
-                        2
-                    )
+                    // 텍스트 배경 (가독성 향상)
+                    val fontMetrics = g2d.fontMetrics
+                    val textWidth = fontMetrics.stringWidth(label)
+                    val textHeight = fontMetrics.height
+                    
+                    // 텍스트 위치 계산 (사각형 위쪽)
+                    val textX = left
+                    val textY = maxOf(top - 10, textHeight)
+                    
+                    // 텍스트 그리기
+                    g2d.drawString(label, textX, textY)
                     
                     count++
                 } catch (e: Exception) {
@@ -428,7 +441,13 @@ class SeleniumController(
                 }
             }
             
-            Imgcodecs.imwrite(outputPath, image)
+            // Graphics2D 리소스 해제
+            g2d.dispose()
+            
+            // 이미지 저장
+            ImageIO.write(image, "png", File(outputPath))
+            
+            logger.info { "Successfully drew $count bounding boxes to $outputPath" }
         } catch (e: Exception) {
             logger.error(e) { "Failed to draw bounding boxes: ${e.message}" }
             throw RuntimeException("Drawing bounding boxes failed", e)

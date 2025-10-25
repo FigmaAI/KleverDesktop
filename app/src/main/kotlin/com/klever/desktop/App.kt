@@ -144,6 +144,65 @@ class App {
         }
     }
 
+    fun resetServer() {
+        try {
+            logger.info { "Resetting server..." }
+            
+            // 1. Stop WebSocket server
+            stopServer()
+            
+            // 2. Kill Chrome processes started by this app
+            killChromeProcesses()
+            
+            // 3. Wait a moment for cleanup
+            Thread.sleep(1000)
+            
+            // 4. Restart server
+            startServer()
+            
+            logger.info { "Server reset completed" }
+        } catch (e: Exception) {
+            logger.error(e) { "Error resetting server: ${e.message}" }
+        }
+    }
+    
+    private fun killChromeProcesses() {
+        try {
+            val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
+            val isMac = System.getProperty("os.name").toLowerCase().contains("mac")
+            
+            when {
+                isMac -> {
+                    // Kill Chrome processes with KleverDesktop user data directory
+                    val process = ProcessBuilder(
+                        "pkill", "-f", "Google Chrome.*KleverDesktop/User_Data"
+                    ).start()
+                    process.waitFor()
+                    logger.info { "Chrome processes terminated (macOS)" }
+                }
+                isWindows -> {
+                    // Kill Chrome processes on Windows
+                    val process = ProcessBuilder(
+                        "taskkill", "/F", "/IM", "chrome.exe", "/FI", 
+                        "WINDOWTITLE eq *KleverDesktop*"
+                    ).start()
+                    process.waitFor()
+                    logger.info { "Chrome processes terminated (Windows)" }
+                }
+                else -> {
+                    // Linux
+                    val process = ProcessBuilder(
+                        "pkill", "-f", "chrome.*KleverDesktop"
+                    ).start()
+                    process.waitFor()
+                    logger.info { "Chrome processes terminated (Linux)" }
+                }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error killing Chrome processes: ${e.message}" }
+        }
+    }
+
     fun isServerRunning(): Boolean = server != null && server!!.connections.isNotEmpty()
 }
 
@@ -299,6 +358,14 @@ fun main() = application {
                         isServerRunning = true
                     }
                 }
+            )
+            Item(
+                text = "Reset Server",
+                onClick = {
+                    app.resetServer()
+                    isServerRunning = true
+                },
+                enabled = isServerRunning
             )
             Item(
                 text = "Model Settings",

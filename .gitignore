@@ -21,4 +21,18 @@ figma-client/
 /app/User_Data
 /app/config/model_config.json
 korean_comments_log.txt
+
+# Ignore docs directory (optimization guides and documentation)
+docs/
+
+# Ignore environment variables
 .envrc
+
+# Ignore log files
+*.log
+app/*.log
+
+# Ignore App Store build artifacts
+*.xcarchive
+*.pkg
+*.provisionprofile

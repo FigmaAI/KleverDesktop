@@ -8,13 +8,13 @@ plugins {
 
 // Add Gradle 9.0 compatibility settings
 kotlin {
-    jvmToolchain(17) // Use explicit JVM toolchain
+    jvmToolchain(21) // AWS Corretto 21 사용
 }
 
 // Use type-safe configuration
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "21"
         freeCompilerArgs += "-opt-in=kotlin.RequiresOptIn"
     }
 }
@@ -24,49 +24,38 @@ dependencies {
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     
+    // Config
+    implementation("com.typesafe:config:1.4.2")
+    
     // WebSocket
     implementation("org.java-websocket:Java-WebSocket:1.5.4")
-    implementation("com.typesafe:config:1.4.2")
     
     // JSON Processing
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     
-    // Selenium
+    // JSON Serialization (중복 제거, 최신 버전만 유지)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    
+    // HTTP Client - OkHttp (AzureModel, OpenAIModel에서 사용)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Selenium - 모든 브라우저 지원
     implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
-    implementation("org.seleniumhq.selenium:selenium-chrome-driver:4.18.1")
-    implementation("org.seleniumhq.selenium:selenium-support:4.18.1")
     
     // WebDriverManager
     implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
     
-    // Logging
+    // Logging (중복 제거, 최신 버전만 유지)
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("io.github.microutils:kotlin-logging:3.0.5")
     
-    // OpenCV
-    implementation("org.openpnp:opencv:4.7.0-0")
-    
-    // Config
-    implementation("com.typesafe:config:1.4.2")
-    
+    // Compose Desktop
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.foundation)
     
-    // JSON Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    
-    // HTTP Client
-    implementation("com.squareup.okhttp3:okhttp:4.9.0")
-    
-    // JSON Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0")
-    
-    // Logging
-    implementation("io.github.microutils:kotlin-logging:2.0.11")
-    
-    // Ktor client dependencies
+    // Ktor client dependencies (OkHttp 제거, Ktor만 사용)
     val ktorVersion = "2.3.7"
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
@@ -89,15 +78,26 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.1"
+            packageVersion = "1.1.0"
             
-            modules("java.instrument", "java.management", "jdk.unsupported")
+            // 필요한 JRE 모듈만 명시적으로 추가 (약 70-80MB 절감)
+            modules(
+                "java.base",            // 필수: 기본 Java API
+                "java.desktop",         // 필수: Compose GUI, AWT
+                "java.prefs",           // 필수: 설정 저장
+                "java.net.http",        // 필수: HTTP 통신 (Ktor, Selenium)
+                "java.logging",         // 필수: 로깅
+                "java.naming",          // 필수: JNDI, 네트워크 서비스
+                "java.xml",             // 필수: XML 처리
+                "java.sql",             // 선택: JDBC (Jackson이 사용할 수 있음)
+                "java.instrument",      // 선택: Instrumentation
+                "java.management",      // 선택: JMX Management
+                "jdk.unsupported"       // 선택: Unsafe API (일부 라이브러리가 사용)
+            )
             
-            // Add required JDK modules (include JRE in distribution)
-            includeAllModules = true
+            // includeAllModules 제거 - 불필요한 모듈 포함 방지
+            // includeAllModules = true
             
-            // Runtime image compression settings
-            // Use the newer syntax for JDK configuration
             javaHome = System.getProperty("java.home")
             
             // Memory settings
@@ -107,6 +107,21 @@ compose.desktop {
                 bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
+                
+                // App Store required settings
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>LSApplicationCategoryType</key>
+                        <string>public.app-category.productivity</string>
+                        <key>LSMinimumSystemVersion</key>
+                        <string>12.0</string>
+                    """
+                }
+                
+                // Build for both Intel and Apple Silicon
+                // For App Store: need universal binary OR set minimum OS to 12.0+ for arm64-only
+                // Currently targeting macOS 12.0+ for arm64-only
+                
                 signing {
                     sign.set(false) // Explicitly set signing option
                 }
@@ -149,6 +164,10 @@ tasks.withType<Jar>().configureEach {
     from("src/main/resources") {
         include("**/*")
     }
+    
+    // JAR 압축 최적화
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }
 
 tasks.named("build") {
