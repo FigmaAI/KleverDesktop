@@ -31,3 +31,8 @@ docs/
 # Ignore log files
 *.log
 app/*.log
+
+# Ignore App Store build artifacts
+*.xcarchive
+*.pkg
+*.provisionprofile

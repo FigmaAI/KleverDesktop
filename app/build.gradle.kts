@@ -73,7 +73,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
-            packageVersion = "1.0.1"
+            packageVersion = "1.1.0"
             
             // 필요한 JRE 모듈만 명시적으로 추가 (약 70-80MB 절감)
             modules(
@@ -102,6 +102,21 @@ compose.desktop {
                 bundleID = "com.klever.desktop"
                 dockName = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.icns"))
+                
+                // App Store required settings
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>LSApplicationCategoryType</key>
+                        <string>public.app-category.productivity</string>
+                        <key>LSMinimumSystemVersion</key>
+                        <string>12.0</string>
+                    """
+                }
+                
+                // Build for both Intel and Apple Silicon
+                // For App Store: need universal binary OR set minimum OS to 12.0+ for arm64-only
+                // Currently targeting macOS 12.0+ for arm64-only
+                
                 signing {
                     sign.set(false) // Explicitly set signing option
                 }
