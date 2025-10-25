@@ -132,6 +132,8 @@ compose.desktop {
                 menuGroup = "KleverDesktop"
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
+                // MIT License for open source project
+                licenseFile.set(project.file("../LICENSE"))
                 // Add Windows-specific JVM arguments
                 jvmArgs += listOf("-Djava.library.path=runtime/bin")
             }
