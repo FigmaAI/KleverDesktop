@@ -79,6 +79,11 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.klever.desktop.AppKt"
+        
+        // Disable ProGuard
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
 
         // Use explicit configuration for nativeDistributions
         nativeDistributions {

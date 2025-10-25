@@ -21,3 +21,4 @@ figma-client/
 /app/User_Data
 /app/config/model_config.json
 korean_comments_log.txt
+.envrc
