@@ -36,3 +36,4 @@ app/*.log
 *.xcarchive
 *.pkg
 *.provisionprofile
+app/klever-desktop.log
