@@ -122,7 +122,7 @@ class OpenAIModel(
                         put("content", """
                             You are a translator. Your task is to translate non-English text to English while preserving any English text unchanged. 
                             For example:
-                            Input: "Hello 안녕하세요 World"
+                            Input: "Hello bonjour World"
                             Output: "Hello hello World"
                             
                             Only translate the non-English parts and keep English parts exactly as they are.
