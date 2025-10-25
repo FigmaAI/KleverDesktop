@@ -390,19 +390,19 @@ class SeleniumController(
         darkMode: Boolean = false
     ) {
         try {
-            // 이미지 읽기 (Java AWT 사용)
+            // Read image (using Java AWT)
             val image: BufferedImage = ImageIO.read(File(imagePath))
             val g2d: Graphics2D = image.createGraphics()
             
-            // 안티앨리어싱 활성화 (더 부드러운 렌더링)
+            // Enable anti-aliasing (for smoother rendering)
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
             
-            // 색상 설정
+            // Set color
             val color = if (darkMode) {
-                Color(255, 250, 250) // 밝은 색상 (다크모드용)
+                Color(255, 250, 250) // Light color (for dark mode)
             } else {
-                Color(10, 10, 10) // 어두운 색상
+                Color(10, 10, 10) // Dark color
             }
             g2d.color = color
             g2d.stroke = BasicStroke(2.0f)
@@ -416,23 +416,23 @@ class SeleniumController(
                     val width = prediction.width.toInt()
                     val height = prediction.height.toInt()
                     
-                    // 사각형 그리기
+                    // Draw rectangle
                     g2d.drawRect(left, top, width, height)
                     
-                    // 텍스트 라벨 추가
+                    // Add text label
                     g2d.font = Font("Arial", Font.BOLD, 24)
                     val label = count.toString()
                     
-                    // 텍스트 배경 (가독성 향상)
+                    // Text background (for better readability)
                     val fontMetrics = g2d.fontMetrics
                     val textWidth = fontMetrics.stringWidth(label)
                     val textHeight = fontMetrics.height
                     
-                    // 텍스트 위치 계산 (사각형 위쪽)
+                    // Calculate text position (above the rectangle)
                     val textX = left
                     val textY = maxOf(top - 10, textHeight)
                     
-                    // 텍스트 그리기
+                    // Draw text
                     g2d.drawString(label, textX, textY)
                     
                     count++
@@ -441,10 +441,10 @@ class SeleniumController(
                 }
             }
             
-            // Graphics2D 리소스 해제
+            // Release Graphics2D resources
             g2d.dispose()
             
-            // 이미지 저장
+            // Save image
             ImageIO.write(image, "png", File(outputPath))
             
             logger.info { "Successfully drew $count bounding boxes to $outputPath" }

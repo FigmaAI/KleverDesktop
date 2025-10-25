@@ -121,7 +121,7 @@ class AzureModel(
                             5. Do not modify the structure of the text
                             
                             Example:
-                            Input: "Click here to 새로운 메시지를 작성하세요 and send"
+                            Input: "Click here to écrire un nouveau message and send"
                             Output: "Click here to write new message and send"
                         """.trimIndent())
                     }

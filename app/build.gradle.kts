@@ -8,7 +8,7 @@ plugins {
 
 // Add Gradle 9.0 compatibility settings
 kotlin {
-    jvmToolchain(21) // AWS Corretto 21 사용
+    jvmToolchain(21) // Using AWS Corretto 21
 }
 
 // Use type-safe configuration
@@ -34,19 +34,19 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.15.2")
     
-    // JSON Serialization (중복 제거, 최신 버전만 유지)
+    // JSON Serialization (removed duplicates, keeping latest version only)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     
-    // HTTP Client - OkHttp (AzureModel, OpenAIModel에서 사용)
+    // HTTP Client - OkHttp (used in AzureModel, OpenAIModel)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
-    // Selenium - 모든 브라우저 지원
+    // Selenium - Support for all browsers
     implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
     
     // WebDriverManager
     implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
     
-    // Logging (중복 제거, 최신 버전만 유지)
+    // Logging (removed duplicates, keeping latest version only)
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("io.github.microutils:kotlin-logging:3.0.5")
     
@@ -55,7 +55,7 @@ dependencies {
     implementation(compose.material3)
     implementation(compose.foundation)
     
-    // Ktor client dependencies (OkHttp 제거, Ktor만 사용)
+    // Ktor client dependencies (removed OkHttp, using Ktor only)
     val ktorVersion = "2.3.7"
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
@@ -75,22 +75,22 @@ compose.desktop {
             packageName = "KleverDesktop"
             packageVersion = "1.1.0"
             
-            // 필요한 JRE 모듈만 명시적으로 추가 (약 70-80MB 절감)
+            // Explicitly add only required JRE modules (saves approximately 70-80MB)
             modules(
-                "java.base",            // 필수: 기본 Java API
-                "java.desktop",         // 필수: Compose GUI, AWT
-                "java.prefs",           // 필수: 설정 저장
-                "java.net.http",        // 필수: HTTP 통신 (Ktor, Selenium)
-                "java.logging",         // 필수: 로깅
-                "java.naming",          // 필수: JNDI, 네트워크 서비스
-                "java.xml",             // 필수: XML 처리
-                "java.sql",             // 선택: JDBC (Jackson이 사용할 수 있음)
-                "java.instrument",      // 선택: Instrumentation
-                "java.management",      // 선택: JMX Management
-                "jdk.unsupported"       // 선택: Unsafe API (일부 라이브러리가 사용)
+                "java.base",            // Required: Base Java API
+                "java.desktop",         // Required: Compose GUI, AWT
+                "java.prefs",           // Required: Settings storage
+                "java.net.http",        // Required: HTTP communication (Ktor, Selenium)
+                "java.logging",         // Required: Logging
+                "java.naming",          // Required: JNDI, network services
+                "java.xml",             // Required: XML processing
+                "java.sql",             // Optional: JDBC (may be used by Jackson)
+                "java.instrument",      // Optional: Instrumentation
+                "java.management",      // Optional: JMX Management
+                "jdk.unsupported"       // Optional: Unsafe API (used by some libraries)
             )
             
-            // includeAllModules 제거 - 불필요한 모듈 포함 방지
+            // Removed includeAllModules - prevents including unnecessary modules
             // includeAllModules = true
             
             javaHome = System.getProperty("java.home")
@@ -123,7 +123,8 @@ compose.desktop {
             }
 
             windows {
-                dirChooser = true
+                // dirChooser = true // Removed for silent install (MS Store Policy 10.2.9)
+                perUserInstall = true // Minimize UAC and per-user installation
                 menuGroup = "KleverDesktop"
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
@@ -160,7 +161,7 @@ tasks.withType<Jar>().configureEach {
         include("**/*")
     }
     
-    // JAR 압축 최적화
+    // JAR compression optimization
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }

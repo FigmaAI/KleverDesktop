@@ -36,21 +36,21 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
         require(images.isNotEmpty()) { "At least one image is required" }
         
         try {
-            // Base64 디코딩 및 BufferedImage로 변환
+            // Base64 decode and convert to BufferedImage
             val bufferedImages = images.map { base64Str ->
                 val imageBytes = Base64.getDecoder().decode(base64Str)
                 ImageIO.read(ByteArrayInputStream(imageBytes))
             }
             
-            // 결과 이미지 크기 계산 (가로로 배치)
+            // Calculate result image size (arrange horizontally)
             val totalWidth = bufferedImages.sumOf { it.width }
             val maxHeight = bufferedImages.maxOf { it.height }
             
-            // 새 이미지 생성
+            // Create new image
             val combined = BufferedImage(totalWidth, maxHeight, BufferedImage.TYPE_INT_RGB)
             val g2d = combined.createGraphics()
             
-            // 이미지 배치
+            // Arrange images
             var x = 0
             bufferedImages.forEach { img ->
                 g2d.drawImage(img, x, 0, null)
@@ -58,7 +58,7 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
             }
             g2d.dispose()
             
-            // Base64로 다시 인코딩
+            // Re-encode to Base64
             val outputStream = ByteArrayOutputStream()
             ImageIO.write(combined, "jpg", outputStream)
             return Base64.getEncoder().encodeToString(outputStream.toByteArray())
@@ -147,7 +147,7 @@ class OllamaModel(private val config: OllamaConfig) : AIModel {
                         put("prompt", """
                             You are a translator. Your task is to translate non-English text to English while preserving any English text unchanged. 
                             For example:
-                            Input: "Hello 안녕하세요 World"
+                            Input: "Hello bonjour World"
                             Output: "Hello hello World"
                             
                             Only translate the non-English parts and keep English parts exactly as they are.
