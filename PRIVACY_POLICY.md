@@ -36,14 +36,14 @@ While using KleverDesktop, you may provide the following information, which is s
 
 - **Figma File URLs**: URLs of Figma files you wish to test
 - **Figma File Passwords**: Optional passwords for protected Figma files
-- **AI Model API Keys**: API keys for third-party AI services (OpenAI, Azure OpenAI, Ollama, etc.)
+- **AI Model API Keys**: API keys for third-party AI services (OpenRouter, Azure, Ollama, etc.)
 - **Test Descriptions and Personas**: Task descriptions and personas for usability testing
 
 **Important:** None of this information is transmitted to us. It remains on your local device.
 
 ### Third-Party Services
 
-When you configure and use AI model integration, KleverDesktop will communicate directly with the third-party AI service provider you have chosen (such as OpenAI, Microsoft Azure, or local Ollama instances). This communication includes:
+When you configure and use AI model integration, KleverDesktop will communicate directly with the third-party AI service provider you have chosen (such as OpenRouter, Microsoft Azure, or local Ollama instances). This communication includes:
 
 - Screenshots of the designs you are testing
 - Prompts and test descriptions you have created
@@ -53,7 +53,7 @@ When you configure and use AI model integration, KleverDesktop will communicate 
 - We do not intercept, collect, or have access to this data
 - The privacy policies of these third-party services apply to data you send to them
 - We recommend reviewing the privacy policies of any third-party AI services you choose to use:
-  - [OpenAI Privacy Policy](https://openai.com/privacy/)
+  - [OpenRouter Privacy Policy](https://openrouter.ai/privacy)
   - [Microsoft Azure Privacy Policy](https://privacy.microsoft.com/en-us/privacystatement)
 
 ## Data Storage

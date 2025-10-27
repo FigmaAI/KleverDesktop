@@ -8,20 +8,13 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import com.klever.desktop.server.models.AIModel
-import com.klever.desktop.server.models.OpenAIModel
-// import com.klever.desktop.server.models.QwenModel
+import com.klever.desktop.server.models.ExternalAPIModel
 import com.klever.desktop.server.config.ModelConfig
-import com.klever.desktop.server.config.OpenAIConfig
-// import com.klever.desktop.server.config.QwenConfig
 import com.klever.desktop.server.repositories.ModelConfigRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import com.klever.desktop.server.models.AzureModel
-import com.klever.desktop.server.config.AzureConfig
-import com.klever.desktop.server.config.OllamaConfig
-import com.klever.desktop.server.models.OllamaModel
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger {}
@@ -191,6 +184,8 @@ class MessageHandler {
     
     private fun captureCanvasScreenshot(prefix: String): Map<String, Any> {
         return try {
+            logger.info { "[SCREENSHOT] Capturing screenshot with prefix: $prefix" }
+            
             val screenshotArea = currentScreenshotArea
                 ?: throw IllegalStateException("Screenshot area not set up")
             
@@ -215,6 +210,8 @@ class MessageHandler {
             // encode image to Base64 and delete temporary file
             val imageBase64 = getImageAsBase64(tempFile.absolutePath)
             tempFile.delete()
+            
+            logger.info { "[SCREENSHOT] Screenshot captured successfully: prefix=$prefix, nodeId=$nodeId, base64Length=${imageBase64.length}" }
             
             mapOf(
                 "type" to "SCREENSHOT",
@@ -291,12 +288,7 @@ class MessageHandler {
             val config = repository.loadCurrentConfig() 
                 ?: throw IllegalStateException("No model configuration found")
             
-            modelInstance = when (config) {
-                is OpenAIConfig -> OpenAIModel(config)
-                is AzureConfig -> AzureModel(config)
-                is OllamaConfig -> OllamaModel(config)
-                // else -> throw IllegalStateException("Unknown config type: ${config::class.simpleName}")
-            }
+            modelInstance = ExternalAPIModel(config)
         } catch (e: Exception) {
             logger.error(e) { "[ERROR] Failed to initialize AI model" }
             throw e

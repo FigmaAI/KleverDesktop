@@ -10,7 +10,8 @@ import androidx.compose.ui.unit.dp
 import com.klever.desktop.server.KleverServer
 import com.klever.desktop.server.config.AppConfig
 import com.klever.desktop.ui.MainWindow
-import com.klever.desktop.ui.ModelSettingsDialog
+import com.klever.desktop.ui.ModelSettings
+import com.klever.desktop.ui.BrowserSettings
 import mu.KotlinLogging
 import androidx.compose.ui.window.rememberWindowState
 import androidx.compose.ui.window.Tray
@@ -30,20 +31,22 @@ import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import java.io.File
+import com.klever.desktop.browser.BrowserType
+import com.klever.desktop.browser.BrowserFactory
 
 private val logger = KotlinLogging.logger {}
 
 // Environment check data class
 data class EnvironmentCheckResult(
     val isJavaOk: Boolean,
-    val isChromeOk: Boolean,
+    val isBrowserOk: Boolean,
     val javaVersion: String? = null,
     val javaVendor: String? = null,
-    val chromeLocation: String? = null,
+    val availableBrowsers: Map<BrowserType, String?> = emptyMap(),
     val errorMessage: String? = null
 )
 
-// Check required environment (Java and Chrome)
+// Check required environment (Java and Browsers)
 fun checkEnvironment(): EnvironmentCheckResult {
     try {
         // Check Java environment
@@ -62,58 +65,31 @@ fun checkEnvironment(): EnvironmentCheckResult {
         
         val isJavaOk = majorVersion >= 17
         
-        // Check Chrome browser installation
-        val isChromeOk: Boolean
-        val chromeLocation: String?
+        // Check available browsers using BrowserFactory
+        val availableBrowsers = BrowserFactory.getAvailableBrowsers()
+        val isBrowserOk = availableBrowsers.isNotEmpty()
         
-        when {
-            System.getProperty("os.name").toLowerCase().contains("win") -> {
-                // Windows Chrome locations
-                val possibleLocations = listOf(
-                    File("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"),
-                    File("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"),
-                    File(System.getProperty("user.home") + "\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe")
-                )
-                
-                val chromeFile = possibleLocations.find { it.exists() }
-                isChromeOk = chromeFile != null
-                chromeLocation = chromeFile?.absolutePath
+        logger.info { "Browser check results:" }
+        if (availableBrowsers.isNotEmpty()) {
+            for ((browserType, path) in availableBrowsers) {
+                logger.info { "  - ${browserType.displayName}: $path" }
             }
-            System.getProperty("os.name").toLowerCase().contains("mac") -> {
-                // macOS Chrome location
-                val chromeFile = File("/Applications/Google Chrome.app")
-                isChromeOk = chromeFile.exists()
-                chromeLocation = if (isChromeOk) chromeFile.absolutePath else null
-            }
-            else -> {
-                // Linux Chrome locations
-                val possibleLocations = listOf(
-                    File("/usr/bin/google-chrome"),
-                    File("/usr/bin/google-chrome-stable"),
-                    File("/usr/bin/chromium-browser"),
-                    File("/usr/bin/chromium")
-                )
-                
-                val chromeFile = possibleLocations.find { it.exists() }
-                isChromeOk = chromeFile != null
-                chromeLocation = chromeFile?.absolutePath
-            }
+        } else {
+            logger.warn { "No supported browser found" }
         }
-        
-        logger.info { "Chrome browser check: ${if (isChromeOk) "Found at $chromeLocation" else "Not found"}" }
         
         return EnvironmentCheckResult(
             isJavaOk = isJavaOk,
-            isChromeOk = isChromeOk,
+            isBrowserOk = isBrowserOk,
             javaVersion = javaVersion,
             javaVendor = javaVendor,
-            chromeLocation = chromeLocation
+            availableBrowsers = availableBrowsers
         )
     } catch (e: Exception) {
         logger.error(e) { "Error checking environment: ${e.message}" }
         return EnvironmentCheckResult(
             isJavaOk = false,
-            isChromeOk = false,
+            isBrowserOk = false,
             errorMessage = e.message
         )
     }
@@ -168,8 +144,8 @@ class App {
     
     private fun killChromeProcesses() {
         try {
-            val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
-            val isMac = System.getProperty("os.name").toLowerCase().contains("mac")
+            val isWindows = System.getProperty("os.name").lowercase().contains("win")
+            val isMac = System.getProperty("os.name").lowercase().contains("mac")
             
             when {
                 isMac -> {
@@ -211,6 +187,7 @@ fun main() = application {
     var isServerRunning by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(false) }
     var showModelSettings by remember { mutableStateOf(false) }
+    var showBrowserSettings by remember { mutableStateOf(false) }
     var showEnvironmentWarning by remember { mutableStateOf(false) }
     var environmentCheckResult by remember { mutableStateOf<EnvironmentCheckResult?>(null) }
     val trayState = remember { TrayState() }
@@ -218,8 +195,8 @@ fun main() = application {
     // Check environment (Java and Chrome)
     LaunchedEffect(Unit) {
         val checkResult = checkEnvironment()
-        if (!checkResult.isJavaOk || !checkResult.isChromeOk) {
-            logger.error { "Environment check failed: Java OK: ${checkResult.isJavaOk}, Chrome OK: ${checkResult.isChromeOk}" }
+        if (!checkResult.isJavaOk) {
+            logger.error { "Environment check failed: Java OK: ${checkResult.isJavaOk}, Browser OK: ${checkResult.isBrowserOk}" }
             environmentCheckResult = checkResult
             showEnvironmentWarning = true
             return@LaunchedEffect
@@ -300,27 +277,25 @@ fun main() = application {
                         }
                     }
                     
-                    if (!result.isChromeOk) {
+                    if (!result.isBrowserOk) {
                         Text(
-                            text = "Chrome Browser Error:",
+                            text = "Browser Notice:",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "KleverDesktop requires Google Chrome to be installed.",
+                            text = "No supported browser found. Please install one of: Safari (macOS), Microsoft Edge (Windows), or Google Chrome.",
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        
-                        Button(
-                            onClick = {
-                                try {
-                                    Desktop.getDesktop().browse(URI("https://www.google.com/chrome/"))
-                                } catch (e: Exception) {
-                                    logger.error(e) { "Failed to open browser: ${e.message}" }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Download Google Chrome")
+                    } else if (result.availableBrowsers.isNotEmpty()) {
+                        Text(
+                            text = "Available Browsers:",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        for ((browserType, _) in result.availableBrowsers) {
+                            Text(
+                                text = "✓ ${browserType.displayName}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                     
@@ -371,6 +346,10 @@ fun main() = application {
                 text = "Model Settings",
                 onClick = { showModelSettings = true }
             )
+            Item(
+                text = "Browser Config",
+                onClick = { showBrowserSettings = true }
+            )
             Separator()
             Item(
                 text = "Exit",
@@ -420,10 +399,28 @@ fun main() = application {
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background
             ) {
-                ModelSettingsDialog(
-                    onClose = { showModelSettings = false }
-                )
+                ModelSettings(onDismiss = { showModelSettings = false })
+            }
+        }
+    }
+    
+    if (showBrowserSettings) {
+        DialogWindow(
+            onCloseRequest = { showBrowserSettings = false },
+            title = "Browser Configuration",
+            state = rememberDialogState(
+                width = 600.dp,
+                height = 600.dp
+            ),
+            resizable = false
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                BrowserSettings(onDismiss = { showBrowserSettings = false })
             }
         }
     }
 }
+

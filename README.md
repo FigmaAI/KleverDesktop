@@ -77,7 +77,7 @@
 - **Windows**: Windows 10 or later (Beta support)
 - **Memory**: 8GB RAM recommended
 - **Storage**: 500MB free space
-- **Browser**: Google Chrome (required)
+- **Browser**: Google Chrome (recommended for optimal performance)
 - **Java**: Java 17 or later required (JDK or JRE)
 
 ### Java Environment Setup
@@ -102,20 +102,18 @@ OpenJDK Runtime Environment Temurin-17.0.7+7 (build 17.0.7+7)
 OpenJDK 64-Bit Server VM Temurin-17.0.7+7 (build 17.0.7+7, mixed mode)
 ```
 
-### Chrome Browser Setup
+### Chrome Browser Setup (Recommended)
 
-KleverDesktop requires Google Chrome to be installed. If you don't have Chrome installed, you can download it from:
+KleverDesktop works best with Google Chrome for browser automation features. While the app can run without Chrome, some features may have limited functionality. If you want to use these features, you can download Chrome from:
 
 - [Google Chrome Download Page](https://www.google.com/chrome/)
-
-After installation, make sure Chrome is set as your default browser or at least accessible from your system PATH.
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Browser Launch Failed**
-   - Ensure Chrome is installed
+   - For optimal performance, Chrome installation is recommended
    - Check permissions in System Preferences/Settings
    - Restart KleverDesktop
 
@@ -129,9 +127,9 @@ After installation, make sure Chrome is set as your default browser or at least 
    - Windows: Run as administrator if needed
 
 4. **Chrome Browser Issues**
-   - Error message: "Chrome browser check failed. Google Chrome is required."
-   - Solution: Install Google Chrome (see Chrome Browser Setup section)
-   - Make sure Chrome is not running in the background when starting KleverDesktop
+   - Notice: "Chrome Browser Notice: Google Chrome is recommended for optimal performance"
+   - Solution: For best experience, install Google Chrome (see Chrome Browser Setup section)
+   - Some automation features require Chrome to be installed
    - If Chrome is installed but not detected, try reinstalling Chrome
    - On Windows, ensure Chrome is installed for all users or the current user
 

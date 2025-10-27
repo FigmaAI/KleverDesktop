@@ -37,7 +37,7 @@ dependencies {
     // JSON Serialization (removed duplicates, keeping latest version only)
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     
-    // HTTP Client - OkHttp (used in AzureModel, OpenAIModel)
+    // HTTP Client - OkHttp (used in AI model implementations)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // Selenium - Support for all browsers
