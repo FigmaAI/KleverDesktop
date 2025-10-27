@@ -41,10 +41,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // Selenium - Support for all browsers
-    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
+    implementation("org.seleniumhq.selenium:selenium-java:4.26.0")
     
-    // WebDriverManager
-    implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
+    // WebDriverManager - Updated to latest version
+    implementation("io.github.bonigarcia:webdrivermanager:5.9.2")
     
     // Logging (removed duplicates, keeping latest version only)
     implementation("ch.qos.logback:logback-classic:1.4.11")

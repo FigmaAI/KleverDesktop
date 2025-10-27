@@ -409,10 +409,10 @@ fun main() = application {
             onCloseRequest = { showBrowserSettings = false },
             title = "Browser Configuration",
             state = rememberDialogState(
-                width = 600.dp,
-                height = 600.dp
+                width = 700.dp,
+                height = 750.dp
             ),
-            resizable = false
+            resizable = true
         ) {
             Surface(
                 modifier = Modifier.fillMaxSize(),

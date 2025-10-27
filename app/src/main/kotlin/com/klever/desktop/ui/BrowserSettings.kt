@@ -489,61 +489,19 @@ fun ActiveBrowserTabContent(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            "✓",
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Active Browser Configuration",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = "✓ Active Browser Configuration",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                     
                     HorizontalDivider()
                     
-                    // Browser Type
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Browser",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = currentConfig.browserType.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    
-                    // Status
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Status",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "✓ Ready",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        text = "Browser: ${currentConfig.browserType.displayName} • Status: ✓ Ready",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             
@@ -559,18 +517,17 @@ fun ActiveBrowserTabContent(
                         modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "⚠️ ${currentConfig.browserType.displayName} (Experimental)",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "${currentConfig.browserType.displayName} has not been fully tested. " +
-                                  "Screenshots may fail or appear blank. For best results, please switch to Chrome.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
+                    Text(
+                        text = "⚠️ ${currentConfig.browserType.displayName} (Experimental)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        text = "${currentConfig.browserType.displayName} has not been fully tested. Screenshots may fail or appear blank. For best results, please switch to Chrome.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
                     }
                 }
             }
@@ -614,21 +571,15 @@ fun ActiveBrowserTabContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "⚙️",
-                        style = MaterialTheme.typography.displayMedium
-                    )
-                    
-                    Text(
-                        text = "No Browser Configured",
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = "⚙️ No Browser Configured",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     
                     Text(
-                        text = "Please configure a browser to enable automation features. " +
-                              "Select a browser tab above to get started.",
-                        style = MaterialTheme.typography.bodyLarge,
+                        text = "Please configure a browser to enable automation features. Select a browser tab above to get started.",
+                        style = MaterialTheme.typography.bodyMedium,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -696,31 +647,38 @@ fun SafariBrowserContent(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "⚠️ Safari (Experimental)",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚠️ Safari (Experimental)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    Button(
+                        onClick = onTest,
+                        enabled = isInstalled && !isTesting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        when {
+                            isTesting -> Text("Testing...")
+                            isTested -> Text("✓ Tested")
+                            else -> Text("Test")
+                        }
+                    }
+                }
                 
                 Text(
-                    text = "Safari WebDriver has known limitations with WebGL canvas screenshots.",
+                    text = "Safari WebDriver has known limitations with WebGL canvas screenshots. Screenshots may fail or appear blank when using Safari. This is a Safari WebDriver limitation, not a bug in this app. For best results, use Chrome.",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                
-                Text(
-                    text = "Screenshots may fail or appear blank when using Safari. This is a Safari WebDriver limitation, not a bug in this app.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                HorizontalDivider()
-                
-                Text(
-                    text = "✅ For best results, use Chrome or Edge",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         }
@@ -738,7 +696,7 @@ fun SafariBrowserContent(
             ) {
                 Text(
                     text = "🔧 Safari Setup Instructions",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 
@@ -763,19 +721,6 @@ fun SafariBrowserContent(
                 )
             }
         }
-        
-        // Test Button
-        Button(
-            onClick = onTest,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isInstalled && !isTesting
-        ) {
-            when {
-                isTesting -> Text("Testing...")
-                isTested -> Text("✓ Tested - Test Again")
-                else -> Text("Test Safari (Experimental)")
-            }
-        }
     }
 }
 
@@ -798,29 +743,38 @@ fun ChromeBrowserContent(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "✨ No Setup Required",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "✨ No Setup Required",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    Button(
+                        onClick = onTest,
+                        enabled = isInstalled && !isTesting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        when {
+                            isTesting -> Text("Testing...")
+                            isTested -> Text("✓ Tested")
+                            else -> Text("Test")
+                        }
+                    }
+                }
+                
                 Text(
                     text = "Chrome works out of the box! Just test it to verify the connection.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-        }
-        
-        // Test Button
-        Button(
-            onClick = onTest,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isInstalled && !isTesting
-        ) {
-            when {
-                isTesting -> Text("Testing...")
-                isTested -> Text("✓ Tested - Test Again")
-                else -> Text("Test Chrome")
             }
         }
         
@@ -869,31 +823,38 @@ fun EdgeBrowserContent(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "⚠️ Edge (Experimental)",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚠️ Edge (Experimental)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    Button(
+                        onClick = onTest,
+                        enabled = isInstalled && !isTesting,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        when {
+                            isTesting -> Text("Testing...")
+                            isTested -> Text("✓ Tested")
+                            else -> Text("Test")
+                        }
+                    }
+                }
                 
                 Text(
-                    text = "Edge WebDriver has not been fully tested with this application.",
+                    text = "Edge driver will be downloaded automatically on first use. Screenshots may fail or appear blank when using Edge. For best results, use Chrome.",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                
-                Text(
-                    text = "Screenshots may fail or appear blank when using Edge. For best results, use Chrome.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                
-                HorizontalDivider()
-                
-                Text(
-                    text = "✅ Chrome is recommended for best results",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         }
@@ -910,28 +871,15 @@ fun EdgeBrowserContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "✨ No Setup Required",
-                    style = MaterialTheme.typography.titleLarge,
+                    text = "✨ Automatic Setup",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Edge works out of the box! Just test it to verify the connection.",
+                    text = "Edge driver will be downloaded automatically when you test. Just click the button above!",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-        }
-        
-        // Test Button
-        Button(
-            onClick = onTest,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = isInstalled && !isTesting
-        ) {
-            when {
-                isTesting -> Text("Testing...")
-                isTested -> Text("✓ Tested - Test Again")
-                else -> Text("Test Edge (Experimental)")
             }
         }
         
