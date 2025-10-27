@@ -39,13 +39,25 @@ class KleverServer(port: Int) : WebSocketServer(InetSocketAddress(port)) {
     override fun onMessage(conn: WebSocket, message: String) {
         scope.launch {
             try {
-                logger.info { "[IN] Received message: ${message.take(100)}..." }
+                // Log message type without base64 data
+                val messagePreview = if (message.contains("imageBase64") || message.contains("imageData")) {
+                    "${message.take(100)}... [contains image data]"
+                } else {
+                    message.take(200)
+                }
+                logger.info { "[IN] Received message: $messagePreview..." }
                 
                 val response = messageHandler.handle(message)
                 val jsonResponse = mapper.writeValueAsString(response)
                 
                 if (conn.isOpen) {
-                    logger.info { "[OUT] Sending response..." }
+                    // Log response without base64 data
+                    val responsePreview = if (jsonResponse.contains("base64")) {
+                        "${jsonResponse.take(100)}... [contains base64 data, length=${jsonResponse.length}]"
+                    } else {
+                        jsonResponse.take(200)
+                    }
+                    logger.info { "[OUT] Sending response: $responsePreview" }
                     conn.send(jsonResponse)
                     logger.info { "[OK] Response sent successfully" }
                 } else {

@@ -1,9 +1,6 @@
 package com.klever.desktop.browser
 
-import io.github.bonigarcia.wdm.WebDriverManager
 import org.openqa.selenium.*
-import org.openqa.selenium.chrome.ChromeDriver
-import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
@@ -35,120 +32,75 @@ class SeleniumController(
 ) {
     private var driver: WebDriver? = null
     private var wait: WebDriverWait? = null
+    private var browserDriver: BrowserDriver? = null
     
     fun initialize() {
         try {
             logger.info { "Starting browser initialization..." }
             
-            // Improve WebDriverManager setup
-            try {
-                // Set cache path (store in user home directory)
-                val wdmCachePath = Path.of(
-                    System.getProperty("user.home"),
-                    ".kleverdesktop",
-                    "webdriver"
-                ).toString()
-                
-                System.setProperty("wdm.cachePath", wdmCachePath)
-                
-                // Increase timeout settings
-                System.setProperty("wdm.timeout", "60")
-                
-                // Configure logging
-                System.setProperty("wdm.log", "true")
-                
-                // Setup Chrome driver
-                WebDriverManager.chromedriver()
-                    .clearDriverCache() // Prevent cache issues
-                    .clearResolutionCache() // Prevent resolution cache issues
-                    .setup()
-                
-                logger.info { "WebDriverManager setup completed successfully" }
-            } catch (e: Exception) {
-                logger.error(e) { "WebDriverManager setup failed, attempting fallback: ${e.message}" }
-                
-                // Fallback: Try to find ChromeDriver in system PATH
-                val chromeDriverPath = findChromeDriverInPath()
-                if (chromeDriverPath != null) {
-                    System.setProperty("webdriver.chrome.driver", chromeDriverPath)
-                    logger.info { "Using ChromeDriver from PATH: $chromeDriverPath" }
-                } else {
-                    logger.error { "ChromeDriver not found in PATH, will rely on WebDriverManager" }
-                    // Try default WebDriverManager setup
-                    WebDriverManager.chromedriver().setup()
-                }
+            // Load browser configuration
+            val browserConfigRepo = com.klever.desktop.server.repositories.BrowserConfigRepository()
+            val browserConfig = browserConfigRepo.loadConfig()
+            
+            // Detect and create browser driver based on config
+            browserDriver = if (browserConfig != null && !browserConfig.autoDetect) {
+                logger.info { "Using configured browser: ${browserConfig.browserType.displayName}" }
+                BrowserFactory.getBrowserDriver(browserConfig.browserType)
+                    ?: run {
+                        logger.warn { "Configured browser ${browserConfig.browserType.displayName} not available, falling back to auto-detect" }
+                        BrowserFactory.createBrowserDriver()
+                    }
+            } else {
+                logger.info { "Auto-detecting browser..." }
+                BrowserFactory.createBrowserDriver()
             }
             
-            logger.debug { "Setting up Chrome options..." }
+            logger.info { "Using browser: ${browserDriver!!.getBrowserType().displayName}" }
+            
+            // Setup the browser driver (download/configure driver executable)
+            browserDriver!!.setupDriver()
+            
+            // Determine user data directory based on platform
             val userDataDir = when {
-                System.getProperty("os.name").toLowerCase().contains("win") -> {
-                    // Windows path
+                System.getProperty("os.name").lowercase().contains("win") -> {
                     Path.of(
                         System.getProperty("user.home"),
                         "AppData",
                         "Local",
                         "KleverDesktop",
-                        "User_Data"
+                        "User_Data_${browserDriver!!.getBrowserType().name}"
                     ).toFile()
                 }
-                System.getProperty("os.name").toLowerCase().contains("mac") -> {
-                    // macOS path
+                System.getProperty("os.name").lowercase().contains("mac") -> {
                     Path.of(
                         System.getProperty("user.home"),
                         "Library",
                         "Application Support",
                         "KleverDesktop",
-                        "User_Data"
+                        "User_Data_${browserDriver!!.getBrowserType().name}"
                     ).toFile()
                 }
                 else -> {
-                    // Linux and other OS paths
                     Path.of(
                         System.getProperty("user.home"),
                         ".kleverdesktop",
-                        "User_Data"
+                        "User_Data_${browserDriver!!.getBrowserType().name}"
                     ).toFile()
                 }
             }
-
-            // Create directory if it doesn't exist
-            if (!userDataDir.exists()) {
-                userDataDir.mkdirs()
-                logger.debug { "Created user data directory: ${userDataDir.absolutePath}" }
-            }
             
-            val options = ChromeOptions().apply {
-                // Common options
-                addArguments("--remote-allow-origins=*")
-                addArguments("--user-data-dir=${userDataDir.absolutePath}")
-                addArguments("disable-blink-features=AutomationControlled")
-                setExperimentalOption("detach", true)
-                
-                // Add platform-specific options
-                when {
-                    System.getProperty("os.name").toLowerCase().contains("win") -> {
-                        // Windows-specific options
-                        addArguments("--start-maximized")
-                        // Additional options needed for Windows
-                        addArguments("--disable-gpu") // Prevent GPU acceleration issues on Windows
-                        addArguments("--no-sandbox") // Required in some Windows environments
-                    }
-                    System.getProperty("os.name").toLowerCase().contains("mac") -> {
-                        // macOS-specific options
-                        addArguments("--start-maximized")
-                        // Additional options needed for macOS
-                    }
-                    else -> {
-                        // Linux and other OS-specific options
-                        addArguments("--start-maximized")
-                        addArguments("--no-sandbox")
-                    }
-                }
-            }
-            
-            logger.info { "Creating ChromeDriver instance..." }
-            driver = ChromeDriver(options)
+            logger.info { "Creating ${browserDriver!!.getBrowserType().displayName} WebDriver instance..." }
+            driver = browserDriver!!.createDriver(userDataDir)
             wait = WebDriverWait(driver!!, Duration.ofSeconds(10))
+            
+            // Set window size
+            if (screenWidth != null && screenHeight != null) {
+                logger.info { "Setting window size to ${screenWidth}x${screenHeight}" }
+                driver?.manage()?.window()?.size = Dimension(screenWidth, screenHeight)
+            } else {
+                logger.info { "Maximizing window to full screen" }
+                driver?.manage()?.window()?.maximize()
+            }
             
             logger.info { "Navigating to URL: $url" }
             driver?.get(url)
@@ -347,11 +299,126 @@ class SeleniumController(
             val canvas = wait?.until(ExpectedConditions.presenceOfElementLocated(By.tagName("canvas")))
                 ?: throw RuntimeException("Canvas element not found")
             
-            // Get the screenshot of the canvas
-            val screenshot = canvas.getScreenshotAs(OutputType.BYTES)
+            logger.info { "[SCREENSHOT] Starting screenshot capture..." }
+            logger.info { "[SCREENSHOT] Target crop area: ($x, $y) ${width}x${height}" }
             
-            // Convert ByteArray to BufferedImage
-            val img = ImageIO.read(ByteArrayInputStream(screenshot))
+            // CRITICAL: Wait for canvas to fully render
+            // Figma uses WebGL which needs time to render
+            logger.info { "[SCREENSHOT] Waiting for canvas to render..." }
+            Thread.sleep(1000)  // Give canvas time to render
+            
+            // Check if canvas is actually rendered and has content
+            val jsExecutor = driver as JavascriptExecutor
+            val canvasInfo = jsExecutor.executeScript(
+                """
+                var canvas = arguments[0];
+                var ctx = canvas.getContext('2d') || canvas.getContext('webgl') || canvas.getContext('webgl2');
+                return {
+                    width: canvas.width,
+                    height: canvas.height,
+                    offsetWidth: canvas.offsetWidth,
+                    offsetHeight: canvas.offsetHeight,
+                    hasContext: ctx !== null,
+                    contextType: ctx ? (canvas.getContext('webgl') ? 'webgl' : 'webgl2' ? 'webgl2' : '2d') : 'none'
+                };
+                """.trimIndent(),
+                canvas
+            ) as Map<*, *>
+            
+            logger.info { "[SCREENSHOT] Canvas info: $canvasInfo" }
+            
+            // Try different screenshot methods based on reliability
+            // Chrome/Edge: canvas.getScreenshotAs() works well (Method 1)
+            // Safari: Needs full page screenshot + crop (Method 2)
+            val img = try {
+                // Method 1: Direct Selenium screenshot of canvas element (BEST for Chrome/Edge)
+                logger.info { "[SCREENSHOT] Method 1: Trying Selenium canvas.getScreenshotAs()..." }
+                val screenshot = canvas.getScreenshotAs(OutputType.BYTES)
+                val image = ImageIO.read(ByteArrayInputStream(screenshot))
+                
+                if (image == null) {
+                    throw Exception("ImageIO.read returned null")
+                }
+                
+                logger.info { "[SCREENSHOT] ✓ Method 1 succeeded: ${image.width}x${image.height}" }
+                image
+            } catch (method1Error: Exception) {
+                logger.warn { "[SCREENSHOT] ✗ Method 1 failed: ${method1Error.javaClass.simpleName}: ${method1Error.message}" }
+                
+                try {
+                    // Method 2: Full page screenshot + crop (FALLBACK for Safari/WebGL)
+                    logger.info { "[SCREENSHOT] Method 2: Trying full page screenshot + crop..." }
+                    val fullScreenshot = (driver as TakesScreenshot).getScreenshotAs(OutputType.BYTES)
+                    val fullImage = ImageIO.read(ByteArrayInputStream(fullScreenshot))
+                    
+                    if (fullImage == null) {
+                        throw Exception("Full page screenshot returned null")
+                    }
+                    
+                    // Get canvas position and size
+                    val rect = canvas.rect
+                    val canvasX = rect.x
+                    val canvasY = rect.y
+                    val canvasWidth = rect.width
+                    val canvasHeight = rect.height
+                    
+                    logger.info { "[SCREENSHOT] Canvas rect: position=($canvasX, $canvasY), size=${canvasWidth}x${canvasHeight}" }
+                    logger.info { "[SCREENSHOT] Full page size: ${fullImage.width}x${fullImage.height}" }
+                    
+                    // Validate crop area
+                    if (canvasX < 0 || canvasY < 0 || canvasX + canvasWidth > fullImage.width || canvasY + canvasHeight > fullImage.height) {
+                        throw Exception("Canvas area ($canvasX, $canvasY, ${canvasWidth}x${canvasHeight}) exceeds full image (${fullImage.width}x${fullImage.height})")
+                    }
+                    
+                    // Crop to canvas area
+                    val croppedCanvas = fullImage.getSubimage(canvasX, canvasY, canvasWidth, canvasHeight)
+                    logger.info { "[SCREENSHOT] ✓ Method 2 succeeded: ${croppedCanvas.width}x${croppedCanvas.height}" }
+                    
+                    // Check if image is blank (may indicate rendering issue)
+                    val isBlank = isImageBlank(croppedCanvas)
+                    if (isBlank) {
+                        logger.warn { "[SCREENSHOT] WARNING: Image appears blank! Retrying after delay..." }
+                        Thread.sleep(2000)
+                        
+                        val retryScreenshot = (driver as TakesScreenshot).getScreenshotAs(OutputType.BYTES)
+                        val retryImage = ImageIO.read(ByteArrayInputStream(retryScreenshot))
+                        retryImage?.getSubimage(canvasX, canvasY, canvasWidth, canvasHeight) ?: croppedCanvas
+                    } else {
+                        croppedCanvas
+                    }
+                } catch (method2Error: Exception) {
+                    logger.warn { "[SCREENSHOT] ✗ Method 2 failed: ${method2Error.javaClass.simpleName}: ${method2Error.message}" }
+                    
+                    // Method 3: JavaScript canvas.toDataURL() (LAST RESORT)
+                    logger.info { "[SCREENSHOT] Method 3: Trying JavaScript canvas.toDataURL()..." }
+                    
+                    val base64Image = jsExecutor.executeScript(
+                        """
+                        var canvas = arguments[0];
+                        try {
+                            return canvas.toDataURL('image/png').substring(22);
+                        } catch(e) {
+                            console.error('toDataURL failed:', e);
+                            return null;
+                        }
+                        """.trimIndent(),
+                        canvas
+                    ) as? String
+                    
+                    if (base64Image == null || base64Image.isEmpty()) {
+                        throw Exception("All screenshot methods failed")
+                    }
+                    
+                    val imageBytes = Base64.getDecoder().decode(base64Image)
+                    val image = ImageIO.read(ByteArrayInputStream(imageBytes))
+                    logger.info { "[SCREENSHOT] ✓ Method 3 succeeded: ${image?.width}x${image?.height}" }
+                    image ?: throw Exception("Method 3: ImageIO.read returned null")
+                }
+            }
+            
+            if (img == null) {
+                throw RuntimeException("All screenshot methods returned null")
+            }
             
             // Log dimensions for debugging
             logger.info { "[INFO] Screenshot dimensions:" }
@@ -381,6 +448,49 @@ class SeleniumController(
             logger.error(e) { "[ERROR] Failed to take screenshot: ${e.message}" }
             throw RuntimeException("Screenshot failed", e)
         }
+    }
+    
+    /**
+     * Check if an image is blank or mostly black
+     * This helps detect rendering issues where canvas appears black
+     */
+    private fun isImageBlank(image: BufferedImage): Boolean {
+        val sampleSize = minOf(100, image.width * image.height)  // Sample up to 100 pixels
+        var blackPixelCount = 0
+        val threshold = 30  // RGB values below this are considered "black"
+        
+        // Sample pixels evenly across the image
+        val stepX = maxOf(1, image.width / 10)
+        val stepY = maxOf(1, image.height / 10)
+        var sampledPixels = 0
+        
+        for (y in 0 until image.height step stepY) {
+            for (x in 0 until image.width step stepX) {
+                val rgb = image.getRGB(x, y)
+                val red = (rgb shr 16) and 0xFF
+                val green = (rgb shr 8) and 0xFF
+                val blue = rgb and 0xFF
+                
+                // Check if pixel is very dark/black
+                if (red < threshold && green < threshold && blue < threshold) {
+                    blackPixelCount++
+                }
+                sampledPixels++
+                
+                if (sampledPixels >= sampleSize) break
+            }
+            if (sampledPixels >= sampleSize) break
+        }
+        
+        // If more than 95% of sampled pixels are black, consider image blank
+        val blackRatio = blackPixelCount.toFloat() / sampledPixels
+        val isBlank = blackRatio > 0.95f
+        
+        if (isBlank) {
+            logger.warn { "[SCREENSHOT] Image appears blank: ${blackPixelCount}/${sampledPixels} pixels are black (${String.format("%.1f", blackRatio * 100)}%)" }
+        }
+        
+        return isBlank
     }
 
     fun drawBoundingBox(
@@ -425,7 +535,6 @@ class SeleniumController(
                     
                     // Text background (for better readability)
                     val fontMetrics = g2d.fontMetrics
-                    val textWidth = fontMetrics.stringWidth(label)
                     val textHeight = fontMetrics.height
                     
                     // Calculate text position (above the rectangle)
@@ -630,17 +739,4 @@ class SeleniumController(
         }
     }
 
-    // Helper method to find ChromeDriver in system PATH
-    private fun findChromeDriverInPath(): String? {
-        val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
-        val chromeDriverName = if (isWindows) "chromedriver.exe" else "chromedriver"
-        
-        val pathEnv = System.getenv("PATH") ?: return null
-        val pathSeparator = if (isWindows) ";" else ":"
-        
-        return pathEnv.split(pathSeparator)
-            .map { File(it, chromeDriverName) }
-            .firstOrNull { it.exists() && it.canExecute() }
-            ?.absolutePath
-    }
 } 

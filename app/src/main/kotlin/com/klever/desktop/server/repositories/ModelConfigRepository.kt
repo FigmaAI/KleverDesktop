@@ -4,26 +4,14 @@ import java.util.prefs.Preferences
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.modules.subclass
 import com.klever.desktop.server.config.ModelConfig
-import com.klever.desktop.server.config.OpenAIConfig
-import com.klever.desktop.server.config.AzureConfig
-import com.klever.desktop.server.config.OllamaConfig
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
 private val json = Json {
     ignoreUnknownKeys = true
-    serializersModule = SerializersModule {
-        polymorphic(ModelConfig::class) {
-            subclass(OpenAIConfig::class)
-            subclass(AzureConfig::class)
-            subclass(OllamaConfig::class)
-        }
-    }
+    prettyPrint = true
 }
 
 class ModelConfigRepository {
@@ -31,20 +19,33 @@ class ModelConfigRepository {
     private val configChangeListeners = mutableListOf<() -> Unit>()
 
     fun saveConfig(config: ModelConfig) {
-        preferences.put("model_type", when (config) {
-            is OpenAIConfig -> "OpenAI"
-            is AzureConfig -> "Azure"
-            is OllamaConfig -> "Ollama"
-        })
-        preferences.put("config", json.encodeToString<ModelConfig>(config))
+        // Clean API key and other fields from whitespace/newlines
+        val cleanedConfig = config.copy(
+            apiKey = config.apiKey.replace(Regex("\\s"), ""),
+            baseUrl = config.baseUrl.replace(Regex("\\s"), ""),
+            model = config.model.trim().replace(Regex("[\\n\\r]"), "")
+        )
+        
+        preferences.put("config", json.encodeToString(cleanedConfig))
+        logger.info { "Configuration saved: model=${cleanedConfig.model}" }
         notifyListeners()
     }
 
     fun loadCurrentConfig(): ModelConfig? {
-        // val modelType = preferences.get("model_type", null) ?: return null
         val configJson = preferences.get("config", null) ?: return null
         
-        return deserializeConfig(configJson)
+        return try {
+            val config = json.decodeFromString<ModelConfig>(configJson)
+            // Clean loaded config in case old data has whitespace
+            config.copy(
+                apiKey = config.apiKey.replace(Regex("\\s"), ""),
+                baseUrl = config.baseUrl.replace(Regex("\\s"), ""),
+                model = config.model.trim().replace(Regex("[\\n\\r]"), "")
+            )
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to deserialize config" }
+            null
+        }
     }
 
     fun addConfigChangeListener(listener: () -> Unit): () -> Unit {
@@ -58,18 +59,5 @@ class ModelConfigRepository {
 
     private fun notifyListeners() {
         configChangeListeners.forEach { it() }
-    }
-
-    private fun deserializeConfig(json: String): ModelConfig? {
-        return try {
-            when (val config = Json.decodeFromString<ModelConfig>(json)) {
-                is OpenAIConfig -> config
-                is AzureConfig -> config
-                is OllamaConfig -> config
-            }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to deserialize config" }
-            null
-        }
     }
 }
