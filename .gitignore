@@ -36,3 +36,7 @@ app/*.log
 *.xcarchive
 *.pkg
 *.provisionprofile
+
+# Sensitive configuration files
+gcp-service-account.json
+*-service-account.json
