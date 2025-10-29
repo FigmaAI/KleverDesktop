@@ -79,6 +79,10 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
             packageVersion = "1.1.0"
+            description = "Klever Desktop - AI-powered web automation and productivity tool"
+            copyright = "Copyright © 2025 Klever. All rights reserved."
+            vendor = "Klever"
+            licenseFile.set(project.rootProject.file("LICENSE"))
             
             // Explicitly add only required JRE modules (saves approximately 70-80MB)
             modules(
@@ -128,15 +132,28 @@ compose.desktop {
             }
 
             windows {
-                // dirChooser = true // Removed for silent install (MS Store Policy 10.2.9)
-                perUserInstall = true // Minimize UAC and per-user installation
-                menuGroup = "KleverDesktop"
-                upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
+                menuGroup = "Klever Desktop"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
-                // MIT License for open source project
-                licenseFile.set(project.file("../LICENSE"))
-                // Add Windows-specific JVM arguments
-                jvmArgs += listOf("-Djava.library.path=runtime/bin")
+                console = false // Hide console for production build
+
+                // Windows Store and MSI installer settings
+                perUserInstall = true // Per-user installation to minimize UAC and support silent install
+                shortcut = true         // Create desktop shortcut
+                menu = true             // Add app to start menu
+                upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324" // Consistent upgrade UUID
+
+                // Windows-specific JVM arguments
+                jvmArgs += listOf(
+                    "-Djava.library.path=runtime/bin",
+                    "-Dapp.bundle.id=com.klever.desktop",
+                    "-Xms64m",
+                    "-Xmx2g",
+                    "-XX:+UseG1GC",
+                    "-XX:+UseStringDeduplication",
+                    // Windows-specific compatibility settings
+                    "-Djava.awt.headless=false",
+                    "-Dfile.encoding=UTF-8"
+                )
             }
         }
     }
