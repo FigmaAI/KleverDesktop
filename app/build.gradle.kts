@@ -41,10 +41,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // Selenium - Support for all browsers
-    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
+    implementation("org.seleniumhq.selenium:selenium-java:4.26.0")
     
-    // WebDriverManager
-    implementation("io.github.bonigarcia:webdrivermanager:5.7.0")
+    // WebDriverManager - Updated to latest version
+    implementation("io.github.bonigarcia:webdrivermanager:5.9.2")
     
     // Logging (removed duplicates, keeping latest version only)
     implementation("ch.qos.logback:logback-classic:1.4.11")
@@ -68,6 +68,11 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "com.klever.desktop.AppKt"
+        
+        // Disable ProGuard
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
 
         // Use explicit configuration for nativeDistributions
         nativeDistributions {
@@ -128,6 +133,8 @@ compose.desktop {
                 menuGroup = "KleverDesktop"
                 upgradeUuid = "FCDFDD35-04EB-4698-89F5-3CCAB516B324"
                 iconFile.set(project.file("src/main/resources/icon.ico"))
+                // MIT License for open source project
+                licenseFile.set(project.file("../LICENSE"))
                 // Add Windows-specific JVM arguments
                 jvmArgs += listOf("-Djava.library.path=runtime/bin")
             }

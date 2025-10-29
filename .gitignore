@@ -40,3 +40,4 @@ app/*.log
 # Sensitive configuration files
 gcp-service-account.json
 *-service-account.json
+app/klever-desktop.log
