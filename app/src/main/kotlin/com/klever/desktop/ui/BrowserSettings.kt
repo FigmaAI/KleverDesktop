@@ -692,7 +692,7 @@ fun SafariBrowserContent(
         ) {
             Column(
                 modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "🔧 Safari Setup Instructions",
@@ -732,57 +732,12 @@ fun ChromeBrowserContent(
     onTest: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Setup Instructions
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "✨ No Setup Required",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    Button(
-                        onClick = onTest,
-                        enabled = isInstalled && !isTesting,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        when {
-                            isTesting -> Text("Testing...")
-                            isTested -> Text("✓ Tested")
-                            else -> Text("Test")
-                        }
-                    }
-                }
-                
-                Text(
-                    text = "Chrome works out of the box! Just test it to verify the connection.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        
         if (!isInstalled) {
+            // Chrome Not Installed - Simple info card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
             ) {
                 Column(
@@ -790,13 +745,86 @@ fun ChromeBrowserContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "⚠️ Chrome Not Found",
+                        text = "ℹ️ Chrome Not Found",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
                         text = "Please install Google Chrome from: https://www.google.com/chrome/",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        } else {
+            // Chrome is Installed - Show success card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "✨ No Setup Required",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        Button(
+                            onClick = onTest,
+                            enabled = isInstalled && !isTesting,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            when {
+                                isTesting -> Text("Testing...")
+                                isTested -> Text("✓ Tested")
+                                else -> Text("Test")
+                            }
+                        }
+                    }
+                    
+                    Text(
+                        text = "Chrome works out of the box! Just test it to verify the connection.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            // Chrome Installed Info Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "✓ Chrome Installed",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        text = "Google Chrome is installed and ready for browser automation. Chrome is the recommended browser for KleverDesktop as it provides the most reliable screenshot capture and automation features.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
@@ -863,7 +891,7 @@ fun EdgeBrowserContent(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
             Column(
@@ -887,7 +915,7 @@ fun EdgeBrowserContent(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
             ) {
                 Column(
@@ -895,13 +923,15 @@ fun EdgeBrowserContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "⚠️ Edge Not Found",
+                        text = "ℹ️ Edge Not Found",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
                         text = "Please install Microsoft Edge from: https://www.microsoft.com/edge",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
