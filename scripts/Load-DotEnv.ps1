@@ -87,12 +87,28 @@ function Test-DotEnvVariables {
         [switch]$MSIUpload
     )
 
-    $developmentVars = @("JAVA_HOME", "GRADLE_OPTS")
+    $developmentVars = @("GRADLE_OPTS")
     $msiUploadVars = @("GCP_PROJECT_ID", "GCP_BUCKET_NAME", "GCP_SERVICE_ACCOUNT_KEY")
+    $buildVars = @("JAVA_HOME")
 
     Write-Host "Testing environment variables..." -ForegroundColor Yellow
 
     $allPresent = $true
+
+    # Test build variables (always required)
+    Write-Host "  Build variables:" -ForegroundColor Cyan
+    foreach ($var in $buildVars) {
+        $value = [Environment]::GetEnvironmentVariable($var)
+        if ($value) {
+            Write-Host "    ✓ $var = $value" -ForegroundColor Green
+        } else {
+            Write-Host "    ✗ $var is not set" -ForegroundColor Red
+            if ($var -eq "JAVA_HOME") {
+                Write-Host "      JDK 21 installation required: https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/downloads-list.html" -ForegroundColor Gray
+            }
+            $allPresent = $false
+        }
+    }
 
     # Test development environment variables
     if ($Development -or (-not $MSIUpload)) {
@@ -103,9 +119,6 @@ function Test-DotEnvVariables {
                 Write-Host "    ✓ $var = $value" -ForegroundColor Green
             } else {
                 Write-Host "    ⚠ $var is not set" -ForegroundColor Yellow
-                if ($var -eq "JAVA_HOME") {
-                    Write-Host "      JDK 21 installation required: https://docs.aws.amazon.com/corretto/latest/corretto-21-ug/downloads-list.html" -ForegroundColor Gray
-                }
             }
         }
     }
@@ -141,15 +154,33 @@ function Test-DotEnvVariables {
         }
     }
 
-    if ($MSIUpload -and $allPresent) {
-        Write-Host "All required MSI upload variables are set!" -ForegroundColor Green
-        return $true
+    if (-not $allPresent) {
+        Write-Host "Some required build variables are missing. Please check your .env file." -ForegroundColor Red
+        return $false
+    }
+
+    if ($MSIUpload) {
+        $msiVarsPresent = $true
+        foreach ($var in $msiUploadVars) {
+            $value = [Environment]::GetEnvironmentVariable($var)
+            if (-not $value) {
+                $msiVarsPresent = $false
+                break
+            }
+        }
+        if ($msiVarsPresent) {
+            Write-Host "All required MSI upload variables are set!" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "Some MSI upload variables are missing." -ForegroundColor Yellow
+            return $false
+        }
     } elseif ($Development) {
         Write-Host "Development environment checked!" -ForegroundColor Green
         return $true
     } else {
-        Write-Host "Some required variables are missing. Please check your .env file." -ForegroundColor Red
-        return $false
+        Write-Host "Build environment checked!" -ForegroundColor Green
+        return $true
     }
 }
 

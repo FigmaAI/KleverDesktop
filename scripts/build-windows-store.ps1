@@ -7,10 +7,41 @@ param(
     [string]$Version = "",
     [switch]$SkipBuild = $false,
     [switch]$Verbose = $false,
-    [switch]$UploadToGCP = $false
+    [switch]$UploadToGCP = $false,
+    [switch]$Help = $false
 )
 
 $ErrorActionPreference = "Stop"
+
+# Show help if requested
+if ($Help) {
+    Write-Host "============================================"
+    Write-Host "🏪 Windows Store MSI Build - Klever Desktop"
+    Write-Host "============================================"
+    Write-Host ""
+    Write-Host "Usage: .\scripts\build-windows-store.ps1 [OPTIONS]"
+    Write-Host ""
+    Write-Host "Options:"
+    Write-Host "  -Version <version>     Specify version (auto-detected if not provided)"
+    Write-Host "  -SkipBuild            Skip MSI build, only process configuration"
+    Write-Host "  -Verbose              Enable verbose Gradle output"
+    Write-Host "  -UploadToGCP          Upload MSI to Google Cloud Platform after build"
+    Write-Host "  -Help                 Show this help message"
+    Write-Host ""
+    Write-Host "Examples:"
+    Write-Host "  .\scripts\build-windows-store.ps1                    # Build MSI with auto-detected version"
+    Write-Host "  .\scripts\build-windows-store.ps1 -Version 1.2.0     # Build MSI with specific version"
+    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToGCP       # Build and upload to GCP"
+    Write-Host "  .\scripts\build-windows-store.ps1 -SkipBuild         # Only process configuration"
+    Write-Host ""
+    Write-Host "Environment Setup:"
+    Write-Host "  1. Copy .env.example to .env"
+    Write-Host "  2. Edit .env with your configuration"
+    Write-Host "  3. Run: .\scripts\Load-DotEnv.ps1"
+    Write-Host "  4. Test: Test-DotEnvVariables -MSIUpload"
+    Write-Host ""
+    exit 0
+}
 
 Write-Host "============================================"
 Write-Host "🏪 Windows Store MSI Build - Klever Desktop"
@@ -27,11 +58,43 @@ $rootDir = Split-Path -Parent $scriptDir
 
 # Load .env file using our utility script
 $loadEnvScript = Join-Path $scriptDir "Load-DotEnv.ps1"
+$envFilePath = Join-Path $rootDir ".env"
+
 if (Test-Path $loadEnvScript) {
-    & $loadEnvScript
-    Write-Host "✅ Environment variables loaded from .env file"
+    try {
+        # Load the dotenv functions
+        . $loadEnvScript
+        
+        # Load environment variables from root .env file
+        if (Test-Path $envFilePath) {
+            Write-Host "   📁 Found .env file at: $envFilePath"
+            $loadResult = Load-DotEnv -Path $envFilePath
+            if ($loadResult) {
+                Write-Host "✅ Environment variables loaded from .env file"
+                
+                # Test environment variables for MSI build
+                Write-Host "   🔍 Testing environment variables..."
+                $envTestResult = Test-DotEnvVariables -MSIUpload
+                if (-not $envTestResult) {
+                    Write-Host "⚠️  Some environment variables are missing. Build may fail." -ForegroundColor Yellow
+                    Write-Host "💡 Run 'Test-DotEnvVariables -MSIUpload' to check required variables" -ForegroundColor Cyan
+                } else {
+                    Write-Host "✅ All required environment variables are configured" -ForegroundColor Green
+                }
+            } else {
+                Write-Host "❌ Failed to load environment variables from .env file" -ForegroundColor Red
+            }
+        } else {
+            Write-Host "⚠️  .env file not found at: $envFilePath" -ForegroundColor Yellow
+            Write-Host "💡 Create .env file in project root with required variables" -ForegroundColor Cyan
+        }
+    } catch {
+        Write-Host "❌ Error loading environment variables: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "⚠️  Continuing with system environment only" -ForegroundColor Yellow
+    }
 } else {
-    Write-Host "⚠️  Load-DotEnv.ps1 not found, using system environment only"
+    Write-Host "⚠️  Load-DotEnv.ps1 not found, using system environment only" -ForegroundColor Yellow
+    Write-Host "💡 Create .env file with required variables for better configuration management" -ForegroundColor Cyan
 }
 
 # ============================================================================
@@ -55,35 +118,12 @@ if ([string]::IsNullOrEmpty($Version)) {
 }
 
 # ============================================================================
-# Step 3: Process configuration files for production (if needed)
+# Step 3: Prepare for production build
 # ============================================================================
 Write-Host ""
-Write-Host "📊 [3/4] Processing configuration files for production..."
+Write-Host "📊 [3/4] Preparing for production build..."
 
-# Configuration file paths - adjust based on Klever Desktop structure
-$analyticsPropsPath = Join-Path $rootDir "app\src\main\resources\analytics.properties"
-$analyticsBackupPath = Join-Path $rootDir "app\src\main\resources\analytics.properties.backup"
-
-# Check configuration status
-$googleAnalyticsConfigured = (-not [string]::IsNullOrEmpty($env:GOOGLE_ANALYTICS_ID)) -and (-not [string]::IsNullOrEmpty($env:GOOGLE_ANALYTICS_API_SECRET))
-
-Write-Host "   Configuration Status:"
-Write-Host "   - Google Analytics: $(if ($googleAnalyticsConfigured) { '✅ Configured' } else { '⚠️  Not configured' })"
-
-# Process Google Analytics configuration
-if ($googleAnalyticsConfigured -and (Test-Path $analyticsPropsPath)) {
-    Write-Host "🔄 Processing Google Analytics configuration..."
-    Copy-Item -Path $analyticsPropsPath -Destination $analyticsBackupPath -Force
-
-    $content = Get-Content -Path $analyticsPropsPath -Raw
-    $content = $content -replace '\{\{GOOGLE_ANALYTICS_ID\}\}', $env:GOOGLE_ANALYTICS_ID
-    $content = $content -replace '\{\{GOOGLE_ANALYTICS_API_SECRET\}\}', $env:GOOGLE_ANALYTICS_API_SECRET
-    Set-Content -Path $analyticsPropsPath -Value $content -Encoding UTF8
-
-    Write-Host "   ✅ Google Analytics configuration processed"
-} else {
-    Write-Host "   ⚠️  Skipping Google Analytics configuration (not configured or file not found)"
-}
+Write-Host "   ✅ Production build preparation completed"
 
 # ============================================================================
 # Step 4: Build MSI
@@ -145,16 +185,10 @@ if (-not $SkipBuild) {
 }
 
 # ============================================================================
-# Cleanup: Restore configuration templates
+# Cleanup: Build completed
 # ============================================================================
 Write-Host ""
-Write-Host "🧹 Restoring configuration templates..."
-
-# Restore Google Analytics template
-if (Test-Path $analyticsBackupPath) {
-    Move-Item -Path $analyticsBackupPath -Destination $analyticsPropsPath -Force
-    Write-Host "   ✅ Google Analytics template restored"
-}
+Write-Host "🧹 Build cleanup completed..."
 
 # ============================================================================
 # Optional: Upload to GCP for Microsoft Store submission
@@ -163,22 +197,12 @@ if ($UploadToGCP -and -not $SkipBuild) {
     Write-Host ""
     Write-Host "🚀 [5/5] Uploading MSI to Google Cloud Platform..."
 
-    # Check GCP environment variables
-    $gcpVars = @{
-        "GCP_PROJECT_ID" = $env:GCP_PROJECT_ID
-        "GCP_BUCKET_NAME" = $env:GCP_BUCKET_NAME
-        "GCP_SERVICE_ACCOUNT_KEY" = $env:GCP_SERVICE_ACCOUNT_KEY
+    # Use the enhanced environment variable testing
+    . $loadEnvScript
+    if (Test-Path $envFilePath) {
+        Load-DotEnv -Path $envFilePath
     }
-
-    $gcpConfigured = $true
-    foreach ($varName in $gcpVars.Keys) {
-        if ([string]::IsNullOrEmpty($gcpVars[$varName])) {
-            Write-Host "❌ $varName is not set" -ForegroundColor Red
-            $gcpConfigured = $false
-        } else {
-            Write-Host "   ✅ $varName configured" -ForegroundColor Green
-        }
-    }
+    $gcpConfigured = Test-DotEnvVariables -MSIUpload
 
     if (-not $gcpConfigured) {
         Write-Host ""
@@ -235,7 +259,6 @@ Write-Host "🎯 BUILD SUMMARY - Klever Desktop"
 Write-Host "═══════════════════════════════════════════════════════════════"
 Write-Host "📱 App Version: $Version"
 Write-Host "🏪 Target: Windows Store (MSI)"
-Write-Host "📊 Google Analytics: $(if ($googleAnalyticsConfigured) { '✅ Configured' } else { '⚠️  Not configured' })"
 Write-Host "☁️  GCP Upload: $(if ($UploadToGCP) { '✅ Requested' } else { '⚠️  Skipped' })"
 
 if (-not $SkipBuild) {
@@ -256,5 +279,10 @@ if ($UploadToGCP) {
     Write-Host "   2. Upload MSI to GCP: .\scripts\build-windows-store.ps1 -UploadToGCP"
     Write-Host "   3. Submit to Microsoft Partner Center"
     Write-Host "   4. Complete Microsoft Store certification process"
+    Write-Host ""
+    Write-Host "🔧 Environment troubleshooting:"
+    Write-Host "   - Check .env file: .\scripts\Load-DotEnv.ps1; Show-DotEnv"
+    Write-Host "   - Test variables: Test-DotEnvVariables -MSIUpload"
+    Write-Host "   - Get help: .\scripts\build-windows-store.ps1 -Help"
 }
 Write-Host "═══════════════════════════════════════════════════════════════"

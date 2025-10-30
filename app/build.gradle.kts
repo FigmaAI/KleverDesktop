@@ -81,7 +81,7 @@ compose.desktop {
             packageVersion = "1.1.0"
             description = "Klever Desktop - AI-powered web automation and productivity tool"
             copyright = "Copyright © 2025 Klever. All rights reserved."
-            vendor = "Klever"
+            vendor = "JooHyung Park"
             licenseFile.set(project.rootProject.file("LICENSE"))
             
             // Explicitly add only required JRE modules (saves approximately 70-80MB)
