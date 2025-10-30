@@ -86,10 +86,37 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
         isLoadingModels = false
     }
     
-    // State variables
-    var apiKey by remember(currentConfig) { mutableStateOf(currentConfig?.apiKey ?: "") }
-    var model by remember(currentConfig) { mutableStateOf(currentConfig?.model ?: "openai/gpt-4o") }
-    var baseUrl by remember(currentConfig) { mutableStateOf(currentConfig?.baseUrl ?: "https://openrouter.ai/api/v1/chat/completions") }
+    // Separate state variables for OpenRouter and Custom Endpoint
+    // OpenRouter state
+    var openRouterApiKey by remember(currentConfig) { 
+        mutableStateOf(
+            currentConfig?.takeIf { !it.isCustomEndpoint }?.apiKey ?: ""
+        ) 
+    }
+    var openRouterModel by remember(currentConfig) { 
+        mutableStateOf(
+            currentConfig?.takeIf { !it.isCustomEndpoint }?.model ?: "openai/gpt-4o"
+        ) 
+    }
+    
+    // Custom Endpoint state
+    var customApiKey by remember(currentConfig) { 
+        mutableStateOf(
+            currentConfig?.takeIf { it.isCustomEndpoint }?.apiKey ?: ""
+        ) 
+    }
+    var customModel by remember(currentConfig) { 
+        mutableStateOf(
+            currentConfig?.takeIf { it.isCustomEndpoint }?.model ?: "gpt-4o"
+        ) 
+    }
+    var customBaseUrl by remember(currentConfig) { 
+        mutableStateOf(
+            currentConfig?.takeIf { it.isCustomEndpoint }?.baseUrl ?: "https://api.openai.com/v1/chat/completions"
+        ) 
+    }
+    
+    // Shared settings
     var showAdvanced by remember { mutableStateOf(false) }
     var temperature by remember(currentConfig) { mutableStateOf(currentConfig?.temperature ?: 0.0f) }
     var maxTokens by remember(currentConfig) { mutableStateOf(currentConfig?.maxTokens ?: 300) }
@@ -98,6 +125,14 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
     // Tab selection: Show ACTIVE_CONFIG if config exists, otherwise OPEN_ROUTER
     var selectedTab by remember(currentConfig) { 
         mutableStateOf(if (currentConfig != null) ConfigTab.ACTIVE_CONFIG else ConfigTab.OPEN_ROUTER) 
+    }
+    
+    // Reset test status when tab changes
+    LaunchedEffect(selectedTab) {
+        if (selectedTab != ConfigTab.ACTIVE_CONFIG) {
+            isTestSuccessful = false
+            isTesting = false
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -223,15 +258,22 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                 when (selectedTab) {
                     ConfigTab.ACTIVE_CONFIG -> ActiveConfigTabContent(
                         currentConfig = currentConfig,
-                        onConfigureClick = { selectedTab = ConfigTab.OPEN_ROUTER }
+                        onConfigureClick = { 
+                            // Navigate to the appropriate tab based on current config type
+                            selectedTab = if (currentConfig?.isCustomEndpoint == true) {
+                                ConfigTab.CUSTOM
+                            } else {
+                                ConfigTab.OPEN_ROUTER
+                            }
+                        }
                     )
                     
                     ConfigTab.OPEN_ROUTER -> {
                         OpenRouterTabContent(
-                            apiKey = apiKey,
-                            onApiKeyChange = { apiKey = it },
-                            model = model,
-                            onModelChange = { model = it },
+                            apiKey = openRouterApiKey,
+                            onApiKeyChange = { openRouterApiKey = it },
+                            model = openRouterModel,
+                            onModelChange = { openRouterModel = it },
                             popularVisionModels = popularVisionModels,
                             visionModels = visionModels,
                             isLoadingModels = isLoadingModels,
@@ -253,12 +295,12 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                     
                     ConfigTab.CUSTOM -> {
                         CustomTabContent(
-                            baseUrl = baseUrl,
-                            onBaseUrlChange = { baseUrl = it },
-                            apiKey = apiKey,
-                            onApiKeyChange = { apiKey = it },
-                            model = model,
-                            onModelChange = { model = it }
+                            baseUrl = customBaseUrl,
+                            onBaseUrlChange = { customBaseUrl = it },
+                            apiKey = customApiKey,
+                            onApiKeyChange = { customApiKey = it },
+                            model = customModel,
+                            onModelChange = { customModel = it }
                         )
                         
                         // Advanced Settings
@@ -282,9 +324,14 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Get current tab's values
+                    val currentApiKey = if (selectedTab == ConfigTab.CUSTOM) customApiKey else openRouterApiKey
+                    val currentModel = if (selectedTab == ConfigTab.CUSTOM) customModel else openRouterModel
+                    val currentBaseUrl = if (selectedTab == ConfigTab.CUSTOM) customBaseUrl else "https://openrouter.ai/api/v1/chat/completions"
+                    
                     ActionButtons(
-                apiKey = apiKey,
-                model = model,
+                apiKey = currentApiKey,
+                model = currentModel,
                 isTesting = isTesting,
                 isTestSuccessful = isTestSuccessful,
                 onTest = {
@@ -293,13 +340,13 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                             isTesting = true
                                         isTestSuccessful = false
                             
-                            logger.info { "Testing with API key length: ${apiKey.length}, first 10 chars: ${apiKey.take(10)}" }
-                            logger.info { "Model: $model, BaseURL: ${if (selectedTab == ConfigTab.CUSTOM) baseUrl else "https://openrouter.ai/api/v1/chat/completions"}" }
+                            logger.info { "Testing with API key length: ${currentApiKey.length}, first 10 chars: ${currentApiKey.take(10)}" }
+                            logger.info { "Model: $currentModel, BaseURL: $currentBaseUrl" }
                             
                             val testConfig = ModelConfig(
-                                                model = model,
-                                                apiKey = apiKey,
-                                baseUrl = if (selectedTab == ConfigTab.CUSTOM) baseUrl else "https://openrouter.ai/api/v1/chat/completions",
+                                                model = currentModel,
+                                                apiKey = currentApiKey,
+                                baseUrl = currentBaseUrl,
                                 temperature = temperature,
                                 maxTokens = maxTokens,
                                 isCustomEndpoint = selectedTab == ConfigTab.CUSTOM
@@ -348,9 +395,9 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                             
                             try {
                                 val config = ModelConfig(
-                                                model = model,
-                                                apiKey = apiKey,
-                                    baseUrl = if (selectedTab == ConfigTab.CUSTOM) baseUrl else "https://openrouter.ai/api/v1/chat/completions",
+                                                model = currentModel,
+                                                apiKey = currentApiKey,
+                                    baseUrl = currentBaseUrl,
                                     temperature = temperature,
                                     maxTokens = maxTokens,
                                     isCustomEndpoint = selectedTab == ConfigTab.CUSTOM
@@ -359,7 +406,7 @@ fun ModelSettings(onDismiss: () -> Unit = {}) {
                                 repository.saveConfig(config)
                                 currentConfig = config
                                 
-                                logger.info { "Configuration saved: model=$model, custom=${selectedTab == ConfigTab.CUSTOM}" }
+                                logger.info { "Configuration saved: model=$currentModel, custom=${selectedTab == ConfigTab.CUSTOM}" }
                                 
                                             snackbarHostState.showSnackbar(
                                     message = "✓ Settings saved successfully!",
