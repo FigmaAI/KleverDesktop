@@ -78,7 +78,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "KleverDesktop"
-            packageVersion = "1.1.0"
+            packageVersion = "1.1.1"
             description = "Klever Desktop - AI-powered web automation and productivity tool"
             copyright = "Copyright © 2025 Klever. All rights reserved."
             vendor = "JooHyung Park"

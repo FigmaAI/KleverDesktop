@@ -3,6 +3,7 @@
 # =================================================================
 # Klever Desktop - App Store Build Script
 # Creates Xcode archive for App Store submission via Xcode Organizer
+# Supports automatic upload to App Store Connect
 # =================================================================
 
 set -e # Exit immediately if a command exits with a non-zero status
@@ -16,6 +17,8 @@ ARCHIVE_NAME="KleverDesktop"
 ARCHIVE_PATH="app/build/compose/binaries/main/archive/${ARCHIVE_NAME}.xcarchive"
 ENTITLEMENTS="entitlements.plist"
 BUNDLE_ID="com.klever.desktop"
+# Use environment variable if set, otherwise default to true
+AUTO_UPLOAD="${AUTO_UPLOAD:-true}"
 
 # --- Check for entitlements file ---
 if [ ! -f "$ENTITLEMENTS" ]; then
@@ -25,31 +28,58 @@ if [ ! -f "$ENTITLEMENTS" ]; then
 fi
 
 # --- Environment Variables Configuration ---
-echo "🔍 Checking signing configuration..."
+echo "🔍 Checking environment variables..."
 
-# Get signing identity from environment or use default
-if [ -z "$SIGNING_IDENTITY" ]; then
-    echo "⚠️  SIGNING_IDENTITY not set"
+# Apple Developer Configuration
+if [ -z "$SIGNING_IDENTITY_APPSTORE" ]; then
+    echo "⚠️  SIGNING_IDENTITY_APPSTORE not set"
     echo "   Please set your Apple Distribution identity:"
-    echo "   export SIGNING_IDENTITY=\"Apple Distribution: Your Name (TEAM_ID)\""
+    echo "   export SIGNING_IDENTITY_APPSTORE=\"Apple Distribution: Your Name (TEAM_ID)\""
     echo ""
     echo "   Available signing identities:"
     security find-identity -v -p codesigning | grep "Apple Distribution" || echo "   No Apple Distribution identities found"
     exit 1
 fi
 
-echo "✅ Using signing identity: $SIGNING_IDENTITY"
-
-# Extract Team ID from signing identity
-TEAM_ID=$(echo "$SIGNING_IDENTITY" | sed -n 's/.*(\([^)]*\)).*/\1/p')
-if [ -z "$TEAM_ID" ]; then
-    echo "❌ Error: Could not extract Team ID from signing identity"
-    echo "   Please ensure SIGNING_IDENTITY follows the format:"
-    echo "   \"Apple Distribution: Your Name (TEAM_ID)\""
-    exit 1
+if [ -z "$INSTALLER_IDENTITY" ]; then
+    echo "⚠️  INSTALLER_IDENTITY not set, will skip PKG creation"
+    PKG_CREATION_ENABLED=false
+else
+    PKG_CREATION_ENABLED=true
 fi
 
-echo "✅ Team ID: $TEAM_ID"
+# Extract Team ID from signing identity or use environment variable
+if [ -z "$TEAM_ID" ]; then
+    TEAM_ID=$(echo "$SIGNING_IDENTITY_APPSTORE" | sed -n 's/.*(\([^)]*\)).*/\1/p')
+    if [ -z "$TEAM_ID" ]; then
+        echo "❌ Error: Could not extract Team ID from signing identity"
+        echo "   Please ensure SIGNING_IDENTITY_APPSTORE follows the format:"
+        echo "   \"Apple Distribution: Your Name (TEAM_ID)\""
+        exit 1
+    fi
+fi
+
+# Apple ID Configuration (for upload)
+APPLE_UPLOAD_CONFIGURED=false
+if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ]; then
+    APPLE_UPLOAD_CONFIGURED=true
+    echo "✅ Apple Upload: Configured"
+    echo "   - Apple ID: $APPLE_ID"
+    echo "   - Password: $(echo "$APPLE_PASSWORD" | sed 's/./*/g')"
+else
+    echo "⚠️  Apple Upload: Not configured (manual upload required)"
+    echo "   - Missing: APPLE_ID and/or APPLE_PASSWORD"
+fi
+
+echo ""
+echo "📋 Environment Variables Summary:"
+echo "   - Apple Developer: ✅"
+echo "   - Signing Identity: $SIGNING_IDENTITY_APPSTORE"
+echo "   - Installer Identity: $([ "$PKG_CREATION_ENABLED" = true ] && echo "✅ $INSTALLER_IDENTITY" || echo "⚠️ Not set")"
+echo "   - Team ID: $TEAM_ID"
+echo "   - Apple Upload: $([ "$APPLE_UPLOAD_CONFIGURED" = true ] && echo "✅" || echo "⚠️")"
+echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⚠️ Disabled (PKG only)")"
+echo ""
 
 # --- Version Input ---
 echo ""
@@ -120,7 +150,8 @@ echo ""
 echo "📋 Build configuration:"
 echo "   - App Version: $APP_VERSION"
 echo "   - Build Number: $BUILD_NUMBER"
-echo "   - Signing Identity: $SIGNING_IDENTITY"
+echo "   - Signing Identity: $SIGNING_IDENTITY_APPSTORE"
+echo "   - Installer Identity: $([ "$PKG_CREATION_ENABLED" = true ] && echo "$INSTALLER_IDENTITY" || echo "Not set")"
 echo "   - Team ID: $TEAM_ID"
 echo "   - Bundle ID: $BUNDLE_ID"
 echo "   - Entitlements: $ENTITLEMENTS"
@@ -128,7 +159,7 @@ echo "   - Archive Path: $ARCHIVE_PATH"
 echo ""
 
 # --- Step 1: Build the app ---
-echo "🔨 [Step 1/7] Building Klever Desktop..."
+echo "🔨 [Step 1/8] Building Klever Desktop..."
 
 # Gradle build configuration
 GRADLE_PROPS=(
@@ -155,7 +186,7 @@ fi
 echo "✅ App built successfully at: $APP_PATH"
 
 # --- Step 2: Verify app bundle exists ---
-echo "📦 [Step 2/7] Verifying app bundle..."
+echo "📦 [Step 2/8] Verifying app bundle..."
 if [ ! -d "$APP_PATH" ]; then
     echo "❌ Error: App bundle not found at $APP_PATH"
     exit 1
@@ -163,12 +194,12 @@ fi
 echo "✅ App bundle verified"
 
 # --- Step 3: Remove quarantine attributes ---
-echo "🧹 [Step 3/7] Removing quarantine attributes..."
+echo "🧹 [Step 3/8] Removing quarantine attributes..."
 find "${APP_PATH}" -type f -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
 echo "✅ Quarantine attributes cleaned"
 
 # --- Step 4: Sign runtime components ---
-echo "🔏 [Step 4/7] Signing runtime components..."
+echo "🔏 [Step 4/8] Signing runtime components..."
 
 # Find and sign jspawnhelper with special entitlements
 JSPAWNHELPER_PATH=$(find "${APP_PATH}" -name "jspawnhelper" -type f)
@@ -201,7 +232,7 @@ if [ -n "$JSPAWNHELPER_PATH" ]; then
 EOF
     
     echo "   Signing jspawnhelper: $JSPAWNHELPER_PATH"
-    codesign --force --options runtime --entitlements "$NESTED_ENTITLEMENTS" --identifier "jspawnhelper" --sign "$SIGNING_IDENTITY" "$JSPAWNHELPER_PATH"
+    codesign --force --options runtime --entitlements "$NESTED_ENTITLEMENTS" --identifier "jspawnhelper" --sign "$SIGNING_IDENTITY_APPSTORE" "$JSPAWNHELPER_PATH"
     
     # Clean up temporary file
     rm -f "$NESTED_ENTITLEMENTS"
@@ -221,7 +252,7 @@ sign_binary() {
     fi
     
     # Sign the file
-    if codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY" "$file" 2>&1; then
+    if codesign --force --options runtime --entitlements "$ENTITLEMENTS" --sign "$SIGNING_IDENTITY_APPSTORE" "$file" 2>&1; then
         echo "   ✓ Signed: $name"
         return 0
     else
@@ -271,7 +302,7 @@ find "${APP_PATH}" -type f -perm +111 | \
 echo "✅ All runtime components signed"
 
 # --- Step 5: Update app bundle Info.plist ---
-echo "📝 [Step 5/7] Updating app bundle Info.plist..."
+echo "📝 [Step 5/8] Updating app bundle Info.plist..."
 INFO_PLIST="${APP_PATH}/Contents/Info.plist"
 
 # Update version information
@@ -298,8 +329,8 @@ echo "   ✅ ITSAppUsesNonExemptEncryption set to NO"
 echo "✅ App bundle Info.plist updated"
 
 # --- Step 6: Sign the app bundle ---
-echo "🔏 [Step 6/7] Signing the app bundle..."
-codesign --force --options runtime --entitlements "$ENTITLEMENTS" --identifier "$BUNDLE_ID" --sign "$SIGNING_IDENTITY" "$APP_PATH" --deep
+echo "🔏 [Step 6/8] Signing the app bundle..."
+codesign --force --options runtime --entitlements "$ENTITLEMENTS" --identifier "$BUNDLE_ID" --sign "$SIGNING_IDENTITY_APPSTORE" "$APP_PATH" --deep
 
 # Verify signature
 echo "🔍 Verifying signature..."
@@ -315,7 +346,7 @@ fi
 echo "✅ App bundle signed successfully"
 
 # --- Step 7: Create Xcode Archive ---
-echo "📦 [Step 7/7] Creating Xcode Archive..."
+echo "📦 [Step 7/8] Creating Xcode Archive..."
 
 # Create archive directory structure
 echo "   📁 Creating archive directory structure..."
@@ -364,7 +395,7 @@ cat > "$ARCHIVE_PATH/Info.plist" << EOF
         <key>CFBundleVersion</key>
         <string>${BUILD_NUMBER}</string>
         <key>SigningIdentity</key>
-        <string>${SIGNING_IDENTITY}</string>
+        <string>${SIGNING_IDENTITY_APPSTORE}</string>
         <key>Team</key>
         <string>${TEAM_ID}</string>
     </dict>
@@ -381,28 +412,137 @@ cat > "$ARCHIVE_PATH/Info.plist" << EOF
 EOF
 
 echo ""
+echo "🎉 Xcode Archive created successfully!"
+echo ""
+echo "📍 Xcode Archive location: $ARCHIVE_PATH"
+echo ""
+
+# --- Step 8: Create PKG and Upload to App Store Connect (Optional) ---
+echo ""
+echo "🚀 [Step 8/8] Creating PKG and uploading to App Store Connect..."
+
+if [ "$PKG_CREATION_ENABLED" = false ]; then
+    echo "⚠️  PKG creation skipped - INSTALLER_IDENTITY not set"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "🎯 BUILD SUMMARY"
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "📱 App Version: $APP_VERSION"
+    echo "🔢 Build Number: $BUILD_NUMBER"
+    echo "✅ App bundle signed"
+    echo "✅ Xcode Archive created: $ARCHIVE_PATH"
+    echo ""
+    echo "🚀 Next Steps:"
+    echo "   1. Open Xcode"
+    echo "   2. Window → Organizer (⌘+Shift+9)"
+    echo "   3. Select the archive"
+    echo "   4. Click 'Distribute App' → 'App Store Connect' → 'Upload'"
+    echo "═══════════════════════════════════════════════════════════════"
+    exit 0
+fi
+
+# Create PKG file
+echo "📦 Creating installer PKG for App Store Connect..."
+
+# Create pkg directory alongside archive, app, and dmg
+PKG_DIR="app/build/compose/binaries/main/pkg"
+mkdir -p "$PKG_DIR"
+PKG_PATH="$PKG_DIR/${APP_NAME}.pkg"
+
+# Create PKG file from the archive
+productbuild --component "${ARCHIVE_PATH}/Products/Applications/${APP_NAME}.app" /Applications "$PKG_PATH" --sign "$INSTALLER_IDENTITY"
+
+if [ $? -eq 0 ]; then
+    echo "✅ PKG created successfully: $PKG_PATH ($(du -h "$PKG_PATH" | cut -f1))"
+    
+    if [ "$AUTO_UPLOAD" == "true" ]; then
+        echo ""
+        echo "🚀 Attempting automatic upload to App Store Connect..."
+        
+        # Try multiple upload methods
+        UPLOAD_SUCCESS=false
+        
+        # Method 1: Try with environment variable password
+        if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ]; then
+            echo "📤 Method 1: Trying upload with environment variable password..."
+            echo "   Using Apple ID: $APPLE_ID"
+            xcrun altool --upload-app --type osx --file "$PKG_PATH" --username "$APPLE_ID" --password "$APPLE_PASSWORD" --verbose
+            ALTOOL_RESULT=$?
+            if [ $ALTOOL_RESULT -eq 0 ]; then
+                UPLOAD_SUCCESS=true
+                echo "🎉 Successfully uploaded to App Store Connect using environment password!"
+            else
+                echo "❌ Method 1 failed with exit code: $ALTOOL_RESULT"
+            fi
+        else
+            echo "⚠️  Skipping Method 1: APPLE_ID or APPLE_PASSWORD not set"
+        fi
+        
+        # Method 2: Try with keychain password (fallback)
+        if [ "$UPLOAD_SUCCESS" = false ] && [ -n "$APPLE_ID" ]; then
+            echo "📤 Method 2: Trying upload with keychain password..."
+            xcrun altool --upload-app --type osx --file "$PKG_PATH" --username "$APPLE_ID" --password "@keychain:AC_PASSWORD" --verbose 2>/dev/null
+            if [ $? -eq 0 ]; then
+                UPLOAD_SUCCESS=true
+                echo "🎉 Successfully uploaded to App Store Connect using keychain password!"
+            else
+                echo "❌ Method 2 failed: keychain password not found"
+            fi
+        fi
+        
+        # Method 3: Try with app-specific password
+        if [ "$UPLOAD_SUCCESS" = false ] && [ -n "$APPLE_ID" ] && [ -n "$APP_SPECIFIC_PASSWORD" ]; then
+            echo "📤 Method 3: Trying upload with app-specific password..."
+            xcrun altool --upload-app --type osx --file "$PKG_PATH" --username "$APPLE_ID" --password "$APP_SPECIFIC_PASSWORD" --verbose
+            if [ $? -eq 0 ]; then
+                UPLOAD_SUCCESS=true
+                echo "🎉 Successfully uploaded to App Store Connect using app-specific password!"
+            fi
+        fi
+        
+        if [ "$UPLOAD_SUCCESS" = true ]; then
+            echo "✅ Your app is now being processed by Apple for review."
+            echo "📱 You can check the status at: https://appstoreconnect.apple.com"
+        else
+            echo "❌ Automatic upload failed. Please use one of the manual methods below."
+        fi
+    fi
+    
+    # Always show manual upload options
+    echo ""
+    echo "📤 Manual upload options:"
+    echo ""
+    echo "🌟 Option 1: Xcode Organizer (Recommended)"
+    echo "   1. Open Xcode"
+    echo "   2. Window → Organizer (⌘+Shift+9)"
+    echo "   3. Select archive: $ARCHIVE_PATH"
+    echo "   4. Click 'Distribute App' → 'App Store Connect' → 'Upload'"
+    echo ""
+    echo "💻 Option 2: Command Line (requires app-specific password)"
+    echo "   1. Generate app-specific password at appleid.apple.com"
+    echo "   2. Run: xcrun altool --upload-app --type osx --file \"$PKG_PATH\" --username \"[APPLE_ID]\" --password \"[APP_SPECIFIC_PASSWORD]\" --verbose"
+    
+else
+    echo "❌ PKG creation failed. Please check your installer identity: $INSTALLER_IDENTITY"
+    echo "💡 Make sure the certificate is installed and valid."
+fi
+
+echo ""
 echo "═══════════════════════════════════════════════════════════════"
-echo "🎉 Klever Desktop App Store build completed successfully!"
+echo "🎯 BUILD SUMMARY"
 echo "═══════════════════════════════════════════════════════════════"
+echo "📱 App Version: $APP_VERSION"
+echo "🔢 Build Number: $BUILD_NUMBER"
+echo "🏗️  Architecture: $ARCH"
+echo "✅ App bundle signed"
+echo "✅ Xcode Archive created: $ARCHIVE_PATH"
+if [ -f "$PKG_PATH" ]; then
+    echo "✅ PKG file created: $PKG_PATH"
+else
+    echo "⚠️  PKG file creation failed"
+fi
 echo ""
-echo "📍 Xcode Archive location:"
-echo "   $ARCHIVE_PATH"
-echo ""
-echo "📋 Build Summary:"
-echo "   - App Version: $APP_VERSION"
-echo "   - Build Number: $BUILD_NUMBER"
-echo "   - Bundle ID: $BUNDLE_ID"
-echo "   - Architecture: $ARCH"
-echo "   - Signing Identity: $SIGNING_IDENTITY"
-echo "   - Team ID: $TEAM_ID"
-echo ""
-echo "🚀 Next Steps:"
-echo "   1. Open Xcode"
-echo "   2. Go to Window → Organizer (⌘+Shift+9)"
-echo "   3. Select the archive in the Archives tab"
-echo "   4. Click 'Distribute App'"
-echo "   5. Choose 'App Store Connect' → 'Upload'"
-echo ""
-echo "✨ The archive includes all necessary signatures and entitlements!"
+echo "🚀 Ready for App Store Connect submission!"
+echo "   Use any of the upload methods shown above."
 echo "═══════════════════════════════════════════════════════════════"
 
