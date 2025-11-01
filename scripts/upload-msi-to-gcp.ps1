@@ -1,5 +1,6 @@
-# MS Store submission MSI file upload to GCP Cloud Storage + CDN script
+# MS Store submission MSI file upload to GCP Cloud Storage + Store Submission API
 # Microsoft Store policy: https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/upload-app-packages
+# Submission API: https://learn.microsoft.com/en-us/windows/apps/publish/store-submission-api
 
 param(
     [Parameter(Mandatory=$false)]
@@ -15,7 +16,13 @@ param(
     [string]$MsiPath = "app/build/compose/binaries/main/msi/KleverDesktop-*.msi",
 
     [Parameter(Mandatory=$false)]
-    [string]$Version = $null  # Will be auto-detected from build.gradle.kts
+    [string]$Version = $null,  # Will be auto-detected from build.gradle.kts
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$SubmitToStore = $false,  # Submit to Microsoft Store after GCP upload
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$AutoCommit = $false  # Auto-commit the submission
 )
 
 $ErrorActionPreference = "Stop"
@@ -305,4 +312,100 @@ if ($env:GITHUB_ACTIONS -eq "true") {
     Write-Output "::set-output name=app-version::$Version"
 }
 
+# ============================================================================
+# Optional: Submit to Microsoft Store
+# ============================================================================
+if ($SubmitToStore) {
+    Write-Output ""
+    Write-ColorOutput Green "8. Microsoft Store Submission"
+    
+    # Check required environment variables
+    $storeAppId = $env:MS_STORE_APPLICATION_ID
+    $storePackageId = $env:MS_STORE_PACKAGE_ID
+    $storeTenantId = $env:MS_STORE_TENANT_ID
+    $storeClientId = $env:MS_STORE_CLIENT_ID
+    $storeClientSecret = $env:MS_STORE_CLIENT_SECRET
+    
+    if (-not $storeAppId -or -not $storePackageId -or -not $storeTenantId -or -not $storeClientId -or -not $storeClientSecret) {
+        Write-ColorOutput Red "Error: Missing Microsoft Store environment variables"
+        Write-Output "Required variables:"
+        Write-Output "  - MS_STORE_APPLICATION_ID (Product ID, e.g., XP8BRB9SPKFRSW)"
+        Write-Output "  - MS_STORE_PACKAGE_ID (Package ID, e.g., 77005012)"
+        Write-Output "  - MS_STORE_TENANT_ID"
+        Write-Output "  - MS_STORE_CLIENT_ID"
+        Write-Output "  - MS_STORE_CLIENT_SECRET"
+        Write-Output ""
+        Write-ColorOutput Yellow "⏭️  Skipping Store submission"
+    } else {
+        try {
+            # Step 1: Get Access Token
+            Write-Output "  - Obtaining Microsoft Store access token..."
+            $tokenUrl = "https://login.microsoftonline.com/$storeTenantId/oauth2/v2.0/token"
+            $tokenBody = @{
+                grant_type    = "client_credentials"
+                client_id     = $storeClientId
+                client_secret = $storeClientSecret
+                scope         = "https://api.store.microsoft.com/.default"
+            }
+            
+            $tokenResponse = Invoke-RestMethod -Uri $tokenUrl -Method Post -Body $tokenBody -ContentType "application/x-www-form-urlencoded"
+            $accessToken = $tokenResponse.access_token
+            Write-ColorOutput Green "  ✓ Access token obtained"
+            
+            # Step 2: Update Package with GCP URL
+            Write-Output "  - Updating package $storePackageId with MSI URL..."
+            $updatePackageUrl = "https://api.store.microsoft.com/submission/v1/product/$storeAppId/packages/$storePackageId"
+            $packageHeaders = @{
+                "Authorization" = "Bearer $accessToken"
+                "Content-Type"  = "application/json"
+            }
+            
+            $packageBody = @{
+                packageUrl = $PublicUrl
+                version = $Version
+                architecture = "X86"
+            } | ConvertTo-Json
+            
+            $updateResponse = Invoke-RestMethod -Uri $updatePackageUrl -Method Put -Headers $packageHeaders -Body $packageBody
+            Write-ColorOutput Green "  ✓ Package updated successfully"
+            
+            # Step 3: Commit Package (if AutoCommit is enabled)
+            if ($AutoCommit) {
+                Write-Output "  - Committing package changes..."
+                $commitUrl = "https://api.store.microsoft.com/submission/v1/product/$storeAppId/packages/commit"
+                $commitBody = @{
+                    packages = @(
+                        @{
+                            packageId = $storePackageId
+                            packageUrl = $PublicUrl
+                        }
+                    )
+                } | ConvertTo-Json -Depth 3
+                
+                $commitResponse = Invoke-RestMethod -Uri $commitUrl -Method Put -Headers $packageHeaders -Body $commitBody
+                Write-ColorOutput Green "  ✓ Package committed successfully"
+                Write-Output ""
+                Write-ColorOutput Green "✅ Microsoft Store submission completed!"
+                Write-Output "   - Product ID: $storeAppId"
+                Write-Output "   - Package ID: $storePackageId"
+                Write-Output "   - Version: $Version"
+                Write-Output "   - Status: Committed"
+            } else {
+                Write-ColorOutput Yellow "  ⚠️  Package updated but not committed"
+                Write-Output "   - To commit, run with -AutoCommit flag"
+                Write-Output "   - Or commit manually in Partner Center"
+            }
+            
+        } catch {
+            Write-ColorOutput Red "Error: Microsoft Store submission failed"
+            Write-Output "  $($_.Exception.Message)"
+            if ($_.ErrorDetails) {
+                Write-Output "  Details: $($_.ErrorDetails.Message)"
+            }
+            Write-ColorOutput Yellow "⏭️  Continuing without Store submission"
+        }
+    }
+}
+
+Write-Output ""
 Write-ColorOutput Green "Script execution completed!"

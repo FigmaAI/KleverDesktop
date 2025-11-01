@@ -33,19 +33,30 @@ if ($Help) {
     Write-Host "  -Help                 Show this help message"
     Write-Host ""
     Write-Host "Examples:"
-    Write-Host "  .\scripts\build-windows-store.ps1                    # Build MSI with auto-detected version"
-    Write-Host "  .\scripts\build-windows-store.ps1 -Version 1.2.0     # Build MSI with specific version"
-    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToGCP       # Build and upload to GCP"
-    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore     # Build and submit to Microsoft Store"
-    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore -AutoCommit  # Build, submit, and commit"
-    Write-Host "  .\scripts\build-windows-store.ps1 -SkipBuild         # Only process configuration"
+    Write-Host "  .\scripts\build-windows-store.ps1                           # Build MSI with auto-detected version"
+    Write-Host "  .\scripts\build-windows-store.ps1 -Version 1.2.0            # Build MSI with specific version"
+    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToGCP              # Build and upload to GCP"
+    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore            # Build, upload to GCP, and submit to Store"
+    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore -AutoCommit # Build, upload, submit, and auto-commit"
+    Write-Host "  .\scripts\build-windows-store.ps1 -SkipBuild                # Only process configuration"
     Write-Host ""
     Write-Host "Environment Setup:"
     Write-Host "  1. Copy .env.example to .env"
-    Write-Host "  2. Edit .env with your configuration"
+    Write-Host "  2. Edit .env with your configuration (required variables):"
+    Write-Host "     # GCP Upload (required for Store submission)"
+    Write-Host "     GCP_PROJECT_ID=your-project-id"
+    Write-Host "     GCP_BUCKET_NAME=your-bucket-name"
+    Write-Host "     GCP_SERVICE_ACCOUNT_KEY=./gcp-service-account.json"
+    Write-Host ""
+    Write-Host "     # Microsoft Store Submission API"
+    Write-Host "     MS_STORE_APPLICATION_ID=XP8BRB9SPKFRSW  # Product/Store ID"
+    Write-Host "     MS_STORE_PACKAGE_ID=77005012           # Package ID to update"
+    Write-Host "     MS_STORE_TENANT_ID=your-tenant-id"
+    Write-Host "     MS_STORE_CLIENT_ID=your-client-id"
+    Write-Host "     MS_STORE_CLIENT_SECRET=your-client-secret"
+    Write-Host ""
     Write-Host "  3. Run: .\scripts\Load-DotEnv.ps1"
-    Write-Host "  4. Test: Test-DotEnvVariables -MSIUpload   # For GCP upload"
-    Write-Host "          Test-DotEnvVariables -StoreSubmission # For Store submission"
+    Write-Host "  4. Test: Test-DotEnvVariables -MSIUpload"
     Write-Host ""
     exit 0
 }
@@ -220,12 +231,12 @@ Write-Host ""
 Write-Host "🧹 Build cleanup completed..."
 
 # ============================================================================
-# Optional: Upload to GCP for Microsoft Store submission
+# Optional: Upload to GCP (and optionally submit to Store)
 # ============================================================================
-if ($UploadToGCP -and -not $SkipBuild) {
+if (($UploadToGCP -or $UploadToStore) -and -not $SkipBuild) {
     Write-Host ""
     $gcpStep = if ($UploadToStore) { 5 } else { 5 }
-    Write-Host "🚀 [$gcpStep/$totalSteps] Uploading MSI to Google Cloud Platform..."
+    Write-Host "🚀 [$gcpStep/$totalSteps] Uploading MSI to Google Cloud Platform$(if ($UploadToStore) {' and submitting to Store'})..."
 
     # Use the enhanced environment variable testing
     . $loadEnvScript
@@ -258,12 +269,30 @@ if ($UploadToGCP -and -not $SkipBuild) {
                 $uploadScript = Join-Path $scriptDir "upload-msi-to-gcp.ps1"
                 if (Test-Path $uploadScript) {
                     Write-Host "   🔗 Calling upload script..."
-                    & $uploadScript -MsiPath $latestMsi.FullName -Version $Version
+                    
+                    # Build arguments for upload script
+                    $uploadArgs = @(
+                        "-MsiPath", $latestMsi.FullName,
+                        "-Version", $Version
+                    )
+                    
+                    # Add Store submission flags if requested
+                    if ($UploadToStore) {
+                        $uploadArgs += "-SubmitToStore"
+                        if ($AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq "true")) {
+                            $uploadArgs += "-AutoCommit"
+                        }
+                    }
+                    
+                    & $uploadScript @uploadArgs
 
                     if ($LASTEXITCODE -eq 0) {
-                        Write-Host "✅ GCP upload completed successfully!" -ForegroundColor Green
+                        Write-Host "✅ Upload completed successfully!" -ForegroundColor Green
+                        if ($UploadToStore) {
+                            Write-Host "✅ Store submission completed!" -ForegroundColor Green
+                        }
                     } else {
-                        Write-Host "❌ GCP upload failed" -ForegroundColor Red
+                        Write-Host "❌ Upload/submission failed" -ForegroundColor Red
                     }
                 } else {
                     Write-Host "❌ Upload script not found: $uploadScript" -ForegroundColor Red
@@ -272,74 +301,12 @@ if ($UploadToGCP -and -not $SkipBuild) {
                 Write-Host "❌ No MSI file found to upload" -ForegroundColor Red
             }
         } catch {
-            Write-Host "❌ GCP upload failed: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "❌ Upload failed: $($_.Exception.Message)" -ForegroundColor Red
         }
     }
-} elseif ($UploadToGCP -and $SkipBuild) {
+} elseif (($UploadToGCP -or $UploadToStore) -and $SkipBuild) {
     Write-Host ""
-    Write-Host "⚠️  Cannot upload to GCP when build is skipped" -ForegroundColor Yellow
-}
-
-# ============================================================================
-# Optional: Upload to Microsoft Store via Submission API
-# ============================================================================
-if ($UploadToStore -and -not $SkipBuild -and $builtMsiPath) {
-    Write-Host ""
-    Write-Host "🏪 [$totalSteps/$totalSteps] Submitting to Microsoft Store..."
-
-    # Load Store Submission module
-    $submitScript = Join-Path $scriptDir "submit-to-store.ps1"
-    if (-not (Test-Path $submitScript)) {
-        Write-Host "❌ Store Submission script not found: $submitScript" -ForegroundColor Red
-        Write-Host "⏭️  Skipping Store submission" -ForegroundColor Yellow
-    } else {
-        # Reload environment variables to ensure Store Submission vars are loaded
-        . $loadEnvScript
-        if (Test-Path $envFilePath) {
-            Load-DotEnv -Path $envFilePath
-        }
-
-        # Check Store Submission environment variables
-        $storeConfigured = Test-DotEnvVariables -StoreSubmission
-        if (-not $storeConfigured) {
-            Write-Host ""
-            Write-Host "❌ Store Submission environment variables not configured!" -ForegroundColor Red
-            Write-Host "💡 Add these to your .env file:" -ForegroundColor Yellow
-            Write-Host "   MS_STORE_TENANT_ID=your-tenant-id" -ForegroundColor Cyan
-            Write-Host "   MS_STORE_CLIENT_ID=your-client-id" -ForegroundColor Cyan
-            Write-Host "   MS_STORE_CLIENT_SECRET=your-client-secret" -ForegroundColor Cyan
-            Write-Host "   MS_STORE_APPLICATION_ID=your-application-id" -ForegroundColor Cyan
-            Write-Host ""
-            Write-Host "⏭️  Skipping Store submission due to missing configuration" -ForegroundColor Yellow
-        } else {
-            try {
-                # Load the Store Submission functions
-                . $submitScript
-
-                # Use AutoCommit if specified or if environment variable is set
-                $shouldCommit = $AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq "true")
-
-                Write-Host "📦 Found MSI: $(Split-Path -Leaf $builtMsiPath)"
-                Write-Host "🚀 Starting Store submission process..."
-
-                # Call the Store Submission workflow
-                Submit-ToStore -MsiPath $builtMsiPath -AutoCommit:$shouldCommit
-
-                Write-Host "✅ Store submission completed successfully!" -ForegroundColor Green
-            } catch {
-                Write-Host "❌ Store submission failed: $($_.Exception.Message)" -ForegroundColor Red
-                if ($_.ErrorDetails) {
-                    Write-Host "   Error details: $($_.ErrorDetails.Message)" -ForegroundColor Red
-                }
-            }
-        }
-    }
-} elseif ($UploadToStore -and $SkipBuild) {
-    Write-Host ""
-    Write-Host "⚠️  Cannot submit to Store when build is skipped" -ForegroundColor Yellow
-} elseif ($UploadToStore -and -not $builtMsiPath) {
-    Write-Host ""
-    Write-Host "⚠️  Cannot submit to Store: MSI file not found" -ForegroundColor Yellow
+    Write-Host "⚠️  Cannot upload when build is skipped" -ForegroundColor Yellow
 }
 
 # ============================================================================
@@ -367,32 +334,32 @@ Write-Host ""
 if ($UploadToStore) {
     if ($AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq "true")) {
         Write-Host "💡 Next steps for Windows Store:"
-        Write-Host "   1. Submission has been committed to Microsoft Store"
-        Write-Host "   2. Check Partner Center for certification status"
-        Write-Host "   3. Monitor submission progress in Partner Center"
+        Write-Host "   1. Package has been committed to Microsoft Store"
+        Write-Host "   2. Check Partner Center for package validation status"
+        Write-Host "   3. Monitor package updates in Partner Center"
+        Write-Host "   4. Package ID $($env:MS_STORE_PACKAGE_ID) has been updated with version $Version"
     } else {
         Write-Host "💡 Next steps for Windows Store:"
-        Write-Host "   1. Review submission in Partner Center"
-        Write-Host "   2. Commit the submission when ready"
-        Write-Host "   3. Wait for Microsoft Store certification"
+        Write-Host "   1. Package has been updated but not committed"
+        Write-Host "   2. Review changes in Partner Center"
+        Write-Host "   3. Commit manually or rerun with -AutoCommit flag"
+        Write-Host "   4. Package ID: $($env:MS_STORE_PACKAGE_ID)"
     }
 } elseif ($UploadToGCP) {
     Write-Host "💡 Next steps for Windows Store:"
     Write-Host "   1. Test the MSI package locally"
-    Write-Host "   2. Use the generated GCP URL for Microsoft Partner Center submission"
-    Write-Host "   3. Or use Store API: .\scripts\build-windows-store.ps1 -UploadToStore"
+    Write-Host "   2. MSI uploaded to GCP - use URL in Partner Center"
+    Write-Host "   3. Or automate: .\scripts\build-windows-store.ps1 -UploadToStore"
     Write-Host "   4. Complete Microsoft Store certification process"
 } else {
     Write-Host "💡 Next steps for Windows Store:"
     Write-Host "   1. Test the MSI package locally"
-    Write-Host "   2. Upload MSI to GCP: .\scripts\build-windows-store.ps1 -UploadToGCP"
-    Write-Host "   3. Or submit via API: .\scripts\build-windows-store.ps1 -UploadToStore"
-    Write-Host "   4. Complete Microsoft Store certification process"
+    Write-Host "   2. Upload & submit: .\scripts\build-windows-store.ps1 -UploadToStore"
+    Write-Host "   3. Or just upload: .\scripts\build-windows-store.ps1 -UploadToGCP"
     Write-Host ""
     Write-Host "🔧 Environment troubleshooting:"
     Write-Host "   - Check .env file: .\scripts\Load-DotEnv.ps1; Show-DotEnv"
     Write-Host "   - Test GCP vars: Test-DotEnvVariables -MSIUpload"
-    Write-Host "   - Test Store vars: Test-DotEnvVariables -StoreSubmission"
     Write-Host "   - Get help: .\scripts\build-windows-store.ps1 -Help"
 }
 Write-Host "═══════════════════════════════════════════════════════════════"
