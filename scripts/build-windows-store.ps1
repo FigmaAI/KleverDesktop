@@ -29,7 +29,7 @@ if ($Help) {
     Write-Host "  -Verbose              Enable verbose Gradle output"
     Write-Host "  -UploadToGCP          Upload MSI to Google Cloud Platform after build"
     Write-Host "  -UploadToStore        Upload MSI to Microsoft Store via Submission API"
-    Write-Host "  -AutoCommit           Automatically commit submission to Microsoft Store (requires -UploadToStore)"
+    Write-Host "  -AutoCommit           Override .env MS_STORE_AUTO_COMMIT setting (requires -UploadToStore)"
     Write-Host "  -Help                 Show this help message"
     Write-Host ""
     Write-Host "Examples:"
@@ -37,7 +37,10 @@ if ($Help) {
     Write-Host "  .\scripts\build-windows-store.ps1 -Version 1.2.0            # Build MSI with specific version"
     Write-Host "  .\scripts\build-windows-store.ps1 -UploadToGCP              # Build and upload to GCP"
     Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore            # Build, upload to GCP, and submit to Store"
-    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore -AutoCommit # Build, upload, submit, and auto-commit"
+    Write-Host "  .\scripts\build-windows-store.ps1 -UploadToStore -AutoCommit # Override .env and force auto-commit"
+    Write-Host ""
+    Write-Host "Note: AutoCommit is controlled by MS_STORE_AUTO_COMMIT in .env file by default."
+    Write-Host "      Use -AutoCommit flag only to override the .env setting."
     Write-Host "  .\scripts\build-windows-store.ps1 -SkipBuild                # Only process configuration"
     Write-Host ""
     Write-Host "Environment Setup:"
@@ -137,7 +140,11 @@ if ([string]::IsNullOrEmpty($Version)) {
     # Get version from build.gradle.kts using our utility script
     $getVersionScript = Join-Path $scriptDir "Get-AppVersion.ps1"
     if (Test-Path $getVersionScript) {
-        $Version = & $getVersionScript
+        # Dot-source to load the function into current scope
+        . $getVersionScript
+        # Call the function to get version (use absolute path from project root)
+        $buildGradlePath = Join-Path $rootDir "app\build.gradle.kts"
+        $Version = Get-AppVersion -BuildFilePath $buildGradlePath
         Write-Host "✅ Version detected from build.gradle.kts: $Version"
     } else {
         Write-Host "❌ Error: Get-AppVersion.ps1 not found and no version specified"
@@ -233,6 +240,9 @@ Write-Host "🧹 Build cleanup completed..."
 # ============================================================================
 # Optional: Upload to GCP (and optionally submit to Store)
 # ============================================================================
+$gcpUploadSuccess = $false
+$storeSubmissionSuccess = $false
+
 if (($UploadToGCP -or $UploadToStore) -and -not $SkipBuild) {
     Write-Host ""
     $gcpStep = if ($UploadToStore) { 5 } else { 5 }
@@ -270,26 +280,50 @@ if (($UploadToGCP -or $UploadToStore) -and -not $SkipBuild) {
                 if (Test-Path $uploadScript) {
                     Write-Host "   🔗 Calling upload script..."
                     
-                    # Build arguments for upload script
-                    $uploadArgs = @(
-                        "-MsiPath", $latestMsi.FullName,
-                        "-Version", $Version
-                    )
+                    # Build parameters for upload script using hashtable (safer than array splatting)
+                    $uploadParams = @{
+                        MsiPath = $latestMsi.FullName
+                        Version = $Version
+                    }
                     
                     # Add Store submission flags if requested
                     if ($UploadToStore) {
-                        $uploadArgs += "-SubmitToStore"
-                        if ($AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq "true")) {
-                            $uploadArgs += "-AutoCommit"
+                        $uploadParams['SubmitToStore'] = $true
+                        # AutoCommit: .env가 기본값, -AutoCommit 플래그가 있으면 오버라이드
+                        $shouldAutoCommit = if ($PSBoundParameters.ContainsKey('AutoCommit')) {
+                            # 플래그가 명시적으로 전달됨 - 플래그 값 사용 (오버라이드)
+                            $AutoCommit
+                        } else {
+                            # 플래그가 없으면 .env 값 사용 (기본값)
+                            $env:MS_STORE_AUTO_COMMIT -eq "true"
+                        }
+                        if ($shouldAutoCommit) {
+                            $uploadParams['AutoCommit'] = $true
                         }
                     }
                     
-                    & $uploadScript @uploadArgs
+                    # Capture output while still displaying it
+                    & $uploadScript @uploadParams 2>&1 | Tee-Object -Variable uploadOutputVar | Out-Null
+                    
+                    # Convert captured output to string for pattern matching
+                    $uploadOutputString = $uploadOutputVar | Out-String
+                    
+                    # Check for Store submission status in output
+                    if ($UploadToStore -and $uploadOutputString -match "STORE_SUBMISSION_STATUS=(SUCCESS|FAILED)") {
+                        if ($matches[1] -eq "SUCCESS") {
+                            $storeSubmissionSuccess = $true
+                        }
+                    }
 
                     if ($LASTEXITCODE -eq 0) {
+                        $gcpUploadSuccess = $true
                         Write-Host "✅ Upload completed successfully!" -ForegroundColor Green
                         if ($UploadToStore) {
-                            Write-Host "✅ Store submission completed!" -ForegroundColor Green
+                            if ($storeSubmissionSuccess) {
+                                Write-Host "✅ Store submission completed!" -ForegroundColor Green
+                            } else {
+                                Write-Host "⚠️  Store submission failed (check output above)" -ForegroundColor Yellow
+                            }
                         }
                     } else {
                         Write-Host "❌ Upload/submission failed" -ForegroundColor Red
@@ -318,10 +352,37 @@ Write-Host "🎯 BUILD SUMMARY - Klever Desktop"
 Write-Host "═══════════════════════════════════════════════════════════════"
 Write-Host "📱 App Version: $Version"
 Write-Host "🏪 Target: Windows Store (MSI)"
-Write-Host "☁️  GCP Upload: $(if ($UploadToGCP) { '✅ Requested' } else { '⚠️  Skipped' })"
-Write-Host "🏪 Store Submission: $(if ($UploadToStore) { '✅ Requested' } else { '⚠️  Skipped' })"
+
+# GCP Upload status - show actual result if attempted, otherwise show if requested/skipped
+if ($UploadToGCP -or $UploadToStore) {
+    if ($gcpUploadSuccess) {
+        Write-Host "☁️  GCP Upload: ✅ Completed"
+    } elseif (($UploadToGCP -or $UploadToStore) -and -not $SkipBuild) {
+        Write-Host "☁️  GCP Upload: ❌ Failed"
+    } else {
+        Write-Host "☁️  GCP Upload: ⚠️  Skipped"
+    }
+} else {
+    Write-Host "☁️  GCP Upload: ⚠️  Skipped"
+}
+
+# Store Submission status
 if ($UploadToStore) {
-    Write-Host "   Auto Commit: $(if ($AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq 'true')) { '✅ Enabled' } else { '⚠️  Disabled' })"
+    if ($storeSubmissionSuccess) {
+        Write-Host "🏪 Store Submission: ✅ Completed"
+    } elseif (-not $SkipBuild) {
+        Write-Host "🏪 Store Submission: ❌ Failed"
+    } else {
+        Write-Host "🏪 Store Submission: ⚠️  Skipped"
+    }
+    $shouldAutoCommit = if ($PSBoundParameters.ContainsKey('AutoCommit')) {
+        $AutoCommit
+    } else {
+        $env:MS_STORE_AUTO_COMMIT -eq "true"
+    }
+    Write-Host "   Auto Commit: $(if ($shouldAutoCommit) { '✅ Enabled' } else { '⚠️  Disabled' })"
+} else {
+    Write-Host "🏪 Store Submission: ⚠️  Skipped"
 }
 
 if (-not $SkipBuild) {
@@ -332,7 +393,14 @@ if (-not $SkipBuild) {
 
 Write-Host ""
 if ($UploadToStore) {
-    if ($AutoCommit -or ($env:MS_STORE_AUTO_COMMIT -eq "true")) {
+    # AutoCommit 상태 확인: .env가 기본값, 플래그가 있으면 오버라이드
+    $shouldAutoCommit = if ($PSBoundParameters.ContainsKey('AutoCommit')) {
+        $AutoCommit
+    } else {
+        $env:MS_STORE_AUTO_COMMIT -eq "true"
+    }
+    
+    if ($shouldAutoCommit) {
         Write-Host "💡 Next steps for Windows Store:"
         Write-Host "   1. Package has been committed to Microsoft Store"
         Write-Host "   2. Check Partner Center for package validation status"
@@ -342,7 +410,7 @@ if ($UploadToStore) {
         Write-Host "💡 Next steps for Windows Store:"
         Write-Host "   1. Package has been updated but not committed"
         Write-Host "   2. Review changes in Partner Center"
-        Write-Host "   3. Commit manually or rerun with -AutoCommit flag"
+        Write-Host "   3. Commit manually or set MS_STORE_AUTO_COMMIT=true in .env file"
         Write-Host "   4. Package ID: $($env:MS_STORE_PACKAGE_ID)"
     }
 } elseif ($UploadToGCP) {

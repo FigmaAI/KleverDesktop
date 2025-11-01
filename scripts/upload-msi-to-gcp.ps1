@@ -27,6 +27,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Track Store submission status
+$script:StoreSubmissionSucceeded = $false
+$script:StoreSubmissionFailed = $false
+
 Write-Host "=== MSI Upload to GCP Cloud Storage ===" -ForegroundColor Yellow
 Write-Host "MS Store Policy Reference: https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msi/upload-app-packages" -ForegroundColor Yellow
 Write-Host ""
@@ -41,13 +45,24 @@ if (-not $ProjectId -or -not $BucketName -or -not $ServiceAccountKey) {
     $loadEnvScript = Join-Path $scriptDir "Load-DotEnv.ps1"
 
     if (Test-Path $loadEnvScript) {
-        & $loadEnvScript
-        Write-Host "✅ Environment variables loaded from .env file" -ForegroundColor Green
+        # Dot-source to load functions into current scope
+        . $loadEnvScript
+        
+        # Load .env file from root directory
+        $rootDir = Split-Path -Parent $scriptDir
+        $envFilePath = Join-Path $rootDir ".env"
+        
+        if (Test-Path $envFilePath) {
+            Load-DotEnv -Path $envFilePath
+            Write-Host "✅ Environment variables loaded from .env file" -ForegroundColor Green
 
-        # Re-read environment variables after loading
-        if (-not $ProjectId) { $ProjectId = $env:GCP_PROJECT_ID }
-        if (-not $BucketName) { $BucketName = $env:GCP_BUCKET_NAME }
-        if (-not $ServiceAccountKey) { $ServiceAccountKey = $env:GCP_SERVICE_ACCOUNT_KEY }
+            # Re-read environment variables after loading
+            if (-not $ProjectId) { $ProjectId = $env:GCP_PROJECT_ID }
+            if (-not $BucketName) { $BucketName = $env:GCP_BUCKET_NAME }
+            if (-not $ServiceAccountKey) { $ServiceAccountKey = $env:GCP_SERVICE_ACCOUNT_KEY }
+        } else {
+            Write-Host "⚠️  .env file not found at: $envFilePath" -ForegroundColor Yellow
+        }
     } else {
         Write-Host "⚠️  Load-DotEnv.ps1 not found, using system environment only" -ForegroundColor Yellow
     }
@@ -396,6 +411,9 @@ if ($SubmitToStore) {
                 Write-Output "   - Or commit manually in Partner Center"
             }
             
+            # Mark Store submission as succeeded
+            $script:StoreSubmissionSucceeded = $true
+            
         } catch {
             Write-ColorOutput Red "Error: Microsoft Store submission failed"
             Write-Output "  $($_.Exception.Message)"
@@ -403,9 +421,21 @@ if ($SubmitToStore) {
                 Write-Output "  Details: $($_.ErrorDetails.Message)"
             }
             Write-ColorOutput Yellow "⏭️  Continuing without Store submission"
+            # Set exit code to indicate Store submission failure (but GCP upload succeeded)
+            # Use exit code 2 to distinguish from complete failure (exit code 1)
+            $script:StoreSubmissionFailed = $true
         }
     }
 }
 
 Write-Output ""
 Write-ColorOutput Green "Script execution completed!"
+
+# Output Store submission status for parent script to detect
+if ($SubmitToStore) {
+    if ($script:StoreSubmissionSucceeded) {
+        Write-Output "STORE_SUBMISSION_STATUS=SUCCESS"
+    } elseif ($script:StoreSubmissionFailed) {
+        Write-Output "STORE_SUBMISSION_STATUS=FAILED"
+    }
+}
