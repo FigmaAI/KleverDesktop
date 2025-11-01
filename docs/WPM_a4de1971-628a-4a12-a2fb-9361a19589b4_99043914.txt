@@ -1,0 +1,43 @@
+2025-10-25 08:48:17.775 [CORE] WinGet, version [1.10.390], activity [{11F7AE9D-EB6E-49E9-AE40-B1F245DEE627}]
+2025-10-25 08:48:17.776 [CORE] OS: Windows.Desktop v10.0.19045.5854
+2025-10-25 08:48:17.776 [CORE] Command line Args: "winget.exe" install -m D:\TRANSFER\51d57cf4-b9b1-f011-870c-0022487979e8\output\installer_2025-10-25T08-48-17Z.yaml
+2025-10-25 08:48:17.776 [CORE] Package: Microsoft.DesktopAppInstaller v1.25.390.0
+2025-10-25 08:48:17.776 [CORE] IsCOMCall:0; Caller: winget-cli
+2025-10-25 08:48:17.782 [CLI ] WinGet invoked with arguments: 'install' '-m' 'D:\TRANSFER\51d57cf4-b9b1-f011-870c-0022487979e8\output\installer_2025-10-25T08-48-17Z.yaml'
+2025-10-25 08:48:17.783 [CLI ] Found subcommand: install
+2025-10-25 08:48:17.783 [CLI ] Leaf command to execute: root:install
+2025-10-25 08:48:17.793 [CLI ] Executing command: install
+2025-10-25 08:48:17.824 [CLI ] Manifest fields: Name [<Your_package_name>], Version [<Your_version>]
+2025-10-25 08:48:17.878 [CLI ] Generated temp download path: C:\Users\<Your_username>\AppData\Local\Temp\WinGet\<Your_package_name>\2dcff51327501b6f6c32382c81c5d001a026fee6df642790252e90062a67c216
+2025-10-25 08:48:17.878 [CLI ] Installer download headers: 
+2025-10-25 08:48:17.882 [CORE] Downloading to path: C:\Users\<Your_username>\AppData\Local\Temp\WinGet\<Your_package_name>\2dcff51327501b6f6c32382c81c5d001a026fee6df642790252e90062a67c216
+2025-10-25 08:48:17.883 [CORE] Default proxy is not set
+2025-10-25 08:48:17.884 [CORE] DeliveryOptimization downloading from url: https://ab6cd213e471.ngrok-free.app/1.1.0/KleverDesktop-1.1.0.msi
+2025-10-25 08:48:57.451 [CORE] DeliveryOptimization error: 0x80190193, extended error: 0x00000000
+2025-10-25 08:48:57.452 [FAIL] C:\__w\1\s\external\pkg\src\AppInstallerCommonCore\DODownloader.cpp(361)\WindowsPackageManager.dll!00007FFFE640E63B: (caller: 00007FFFE640D323) Exception(1) tid(e48) 80190193 Forbidden (403).
+
+2025-10-25 08:48:57.477 [CORE] Started applying motw to C:\Users\<Your_username>\AppData\Local\Temp\WinGet\<Your_package_name>\2dcff51327501b6f6c32382c81c5d001a026fee6df642790252e90062a67c216 with zone: 3
+2025-10-25 08:48:57.487 [CORE] Finished applying motw
+2025-10-25 08:48:57.487 [CORE] WinINet downloading from url: https://ab6cd213e471.ngrok-free.app/1.1.0/KleverDesktop-1.1.0.msi
+2025-10-25 08:48:57.773 [CORE] Download request failed. Returned status: 403
+2025-10-25 08:48:57.773 [FAIL] C:\__w\1\s\external\pkg\src\AppInstallerCommonCore\Downloader.cpp(209)\WindowsPackageManager.dll!00007FFFE640A895: (caller: 00007FFFE6406325) Exception(2) tid(e48) 80190193 Forbidden (403).
+    Msg:[Download request status is not success.] 
+
+2025-10-25 08:48:57.776 [CLI ] Failed to download, waiting a bit and retry. Url: https://ab6cd213e471.ngrok-free.app/1.1.0/KleverDesktop-1.1.0.msi
+2025-10-25 08:48:58.286 [CORE] Downloading to path: C:\Users\<Your_username>\AppData\Local\Temp\WinGet\<Your_package_name>\2dcff51327501b6f6c32382c81c5d001a026fee6df642790252e90062a67c216
+2025-10-25 08:48:58.286 [CORE] DeliveryOptimization downloading from url: https://ab6cd213e471.ngrok-free.app/1.1.0/KleverDesktop-1.1.0.msi
+2025-10-25 08:48:58.448 [CORE] DeliveryOptimization error: 0x80190193, extended error: 0x00000000
+2025-10-25 08:48:58.448 [FAIL] C:\__w\1\s\external\pkg\src\AppInstallerCommonCore\DODownloader.cpp(361)\WindowsPackageManager.dll!00007FFFE640E63B: (caller: 00007FFFE640D323) Exception(3) tid(e48) 80190193 Forbidden (403).
+
+2025-10-25 08:48:58.464 [CORE] Started applying motw to C:\Users\<Your_username>\AppData\Local\Temp\WinGet\<Your_package_name>\2dcff51327501b6f6c32382c81c5d001a026fee6df642790252e90062a67c216 with zone: 3
+2025-10-25 08:48:58.464 [CORE] Finished applying motw
+2025-10-25 08:48:58.464 [CORE] WinINet downloading from url: https://ab6cd213e471.ngrok-free.app/1.1.0/KleverDesktop-1.1.0.msi
+2025-10-25 08:48:58.570 [CORE] Download request failed. Returned status: 403
+2025-10-25 08:48:58.570 [FAIL] C:\__w\1\s\external\pkg\src\AppInstallerCommonCore\Downloader.cpp(209)\WindowsPackageManager.dll!00007FFFE640A895: (caller: 00007FFFE6406325) Exception(4) tid(e48) 80190193 Forbidden (403).
+    Msg:[Download request status is not success.] 
+
+2025-10-25 08:48:58.572 [CLI ] Caught wil::ResultException: C:\__w\1\s\external\pkg\src\AppInstallerCommonCore\Downloader.cpp(209)\WindowsPackageManager.dll!00007FFFE640A895: (caller: 00007FFFE6406325) Exception(4) tid(e48) 80190193 Forbidden (403).
+    Msg:[Download request status is not success.] 
+
+
+2025-10-25 08:48:58.587 [NuGet] Your app installation has failed with exit code -2145844845

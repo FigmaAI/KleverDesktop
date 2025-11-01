@@ -22,8 +22,6 @@ figma-client/
 /app/config/model_config.json
 korean_comments_log.txt
 
-# Ignore docs directory (optimization guides and documentation)
-docs/
 
 # Ignore environment variables
 .envrc
@@ -40,3 +38,5 @@ app/*.log
 # Sensitive configuration files
 gcp-service-account.json
 *-service-account.json
+.env
+.env.backup.*

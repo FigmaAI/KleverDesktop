@@ -84,11 +84,13 @@ function Show-DotEnv {
 function Test-DotEnvVariables {
     param(
         [switch]$Development,
-        [switch]$MSIUpload
+        [switch]$MSIUpload,
+        [switch]$StoreSubmission
     )
 
     $developmentVars = @("GRADLE_OPTS")
     $msiUploadVars = @("GCP_PROJECT_ID", "GCP_BUCKET_NAME", "GCP_SERVICE_ACCOUNT_KEY")
+    $storeSubmissionVars = @("MS_STORE_TENANT_ID", "MS_STORE_CLIENT_ID", "MS_STORE_CLIENT_SECRET", "MS_STORE_APPLICATION_ID")
     $buildVars = @("JAVA_HOME")
 
     Write-Host "Testing environment variables..." -ForegroundColor Yellow
@@ -124,9 +126,25 @@ function Test-DotEnvVariables {
     }
 
     # Test MSI upload variables
-    if ($MSIUpload -or (-not $Development)) {
+    if ($MSIUpload -or (-not $Development -and -not $StoreSubmission)) {
         Write-Host "  MSI upload variables:" -ForegroundColor Cyan
         foreach ($var in $msiUploadVars) {
+            $value = [Environment]::GetEnvironmentVariable($var)
+            if ($value) {
+                Write-Host "    ✓ $var = $value" -ForegroundColor Green
+            } else {
+                Write-Host "    ✗ $var is not set" -ForegroundColor Red
+                if (-not $StoreSubmission) {
+                    $allPresent = $false
+                }
+            }
+        }
+    }
+
+    # Test Store Submission variables
+    if ($StoreSubmission) {
+        Write-Host "  Store Submission variables:" -ForegroundColor Cyan
+        foreach ($var in $storeSubmissionVars) {
             $value = [Environment]::GetEnvironmentVariable($var)
             if ($value) {
                 Write-Host "    ✓ $var = $value" -ForegroundColor Green
@@ -159,7 +177,24 @@ function Test-DotEnvVariables {
         return $false
     }
 
-    if ($MSIUpload) {
+    if ($StoreSubmission) {
+        $storeVarsPresent = $true
+        foreach ($var in $storeSubmissionVars) {
+            $value = [Environment]::GetEnvironmentVariable($var)
+            if (-not $value) {
+                $storeVarsPresent = $false
+                break
+            }
+        }
+        if ($storeVarsPresent) {
+            Write-Host "All required Store Submission variables are set!" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "Some Store Submission variables are missing." -ForegroundColor Yellow
+            Write-Host "Required variables: $($storeSubmissionVars -join ', ')" -ForegroundColor Yellow
+            return $false
+        }
+    } elseif ($MSIUpload) {
         $msiVarsPresent = $true
         foreach ($var in $msiUploadVars) {
             $value = [Environment]::GetEnvironmentVariable($var)
@@ -189,10 +224,11 @@ Write-Host ""
 Write-Host "PowerShell dotenv functions loaded!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Usage:" -ForegroundColor Yellow
-Write-Host "  Load-DotEnv                      # Load environment variables from .env file" -ForegroundColor Cyan
-Write-Host "  Show-DotEnv                      # Show .env file contents" -ForegroundColor Cyan
-Write-Host "  Test-DotEnvVariables -Development # Check development environment variables" -ForegroundColor Cyan
-Write-Host "  Test-DotEnvVariables -MSIUpload   # Check MSI upload environment variables" -ForegroundColor Cyan
+Write-Host "  Load-DotEnv                         # Load environment variables from .env file" -ForegroundColor Cyan
+Write-Host "  Show-DotEnv                         # Show .env file contents" -ForegroundColor Cyan
+Write-Host "  Test-DotEnvVariables -Development  # Check development environment variables" -ForegroundColor Cyan
+Write-Host "  Test-DotEnvVariables -MSIUpload    # Check MSI upload environment variables" -ForegroundColor Cyan
+Write-Host "  Test-DotEnvVariables -StoreSubmission # Check Store Submission environment variables" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Quick Start:" -ForegroundColor Yellow
 Write-Host "  1. Copy-Item .env.example .env" -ForegroundColor White
