@@ -322,7 +322,28 @@ if (($UploadToGCP -or $UploadToStore) -and -not $SkipBuild) {
                             if ($storeSubmissionSuccess) {
                                 Write-Host "✅ Store submission completed!" -ForegroundColor Green
                             } else {
-                                Write-Host "⚠️  Store submission failed (check output above)" -ForegroundColor Yellow
+                                Write-Host ""
+                                Write-Host "⚠️  Store submission failed!" -ForegroundColor Yellow
+                                
+                                # Extract and display Store submission error details from output
+                                if ($uploadOutputString -match "(?s)8\. Microsoft Store Submission.*?Error: Microsoft Store submission failed.*?(?=Script execution completed|$)") {
+                                    $errorSection = $matches[0]
+                                    Write-Host "   Error details:" -ForegroundColor Red
+                                    # Extract error description
+                                    if ($errorSection -match '"error_description":\s*"([^"]+)"') {
+                                        $errorDesc = $matches[1]
+                                        Write-Host "   $errorDesc" -ForegroundColor Red
+                                    }
+                                    # Extract error code
+                                    if ($errorSection -match '"error":\s*"([^"]+)"') {
+                                        $errorCode = $matches[1]
+                                        Write-Host "   Error code: $errorCode" -ForegroundColor Red
+                                    }
+                                    Write-Host ""
+                                    Write-Host "   💡 Check the output above for full error details" -ForegroundColor Cyan
+                                } else {
+                                    Write-Host "   Check the output above for error details" -ForegroundColor Yellow
+                                }
                             }
                         }
                     } else {
