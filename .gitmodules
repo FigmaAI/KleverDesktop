@@ -4,3 +4,4 @@
 [submodule "appagent"]
 	path = appagent
 	url = https://github.com/FigmaAI/appagent.git
+	branch = main
