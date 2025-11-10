@@ -1,40 +1,49 @@
-import { Box, Button, Card, CardContent, Typography, Stack } from '@mui/joy'
+import { Box, Button, Sheet, Typography, Stack } from '@mui/joy'
 import { Add as AddIcon } from '@mui/icons-material'
 
 export function ProjectList() {
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', py: 4, px: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-        <Box>
-          <Typography level="h2" fontWeight="bold">
-            Projects
-          </Typography>
-          <Typography level="body-md" textColor="text.secondary">
-            Manage your automation projects
-          </Typography>
-        </Box>
-        <Button startDecorator={<AddIcon />}>
-          New Project
-        </Button>
-      </Stack>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
+      <Box sx={{ p: 4, flex: 1 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <Box>
+            <Typography level="h2" fontWeight="bold">
+              Projects
+            </Typography>
+            <Typography level="body-md" textColor="text.secondary">
+              Manage your automation projects
+            </Typography>
+          </Box>
+          <Button startDecorator={<AddIcon />} color="primary">
+            New Project
+          </Button>
+        </Stack>
 
-      <Card>
-        <CardContent>
+        <Sheet
+          variant="outlined"
+          sx={{
+            p: 4,
+            borderRadius: 'md',
+            bgcolor: 'background.surface',
+            textAlign: 'center',
+          }}
+        >
           <Typography level="title-lg" sx={{ mb: 1 }}>
             No projects yet
           </Typography>
-          <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
+          <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
             Create your first project to get started with UI automation
           </Typography>
           <Button
-            variant="outlined"
+            variant="solid"
+            color="primary"
             startDecorator={<AddIcon />}
-            fullWidth
+            sx={{ minWidth: 200 }}
           >
             Create Project
           </Button>
-        </CardContent>
-      </Card>
+        </Sheet>
+      </Box>
     </Box>
   )
 }

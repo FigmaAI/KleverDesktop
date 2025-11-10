@@ -1,22 +1,27 @@
-import Box from '@mui/joy/Box'
-import { Button, Card, CardContent, Typography, Stack } from '@mui/joy'
-
+import { Box, Button, Sheet, Typography, Stack } from '@mui/joy'
 
 export function Settings() {
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', py: 4, px: 2 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography level="h2" fontWeight="bold">
-          Settings
-        </Typography>
-        <Typography level="body-md" textColor="text.secondary">
-          Configure your application preferences
-        </Typography>
-      </Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
+      <Box sx={{ p: 4, flex: 1 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography level="h2" fontWeight="bold">
+            Settings
+          </Typography>
+          <Typography level="body-md" textColor="text.secondary">
+            Configure your application preferences
+          </Typography>
+        </Box>
 
-      <Stack spacing={3}>
-        <Card>
-          <CardContent>
+        <Stack spacing={3}>
+          <Sheet
+            variant="outlined"
+            sx={{
+              p: 3,
+              borderRadius: 'md',
+              bgcolor: 'background.surface',
+            }}
+          >
             <Typography level="title-lg" sx={{ mb: 1 }}>
               Model Configuration
             </Typography>
@@ -26,11 +31,16 @@ export function Settings() {
             <Typography level="body-sm" textColor="text.secondary">
               Coming soon...
             </Typography>
-          </CardContent>
-        </Card>
+          </Sheet>
 
-        <Card>
-          <CardContent>
+          <Sheet
+            variant="outlined"
+            sx={{
+              p: 3,
+              borderRadius: 'md',
+              bgcolor: 'background.surface',
+            }}
+          >
             <Typography level="title-lg" sx={{ mb: 1 }}>
               Platform Tools
             </Typography>
@@ -40,13 +50,13 @@ export function Settings() {
             <Typography level="body-sm" textColor="text.secondary">
               Coming soon...
             </Typography>
-          </CardContent>
-        </Card>
+          </Sheet>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button>Save Settings</Button>
-        </Box>
-      </Stack>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button color="primary">Save Settings</Button>
+          </Box>
+        </Stack>
+      </Box>
     </Box>
   )
 }
