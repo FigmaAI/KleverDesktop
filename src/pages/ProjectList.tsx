@@ -1,35 +1,46 @@
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import Box from '@mui/joy/Box'
+import Button from '@mui/joy/Button'
+import Card from '@mui/joy/Card'
+import CardContent from '@mui/joy/CardContent'
+import Typography from '@mui/joy/Typography'
+import Stack from '@mui/joy/Stack'
+import AddIcon from '@mui/icons-material/Add'
 
 export function ProjectList() {
   return (
-    <div className="container mx-auto py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Projects</h1>
-          <p className="text-muted-foreground">Manage your automation projects</p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
+    <Box sx={{ maxWidth: 1200, mx: 'auto', py: 4, px: 2 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
+        <Box>
+          <Typography level="h2" fontWeight="bold">
+            Projects
+          </Typography>
+          <Typography level="body-md" textColor="text.secondary">
+            Manage your automation projects
+          </Typography>
+        </Box>
+        <Button startDecorator={<AddIcon />}>
           New Project
         </Button>
-      </div>
+      </Stack>
 
       <Card>
-        <CardHeader>
-          <CardTitle>No projects yet</CardTitle>
-          <CardDescription>
-            Create your first project to get started with UI automation
-          </CardDescription>
-        </CardHeader>
         <CardContent>
-          <Button variant="outline" className="w-full">
-            <Plus className="mr-2 h-4 w-4" />
+          <Typography level="title-lg" sx={{ mb: 1 }}>
+            No projects yet
+          </Typography>
+          <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
+            Create your first project to get started with UI automation
+          </Typography>
+          <Button
+            variant="outlined"
+            startDecorator={<AddIcon />}
+            fullWidth
+          >
             Create Project
           </Button>
         </CardContent>
       </Card>
-    </div>
+    </Box>
   )
 }

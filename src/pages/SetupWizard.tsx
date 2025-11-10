@@ -1,17 +1,94 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { Stepper } from '@/components/ui/stepper'
-import { CheckCircle2, Circle, Loader2 } from 'lucide-react'
+import Box from '@mui/joy/Box'
+import Button from '@mui/joy/Button'
+import Card from '@mui/joy/Card'
+import CardContent from '@mui/joy/CardContent'
+import LinearProgress from '@mui/joy/LinearProgress'
+import Typography from '@mui/joy/Typography'
+import Sheet from '@mui/joy/Sheet'
+import Stack from '@mui/joy/Stack'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined'
 
 const steps = [
   { label: 'Platform Tools', description: 'Check Python, ADB, Playwright' },
   { label: 'Model Setup', description: 'Configure Ollama or API' },
   { label: 'Final Check', description: 'Verify configuration' },
 ]
+
+// Custom Stepper Component using Joy UI
+function Stepper({ steps, currentStep }: { steps: typeof steps; currentStep: number }) {
+  return (
+    <Stack direction="row" spacing={2} sx={{ width: '100%', alignItems: 'center' }}>
+      {steps.map((step, index) => {
+        const isCompleted = index < currentStep
+        const isCurrent = index === currentStep
+
+        return (
+          <Stack key={index} direction="row" spacing={2} sx={{ flex: 1, alignItems: 'center' }}>
+            <Stack spacing={0.5} sx={{ flex: 1, alignItems: 'center' }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 2,
+                  borderColor: isCompleted || isCurrent ? 'primary.500' : 'neutral.300',
+                  bgcolor: isCompleted ? 'primary.500' : 'background.surface',
+                  color: isCompleted ? 'white' : isCurrent ? 'primary.500' : 'neutral.500',
+                  fontWeight: 'bold',
+                  transition: 'all 0.3s ease',
+                  ...(isCurrent && {
+                    boxShadow: 'md',
+                    transform: 'scale(1.1)',
+                  }),
+                }}
+              >
+                {isCompleted ? <CheckCircleIcon /> : index + 1}
+              </Box>
+              <Typography level="body-sm" fontWeight="md" textAlign="center">
+                {step.label}
+              </Typography>
+              <Typography level="body-xs" textColor="text.secondary" textAlign="center">
+                {step.description}
+              </Typography>
+            </Stack>
+
+            {index < steps.length - 1 && (
+              <Box
+                sx={{
+                  height: 2,
+                  flex: 0.3,
+                  bgcolor: 'neutral.200',
+                  position: 'relative',
+                  borderRadius: 'sm',
+                  overflow: 'hidden',
+                }}
+              >
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: '100%',
+                    width: isCompleted ? '100%' : '0%',
+                    bgcolor: 'primary.500',
+                    transition: 'width 0.5s ease',
+                  }}
+                />
+              </Box>
+            )}
+          </Stack>
+        )
+      })}
+    </Stack>
+  )
+}
 
 export function SetupWizard() {
   const navigate = useNavigate()
@@ -23,7 +100,6 @@ export function SetupWizard() {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Setup complete, navigate to projects
       navigate('/projects')
     }
   }
@@ -35,45 +111,60 @@ export function SetupWizard() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50" />
-
+    <Box
+      sx={{
+        position: 'relative',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        p: 2,
+        background: 'linear-gradient(135deg, #e3f2fd 0%, #ffffff 50%, #f3e5f5 100%)',
+      }}
+    >
       <motion.div
-        className="relative z-10 w-full max-w-3xl"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        style={{ width: '100%', maxWidth: 900, zIndex: 10 }}
       >
-        <Card className="shadow-2xl">
-          <CardHeader className="space-y-1 pb-6">
+        <Card sx={{ boxShadow: 'xl' }}>
+          <CardContent sx={{ gap: 3 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <CardTitle className="text-3xl font-bold text-center">
+              <Typography level="h2" textAlign="center" fontWeight="bold" sx={{ mb: 1 }}>
                 Welcome to Klever Desktop
-              </CardTitle>
-              <CardDescription className="text-center text-base mt-2">
+              </Typography>
+              <Typography level="body-md" textAlign="center" textColor="text.secondary">
                 Let's set up your environment for AI-powered UI automation
-              </CardDescription>
+              </Typography>
             </motion.div>
-          </CardHeader>
 
-          <CardContent className="space-y-8">
             {/* Progress Bar */}
             <motion.div
-              className="space-y-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <Progress value={progress} className="h-2" />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Step {currentStep + 1} of {steps.length}</span>
-                <span>{Math.round(progress)}% Complete</span>
-              </div>
+              <Stack spacing={1}>
+                <LinearProgress
+                  determinate
+                  value={progress}
+                  sx={{ height: 8, borderRadius: 'sm' }}
+                />
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography level="body-sm" textColor="text.secondary">
+                    Step {currentStep + 1} of {steps.length}
+                  </Typography>
+                  <Typography level="body-sm" textColor="text.secondary">
+                    {Math.round(progress)}% Complete
+                  </Typography>
+                </Stack>
+              </Stack>
             </motion.div>
 
             {/* Custom Stepper */}
@@ -86,7 +177,7 @@ export function SetupWizard() {
             </motion.div>
 
             {/* Step Content with animations */}
-            <div className="min-h-[320px]">
+            <Box sx={{ minHeight: 320 }}>
               <AnimatePresence mode="wait">
                 {currentStep === 0 && (
                   <motion.div
@@ -95,56 +186,116 @@ export function SetupWizard() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-4"
                   >
-                    <div className="rounded-lg border bg-gradient-to-br from-muted/50 to-muted/30 p-6">
-                      <h3 className="text-xl font-semibold mb-3">Platform & Runtime Tools Check</h3>
-                      <p className="text-sm text-muted-foreground mb-6">
+                    <Sheet
+                      variant="soft"
+                      sx={{
+                        p: 3,
+                        borderRadius: 'md',
+                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                      }}
+                    >
+                      <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
+                        Platform & Runtime Tools Check
+                      </Typography>
+                      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
                         We're checking if all required tools are installed and configured correctly.
-                      </p>
+                      </Typography>
 
-                      <div className="space-y-3">
+                      <Stack spacing={1.5}>
                         <motion.div
-                          className="flex items-center gap-3 p-3 rounded-md bg-background/80"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.1 }}
                         >
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                          <span className="text-sm font-medium">Python 3.11+</span>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              bgcolor: 'background.surface',
+                            }}
+                          >
+                            <CheckCircleIcon sx={{ color: 'success.500' }} />
+                            <Typography level="body-sm" fontWeight="md">
+                              Python 3.11+
+                            </Typography>
+                          </Sheet>
                         </motion.div>
 
                         <motion.div
-                          className="flex items-center gap-3 p-3 rounded-md bg-background/80"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.2 }}
                         >
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm font-medium text-muted-foreground">Python Packages</span>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              bgcolor: 'background.surface',
+                            }}
+                          >
+                            <CircleOutlinedIcon sx={{ color: 'neutral.400' }} />
+                            <Typography level="body-sm" textColor="text.secondary">
+                              Python Packages
+                            </Typography>
+                          </Sheet>
                         </motion.div>
 
                         <motion.div
-                          className="flex items-center gap-3 p-3 rounded-md bg-background/80"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.3 }}
                         >
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm font-medium text-muted-foreground">ADB (Android Debug Bridge)</span>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              bgcolor: 'background.surface',
+                            }}
+                          >
+                            <CircleOutlinedIcon sx={{ color: 'neutral.400' }} />
+                            <Typography level="body-sm" textColor="text.secondary">
+                              ADB (Android Debug Bridge)
+                            </Typography>
+                          </Sheet>
                         </motion.div>
 
                         <motion.div
-                          className="flex items-center gap-3 p-3 rounded-md bg-background/80"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.4 }}
                         >
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                          <span className="text-sm font-medium text-muted-foreground">Playwright (Web Automation)</span>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              bgcolor: 'background.surface',
+                            }}
+                          >
+                            <CircleOutlinedIcon sx={{ color: 'neutral.400' }} />
+                            <Typography level="body-sm" textColor="text.secondary">
+                              Playwright (Web Automation)
+                            </Typography>
+                          </Sheet>
                         </motion.div>
-                      </div>
-                    </div>
+                      </Stack>
+                    </Sheet>
                   </motion.div>
                 )}
 
@@ -155,38 +306,80 @@ export function SetupWizard() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-4"
                   >
-                    <div className="rounded-lg border bg-gradient-to-br from-muted/50 to-muted/30 p-6">
-                      <h3 className="text-xl font-semibold mb-3">Model Configuration</h3>
-                      <p className="text-sm text-muted-foreground mb-6">
+                    <Sheet
+                      variant="soft"
+                      sx={{
+                        p: 3,
+                        borderRadius: 'md',
+                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                      }}
+                    >
+                      <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
+                        Model Configuration
+                      </Typography>
+                      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
                         Choose how you want to run AI models: locally with Ollama or via API
-                      </p>
+                      </Typography>
 
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <Stack direction="row" spacing={2}>
                         <motion.div
-                          className="p-4 rounded-lg border-2 border-muted bg-background/80 hover:border-primary transition-colors cursor-pointer"
+                          style={{ flex: 1 }}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          <h4 className="font-semibold mb-2">Local (Ollama)</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Run models locally with Ollama. Requires installation.
-                          </p>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 3,
+                              borderRadius: 'md',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              bgcolor: 'background.surface',
+                              '&:hover': {
+                                borderColor: 'primary.500',
+                                boxShadow: 'sm',
+                              },
+                            }}
+                          >
+                            <Typography level="title-md" fontWeight="bold" sx={{ mb: 1 }}>
+                              Local (Ollama)
+                            </Typography>
+                            <Typography level="body-xs" textColor="text.secondary">
+                              Run models locally with Ollama. Requires installation.
+                            </Typography>
+                          </Sheet>
                         </motion.div>
 
                         <motion.div
-                          className="p-4 rounded-lg border-2 border-muted bg-background/80 hover:border-primary transition-colors cursor-pointer"
+                          style={{ flex: 1 }}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          <h4 className="font-semibold mb-2">API</h4>
-                          <p className="text-xs text-muted-foreground">
-                            Use cloud APIs. Requires API key configuration.
-                          </p>
+                          <Sheet
+                            variant="outlined"
+                            sx={{
+                              p: 3,
+                              borderRadius: 'md',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              bgcolor: 'background.surface',
+                              '&:hover': {
+                                borderColor: 'primary.500',
+                                boxShadow: 'sm',
+                              },
+                            }}
+                          >
+                            <Typography level="title-md" fontWeight="bold" sx={{ mb: 1 }}>
+                              API
+                            </Typography>
+                            <Typography level="body-xs" textColor="text.secondary">
+                              Use cloud APIs. Requires API key configuration.
+                            </Typography>
+                          </Sheet>
                         </motion.div>
-                      </div>
-                    </div>
+                      </Stack>
+                    </Sheet>
                   </motion.div>
                 )}
 
@@ -197,55 +390,76 @@ export function SetupWizard() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="space-y-4"
                   >
-                    <div className="rounded-lg border bg-gradient-to-br from-green-50 to-emerald-50 p-6">
+                    <Sheet
+                      variant="soft"
+                      sx={{
+                        p: 3,
+                        borderRadius: 'md',
+                        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(129, 199, 132, 0.1) 100%)',
+                      }}
+                    >
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                        className="flex justify-center mb-4"
+                        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                        style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}
                       >
-                        <div className="h-16 w-16 rounded-full bg-green-500 flex items-center justify-center">
-                          <CheckCircle2 className="h-10 w-10 text-white" />
-                        </div>
+                        <Box
+                          sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: 'success.500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <CheckCircleIcon sx={{ fontSize: 40, color: 'white' }} />
+                        </Box>
                       </motion.div>
 
-                      <h3 className="text-xl font-semibold text-center mb-3">Setup Complete!</h3>
-                      <p className="text-sm text-center text-muted-foreground">
+                      <Typography level="h4" fontWeight="bold" textAlign="center" sx={{ mb: 1 }}>
+                        Setup Complete!
+                      </Typography>
+                      <Typography level="body-sm" textAlign="center" textColor="text.secondary">
                         Your environment is ready. You can now create projects and start exploring AI-powered UI automation.
-                      </p>
-                    </div>
+                      </Typography>
+                    </Sheet>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </Box>
 
             {/* Navigation Buttons */}
             <motion.div
-              className="flex justify-between pt-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 0}
-                className="min-w-[100px]"
-              >
-                Back
-              </Button>
-              <Button
-                onClick={handleNext}
-                className="min-w-[100px]"
-              >
-                {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
-              </Button>
+              <Stack direction="row" justifyContent="space-between" sx={{ pt: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="neutral"
+                  onClick={handleBack}
+                  disabled={currentStep === 0}
+                  sx={{ minWidth: 100 }}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="solid"
+                  onClick={handleNext}
+                  sx={{ minWidth: 100 }}
+                >
+                  {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                </Button>
+              </Stack>
             </motion.div>
           </CardContent>
         </Card>
       </motion.div>
-    </div>
+    </Box>
   )
 }
