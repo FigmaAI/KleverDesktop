@@ -1,11 +1,5 @@
-import { Link } from 'react-router-dom'
-import Box from '@mui/joy/Box'
-import Button from '@mui/joy/Button'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Typography from '@mui/joy/Typography'
-import Stack from '@mui/joy/Stack'
-import AddIcon from '@mui/icons-material/Add'
+import { Box, Button, Card, CardContent, Typography, Stack } from '@mui/joy'
+import { Add as AddIcon } from '@mui/icons-material'
 
 export function ProjectList() {
   return (

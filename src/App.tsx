@@ -1,9 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { SetupWizard } from './pages/SetupWizard'
-import { ProjectList } from './pages/ProjectList'
-import { ProjectDetail } from './pages/ProjectDetail'
-import { Settings } from './pages/Settings'
-import { Layout } from './components/Layout'
+import { SetupWizard, ProjectList, ProjectDetail, Settings } from './pages'
+import { Layout } from './components'
 
 function App() {
   // TODO: Check if setup is complete

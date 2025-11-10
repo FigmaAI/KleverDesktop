@@ -1,5 +1,18 @@
 export {};
 
+interface OllamaModel {
+  name: string;
+  size?: number;
+  modified?: string;
+}
+
+interface AppConfig {
+  modelProvider?: 'ollama' | 'api';
+  ollamaModel?: string;
+  apiKey?: string;
+  [key: string]: unknown;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -7,7 +20,7 @@ declare global {
       checkPython: () => Promise<{ success: boolean; version?: string; isValid?: boolean; error?: string }>;
       checkPackages: () => Promise<{ success: boolean; output?: string; error?: string }>;
       installPackages: () => Promise<{ success: boolean; output?: string }>;
-      checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: any[]; error?: string }>;
+      checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
       checkAdb: () => Promise<{ success: boolean; devices?: string[]; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
@@ -16,8 +29,8 @@ declare global {
       ollamaPull: (modelName: string) => Promise<{ success: boolean }>;
 
       // Config operations
-      configLoad: () => Promise<{ success: boolean; config?: any; error?: string }>;
-      configSave: (config: any) => Promise<{ success: boolean; error?: string }>;
+      configLoad: () => Promise<{ success: boolean; config?: AppConfig; error?: string }>;
+      configSave: (config: AppConfig) => Promise<{ success: boolean; error?: string }>;
 
       // Project operations
       projectStart: (projectConfig: {

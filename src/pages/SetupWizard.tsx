@@ -1,16 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import Box from '@mui/joy/Box'
-import Button from '@mui/joy/Button'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import LinearProgress from '@mui/joy/LinearProgress'
-import Typography from '@mui/joy/Typography'
-import Sheet from '@mui/joy/Sheet'
-import Stack from '@mui/joy/Stack'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined'
+import { useTheme, PaletteRange } from '@mui/joy/styles'
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Typography,
+  Sheet,
+  Stack,
+  Stepper,
+  Step,
+  StepIndicator,
+  stepClasses,
+  stepIndicatorClasses,
+} from '@mui/joy'
+import { CheckCircle as CheckCircleIcon, CircleOutlined as CircleOutlinedIcon } from '@mui/icons-material'
 
 const steps = [
   { label: 'Platform Tools', description: 'Check Python, ADB, Playwright' },
@@ -18,83 +24,19 @@ const steps = [
   { label: 'Final Check', description: 'Verify configuration' },
 ]
 
-// Custom Stepper Component using Joy UI
-function Stepper({ steps, currentStep }: { steps: typeof steps; currentStep: number }) {
-  return (
-    <Stack direction="row" spacing={2} sx={{ width: '100%', alignItems: 'center' }}>
-      {steps.map((step, index) => {
-        const isCompleted = index < currentStep
-        const isCurrent = index === currentStep
-
-        return (
-          <Stack key={index} direction="row" spacing={2} sx={{ flex: 1, alignItems: 'center' }}>
-            <Stack spacing={0.5} sx={{ flex: 1, alignItems: 'center' }}>
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 2,
-                  borderColor: isCompleted || isCurrent ? 'primary.500' : 'neutral.300',
-                  bgcolor: isCompleted ? 'primary.500' : 'background.surface',
-                  color: isCompleted ? 'white' : isCurrent ? 'primary.500' : 'neutral.500',
-                  fontWeight: 'bold',
-                  transition: 'all 0.3s ease',
-                  ...(isCurrent && {
-                    boxShadow: 'md',
-                    transform: 'scale(1.1)',
-                  }),
-                }}
-              >
-                {isCompleted ? <CheckCircleIcon /> : index + 1}
-              </Box>
-              <Typography level="body-sm" fontWeight="md" textAlign="center">
-                {step.label}
-              </Typography>
-              <Typography level="body-xs" textColor="text.secondary" textAlign="center">
-                {step.description}
-              </Typography>
-            </Stack>
-
-            {index < steps.length - 1 && (
-              <Box
-                sx={{
-                  height: 2,
-                  flex: 0.3,
-                  bgcolor: 'neutral.200',
-                  position: 'relative',
-                  borderRadius: 'sm',
-                  overflow: 'hidden',
-                }}
-              >
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    height: '100%',
-                    width: isCompleted ? '100%' : '0%',
-                    bgcolor: 'primary.500',
-                    transition: 'width 0.5s ease',
-                  }}
-                />
-              </Box>
-            )}
-          </Stack>
-        )
-      })}
-    </Stack>
-  )
-}
-
 export function SetupWizard() {
   const navigate = useNavigate()
+  const theme = useTheme()
   const [currentStep, setCurrentStep] = useState(0)
 
-  const progress = (currentStep / (steps.length - 1)) * 100
+  // Color inversion gradient effect
+  const color = 'primary'
+  const shade = (x: keyof PaletteRange): string => theme.vars.palette[color][x]
+  const color1 = shade(800)
+  const color2 = shade(600)
+  const color3 = shade(900)
+  const gradient1 = `${color1}, ${color2} 65%`
+  const gradient2 = `${color1} 65%, ${color3}`
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -113,71 +55,127 @@ export function SetupWizard() {
   return (
     <Box
       sx={{
-        position: 'relative',
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        p: 2,
-        background: 'linear-gradient(135deg, #e3f2fd 0%, #ffffff 50%, #f3e5f5 100%)',
+        flexDirection: 'column',
+        bgcolor: 'background.body',
       }}
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        style={{ width: '100%', maxWidth: 900, zIndex: 10 }}
+        style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
       >
-        <Card sx={{ boxShadow: 'xl' }}>
-          <CardContent sx={{ gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 4, flex: 1 }}>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              <Typography level="h2" textAlign="center" fontWeight="bold" sx={{ mb: 1 }}>
-                Welcome to Klever Desktop
-              </Typography>
-              <Typography level="body-md" textAlign="center" textColor="text.secondary">
-                Let's set up your environment for AI-powered UI automation
-              </Typography>
+              <Sheet
+                variant="solid"
+                color="primary"
+                invertedColors
+                sx={{
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  p: 4,
+                  borderRadius: 'md',
+                  overflow: 'hidden',
+                  bgcolor: shade(800),
+                  '&::after': {
+                    content: '""',
+                    display: 'block',
+                    width: '20rem',
+                    height: '40rem',
+                    background: `linear-gradient(to top, ${gradient1}, ${gradient2})`,
+                    position: 'absolute',
+                    transform: 'rotate(-45deg)',
+                    top: '-70%',
+                    right: '-15%',
+                  },
+                }}
+              >
+                <Typography level="h2" fontWeight="bold" sx={{ mb: 1, position: 'relative', zIndex: 1, color: shade(50) }}>
+                  Welcome to Klever Desktop
+                </Typography>
+                <Typography level="body-md" sx={{ position: 'relative', zIndex: 1, color: shade(200) }}>
+                  Let&apos;s set up your environment for AI-powered UI automation
+                </Typography>
+              </Sheet>
             </motion.div>
 
-            {/* Progress Bar */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Stack spacing={1}>
-                <LinearProgress
-                  determinate
-                  value={progress}
-                  sx={{ height: 8, borderRadius: 'sm' }}
-                />
-                <Stack direction="row" justifyContent="space-between">
-                  <Typography level="body-sm" textColor="text.secondary">
-                    Step {currentStep + 1} of {steps.length}
-                  </Typography>
-                  <Typography level="body-sm" textColor="text.secondary">
-                    {Math.round(progress)}% Complete
-                  </Typography>
-                </Stack>
-              </Stack>
-            </motion.div>
+            {/* Stepper and Content Layout */}
+            <Box sx={{ display: 'flex', gap: 3, minHeight: 400 }}>
+              {/* Vertical Stepper on the left */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+                style={{ minWidth: 200 }}
+              >
+                <Stepper
+                  orientation="vertical"
+                  sx={(theme) => ({
+                    '--Stepper-verticalGap': '2rem',
+                    '--StepIndicator-size': '2.5rem',
+                    '--Step-gap': '1rem',
+                    '--Step-connectorInset': '0.5rem',
+                    '--Step-connectorRadius': '1rem',
+                    '--Step-connectorThickness': '4px',
+                    [`& .${stepClasses.completed}`]: {
+                      '&::after': { bgcolor: 'success.solidBg' },
+                    },
+                    [`& .${stepClasses.active}`]: {
+                      [`& .${stepIndicatorClasses.root}`]: {
+                        border: '4px solid',
+                        borderColor: '#fff',
+                        boxShadow: `0 0 0 1px ${theme.vars.palette.primary[500]}`,
+                      },
+                    },
+                    [`& .${stepClasses.disabled} *`]: {
+                      color: 'neutral.softDisabledColor',
+                    },
+                  })}
+                >
+                  {steps.map((step, index) => {
+                    const isCompleted = index < currentStep
+                    const isActive = index === currentStep
 
-            {/* Custom Stepper */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Stepper steps={steps} currentStep={currentStep} />
-            </motion.div>
+                    return (
+                      <Step
+                        key={index}
+                        completed={isCompleted}
+                        active={isActive}
+                        disabled={index > currentStep}
+                        indicator={
+                          <StepIndicator
+                            variant={isCompleted ? 'solid' : isActive ? 'solid' : 'outlined'}
+                            color={isCompleted ? 'success' : isActive ? 'primary' : 'neutral'}
+                          >
+                            {isCompleted ? <CheckCircleIcon /> : index + 1}
+                          </StepIndicator>
+                        }
+                      >
+                        <Box>
+                          <Typography level="body-sm" fontWeight="md">
+                            {step.label}
+                          </Typography>
+                          <Typography level="body-xs" textColor="text.secondary">
+                            {step.description}
+                          </Typography>
+                        </Box>
+                      </Step>
+                    )
+                  })}
+                </Stepper>
+              </motion.div>
 
-            {/* Step Content with animations */}
-            <Box sx={{ minHeight: 320 }}>
+              {/* Step Content on the right */}
+              <Box sx={{ flex: 1, minHeight: 320 }}>
               <AnimatePresence mode="wait">
                 {currentStep === 0 && (
                   <motion.div
@@ -199,7 +197,7 @@ export function SetupWizard() {
                         Platform & Runtime Tools Check
                       </Typography>
                       <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-                        We're checking if all required tools are installed and configured correctly.
+                        We&apos;re checking if all required tools are installed and configured correctly.
                       </Typography>
 
                       <Stack spacing={1.5}>
@@ -430,6 +428,7 @@ export function SetupWizard() {
                   </motion.div>
                 )}
               </AnimatePresence>
+              </Box>
             </Box>
 
             {/* Navigation Buttons */}

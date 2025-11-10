@@ -1,44 +1,68 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Button } from './ui/button'
-import { Settings as SettingsIcon, FolderKanban } from 'lucide-react'
+import { Box, Sheet, Typography, Button } from '@mui/joy'
+import { SettingsOutlined, FolderOutlined } from '@mui/icons-material'
 
 export function Layout() {
   const location = useLocation()
 
   return (
-    <div className="flex h-screen flex-col">
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+      }}
+    >
       {/* Header */}
-      <header className="border-b">
-        <div className="flex h-16 items-center px-6">
-          <h1 className="text-xl font-bold">Klever Desktop</h1>
+      <Sheet
+        component="header"
+        variant="outlined"
+        sx={{
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderTop: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          height: 64,
+          px: 3,
+        }}
+      >
+        <Typography level="h3" fontWeight="bold">
+          Klever Desktop
+        </Typography>
 
-          <nav className="ml-auto flex gap-4">
-            <Link to="/projects">
-              <Button
-                variant={location.pathname.startsWith('/projects') ? 'default' : 'ghost'}
-                size="sm"
-              >
-                <FolderKanban className="mr-2 h-4 w-4" />
-                Projects
-              </Button>
-            </Link>
-            <Link to="/settings">
-              <Button
-                variant={location.pathname === '/settings' ? 'default' : 'ghost'}
-                size="sm"
-              >
-                <SettingsIcon className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+        <Box component="nav" sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+          <Button
+            component={Link}
+            to="/projects"
+            variant={location.pathname.startsWith('/projects') ? 'solid' : 'plain'}
+            size="sm"
+            startDecorator={<FolderOutlined fontSize="small" />}
+          >
+            Projects
+          </Button>
+          <Button
+            component={Link}
+            to="/settings"
+            variant={location.pathname === '/settings' ? 'solid' : 'plain'}
+            size="sm"
+            startDecorator={<SettingsOutlined fontSize="small" />}
+          >
+            Settings
+          </Button>
+        </Box>
+      </Sheet>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+        }}
+      >
         <Outlet />
-      </main>
-    </div>
+      </Box>
+    </Box>
   )
 }

@@ -1,8 +1,6 @@
 import { useParams } from 'react-router-dom'
-import Box from '@mui/joy/Box'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Typography from '@mui/joy/Typography'
+import { Box, Card, CardContent, Typography } from '@mui/joy'
+
 
 export function ProjectDetail() {
   const { id } = useParams()

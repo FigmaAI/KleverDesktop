@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "package": "npm run build && electron-builder"
+    "package": "npm run build && electron-builder",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
   },
   "keywords": [
     "electron",
@@ -21,27 +23,35 @@
   "author": "Klever Team",
   "license": "MIT",
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
-    "js-yaml": "^4.1.0",
-    "@mui/joy": "^5.0.0-beta.48",
-    "@mui/icons-material": "^5.16.7",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "framer-motion": "^11.5.4"
+    "@mui/icons-material": "^7.3.5",
+    "@mui/joy": "^5.0.0-beta.48",
+    "@mui/material": "^7.3.5",
+    "framer-motion": "^11.5.4",
+    "js-yaml": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.5.5",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@types/node": "^22.5.5",
-    "@types/js-yaml": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
     "@vitejs/plugin-react": "^4.3.1",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.5",
+    "concurrently": "^8.2.2",
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
-    "concurrently": "^8.2.2",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.5",
     "wait-on": "^7.2.0"
   },
   "build": {
@@ -57,13 +67,22 @@
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "win": {
-      "target": ["nsis", "zip"]
+      "target": [
+        "nsis",
+        "zip"
+      ]
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
   }
 }
