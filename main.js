@@ -86,7 +86,7 @@ ipcMain.handle('check:python', async () => {
 // Check Python packages
 ipcMain.handle('check:packages', async () => {
   return new Promise((resolve) => {
-    const requirementsPath = path.join(__dirname, '..', 'appagent', 'requirements.txt');
+    const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
     exec(`python -m pip show -r ${requirementsPath}`, { timeout: 10000 }, (error, stdout, stderr) => {
       if (error) {
         resolve({ success: false, error: stderr || error.message });
@@ -100,7 +100,7 @@ ipcMain.handle('check:packages', async () => {
 // Install Python packages
 ipcMain.handle('install:packages', async () => {
   return new Promise((resolve) => {
-    const requirementsPath = path.join(__dirname, '..', 'appagent', 'requirements.txt');
+    const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
     const pip = spawn('python', ['-m', 'pip', 'install', '-r', requirementsPath]);
 
     let output = '';
@@ -210,7 +210,7 @@ ipcMain.handle('check:playwright', async () => {
 // Load config.yaml
 ipcMain.handle('config:load', async () => {
   try {
-    const configPath = path.join(__dirname, '..', 'appagent', 'config.yaml');
+    const configPath = path.join(__dirname, 'appagent', 'config.yaml');
     const fileContents = fs.readFileSync(configPath, 'utf8');
     const config = yaml.load(fileContents);
     return { success: true, config };
@@ -222,7 +222,7 @@ ipcMain.handle('config:load', async () => {
 // Save config.yaml
 ipcMain.handle('config:save', async (event, config) => {
   try {
-    const configPath = path.join(__dirname, '..', 'appagent', 'config.yaml');
+    const configPath = path.join(__dirname, 'appagent', 'config.yaml');
     const yamlStr = yaml.dump(config);
     fs.writeFileSync(configPath, yamlStr, 'utf8');
     return { success: true };
@@ -234,7 +234,7 @@ ipcMain.handle('config:save', async (event, config) => {
 // Start self_explorer
 ipcMain.handle('project:start', async (event, projectConfig) => {
   try {
-    const scriptPath = path.join(__dirname, '..', 'appagent', 'scripts', 'self_explorer.py');
+    const scriptPath = path.join(__dirname, 'appagent', 'scripts', 'self_explorer.py');
     const args = [
       scriptPath,
       '--platform', projectConfig.platform,

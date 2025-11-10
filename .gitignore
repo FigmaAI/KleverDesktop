@@ -19,10 +19,10 @@ out/
 # Ignore figma-client directory (reference only)
 figma-client/
 
-# Electron app
-electron/node_modules/
-electron/dist/
-electron/.DS_Store
+# Electron app (root-level)
+node_modules/
+dist/
+dist-electron/
 
 # Ignore environment variables
 .envrc

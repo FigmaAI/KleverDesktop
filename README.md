@@ -25,30 +25,41 @@ Klever Desktop is an Electron-based desktop application that enables automated U
 ## Project Structure
 
 ```
-KleverDesktop/
-├── electron/                   # Electron app
-│   ├── main.js                # Main process (IPC handlers)
-│   ├── preload.js             # IPC bridge
-│   ├── package.json
-│   ├── webpack.config.js
-│   └── src/
-│       ├── components/
-│       │   ├── App.tsx        # Main app component
-│       │   ├── steps/         # Setup wizard steps
-│       │   ├── project/       # Project management
-│       │   └── settings/      # Settings panel
-│       ├── services/          # Business logic (future)
-│       └── index.tsx          # React entry point
+KleverDesktop/                 # Root is Electron project
+├── package.json               # Electron app dependencies
+├── vite.config.ts             # Vite build configuration
+├── tailwind.config.js         # Tailwind CSS config
+├── main.js                    # Electron main process (IPC handlers)
+├── preload.js                 # IPC bridge (contextBridge)
+├── index.html                 # Vite entry point
+├── src/                       # React app source
+│   ├── main.tsx               # React entry + Router
+│   ├── App.tsx                # Route configuration
+│   ├── index.css              # Tailwind + CSS variables
+│   ├── components/
+│   │   ├── Layout.tsx         # Main layout with nav
+│   │   └── ui/                # shadcn/ui components
+│   ├── pages/                 # React Router pages
+│   │   ├── SetupWizard.tsx
+│   │   ├── ProjectList.tsx
+│   │   ├── ProjectDetail.tsx
+│   │   └── Settings.tsx
+│   ├── lib/
+│   │   └── utils.ts           # Utility functions
+│   └── types/
+│       └── electron.d.ts      # TypeScript definitions
 ├── appagent/                  # Python backend (git submodule)
 │   ├── scripts/
-│   │   ├── self_explorer.py  # Main automation logic
-│   │   ├── and_controller.py # Android controller
-│   │   ├── web_controller.py # Web controller
-│   │   └── model.py          # AI model integration
-│   ├── config.yaml           # Configuration
-│   └── requirements.txt      # Python dependencies
-├── scripts/                   # Build scripts (macOS, Windows)
-└── PLANNING.md               # Detailed planning document
+│   │   ├── self_explorer.py   # Main automation logic
+│   │   ├── and_controller.py  # Android controller
+│   │   ├── web_controller.py  # Web controller
+│   │   └── model.py           # AI model integration
+│   ├── config.yaml            # Configuration
+│   └── requirements.txt       # Python dependencies
+├── scripts/                   # Build scripts (packaging)
+│   ├── build-appstore.sh      # macOS packaging
+│   └── build-windows-store.ps1 # Windows packaging
+└── PLANNING.md                # Detailed planning document
 ```
 
 ## Prerequisites
@@ -98,9 +109,7 @@ ollama pull qwen2.5-vl:7b
 ### 5. Install Electron app dependencies
 
 ```bash
-cd electron
 npm install
-cd ..
 ```
 
 ## Development
@@ -108,23 +117,30 @@ cd ..
 ### Run in development mode
 
 ```bash
-cd electron
-npm run dev
+npm run electron:dev
 ```
 
 This will start:
-- Webpack dev server on `http://localhost:3000`
+- Vite dev server on `http://localhost:5173`
 - Electron app with hot reload
+
+Or run separately:
+```bash
+# Terminal 1: Vite dev server
+npm run dev
+
+# Terminal 2: Electron
+npm run electron
+```
 
 ### Build for production
 
 ```bash
-cd electron
-npm run build
-npm run package
+npm run build      # Build React app
+npm run package    # Package Electron app
 ```
 
-Built apps will be in `electron/dist/`.
+Built apps will be in `dist-electron/`.
 
 ## Usage
 
