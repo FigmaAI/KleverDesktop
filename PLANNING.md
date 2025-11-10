@@ -48,50 +48,101 @@ opencv-python, playwright, pyshine, pyyaml, requests
 
 ### 1) 환경설정 마법사
 
-**목적:** 첫 실행 시 필수 의존성 체크 및 원클릭 설치
+**목적:** 첫 실행 시 필수 도구와 모델 설정을 단계별로 검증하여 사용자가 원활히 앱을 실행할 수 있도록 유도합니다.
 
-#### UI 흐름:
-```
-시작 화면
-   ↓
-[Step 1] Python 체크
-   ✓ Python 3.11+ 설치 여부
-   ✗ 없으면 → 다운로드 링크 제공 또는 자동 설치
-   ↓
-[Step 2] Python 패키지 체크
-   ✓ requirements.txt 의존성 체크
-   ✗ 없으면 → "Install Dependencies" 버튼 (pip install)
-   ↓
-[Step 3] Ollama 체크
-   ✓ Ollama 실행 여부 (http://localhost:11434 체크)
-   ✗ 없으면 → 다운로드 안내 (ollama.com/download)
-   ↓
-[Step 4] 플랫폼별 도구 체크
-   - Android: ADB 설치 여부 + 디바이스 연결 확인
-   - Web: Playwright 브라우저 설치 (playwright install)
-   ↓
-완료: "Start Using KleverDesktop" 버튼
-```
+본 문서에서는 마법사를 다음 3단계로 재정의합니다.
 
-#### 구현 방법:
-- **Python 체크:** `child_process.exec('python --version')`
-- **패키지 체크:** `pip list` 결과 파싱
-- **Ollama 체크:** `fetch('http://localhost:11434/api/tags')` 요청
-- **ADB 체크:** `adb devices` 실행
-- **Playwright 체크:** `playwright install --dry-run`
+- Step 1: 플랫폼/런타임 도구 체크 (Python, 패키지, ADB, Playwright 등)
+- Step 2: 모델 사용 가능성 체크 (Local Ollama 또는 Remote API 선택 및 검증)
+- Step 3: 최종 설정 표시 및 통합 테스트 (설정 요약 + 샘플 요청 실행)
 
-#### UI 컴포넌트:
-```
-┌────────────────────────────────────┐
-│  Setup Wizard - Step 2/4          │
-│                                    │
-│  ✓ Python 3.11.6 found            │
-│  ◌ Installing Python packages...  │
-│     [████████░░░░░░░] 60%         │
-│                                    │
-│  [Skip]            [Next]         │
-└────────────────────────────────────┘
-```
+#### Step 1 — 플랫폼/런타임 도구 체크
+
+- 체크 항목
+  - Python: `python --version` 실행 후 3.11 이상인지 검사
+  - Python 패키지: `pip list` 또는 `python -m pip show -r requirements.txt`로 의존성 설치 여부 확인
+  - Android 툴체인: `adb`가 PATH에 있는지, `adb devices`로 디바이스 연결 확인
+  - Web 툴체인: `playwright`(또는 프로젝트에서 사용하는 브라우저 드라이버) 설치 여부와 `playwright install --dry-run` 검사
+
+- 동작 방식 (구현 아이디어)
+  - 메인 프로세스에서 `child_process.exec`/`spawn`으로 각 명령 실행
+  - 각 검증은 타임아웃(예: 5s)을 두어 응답 없을 때는 실패 처리
+  - 실패 시 사용자에게 설치 링크 또는 자동 설치 버튼 제공
+
+#### Step 2 — 모델 사용 가능성 체크 (Local / API)
+
+목표: 사용자는 로컬 Ollama 모델 또는 원격 API 중 하나만 올바르게 설정하면 다음 단계로 진행할 수 있습니다.
+
+- Local Ollama 체크 (권장 로컬 모드)
+  - Ollama 데몬이 실행 중인지 검사: HTTP API 호출 예시 `GET http://localhost:11434/api/tags` 또는 `GET http://localhost:11434/api/ps`
+  - CLI 검사: `ollama list` 출력 파싱으로 사용 가능한 모델 이름 확인
+  - 필요한 모델(qwen3-vl:4b 등)이 리스트에 없으면
+    - UI에서 모델 다운로드 안내(예: `ollama pull qwen3-vl:4b`) 또는 `ollama.com/download` 링크 제공
+    - 자동 다운로드 버튼을 제공할 경우: `spawn('ollama', ['pull', modelName])` 실행 및 진행 상태 노출
+
+- Remote API 체크 (OpenAI/OpenRouter 등)
+  - 사용자가 입력한 Base URL과 API Key를 임시로 저장(메모리)하고 샘플 요청 전송
+  - 간단한 health/test 요청 실행: POST 또는 GET으로 인증 테스트(예: chat completions endpoint 에 간단한 프롬프트 전송)
+  - 응답 성공(HTTP 2xx 및 유효한 응답 형식) 시 통과
+
+- 정책: 둘 중 하나(로컬 모델 또는 원격 API)가 정상적으로 동작하면 Step2를 통과할 수 있음
+
+#### Step 3 — 최종 설정 표시 및 통합 테스트
+
+- UI에서 현재 검출된 설정을 요약해서 보여줍니다 (JSON 또는 읽기 쉬운 양식):
+  - Python 버전, 설치된 패키지 누락 항목
+  - 선택된 모델 정보(로컬 모델명 또는 API URL/키의 마스킹된 형태)
+  - 플랫폼 도구 상태(ADB/Playwright)
+
+- 통합 테스트
+  - 구현 방식(권장): `appagent/scripts/integration_test.py`라는 간단한 Python 스크립트를 두고, Electron(메인 프로세스)에서 subprocess로 호출하여 결과(JSON)를 파싱합니다.
+    - 스크립트 위치: `appagent/scripts/integration_test.py`
+    - 호출 예시:
+      - 로컬만 검사: `python appagent/scripts/integration_test.py --mode local --model qwen3-vl:4b`
+      - API만 검사: `python appagent/scripts/integration_test.py --mode api --api-url https://... --api-key sk-...`
+      - 둘 다: `python appagent/scripts/integration_test.py --mode all --model qwen3-vl:4b --api-url ... --api-key ...`
+    - 기대 출력(JSON):
+      {
+        "success": true|false,
+        "timestamp": 1234567890.0,
+        "results": {
+          "local": {"checked": true, "ok": true, "detail": "..."},
+          "api": {"checked": true, "ok": false, "detail": "..."}
+        }
+      }
+    - exit code 관례: success=true 이면 exit code 0, 실패 시 2(검사 실패), 예외 시 3
+
+  - Electron에서의 처리
+    - 스크립트를 spawn/exec로 실행하고 stdout을 읽어 JSON으로 파싱합니다.
+    - `results`의 각 항목에서 `ok: true` 여부를 확인하여 통과 기준을 결정합니다.
+    - 정책: Step2에서 사용자가 선택한 방식(로컬 또는 API) 중 하나가 정상이면 통과로 판단하거나, `mode=all`로 실행한 경우 모든 체크가 `ok`여야 통과로 판단할 수 있습니다(설정에서 정책 선택 가능).
+    - 오류 노출: 실패 시 `detail`을 UI에 표시하고 "재시도" / "설치 안내" 버튼을 제공합니다.
+
+  - 스크립트가 없는 경우(개발자 환경): Electron은 내부 간단 검사(fallback)를 실행하도록 구현할 수 있습니다(예: 직접 HTTP 호출로 /api/tags 체크).
+
+  - 보안/비밀키 주의: API 키는 Electron에서 메모리로만 보관하고 UI에 노출하지 마십시오. 로그에 키를 직접 기록하지 않도록 필터링합니다.
+
+#### 구현 스니펫 & UX 제안
+
+- Node.js(또는 Electron 메인)에서의 체크 패턴
+  - `exec('python --version', {timeout:5000})`
+  - `exec('python -m pip show -r requirements.txt', ...)` 또는 `spawn('python', ['-m','pip','install','-r','requirements.txt'])` (사용자 승인 필요)
+  - `fetch('http://localhost:11434/api/tags')` (timeout + 실패 처리)
+  - `exec('adb devices')` → 연결된 디바이스 리스트 파싱
+
+- 실패 시 제공할 액션
+  - "Open Download Page" (브라우저 열기)
+  - "Run Install" (관리자 권한 필요할 수 있음) 버튼
+  - "Skip" (개발/테스트 용) — 경고 표시: 일부 기능 제한
+
+#### 마무리 체크리스트 (사용자에게 보여줄 항목)
+- [ ] Python 3.11+ 확인
+- [ ] requirements.txt 의존성 확인 또는 설치
+- [ ] ADB (Android) 또는 Playwright (Web) 준비 완료
+- [ ] 모델 준비: Local Ollama (필요 모델 설치) 또는 Remote API (URL/Key 유효)
+- [ ] 통합 테스트 통과
+
+---
 
 ---
 
@@ -263,7 +314,7 @@ Request Interval: [10] seconds
 │  📱 Instagram - Follow @example                       │
 │  ────────────────────────────────────────────────    │
 │                                                        │
-│  [▶ Start]  [⏸ Pause]  [⏹ Stop]  [🔄 Restart]       │
+│  [▶ Start]  [⏹ Stop]                                 │
 │                                                        │
 │  ┌──────────────────────────────────────────────┐    │
 │  │ Status: Running (Step 12/20)                 │    │
@@ -300,9 +351,13 @@ Request Interval: [10] seconds
 - **Restart:** Stop → Start
 
 **2. 실시간 모니터링**
-- **Screenshot preview:** `./projects/proj_001/screenshots/latest.png` 주기적으로 읽기
-- **Current action:** Python stdout 파싱 (colorama 출력)
-- **Progress:** `self_explorer.py`에서 round 카운트 추출
+* Ollama의 경우: 
+ - **Screenshot preview:** `./projects/proj_001/screenshots/latest.png` 주기적으로 읽기
+ - **Current action:** Python stdout 파싱 (colorama 출력)
+ - **Progress:** `self_explorer.py`에서 round 카운트 추출
+* API의 경우: 
+ - 모델 이름 및 API 토큰 수 및 상태 주기적 조회
+ - 토큰 수 에 따른 비용 예측 표시 
 
 **3. 시스템 모니터**
 - **CPU/RAM:** Node.js `os` 모듈 사용
