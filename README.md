@@ -103,7 +103,7 @@ cd ..
 ollama pull qwen3-vl:4b
 
 # Or for 24GB+ RAM
-ollama pull qwen2.5-vl:7b
+ollama pull qwen3-vl:8b
 ```
 
 ### 5. Install Electron app dependencies
