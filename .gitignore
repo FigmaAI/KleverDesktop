@@ -16,12 +16,13 @@ build
 # Ignore IDEA build output directory
 out/
 
-# Ignore figma-client directory
+# Ignore figma-client directory (reference only)
 figma-client/
-/app/User_Data
-/app/config/model_config.json
-korean_comments_log.txt
 
+# Electron app
+electron/node_modules/
+electron/dist/
+electron/.DS_Store
 
 # Ignore environment variables
 .envrc

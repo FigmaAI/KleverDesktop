@@ -1,0 +1,73 @@
+{
+  "name": "klever-desktop",
+  "version": "0.1.0",
+  "description": "Local UI Grounding Desktop App - Self-Explorer for Android & Web",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run watch\" \"wait-on http://localhost:3000 && electron .\"",
+    "watch": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "package": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "desktop",
+    "ui-automation",
+    "ollama",
+    "ai"
+  ],
+  "author": "Klever Team",
+  "license": "MIT",
+  "dependencies": {
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.6",
+    "@mui/joy": "5.0.0-beta.48",
+    "@mui/material": "^5.16.6",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/lodash": "^4.17.0",
+    "@types/js-yaml": "^4.0.9",
+    "concurrently": "^8.2.2",
+    "css-loader": "^6.11.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "html-webpack-plugin": "^5.6.0",
+    "style-loader": "^3.3.4",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.5.0",
+    "wait-on": "^7.2.0",
+    "webpack": "^5.93.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
+  },
+  "build": {
+    "appId": "com.klever.desktop",
+    "productName": "Klever Desktop",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "zip"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    }
+  }
+}
