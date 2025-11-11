@@ -72,6 +72,15 @@ declare global {
         localBaseUrl: string;
         localModel: string;
       }) => Promise<{ success: boolean; error?: string }>;
+      fetchApiModels: (config: {
+        apiBaseUrl: string;
+        apiKey: string;
+      }) => Promise<{
+        success: boolean;
+        provider?: string;
+        models?: string[];
+        error?: string
+      }>;
 
       // Integration test
       runIntegrationTest: () => Promise<{ success: boolean }>;
