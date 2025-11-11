@@ -26,7 +26,7 @@ import {
   CircleOutlined as CircleOutlinedIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material'
-import { TerminalOutput, TerminalInput } from 'react-terminal-ui'
+import { TerminalOutput } from 'react-terminal-ui'
 
 const steps = [
   { label: 'Platform Tools', description: 'Check Python, ADB, Playwright' },
@@ -129,7 +129,7 @@ export function SetupWizard() {
 
     try {
       // Start the integration test
-      const stream = await window.electronAPI.runIntegrationTest()
+      await window.electronAPI.runIntegrationTest()
 
       // Listen for stdout
       window.electronAPI.onIntegrationTestOutput((data: string) => {
