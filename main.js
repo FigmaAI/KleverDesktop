@@ -304,13 +304,17 @@ ipcMain.handle('model:testConnection', async (event, config) => {
     const https = require('https');
     const http = require('http');
 
-    const url = config.modelType === 'local' ? config.localBaseUrl : config.apiBaseUrl;
+    // Support both old (modelType) and new (enableLocal/enableApi) formats
+    const isLocal = config.modelType === 'local' || config.enableLocal;
+    const url = isLocal ? config.localBaseUrl : config.apiBaseUrl;
+    const model = isLocal ? config.localModel : config.apiModel;
+
     const urlObj = new URL(url);
     const protocol = urlObj.protocol === 'https:' ? https : http;
 
     return new Promise((resolve) => {
       const postData = JSON.stringify({
-        model: config.modelType === 'local' ? config.localModel : config.apiModel,
+        model: model,
         messages: [{ role: 'user', content: 'Hello' }],
         max_tokens: 10,
       });
@@ -327,7 +331,7 @@ ipcMain.handle('model:testConnection', async (event, config) => {
         timeout: 10000,
       };
 
-      if (config.modelType === 'api' && config.apiKey) {
+      if (!isLocal && config.apiKey) {
         options.headers['Authorization'] = `Bearer ${config.apiKey}`;
       }
 

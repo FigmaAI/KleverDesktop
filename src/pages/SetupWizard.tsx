@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -18,11 +18,15 @@ import {
   FormHelperText,
   Alert,
   CircularProgress,
+  Select,
+  Option,
+  IconButton,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
   CircleOutlined as CircleOutlinedIcon,
   Warning as WarningIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import Checkbox from '@mui/joy/Checkbox'
 import { TerminalOutput } from 'react-terminal-ui'
@@ -55,8 +59,15 @@ export function SetupWizard() {
     localBaseUrl: 'http://localhost:11434/v1/chat/completions',
     localModel: 'qwen3-vl:4b',
   })
-  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
-  const [testMessage, setTestMessage] = useState<string>('')
+  const [localTestStatus, setLocalTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [localTestMessage, setLocalTestMessage] = useState<string>('')
+  const [apiTestStatus, setApiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [apiTestMessage, setApiTestMessage] = useState<string>('')
+
+  // Ollama models state
+  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  const [ollamaLoading, setOllamaLoading] = useState(false)
+  const [ollamaError, setOllamaError] = useState<string>('')
 
   // Integration test state
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
@@ -78,38 +89,59 @@ export function SetupWizard() {
     }
   }
 
-  const handleTestConnection = async () => {
-    // Validate at least one model is selected
-    if (!modelConfig.enableLocal && !modelConfig.enableApi) {
-      setTestStatus('error')
-      setTestMessage('Please select at least one model type')
-      return
-    }
-
-    setTestStatus('testing')
-    setTestMessage('')
+  const handleTestLocalConnection = async () => {
+    setLocalTestStatus('testing')
+    setLocalTestMessage('')
 
     try {
       const result = await window.electronAPI.testModelConnection({
-        enableLocal: modelConfig.enableLocal,
-        enableApi: modelConfig.enableApi,
-        apiBaseUrl: modelConfig.apiBaseUrl,
-        apiKey: modelConfig.apiKey,
-        apiModel: modelConfig.apiModel,
+        enableLocal: true,
+        enableApi: false,
+        apiBaseUrl: '',
+        apiKey: '',
+        apiModel: '',
         localBaseUrl: modelConfig.localBaseUrl,
         localModel: modelConfig.localModel,
       })
 
       if (result.success) {
-        setTestStatus('success')
-        setTestMessage(result.message || 'Connection successful!')
+        setLocalTestStatus('success')
+        setLocalTestMessage(result.message || 'Connection successful!')
       } else {
-        setTestStatus('error')
-        setTestMessage(result.message || 'Connection failed')
+        setLocalTestStatus('error')
+        setLocalTestMessage(result.message || 'Connection failed')
       }
     } catch (error) {
-      setTestStatus('error')
-      setTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
+      setLocalTestStatus('error')
+      setLocalTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
+    }
+  }
+
+  const handleTestApiConnection = async () => {
+    setApiTestStatus('testing')
+    setApiTestMessage('')
+
+    try {
+      const result = await window.electronAPI.testModelConnection({
+        enableLocal: false,
+        enableApi: true,
+        apiBaseUrl: modelConfig.apiBaseUrl,
+        apiKey: modelConfig.apiKey,
+        apiModel: modelConfig.apiModel,
+        localBaseUrl: '',
+        localModel: '',
+      })
+
+      if (result.success) {
+        setApiTestStatus('success')
+        setApiTestMessage(result.message || 'Connection successful!')
+      } else {
+        setApiTestStatus('error')
+        setApiTestMessage(result.message || 'Connection failed')
+      }
+    } catch (error) {
+      setApiTestStatus('error')
+      setApiTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
     }
   }
 
@@ -126,10 +158,51 @@ export function SetupWizard() {
       })
       handleNext()
     } catch (error) {
-      setTestStatus('error')
-      setTestMessage(error instanceof Error ? error.message : 'Failed to save configuration')
+      setLocalTestStatus('error')
+      setLocalTestMessage(error instanceof Error ? error.message : 'Failed to save configuration')
     }
   }
+
+  // Fetch Ollama models
+  const fetchOllamaModels = useCallback(async () => {
+    setOllamaLoading(true)
+    setOllamaError('')
+
+    try {
+      const result = await window.electronAPI.checkOllama()
+      console.log('Ollama API result:', result)
+
+      if (result.success && result.running && result.models) {
+        const modelNames = result.models.map((model: { name?: string } | string) =>
+          typeof model === 'string' ? model : (model.name || '')
+        )
+        console.log('Parsed model names:', modelNames)
+        setOllamaModels(modelNames)
+
+        // Auto-select first model if none selected
+        if (modelNames.length > 0 && !modelConfig.localModel) {
+          setModelConfig((prev) => ({ ...prev, localModel: modelNames[0] }))
+        }
+      } else {
+        console.log('Ollama check failed:', result)
+        setOllamaError('Ollama is not running or no models found')
+        setOllamaModels([])
+      }
+    } catch (error) {
+      console.error('Error fetching Ollama models:', error)
+      setOllamaError(error instanceof Error ? error.message : 'Failed to fetch models')
+      setOllamaModels([])
+    } finally {
+      setOllamaLoading(false)
+    }
+  }, [modelConfig.localModel])
+
+  // Auto-fetch models when local model is enabled
+  useEffect(() => {
+    if (modelConfig.enableLocal && currentStep === 1) {
+      fetchOllamaModels()
+    }
+  }, [modelConfig.enableLocal, currentStep, fetchOllamaModels])
 
   const handleRunIntegrationTest = async () => {
     setIntegrationTestRunning(true)
@@ -375,74 +448,153 @@ export function SetupWizard() {
                       </Typography>
 
                       <Stack spacing={3}>
-                        {/* Model Type Selection */}
-                        <FormControl>
-                          <FormLabel>Model Provider (select at least one)</FormLabel>
-                          <Stack spacing={1}>
+                        {/* Helper text */}
+                        {!modelConfig.enableLocal && !modelConfig.enableApi && (
+                          <Alert color="warning" variant="soft">
+                            Please select at least one model provider
+                          </Alert>
+                        )}
+
+                        {/* Local Model Card */}
+                        <Sheet
+                          variant="outlined"
+                          sx={{
+                            p: 3,
+                            borderRadius: 'md',
+                            border: modelConfig.enableLocal ? '2px solid' : '1px solid',
+                            borderColor: modelConfig.enableLocal ? 'primary.500' : 'neutral.outlinedBorder',
+                            bgcolor: modelConfig.enableLocal ? 'primary.softBg' : 'background.surface',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              borderColor: modelConfig.enableLocal ? 'primary.600' : 'neutral.outlinedHoverBorder',
+                            },
+                          }}
+                        >
+                          <Box sx={{ mb: 2 }}>
                             <Checkbox
-                              label="Local (Ollama)"
+                              label={
+                                <Typography level="title-md" fontWeight="bold">
+                                  Local Model (Ollama)
+                                </Typography>
+                              }
                               checked={modelConfig.enableLocal}
                               onChange={(e) =>
                                 setModelConfig({ ...modelConfig, enableLocal: e.target.checked })
                               }
+                              sx={{ mb: 0.5 }}
                             />
+                            <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
+                              Use locally hosted Ollama models for privacy and offline access
+                            </Typography>
+                          </Box>
+
+                          <Stack spacing={2}>
+                            <FormControl>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                <FormLabel>Select Model</FormLabel>
+                                <IconButton
+                                  size="sm"
+                                  variant="plain"
+                                  color="primary"
+                                  onClick={fetchOllamaModels}
+                                  disabled={!modelConfig.enableLocal || ollamaLoading}
+                                >
+                                  <RefreshIcon />
+                                </IconButton>
+                              </Box>
+                              {ollamaLoading ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5 }}>
+                                  <CircularProgress size="sm" />
+                                  <Typography level="body-sm">Loading models...</Typography>
+                                </Box>
+                              ) : ollamaError ? (
+                                <Alert color="warning" variant="soft" size="sm">
+                                  {ollamaError}
+                                </Alert>
+                              ) : (
+                                <Select
+                                  value={modelConfig.localModel}
+                                  onChange={(_, value) => setModelConfig({ ...modelConfig, localModel: value || '' })}
+                                  disabled={!modelConfig.enableLocal || ollamaModels.length === 0}
+                                  placeholder={ollamaModels.length === 0 ? 'No models found' : 'Select a model'}
+                                >
+                                  {ollamaModels.map((model) => (
+                                    <Option key={model} value={model}>
+                                      {model}
+                                    </Option>
+                                  ))}
+                                </Select>
+                              )}
+                              <FormHelperText>
+                                {ollamaModels.length > 0
+                                  ? `${ollamaModels.length} model(s) available`
+                                  : 'Install models using: ollama pull <model-name>'}
+                              </FormHelperText>
+                            </FormControl>
+
+                            <Button
+                              variant="outlined"
+                              color="primary"
+                              onClick={handleTestLocalConnection}
+                              loading={localTestStatus === 'testing'}
+                              disabled={!modelConfig.enableLocal}
+                              fullWidth
+                            >
+                              Test Connection
+                            </Button>
+
+                            {localTestStatus !== 'idle' && localTestStatus !== 'testing' && (
+                              <Alert
+                                color={localTestStatus === 'success' ? 'success' : 'danger'}
+                                startDecorator={localTestStatus === 'success' ? <CheckCircleIcon /> : <WarningIcon />}
+                              >
+                                {localTestMessage}
+                              </Alert>
+                            )}
+                          </Stack>
+                        </Sheet>
+
+                        {/* API Model Card */}
+                        <Sheet
+                          variant="outlined"
+                          sx={{
+                            p: 3,
+                            borderRadius: 'md',
+                            border: modelConfig.enableApi ? '2px solid' : '1px solid',
+                            borderColor: modelConfig.enableApi ? 'primary.500' : 'neutral.outlinedBorder',
+                            bgcolor: modelConfig.enableApi ? 'primary.softBg' : 'background.surface',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              borderColor: modelConfig.enableApi ? 'primary.600' : 'neutral.outlinedHoverBorder',
+                            },
+                          }}
+                        >
+                          <Box sx={{ mb: 2 }}>
                             <Checkbox
-                              label="API (OpenAI, OpenRouter, etc.)"
+                              label={
+                                <Typography level="title-md" fontWeight="bold">
+                                  API Model (OpenAI, OpenRouter, etc.)
+                                </Typography>
+                              }
                               checked={modelConfig.enableApi}
                               onChange={(e) =>
                                 setModelConfig({ ...modelConfig, enableApi: e.target.checked })
                               }
+                              sx={{ mb: 0.5 }}
                             />
-                          </Stack>
-                          {!modelConfig.enableLocal && !modelConfig.enableApi && (
-                            <FormHelperText sx={{ color: 'danger.500' }}>
-                              Please select at least one model provider
-                            </FormHelperText>
-                          )}
-                        </FormControl>
-
-                        {/* Local Configuration */}
-                        {modelConfig.enableLocal && (
-                          <Stack spacing={2}>
-                            <Typography level="body-sm" fontWeight="md" sx={{ mt: 1 }}>
-                              Local Model Configuration
+                            <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
+                              Connect to cloud-based AI services for powerful performance
                             </Typography>
-                            <FormControl>
-                              <FormLabel>Base URL</FormLabel>
-                              <Input
-                                value={modelConfig.localBaseUrl}
-                                onChange={(e) =>
-                                  setModelConfig({ ...modelConfig, localBaseUrl: e.target.value })
-                                }
-                                placeholder="http://localhost:11434/v1/chat/completions"
-                              />
-                              <FormHelperText>Ollama API endpoint</FormHelperText>
-                            </FormControl>
+                          </Box>
 
-                            <FormControl>
-                              <FormLabel>Model Name</FormLabel>
-                              <Input
-                                value={modelConfig.localModel}
-                                onChange={(e) => setModelConfig({ ...modelConfig, localModel: e.target.value })}
-                                placeholder="qwen3-vl:4b"
-                              />
-                              <FormHelperText>Ollama model with vision support</FormHelperText>
-                            </FormControl>
-                          </Stack>
-                        )}
-
-                        {/* API Configuration */}
-                        {modelConfig.enableApi && (
                           <Stack spacing={2}>
-                            <Typography level="body-sm" fontWeight="md" sx={{ mt: 1 }}>
-                              API Model Configuration
-                            </Typography>
                             <FormControl>
                               <FormLabel>API Base URL</FormLabel>
                               <Input
                                 value={modelConfig.apiBaseUrl}
                                 onChange={(e) => setModelConfig({ ...modelConfig, apiBaseUrl: e.target.value })}
                                 placeholder="https://api.openai.com/v1/chat/completions"
+                                disabled={!modelConfig.enableApi}
                               />
                               <FormHelperText>OpenAI-compatible API endpoint</FormHelperText>
                             </FormControl>
@@ -454,6 +606,7 @@ export function SetupWizard() {
                                 value={modelConfig.apiKey}
                                 onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
                                 placeholder="sk-..."
+                                disabled={!modelConfig.enableApi}
                               />
                               <FormHelperText>Your API key</FormHelperText>
                             </FormControl>
@@ -464,42 +617,32 @@ export function SetupWizard() {
                                 value={modelConfig.apiModel}
                                 onChange={(e) => setModelConfig({ ...modelConfig, apiModel: e.target.value })}
                                 placeholder="gpt-4o-mini"
+                                disabled={!modelConfig.enableApi}
                               />
                               <FormHelperText>Model identifier</FormHelperText>
                             </FormControl>
+
+                            <Button
+                              variant="outlined"
+                              color="primary"
+                              onClick={handleTestApiConnection}
+                              loading={apiTestStatus === 'testing'}
+                              disabled={!modelConfig.enableApi}
+                              fullWidth
+                            >
+                              Test Connection
+                            </Button>
+
+                            {apiTestStatus !== 'idle' && apiTestStatus !== 'testing' && (
+                              <Alert
+                                color={apiTestStatus === 'success' ? 'success' : 'danger'}
+                                startDecorator={apiTestStatus === 'success' ? <CheckCircleIcon /> : <WarningIcon />}
+                              >
+                                {apiTestMessage}
+                              </Alert>
+                            )}
                           </Stack>
-                        )}
-
-                        {/* Test Connection */}
-                        <Box>
-                          <Button
-                            variant="outlined"
-                            color="primary"
-                            onClick={handleTestConnection}
-                            loading={testStatus === 'testing'}
-                            fullWidth
-                          >
-                            Test Connection
-                          </Button>
-                        </Box>
-
-                        {/* Test Status */}
-                        {testStatus !== 'idle' && (
-                          <Alert
-                            color={testStatus === 'success' ? 'success' : testStatus === 'error' ? 'danger' : 'neutral'}
-                            startDecorator={
-                              testStatus === 'testing' ? (
-                                <CircularProgress size="sm" />
-                              ) : testStatus === 'success' ? (
-                                <CheckCircleIcon />
-                              ) : (
-                                <WarningIcon />
-                              )
-                            }
-                          >
-                            {testMessage}
-                          </Alert>
-                        )}
+                        </Sheet>
                       </Stack>
                     </Sheet>
                   </motion.div>
@@ -605,8 +748,11 @@ export function SetupWizard() {
                 <Button
                   variant="solid"
                   color="primary"
-                  onClick={handleSaveConfig}
-                  disabled={testStatus !== 'success'}
+                  onClick={handleSaveConfig}                  disabled={
+                    (!modelConfig.enableLocal && !modelConfig.enableApi) ||
+                    (modelConfig.enableLocal && localTestStatus !== 'success') ||
+                    (modelConfig.enableApi && apiTestStatus !== 'success')
+                  }
                   sx={{ minWidth: 100 }}
                 >
                   Next
