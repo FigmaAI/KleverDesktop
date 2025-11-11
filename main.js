@@ -207,6 +207,24 @@ ipcMain.handle('check:playwright', async () => {
   });
 });
 
+// Check Homebrew (macOS only)
+ipcMain.handle('check:homebrew', async () => {
+  return new Promise((resolve) => {
+    exec('brew --version', { timeout: 5000 }, (error, stdout) => {
+      if (error) {
+        resolve({ success: false, error: 'Homebrew not installed' });
+        return;
+      }
+      const match = stdout.match(/Homebrew ([\d.]+)/);
+      if (match) {
+        resolve({ success: true, version: match[1] });
+      } else {
+        resolve({ success: true, version: 'unknown' });
+      }
+    });
+  });
+});
+
 // Load config.yaml
 ipcMain.handle('config:load', async () => {
   try {

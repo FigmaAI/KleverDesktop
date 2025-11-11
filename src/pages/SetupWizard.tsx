@@ -69,6 +69,23 @@ export function SetupWizard() {
   const [ollamaLoading, setOllamaLoading] = useState(false)
   const [ollamaError, setOllamaError] = useState<string>('')
 
+  // Platform tools state
+  interface ToolStatus {
+    checking: boolean
+    installed: boolean
+    version?: string
+    error?: string
+    installing?: boolean
+  }
+
+  const [toolsStatus, setToolsStatus] = useState({
+    python: { checking: true, installed: false, installing: false } as ToolStatus,
+    packages: { checking: false, installed: false, installing: false } as ToolStatus,
+    adb: { checking: true, installed: false, installing: false } as ToolStatus,
+    playwright: { checking: true, installed: false, installing: false } as ToolStatus,
+    homebrew: { checking: true, installed: false, installing: false } as ToolStatus,
+  })
+
   // Integration test state
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
@@ -203,6 +220,88 @@ export function SetupWizard() {
       fetchOllamaModels()
     }
   }, [modelConfig.enableLocal, currentStep, fetchOllamaModels])
+
+  // Check platform tools
+  const checkPlatformTools = useCallback(async () => {
+    // Check Homebrew (macOS only)
+    const isMac = window.navigator.platform.toLowerCase().includes('mac')
+    if (isMac) {
+      setToolsStatus((prev) => ({ ...prev, homebrew: { ...prev.homebrew, checking: true } }))
+      try {
+        const result = await window.electronAPI.checkHomebrew()
+        setToolsStatus((prev) => ({
+          ...prev,
+          homebrew: { checking: false, installed: result.success, version: result.version, installing: false },
+        }))
+      } catch {
+        setToolsStatus((prev) => ({ ...prev, homebrew: { checking: false, installed: false, installing: false } }))
+      }
+    } else {
+      // Not macOS, skip Homebrew check
+      setToolsStatus((prev) => ({ ...prev, homebrew: { checking: false, installed: true, installing: false } }))
+    }
+
+    // Check Python
+    setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, checking: true } }))
+    try {
+      const result = await window.electronAPI.checkPython()
+      setToolsStatus((prev) => ({
+        ...prev,
+        python: {
+          checking: false,
+          installed: !!(result.success && result.isValid),
+          version: result.version,
+          error: result.error,
+          installing: false,
+        },
+      }))
+    } catch {
+      setToolsStatus((prev) => ({ ...prev, python: { checking: false, installed: false, installing: false } }))
+    }
+
+    // Check Python Packages
+    setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, checking: true } }))
+    try {
+      const result = await window.electronAPI.checkPackages()
+      setToolsStatus((prev) => ({
+        ...prev,
+        packages: { checking: false, installed: result.success, error: result.error, installing: false },
+      }))
+    } catch (error) {
+      setToolsStatus((prev) => ({ ...prev, packages: { checking: false, installed: false, installing: false } }))
+    }
+
+    // Check ADB
+    setToolsStatus((prev) => ({ ...prev, adb: { ...prev.adb, checking: true } }))
+    try {
+      const result = await window.electronAPI.checkAdb()
+      setToolsStatus((prev) => ({
+        ...prev,
+        adb: { checking: false, installed: result.success, error: result.error, installing: false },
+      }))
+    } catch (error) {
+      setToolsStatus((prev) => ({ ...prev, adb: { checking: false, installed: false, installing: false } }))
+    }
+
+    // Check Playwright
+    setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, checking: true } }))
+    try {
+      const result = await window.electronAPI.checkPlaywright()
+      setToolsStatus((prev) => ({
+        ...prev,
+        playwright: { checking: false, installed: result.success, error: result.error, installing: false },
+      }))
+    } catch (error) {
+      setToolsStatus((prev) => ({ ...prev, playwright: { checking: false, installed: false, installing: false } }))
+    }
+  }, [])
+
+  // Auto-check platform tools on Step 0
+  useEffect(() => {
+    if (currentStep === 0) {
+      checkPlatformTools()
+    }
+  }, [currentStep, checkPlatformTools])
 
   const handleRunIntegrationTest = async () => {
     setIntegrationTestRunning(true)

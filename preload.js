@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkOllama: () => ipcRenderer.invoke('check:ollama'),
   checkAdb: () => ipcRenderer.invoke('check:adb'),
   checkPlaywright: () => ipcRenderer.invoke('check:playwright'),
+  checkHomebrew: () => ipcRenderer.invoke('check:homebrew'),
 
   // Ollama operations
   ollamaList: () => ipcRenderer.invoke('ollama:list'),
