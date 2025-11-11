@@ -21,10 +21,10 @@ import {
   Select,
   Option,
   IconButton,
+  Autocomplete,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
-  CircleOutlined as CircleOutlinedIcon,
   Warning as WarningIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
@@ -68,7 +68,6 @@ export function SetupWizard() {
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaLoading, setOllamaLoading] = useState(false)
   const [ollamaError, setOllamaError] = useState<string>('')
-
   // Platform tools state
   interface ToolStatus {
     checking: boolean
@@ -85,6 +84,12 @@ export function SetupWizard() {
     playwright: { checking: true, installed: false, installing: false } as ToolStatus,
     homebrew: { checking: true, installed: false, installing: false } as ToolStatus,
   })
+
+  // API models state
+  const [apiModels, setApiModels] = useState<string[]>([])
+  const [apiModelsLoading, setApiModelsLoading] = useState(false)
+  const [apiModelsError, setApiModelsError] = useState<string>('')
+  const [detectedProvider, setDetectedProvider] = useState<string>('')
 
   // Integration test state
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
@@ -220,7 +225,6 @@ export function SetupWizard() {
       fetchOllamaModels()
     }
   }, [modelConfig.enableLocal, currentStep, fetchOllamaModels])
-
   // Check platform tools
   const checkPlatformTools = useCallback(async () => {
     // Check Homebrew (macOS only)
@@ -267,7 +271,7 @@ export function SetupWizard() {
         ...prev,
         packages: { checking: false, installed: result.success, error: result.error, installing: false },
       }))
-    } catch (error) {
+    } catch {
       setToolsStatus((prev) => ({ ...prev, packages: { checking: false, installed: false, installing: false } }))
     }
 
@@ -279,7 +283,7 @@ export function SetupWizard() {
         ...prev,
         adb: { checking: false, installed: result.success, error: result.error, installing: false },
       }))
-    } catch (error) {
+    } catch {
       setToolsStatus((prev) => ({ ...prev, adb: { checking: false, installed: false, installing: false } }))
     }
 
@@ -291,7 +295,7 @@ export function SetupWizard() {
         ...prev,
         playwright: { checking: false, installed: result.success, error: result.error, installing: false },
       }))
-    } catch (error) {
+    } catch {
       setToolsStatus((prev) => ({ ...prev, playwright: { checking: false, installed: false, installing: false } }))
     }
   }, [])
@@ -302,6 +306,55 @@ export function SetupWizard() {
       checkPlatformTools()
     }
   }, [currentStep, checkPlatformTools])
+
+  // Fetch API models from provider
+  const fetchApiModels = useCallback(async () => {
+    if (!modelConfig.apiBaseUrl) {
+      setApiModelsError('Please enter API Base URL first')
+      return
+    }
+
+    setApiModelsLoading(true)
+    setApiModelsError('')
+    setApiModels([])
+
+    try {
+      const result = await window.electronAPI.fetchApiModels({
+        apiBaseUrl: modelConfig.apiBaseUrl,
+        apiKey: modelConfig.apiKey,
+      })
+
+      if (result.success && result.models) {
+        setApiModels(result.models)
+        setDetectedProvider(result.provider || 'unknown')
+
+        // Auto-select first model if none selected
+        if (result.models.length > 0 && !modelConfig.apiModel) {
+          setModelConfig((prev) => ({ ...prev, apiModel: result.models![0] }))
+        }
+      } else {
+        setApiModelsError(result.error || 'Failed to fetch models')
+        setDetectedProvider(result.provider || 'unknown')
+      }
+    } catch (error) {
+      console.error('Error fetching API models:', error)
+      setApiModelsError(error instanceof Error ? error.message : 'Failed to fetch models')
+    } finally {
+      setApiModelsLoading(false)
+    }
+  }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiModel])
+
+  // Auto-fetch API models when URL or key changes
+  useEffect(() => {
+    if (modelConfig.enableApi && modelConfig.apiBaseUrl && currentStep === 1) {
+      const timeoutId = window.setTimeout(() => {
+        fetchApiModels()
+      }, 500) // Debounce API calls
+
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, currentStep, fetchApiModels])
+  
 
   const handleRunIntegrationTest = async () => {
     setIntegrationTestRunning(true)
@@ -918,14 +971,42 @@ export function SetupWizard() {
                             </FormControl>
 
                             <FormControl>
-                              <FormLabel>Model Name</FormLabel>
-                              <Input
-                                value={modelConfig.apiModel}
-                                onChange={(e) => setModelConfig({ ...modelConfig, apiModel: e.target.value })}
-                                placeholder="gpt-4o-mini"
-                                disabled={!modelConfig.enableApi}
-                              />
-                              <FormHelperText>Model identifier</FormHelperText>
+                              <FormLabel>
+                                Model Name
+                                {detectedProvider && ` (${detectedProvider})`}
+                              </FormLabel>
+                              <Stack direction="row" spacing={1}>
+                                <Autocomplete
+                                  placeholder="gpt-4o-mini"
+                                  value={modelConfig.apiModel}
+                                  onChange={(_, newValue) => {
+                                    setModelConfig({ ...modelConfig, apiModel: newValue || '' })
+                                  }}
+                                  onInputChange={(_, newValue) => {
+                                    setModelConfig({ ...modelConfig, apiModel: newValue })
+                                  }}
+                                  options={apiModels}
+                                  freeSolo
+                                  disabled={!modelConfig.enableApi}
+                                  loading={apiModelsLoading}
+                                  sx={{ flex: 1 }}
+                                />
+                                <IconButton
+                                  onClick={fetchApiModels}
+                                  disabled={!modelConfig.enableApi || !modelConfig.apiBaseUrl || apiModelsLoading}
+                                  variant="outlined"
+                                  color="neutral"
+                                >
+                                  <RefreshIcon />
+                                </IconButton>
+                              </Stack>
+                              <FormHelperText>
+                                {apiModelsError
+                                  ? apiModelsError
+                                  : apiModels.length > 0
+                                    ? `${apiModels.length} models available`
+                                    : 'Enter model name or fetch from API'}
+                              </FormHelperText>
                             </FormControl>
 
                             <Button
