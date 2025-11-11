@@ -7,8 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkPython: () => ipcRenderer.invoke('check:python'),
   checkPackages: () => ipcRenderer.invoke('check:packages'),
   installPackages: () => ipcRenderer.invoke('install:packages'),
+  installPlaywright: () => ipcRenderer.invoke('install:playwright'),
+  installAndroidStudio: () => ipcRenderer.invoke('install:androidStudio'),
+  installPython: () => ipcRenderer.invoke('install:python'),
   checkOllama: () => ipcRenderer.invoke('check:ollama'),
-  checkAdb: () => ipcRenderer.invoke('check:adb'),
+  checkAndroidStudio: () => ipcRenderer.invoke('check:androidStudio'),
   checkPlaywright: () => ipcRenderer.invoke('check:playwright'),
   checkHomebrew: () => ipcRenderer.invoke('check:homebrew'),
 

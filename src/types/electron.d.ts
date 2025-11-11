@@ -20,8 +20,12 @@ declare global {
       checkPython: () => Promise<{ success: boolean; version?: string; isValid?: boolean; error?: string }>;
       checkPackages: () => Promise<{ success: boolean; output?: string; error?: string }>;
       installPackages: () => Promise<{ success: boolean; output?: string }>;
+      installPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
+      installAndroidStudio: () => Promise<{ success: boolean; output?: string; error?: string }>;
+      installPython: () => Promise<{ success: boolean; output?: string; error?: string }>;
+      checkHomebrew: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
-      checkAdb: () => Promise<{ success: boolean; devices?: string[]; error?: string }>;
+      checkAndroidStudio: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
       // Ollama operations

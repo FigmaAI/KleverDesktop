@@ -32,7 +32,7 @@ import Checkbox from '@mui/joy/Checkbox'
 import { TerminalOutput } from 'react-terminal-ui'
 
 const steps = [
-  { label: 'Platform Tools', description: 'Check Python, ADB, Playwright' },
+  { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
   { label: 'Model Setup', description: 'Configure Ollama or API' },
   { label: 'Final Check', description: 'Run integration test' },
 ]
@@ -80,7 +80,7 @@ export function SetupWizard() {
   const [toolsStatus, setToolsStatus] = useState({
     python: { checking: true, installed: false, installing: false } as ToolStatus,
     packages: { checking: false, installed: false, installing: false } as ToolStatus,
-    adb: { checking: true, installed: false, installing: false } as ToolStatus,
+    androidStudio: { checking: true, installed: false, installing: false } as ToolStatus,
     playwright: { checking: true, installed: false, installing: false } as ToolStatus,
     homebrew: { checking: true, installed: false, installing: false } as ToolStatus,
   })
@@ -275,16 +275,17 @@ export function SetupWizard() {
       setToolsStatus((prev) => ({ ...prev, packages: { checking: false, installed: false, installing: false } }))
     }
 
-    // Check ADB
-    setToolsStatus((prev) => ({ ...prev, adb: { ...prev.adb, checking: true } }))
+    // Check Android Studio
+    setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, checking: true } }))
     try {
-      const result = await window.electronAPI.checkAdb()
+      const result = await window.electronAPI.checkAndroidStudio()
+      console.log('Android Studio Check Result:', result)
       setToolsStatus((prev) => ({
         ...prev,
-        adb: { checking: false, installed: result.success, error: result.error, installing: false },
+        androidStudio: { checking: false, installed: result.success, error: result.error, installing: false },
       }))
     } catch {
-      setToolsStatus((prev) => ({ ...prev, adb: { checking: false, installed: false, installing: false } }))
+      setToolsStatus((prev) => ({ ...prev, androidStudio: { checking: false, installed: false, installing: false } }))
     }
 
     // Check Playwright
@@ -723,7 +724,7 @@ export function SetupWizard() {
                           </Sheet>
                         </motion.div>
 
-                        {/* ADB */}
+                        {/* Android Studio */}
                         <motion.div
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -731,7 +732,7 @@ export function SetupWizard() {
                         >
                           <Sheet
                             variant="soft"
-                            color={toolsStatus.adb.checking ? 'neutral' : toolsStatus.adb.installed ? 'success' : 'warning'}
+                            color={toolsStatus.androidStudio.checking ? 'neutral' : toolsStatus.androidStudio.installed ? 'success' : 'warning'}
                             sx={{
                               p: 2,
                               borderRadius: 'sm',
@@ -742,32 +743,52 @@ export function SetupWizard() {
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                              {toolsStatus.adb.checking ? (
+                              {toolsStatus.androidStudio.checking ? (
                                 <CircularProgress size="sm" />
-                              ) : toolsStatus.adb.installed ? (
+                              ) : toolsStatus.androidStudio.installed ? (
                                 <CheckCircleIcon color="success" />
                               ) : (
                                 <WarningIcon color="warning" />
                               )}
                               <Typography
                                 level="body-sm"
-                                fontWeight={toolsStatus.adb.installed ? 'md' : 'normal'}
-                                textColor={toolsStatus.adb.installed ? 'text.primary' : 'text.secondary'}
+                                fontWeight={toolsStatus.androidStudio.installed ? 'md' : 'normal'}
+                                textColor={toolsStatus.androidStudio.installed ? 'text.primary' : 'text.secondary'}
                               >
-                                ADB (Android Debug Bridge)
+                                Android Studio
                               </Typography>
                             </Box>
-                            {!toolsStatus.adb.installed && !toolsStatus.adb.checking && (
+                            {!toolsStatus.androidStudio.installed && !toolsStatus.androidStudio.checking && (
+                              // <Button
+                              //   size="sm"
+                              //   variant="outlined"
+                              //   color="warning"
+                              //   loading={toolsStatus.androidStudio.installing}
+                              //   onClick={async () => {
+                              //     setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, installing: true } }))
+                              //     try {
+                              //       const result = await window.electronAPI.installAndroidStudio()
+                              //       if (result.success) {
+                              //         // Recheck after installation
+                              //         await checkPlatformTools()
+                              //       }
+                              //     } catch (error) {
+                              //       console.error('Failed to install Android Studio:', error)
+                              //     } finally {
+                              //       setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, installing: false } }))
+                              //     }
+                              //   }}
+                              // >
+                              //   Install
+                              // </Button>
                               <Button
-                                size="sm"
-                                variant="outlined"
-                                color="warning"
-                                onClick={() =>
-                                  window.electronAPI.openExternal('https://developer.android.com/tools/adb')
-                                }
-                              >
-                                Install Guide
-                              </Button>
+                                  size="sm"
+                                  variant="outlined"
+                                  color="warning"
+                                  onClick={() => window.electronAPI.openExternal('https://developer.android.com/studio')}
+                                >
+                                  Install Guide
+                                </Button>
                             )}
                           </Sheet>
                         </motion.div>
@@ -817,9 +838,23 @@ export function SetupWizard() {
                                 size="sm"
                                 variant="outlined"
                                 color="warning"
-                                onClick={() => window.electronAPI.openExternal('https://playwright.dev/python/docs/intro')}
+                                loading={toolsStatus.playwright.installing}
+                                onClick={async () => {
+                                  setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, installing: true } }))
+                                  try {
+                                    const result = await window.electronAPI.installPlaywright()
+                                    if (result.success) {
+                                      // Recheck after installation
+                                      await checkPlatformTools()
+                                    }
+                                  } catch (error) {
+                                    console.error('Failed to install Playwright:', error)
+                                  } finally {
+                                    setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, installing: false } }))
+                                  }
+                                }}
                               >
-                                Install Guide
+                                Install
                               </Button>
                             )}
                           </Sheet>

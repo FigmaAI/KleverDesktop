@@ -87,11 +87,24 @@ ipcMain.handle('check:python', async () => {
 ipcMain.handle('check:packages', async () => {
   return new Promise((resolve) => {
     const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
-    exec(`python -m pip show -r ${requirementsPath}`, { timeout: 10000 }, (error, stdout, stderr) => {
+    console.log('[Check Packages] Checking packages from:', requirementsPath);
+    
+    // Try to install with --dry-run to see if all packages can be installed
+    exec(`python -m pip install --dry-run -r "${requirementsPath}"`, { timeout: 10000 }, (error, stdout, stderr) => {
       if (error) {
-        resolve({ success: false, error: stderr || error.message });
+        console.log('[Check Packages] Error:', stderr || error.message);
+        resolve({ success: false, error: 'Some packages are missing or cannot be installed' });
         return;
       }
+      
+      // Check if it says "would install" (meaning packages are missing)
+      if (stdout.includes('would install') || stderr.includes('would install')) {
+        console.log('[Check Packages] Packages need to be installed');
+        resolve({ success: false, error: 'Some packages are not installed' });
+        return;
+      }
+      
+      console.log('[Check Packages] All packages are satisfied');
       resolve({ success: true, output: stdout });
     });
   });
@@ -101,21 +114,46 @@ ipcMain.handle('check:packages', async () => {
 ipcMain.handle('install:packages', async () => {
   return new Promise((resolve) => {
     const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
+    console.log('[Install Packages] Starting installation from:', requirementsPath);
+    
+    // Check if requirements.txt exists
+    if (!fs.existsSync(requirementsPath)) {
+      console.error('[Install Packages] requirements.txt not found at:', requirementsPath);
+      resolve({ success: false, error: 'requirements.txt not found' });
+      return;
+    }
+
     const pip = spawn('python', ['-m', 'pip', 'install', '-r', requirementsPath]);
 
     let output = '';
+    let errorOutput = '';
+    
     pip.stdout.on('data', (data) => {
-      output += data.toString();
-      mainWindow?.webContents.send('install:progress', data.toString());
+      const text = data.toString();
+      output += text;
+      console.log('[Install Packages] stdout:', text);
+      mainWindow?.webContents.send('install:progress', text);
     });
 
     pip.stderr.on('data', (data) => {
-      output += data.toString();
-      mainWindow?.webContents.send('install:progress', data.toString());
+      const text = data.toString();
+      errorOutput += text;
+      console.log('[Install Packages] stderr:', text);
+      mainWindow?.webContents.send('install:progress', text);
     });
 
     pip.on('close', (code) => {
-      resolve({ success: code === 0, output });
+      console.log('[Install Packages] Process closed with code:', code);
+      if (code === 0) {
+        resolve({ success: true, output });
+      } else {
+        resolve({ success: false, output: output || errorOutput, error: `pip install failed with code ${code}` });
+      }
+    });
+
+    pip.on('error', (error) => {
+      console.error('[Install Packages] Process error:', error.message);
+      resolve({ success: false, error: error.message });
     });
   });
 });
@@ -178,19 +216,19 @@ ipcMain.handle('ollama:pull', async (event, modelName) => {
 });
 
 // Check ADB
-ipcMain.handle('check:adb', async () => {
+ipcMain.handle('check:androidStudio', async () => {
   return new Promise((resolve) => {
-    exec('adb devices', { timeout: 5000 }, (error, stdout) => {
-      if (error) {
-        resolve({ success: false, error: 'ADB not found' });
-        return;
-      }
-      const lines = stdout.split('\n').slice(1); // Skip header
-      const devices = lines
-        .filter((line) => line.trim() && line.includes('device'))
-        .map((line) => line.split('\t')[0]);
-      resolve({ success: true, devices });
-    });
+    // Check if Android SDK exists (installed by Android Studio)
+    const sdkPath = path.join(process.env.HOME || '/root', 'Library', 'Android', 'sdk');
+    console.log('[Android Studio Check] Checking SDK path:', sdkPath);
+    
+    if (fs.existsSync(sdkPath)) {
+      console.log('[Android Studio Check] Result: FOUND');
+      resolve({ success: true, version: 'installed' });
+    } else {
+      console.log('[Android Studio Check] Result: NOT FOUND');
+      resolve({ success: false, error: 'Android Studio not found' });
+    }
   });
 });
 
@@ -206,6 +244,132 @@ ipcMain.handle('check:playwright', async () => {
     });
   });
 });
+
+// Install Playwright
+ipcMain.handle('install:playwright', async () => {
+  return new Promise((resolve) => {
+    console.log('[Playwright] Starting installation via pip...');
+    // First install playwright package via pip
+    const playwright = spawn('python', ['-m', 'pip', 'install', 'playwright']);
+
+    let output = '';
+    playwright.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Playwright] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    playwright.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Playwright] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    playwright.on('close', (code) => {
+      console.log('[Playwright] pip install finished with code:', code);
+      if (code === 0) {
+        // Then install browsers
+        console.log('[Playwright] Installing browsers...');
+        mainWindow?.webContents.send('install:progress', 'Installing Playwright browsers...\n');
+        const browserInstall = spawn('python', ['-m', 'playwright', 'install', 'chromium']);
+
+        let browserOutput = '';
+        browserInstall.stdout.on('data', (data) => {
+          browserOutput += data.toString();
+          console.log('[Playwright] browser install stdout:', data.toString());
+          mainWindow?.webContents.send('install:progress', data.toString());
+        });
+
+        browserInstall.stderr.on('data', (data) => {
+          browserOutput += data.toString();
+          console.log('[Playwright] browser install stderr:', data.toString());
+          mainWindow?.webContents.send('install:progress', data.toString());
+        });
+
+        browserInstall.on('close', (browserCode) => {
+          console.log('[Playwright] Browser installation finished with code:', browserCode);
+          resolve({ success: browserCode === 0, output: output + '\n' + browserOutput });
+        });
+
+        browserInstall.on('error', (error) => {
+          console.error('[Playwright] Browser install error:', error.message);
+          resolve({ success: false, error: error.message });
+        });
+      } else {
+        resolve({ success: false, error: 'Failed to install playwright package' });
+      }
+    });
+
+    playwright.on('error', (error) => {
+      console.error('[Playwright] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Install Android Studio (via Homebrew cask)
+ipcMain.handle('install:androidStudio', async () => {
+  return new Promise((resolve) => {
+    console.log('[Android Studio] Starting installation via Homebrew...');
+    const install = spawn('brew', ['install', '--cask', 'android-studio']);
+
+    let output = '';
+    install.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Android Studio] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Android Studio] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.on('close', (code) => {
+      console.log('[Android Studio] Installation finished with code:', code);
+      resolve({ success: code === 0, output });
+    });
+
+    install.on('error', (error) => {
+      console.error('[Android Studio] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Install Python (via Homebrew)
+ipcMain.handle('install:python', async () => {
+  return new Promise((resolve) => {
+    console.log('[Python] Starting installation via Homebrew...');
+    const install = spawn('brew', ['install', 'python@3.11']);
+
+    let output = '';
+    install.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Python] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Python] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.on('close', (code) => {
+      console.log('[Python] Installation finished with code:', code);
+      resolve({ success: code === 0, output });
+    });
+
+    install.on('error', (error) => {
+      console.error('[Python] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Check Homebrew
 
 // Check Homebrew (macOS only)
 ipcMain.handle('check:homebrew', async () => {
