@@ -53,12 +53,35 @@ declare global {
         freeMemory: number;
       }>;
 
+      // Model configuration and testing
+      testModelConnection: (config: {
+        modelType: 'local' | 'api';
+        apiBaseUrl: string;
+        apiKey: string;
+        apiModel: string;
+        localBaseUrl: string;
+        localModel: string;
+      }) => Promise<{ success: boolean; message?: string }>;
+      saveModelConfig: (config: {
+        modelType: 'local' | 'api';
+        apiBaseUrl: string;
+        apiKey: string;
+        apiModel: string;
+        localBaseUrl: string;
+        localModel: string;
+      }) => Promise<{ success: boolean; error?: string }>;
+
+      // Integration test
+      runIntegrationTest: () => Promise<{ success: boolean }>;
+
       // Event listeners
       onInstallProgress: (callback: (data: string) => void) => void;
       onOllamaPullProgress: (callback: (data: string) => void) => void;
       onProjectOutput: (callback: (data: string) => void) => void;
       onProjectError: (callback: (data: string) => void) => void;
       onProjectExit: (callback: (code: number) => void) => void;
+      onIntegrationTestOutput: (callback: (data: string) => void) => void;
+      onIntegrationTestComplete: (callback: (success: boolean) => void) => void;
 
       // Remove listeners
       removeAllListeners: (channel: string) => void;

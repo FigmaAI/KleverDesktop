@@ -297,3 +297,124 @@ ipcMain.handle('system:info', async () => {
     freeMemory: os.freemem(),
   };
 });
+
+// Test model connection
+ipcMain.handle('model:testConnection', async (event, config) => {
+  try {
+    const https = require('https');
+    const http = require('http');
+
+    const url = config.modelType === 'local' ? config.localBaseUrl : config.apiBaseUrl;
+    const urlObj = new URL(url);
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+
+    return new Promise((resolve) => {
+      const postData = JSON.stringify({
+        model: config.modelType === 'local' ? config.localModel : config.apiModel,
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 10,
+      });
+
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+        },
+        timeout: 10000,
+      };
+
+      if (config.modelType === 'api' && config.apiKey) {
+        options.headers['Authorization'] = `Bearer ${config.apiKey}`;
+      }
+
+      const req = protocol.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200 || res.statusCode === 201) {
+            resolve({ success: true, message: 'Connection successful!' });
+          } else {
+            resolve({ success: false, message: `HTTP ${res.statusCode}: ${data}` });
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        resolve({ success: false, message: error.message });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({ success: false, message: 'Connection timeout' });
+      });
+
+      req.write(postData);
+      req.end();
+    });
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+});
+
+// Save model configuration
+ipcMain.handle('model:saveConfig', async (event, config) => {
+  try {
+    const configPath = path.join(__dirname, 'appagent', 'config.yaml');
+    const yamlContent = fs.readFileSync(configPath, 'utf8');
+    const yamlConfig = yaml.load(yamlContent);
+
+    // Update config
+    yamlConfig.MODEL = config.modelType;
+    yamlConfig.API_BASE_URL = config.apiBaseUrl;
+    yamlConfig.API_KEY = config.apiKey;
+    yamlConfig.API_MODEL = config.apiModel;
+    yamlConfig.LOCAL_BASE_URL = config.localBaseUrl;
+    yamlConfig.LOCAL_MODEL = config.localModel;
+
+    // Save config
+    fs.writeFileSync(configPath, yaml.dump(yamlConfig), 'utf8');
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// Run integration test
+ipcMain.handle('integration:test', async () => {
+  try {
+    const testScript = path.join(__dirname, 'appagent', 'integration-test.py');
+
+    if (!fs.existsSync(testScript)) {
+      mainWindow?.webContents.send('integration:output', 'Error: integration-test.py not found\n');
+      mainWindow?.webContents.send('integration:complete', false);
+      return { success: false };
+    }
+
+    const testProcess = spawn('python', [testScript], {
+      cwd: path.join(__dirname, 'appagent'),
+    });
+
+    testProcess.stdout.on('data', (data) => {
+      mainWindow?.webContents.send('integration:output', data.toString());
+    });
+
+    testProcess.stderr.on('data', (data) => {
+      mainWindow?.webContents.send('integration:output', data.toString());
+    });
+
+    testProcess.on('close', (code) => {
+      mainWindow?.webContents.send('integration:complete', code === 0);
+    });
+
+    return { success: true };
+  } catch (error) {
+    mainWindow?.webContents.send('integration:output', `Error: ${error.message}\n`);
+    mainWindow?.webContents.send('integration:complete', false);
+    return { success: false };
+  }
+});

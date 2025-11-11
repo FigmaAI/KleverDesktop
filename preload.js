@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // System info
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
 
+  // Model configuration and testing
+  testModelConnection: (config) => ipcRenderer.invoke('model:testConnection', config),
+  saveModelConfig: (config) => ipcRenderer.invoke('model:saveConfig', config),
+
+  // Integration test
+  runIntegrationTest: () => ipcRenderer.invoke('integration:test'),
+
   // Event listeners
   onInstallProgress: (callback) => {
     ipcRenderer.on('install:progress', (event, data) => callback(data));
@@ -44,6 +51,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onProjectExit: (callback) => {
     ipcRenderer.on('project:exit', (event, code) => callback(code));
+  },
+  onIntegrationTestOutput: (callback) => {
+    ipcRenderer.on('integration:output', (event, data) => callback(data));
+  },
+  onIntegrationTestComplete: (callback) => {
+    ipcRenderer.on('integration:complete', (event, success) => callback(success));
   },
 
   // Remove listeners

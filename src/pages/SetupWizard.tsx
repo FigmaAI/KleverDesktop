@@ -12,23 +12,61 @@ import {
   StepIndicator,
   stepClasses,
   stepIndicatorClasses,
+  Radio,
+  RadioGroup,
+  Input,
+  FormControl,
+  FormLabel,
+  FormHelperText,
+  Alert,
+  CircularProgress,
 } from '@mui/joy'
-import { CheckCircle as CheckCircleIcon, CircleOutlined as CircleOutlinedIcon } from '@mui/icons-material'
+import {
+  CheckCircle as CheckCircleIcon,
+  CircleOutlined as CircleOutlinedIcon,
+  Warning as WarningIcon,
+} from '@mui/icons-material'
+import { TerminalOutput, TerminalInput } from 'react-terminal-ui'
 
 const steps = [
   { label: 'Platform Tools', description: 'Check Python, ADB, Playwright' },
   { label: 'Model Setup', description: 'Configure Ollama or API' },
-  { label: 'Final Check', description: 'Verify configuration' },
+  { label: 'Final Check', description: 'Run integration test' },
 ]
+
+interface ModelConfig {
+  modelType: 'local' | 'api'
+  apiBaseUrl: string
+  apiKey: string
+  apiModel: string
+  localBaseUrl: string
+  localModel: string
+}
 
 export function SetupWizard() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(0)
+  const [modelConfig, setModelConfig] = useState<ModelConfig>({
+    modelType: 'local',
+    apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
+    apiKey: '',
+    apiModel: 'gpt-4o-mini',
+    localBaseUrl: 'http://localhost:11434/v1/chat/completions',
+    localModel: 'qwen3-vl:4b',
+  })
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [testMessage, setTestMessage] = useState<string>('')
+
+  // Integration test state
+  const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
+  const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
+  const [integrationTestSuccess, setIntegrationTestSuccess] = useState(false)
+  const [terminalLines, setTerminalLines] = useState<React.ReactNode[]>([])
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
-    } else {
+    } else if (integrationTestSuccess) {
       navigate('/projects')
     }
   }
@@ -36,6 +74,100 @@ export function SetupWizard() {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1)
+    }
+  }
+
+  const handleTestConnection = async () => {
+    setTestStatus('testing')
+    setTestMessage('')
+
+    try {
+      const result = await window.electronAPI.testModelConnection({
+        modelType: modelConfig.modelType,
+        apiBaseUrl: modelConfig.apiBaseUrl,
+        apiKey: modelConfig.apiKey,
+        apiModel: modelConfig.apiModel,
+        localBaseUrl: modelConfig.localBaseUrl,
+        localModel: modelConfig.localModel,
+      })
+
+      if (result.success) {
+        setTestStatus('success')
+        setTestMessage(result.message || 'Connection successful!')
+      } else {
+        setTestStatus('error')
+        setTestMessage(result.message || 'Connection failed')
+      }
+    } catch (error) {
+      setTestStatus('error')
+      setTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
+    }
+  }
+
+  const handleSaveConfig = async () => {
+    try {
+      await window.electronAPI.saveModelConfig({
+        modelType: modelConfig.modelType,
+        apiBaseUrl: modelConfig.apiBaseUrl,
+        apiKey: modelConfig.apiKey,
+        apiModel: modelConfig.apiModel,
+        localBaseUrl: modelConfig.localBaseUrl,
+        localModel: modelConfig.localModel,
+      })
+      handleNext()
+    } catch (error) {
+      setTestStatus('error')
+      setTestMessage(error instanceof Error ? error.message : 'Failed to save configuration')
+    }
+  }
+
+  const handleRunIntegrationTest = async () => {
+    setIntegrationTestRunning(true)
+    setIntegrationTestComplete(false)
+    setIntegrationTestSuccess(false)
+    setTerminalLines([])
+
+    try {
+      // Start the integration test
+      const stream = await window.electronAPI.runIntegrationTest()
+
+      // Listen for stdout
+      window.electronAPI.onIntegrationTestOutput((data: string) => {
+        setTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
+      })
+
+      // Listen for completion
+      window.electronAPI.onIntegrationTestComplete((success: boolean) => {
+        setIntegrationTestRunning(false)
+        setIntegrationTestComplete(true)
+        setIntegrationTestSuccess(success)
+
+        if (success) {
+          setTerminalLines((prev) => [
+            ...prev,
+            <TerminalOutput key={prev.length}>
+              <span style={{ color: '#4caf50' }}>✓ Integration test completed successfully!</span>
+            </TerminalOutput>,
+          ])
+        } else {
+          setTerminalLines((prev) => [
+            ...prev,
+            <TerminalOutput key={prev.length}>
+              <span style={{ color: '#f44336' }}>✗ Integration test failed. Please check the output above.</span>
+            </TerminalOutput>,
+          ])
+        }
+      })
+    } catch (error) {
+      setIntegrationTestRunning(false)
+      setIntegrationTestComplete(true)
+      setIntegrationTestSuccess(false)
+      setTerminalLines((prev) => [
+        ...prev,
+        <TerminalOutput key={prev.length}>
+          <span style={{ color: '#f44336' }}>Error: {error instanceof Error ? error.message : 'Unknown error'}</span>
+        </TerminalOutput>,
+      ])
     }
   }
 
@@ -140,6 +272,7 @@ export function SetupWizard() {
             {/* Step Content on the right */}
             <Box sx={{ flex: 1 }}>
               <AnimatePresence mode="wait">
+                {/* Step 0: Platform Tools Check */}
                 {currentStep === 0 && (
                   <motion.div
                     key="step-0"
@@ -207,6 +340,7 @@ export function SetupWizard() {
                   </motion.div>
                 )}
 
+                {/* Step 1: Model Configuration */}
                 {currentStep === 1 && (
                   <motion.div
                     key="step-1"
@@ -227,70 +361,123 @@ export function SetupWizard() {
                         Model Configuration
                       </Typography>
                       <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-                        Choose how you want to run AI models: locally with Ollama or via API
+                        Choose and configure your AI model provider
                       </Typography>
 
-                      <Stack direction="row" spacing={2}>
-                        <motion.div
-                          style={{ flex: 1 }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Sheet
-                            variant="outlined"
-                            sx={{
-                              p: 3,
-                              borderRadius: 'md',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              bgcolor: 'background.surface',
-                              '&:hover': {
-                                borderColor: 'primary.outlinedBorder',
-                                bgcolor: 'background.level1',
-                              },
-                            }}
+                      <Stack spacing={3}>
+                        {/* Model Type Selection */}
+                        <FormControl>
+                          <FormLabel>Model Provider</FormLabel>
+                          <RadioGroup
+                            value={modelConfig.modelType}
+                            onChange={(e) =>
+                              setModelConfig({ ...modelConfig, modelType: e.target.value as 'local' | 'api' })
+                            }
                           >
-                            <Typography level="title-md" fontWeight="bold" sx={{ mb: 1 }}>
-                              Local (Ollama)
-                            </Typography>
-                            <Typography level="body-sm" textColor="text.secondary">
-                              Run models locally with Ollama. Requires installation.
-                            </Typography>
-                          </Sheet>
-                        </motion.div>
+                            <Radio value="local" label="Local (Ollama)" />
+                            <Radio value="api" label="API (OpenAI, OpenRouter, etc.)" />
+                          </RadioGroup>
+                        </FormControl>
 
-                        <motion.div
-                          style={{ flex: 1 }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Sheet
+                        {/* Local Configuration */}
+                        {modelConfig.modelType === 'local' && (
+                          <Stack spacing={2}>
+                            <FormControl>
+                              <FormLabel>Base URL</FormLabel>
+                              <Input
+                                value={modelConfig.localBaseUrl}
+                                onChange={(e) =>
+                                  setModelConfig({ ...modelConfig, localBaseUrl: e.target.value })
+                                }
+                                placeholder="http://localhost:11434/v1/chat/completions"
+                              />
+                              <FormHelperText>Ollama API endpoint</FormHelperText>
+                            </FormControl>
+
+                            <FormControl>
+                              <FormLabel>Model Name</FormLabel>
+                              <Input
+                                value={modelConfig.localModel}
+                                onChange={(e) => setModelConfig({ ...modelConfig, localModel: e.target.value })}
+                                placeholder="qwen3-vl:4b"
+                              />
+                              <FormHelperText>Ollama model with vision support</FormHelperText>
+                            </FormControl>
+                          </Stack>
+                        )}
+
+                        {/* API Configuration */}
+                        {modelConfig.modelType === 'api' && (
+                          <Stack spacing={2}>
+                            <FormControl>
+                              <FormLabel>API Base URL</FormLabel>
+                              <Input
+                                value={modelConfig.apiBaseUrl}
+                                onChange={(e) => setModelConfig({ ...modelConfig, apiBaseUrl: e.target.value })}
+                                placeholder="https://api.openai.com/v1/chat/completions"
+                              />
+                              <FormHelperText>OpenAI-compatible API endpoint</FormHelperText>
+                            </FormControl>
+
+                            <FormControl>
+                              <FormLabel>API Key</FormLabel>
+                              <Input
+                                type="password"
+                                value={modelConfig.apiKey}
+                                onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
+                                placeholder="sk-..."
+                              />
+                              <FormHelperText>Your API key</FormHelperText>
+                            </FormControl>
+
+                            <FormControl>
+                              <FormLabel>Model Name</FormLabel>
+                              <Input
+                                value={modelConfig.apiModel}
+                                onChange={(e) => setModelConfig({ ...modelConfig, apiModel: e.target.value })}
+                                placeholder="gpt-4o-mini"
+                              />
+                              <FormHelperText>Model identifier</FormHelperText>
+                            </FormControl>
+                          </Stack>
+                        )}
+
+                        {/* Test Connection */}
+                        <Box>
+                          <Button
                             variant="outlined"
-                            sx={{
-                              p: 3,
-                              borderRadius: 'md',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              bgcolor: 'background.surface',
-                              '&:hover': {
-                                borderColor: 'primary.outlinedBorder',
-                                bgcolor: 'background.level1',
-                              },
-                            }}
+                            color="primary"
+                            onClick={handleTestConnection}
+                            loading={testStatus === 'testing'}
+                            fullWidth
                           >
-                            <Typography level="title-md" fontWeight="bold" sx={{ mb: 1 }}>
-                              API
-                            </Typography>
-                            <Typography level="body-sm" textColor="text.secondary">
-                              Use cloud APIs. Requires API key configuration.
-                            </Typography>
-                          </Sheet>
-                        </motion.div>
+                            Test Connection
+                          </Button>
+                        </Box>
+
+                        {/* Test Status */}
+                        {testStatus !== 'idle' && (
+                          <Alert
+                            color={testStatus === 'success' ? 'success' : testStatus === 'error' ? 'danger' : 'neutral'}
+                            startDecorator={
+                              testStatus === 'testing' ? (
+                                <CircularProgress size="sm" />
+                              ) : testStatus === 'success' ? (
+                                <CheckCircleIcon />
+                              ) : (
+                                <WarningIcon />
+                              )
+                            }
+                          >
+                            {testMessage}
+                          </Alert>
+                        )}
                       </Stack>
                     </Sheet>
                   </motion.div>
                 )}
 
+                {/* Step 2: Integration Test */}
                 {currentStep === 2 && (
                   <motion.div
                     key="step-2"
@@ -307,33 +494,62 @@ export function SetupWizard() {
                         bgcolor: 'background.surface',
                       }}
                     >
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                        style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}
-                      >
+                      <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
+                        Final Integration Test
+                      </Typography>
+                      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
+                        Run the integration test to verify your setup
+                      </Typography>
+
+                      {!integrationTestRunning && !integrationTestComplete && (
+                        <Button
+                          variant="solid"
+                          color="primary"
+                          onClick={handleRunIntegrationTest}
+                          fullWidth
+                          sx={{ mb: 2 }}
+                        >
+                          Run Integration Test
+                        </Button>
+                      )}
+
+                      {/* Terminal Output */}
+                      {(integrationTestRunning || integrationTestComplete) && (
                         <Box
                           sx={{
-                            width: 64,
-                            height: 64,
-                            borderRadius: '50%',
-                            bgcolor: 'success.solidBg',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            bgcolor: '#1e1e1e',
+                            borderRadius: 'sm',
+                            p: 2,
+                            minHeight: 300,
+                            maxHeight: 500,
+                            overflow: 'auto',
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
                           }}
                         >
-                          <CheckCircleIcon sx={{ fontSize: 40, color: 'success.solidColor' }} />
+                          {terminalLines}
+                          {integrationTestRunning && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                              <CircularProgress size="sm" sx={{ color: '#fff' }} />
+                              <Typography level="body-sm" sx={{ color: '#fff' }}>
+                                Running test...
+                              </Typography>
+                            </Box>
+                          )}
                         </Box>
-                      </motion.div>
+                      )}
 
-                      <Typography level="h4" fontWeight="bold" textAlign="center" sx={{ mb: 1 }}>
-                        Setup Complete!
-                      </Typography>
-                      <Typography level="body-sm" textAlign="center" textColor="text.secondary">
-                        Your environment is ready. You can now create projects and start exploring AI-powered UI automation.
-                      </Typography>
+                      {integrationTestComplete && integrationTestSuccess && (
+                        <Alert color="success" startDecorator={<CheckCircleIcon />} sx={{ mt: 2 }}>
+                          Setup complete! All tests passed successfully.
+                        </Alert>
+                      )}
+
+                      {integrationTestComplete && !integrationTestSuccess && (
+                        <Alert color="danger" startDecorator={<WarningIcon />} sx={{ mt: 2 }}>
+                          Integration test failed. Please review the output and fix any issues.
+                        </Alert>
+                      )}
                     </Sheet>
                   </motion.div>
                 )}
@@ -357,14 +573,27 @@ export function SetupWizard() {
               >
                 Back
               </Button>
-              <Button
-                variant="solid"
-                color="primary"
-                onClick={handleNext}
-                sx={{ minWidth: 100 }}
-              >
-                {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
-              </Button>
+              {currentStep === 1 ? (
+                <Button
+                  variant="solid"
+                  color="primary"
+                  onClick={handleSaveConfig}
+                  disabled={testStatus !== 'success'}
+                  sx={{ minWidth: 100 }}
+                >
+                  Next
+                </Button>
+              ) : (
+                <Button
+                  variant="solid"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={currentStep === 2 && !integrationTestSuccess}
+                  sx={{ minWidth: 100 }}
+                >
+                  {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                </Button>
+              )}
             </Stack>
           </motion.div>
         </Box>
