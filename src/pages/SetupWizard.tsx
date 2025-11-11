@@ -524,9 +524,20 @@ export function SetupWizard() {
                         bgcolor: 'background.surface',
                       }}
                     >
-                      <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                        Platform & Runtime Tools Check
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography level="h4" fontWeight="bold">
+                          Platform & Runtime Tools Check
+                        </Typography>
+                        <Button
+                          size="sm"
+                          variant="outlined"
+                          color="neutral"
+                          onClick={checkPlatformTools}
+                          startDecorator={<RefreshIcon />}
+                        >
+                          Recheck
+                        </Button>
+                      </Box>
                       <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
                         We&apos;re checking if all required tools are installed and configured correctly.
                       </Typography>
@@ -581,8 +592,13 @@ export function SetupWizard() {
                                 </Box>
                               </Box>
                               {!toolsStatus.homebrew.installed && !toolsStatus.homebrew.checking && (
-                                <Button size="sm" variant="outlined" color="warning">
-                                  Install
+                                <Button
+                                  size="sm"
+                                  variant="outlined"
+                                  color="warning"
+                                  onClick={() => window.electronAPI.openExternal('https://brew.sh')}
+                                >
+                                  Install Guide
                                 </Button>
                               )}
                             </Sheet>
@@ -681,7 +697,26 @@ export function SetupWizard() {
                               </Typography>
                             </Box>
                             {!toolsStatus.packages.installed && !toolsStatus.packages.checking && (
-                              <Button size="sm" variant="outlined" color="warning">
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                color="warning"
+                                loading={toolsStatus.packages.installing}
+                                onClick={async () => {
+                                  setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, installing: true } }))
+                                  try {
+                                    const result = await window.electronAPI.installPackages()
+                                    if (result.success) {
+                                      // Recheck after installation
+                                      await checkPlatformTools()
+                                    }
+                                  } catch (error) {
+                                    console.error('Failed to install packages:', error)
+                                  } finally {
+                                    setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, installing: false } }))
+                                  }
+                                }}
+                              >
                                 Install
                               </Button>
                             )}
@@ -723,8 +758,15 @@ export function SetupWizard() {
                               </Typography>
                             </Box>
                             {!toolsStatus.adb.installed && !toolsStatus.adb.checking && (
-                              <Button size="sm" variant="outlined" color="warning">
-                                Install
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() =>
+                                  window.electronAPI.openExternal('https://developer.android.com/tools/adb')
+                                }
+                              >
+                                Install Guide
                               </Button>
                             )}
                           </Sheet>
@@ -771,8 +813,13 @@ export function SetupWizard() {
                               </Typography>
                             </Box>
                             {!toolsStatus.playwright.installed && !toolsStatus.playwright.checking && (
-                              <Button size="sm" variant="outlined" color="warning">
-                                Install
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => window.electronAPI.openExternal('https://playwright.dev/python/docs/intro')}
+                              >
+                                Install Guide
                               </Button>
                             )}
                           </Sheet>
