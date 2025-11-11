@@ -479,44 +479,251 @@ export function SetupWizard() {
                       </Typography>
 
                       <Stack spacing={1.5}>
-                        {[
-                          { label: 'Python 3.11+', completed: true },
-                          { label: 'Python Packages', completed: false },
-                          { label: 'ADB (Android Debug Bridge)', completed: false },
-                          { label: 'Playwright (Web Automation)', completed: false },
-                        ].map((tool, idx) => (
+                        {/* Homebrew (macOS only) */}
+                        {window.navigator.platform.toLowerCase().includes('mac') && (
                           <motion.div
-                            key={tool.label}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 * (idx + 1) }}
+                            transition={{ delay: 0.1 }}
                           >
                             <Sheet
                               variant="soft"
-                              color={tool.completed ? 'success' : 'neutral'}
+                              color={
+                                toolsStatus.homebrew.checking
+                                  ? 'neutral'
+                                  : toolsStatus.homebrew.installed
+                                    ? 'success'
+                                    : 'warning'
+                              }
                               sx={{
                                 p: 2,
                                 borderRadius: 'sm',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 2,
+                                justifyContent: 'space-between',
                               }}
                             >
-                              {tool.completed ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                {toolsStatus.homebrew.checking ? (
+                                  <CircularProgress size="sm" />
+                                ) : toolsStatus.homebrew.installed ? (
+                                  <CheckCircleIcon color="success" />
+                                ) : (
+                                  <WarningIcon color="warning" />
+                                )}
+                                <Box>
+                                  <Typography
+                                    level="body-sm"
+                                    fontWeight={toolsStatus.homebrew.installed ? 'md' : 'normal'}
+                                    textColor={toolsStatus.homebrew.installed ? 'text.primary' : 'text.secondary'}
+                                  >
+                                    Homebrew
+                                  </Typography>
+                                  {toolsStatus.homebrew.version && (
+                                    <Typography level="body-xs" textColor="text.tertiary">
+                                      v{toolsStatus.homebrew.version}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                              {!toolsStatus.homebrew.installed && !toolsStatus.homebrew.checking && (
+                                <Button size="sm" variant="outlined" color="warning">
+                                  Install
+                                </Button>
+                              )}
+                            </Sheet>
+                          </motion.div>
+                        )}
+
+                        {/* Python 3.11+ */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          <Sheet
+                            variant="soft"
+                            color={
+                              toolsStatus.python.checking ? 'neutral' : toolsStatus.python.installed ? 'success' : 'warning'
+                            }
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                              {toolsStatus.python.checking ? (
+                                <CircularProgress size="sm" />
+                              ) : toolsStatus.python.installed ? (
                                 <CheckCircleIcon color="success" />
                               ) : (
-                                <CircleOutlinedIcon sx={{ color: 'neutral.400' }} />
+                                <WarningIcon color="warning" />
+                              )}
+                              <Box>
+                                <Typography
+                                  level="body-sm"
+                                  fontWeight={toolsStatus.python.installed ? 'md' : 'normal'}
+                                  textColor={toolsStatus.python.installed ? 'text.primary' : 'text.secondary'}
+                                >
+                                  Python 3.11+
+                                </Typography>
+                                {toolsStatus.python.version && (
+                                  <Typography level="body-xs" textColor="text.tertiary">
+                                    v{toolsStatus.python.version}
+                                  </Typography>
+                                )}
+                                {toolsStatus.python.error && (
+                                  <Typography level="body-xs" textColor="danger.500">
+                                    {toolsStatus.python.error}
+                                  </Typography>
+                                )}
+                              </Box>
+                            </Box>
+                          </Sheet>
+                        </motion.div>
+
+                        {/* Python Packages */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          <Sheet
+                            variant="soft"
+                            color={
+                              toolsStatus.packages.checking
+                                ? 'neutral'
+                                : toolsStatus.packages.installed
+                                  ? 'success'
+                                  : 'warning'
+                            }
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                              {toolsStatus.packages.checking ? (
+                                <CircularProgress size="sm" />
+                              ) : toolsStatus.packages.installed ? (
+                                <CheckCircleIcon color="success" />
+                              ) : (
+                                <WarningIcon color="warning" />
                               )}
                               <Typography
                                 level="body-sm"
-                                fontWeight={tool.completed ? 'md' : 'normal'}
-                                textColor={tool.completed ? 'text.primary' : 'text.secondary'}
+                                fontWeight={toolsStatus.packages.installed ? 'md' : 'normal'}
+                                textColor={toolsStatus.packages.installed ? 'text.primary' : 'text.secondary'}
                               >
-                                {tool.label}
+                                Python Packages
                               </Typography>
-                            </Sheet>
-                          </motion.div>
-                        ))}
+                            </Box>
+                            {!toolsStatus.packages.installed && !toolsStatus.packages.checking && (
+                              <Button size="sm" variant="outlined" color="warning">
+                                Install
+                              </Button>
+                            )}
+                          </Sheet>
+                        </motion.div>
+
+                        {/* ADB */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.4 }}
+                        >
+                          <Sheet
+                            variant="soft"
+                            color={toolsStatus.adb.checking ? 'neutral' : toolsStatus.adb.installed ? 'success' : 'warning'}
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                              {toolsStatus.adb.checking ? (
+                                <CircularProgress size="sm" />
+                              ) : toolsStatus.adb.installed ? (
+                                <CheckCircleIcon color="success" />
+                              ) : (
+                                <WarningIcon color="warning" />
+                              )}
+                              <Typography
+                                level="body-sm"
+                                fontWeight={toolsStatus.adb.installed ? 'md' : 'normal'}
+                                textColor={toolsStatus.adb.installed ? 'text.primary' : 'text.secondary'}
+                              >
+                                ADB (Android Debug Bridge)
+                              </Typography>
+                            </Box>
+                            {!toolsStatus.adb.installed && !toolsStatus.adb.checking && (
+                              <Button size="sm" variant="outlined" color="warning">
+                                Install
+                              </Button>
+                            )}
+                          </Sheet>
+                        </motion.div>
+
+                        {/* Playwright */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.5 }}
+                        >
+                          <Sheet
+                            variant="soft"
+                            color={
+                              toolsStatus.playwright.checking
+                                ? 'neutral'
+                                : toolsStatus.playwright.installed
+                                  ? 'success'
+                                  : 'warning'
+                            }
+                            sx={{
+                              p: 2,
+                              borderRadius: 'sm',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                              {toolsStatus.playwright.checking ? (
+                                <CircularProgress size="sm" />
+                              ) : toolsStatus.playwright.installed ? (
+                                <CheckCircleIcon color="success" />
+                              ) : (
+                                <WarningIcon color="warning" />
+                              )}
+                              <Typography
+                                level="body-sm"
+                                fontWeight={toolsStatus.playwright.installed ? 'md' : 'normal'}
+                                textColor={toolsStatus.playwright.installed ? 'text.primary' : 'text.secondary'}
+                              >
+                                Playwright (Web Automation)
+                              </Typography>
+                            </Box>
+                            {!toolsStatus.playwright.installed && !toolsStatus.playwright.checking && (
+                              <Button size="sm" variant="outlined" color="warning">
+                                Install
+                              </Button>
+                            )}
+                          </Sheet>
+                        </motion.div>
                       </Stack>
                     </Sheet>
                   </motion.div>
