@@ -1,195 +1,255 @@
-<p align="center">
-  <img src="app/src/main/resources/icon.png" width="128" height="128" alt="KleverDesktop Logo">
-</p>
+# Klever Desktop
 
-<h1 align="center">KleverDesktop</h1>
+Local UI Grounding Desktop App - AI-powered UI automation for Android & Web using Ollama.
 
-<p align="center">
-  <b>A desktop companion for Figma plugins with browser automation capabilities</b>
-  <br>
-  <i>Currently in Beta</i>
-</p>
+## Overview
 
-<p align="center">
-  <a href="#installation">Installation</a> •
-  <a href="#getting-started">Getting Started</a> •
-  <a href="#features">Features</a> •
-  <a href="#troubleshooting">Troubleshooting</a>
-</p>
-
-## Installation
-
-### macOS (Recommended)
-1. Download the latest `KleverDesktop-Beta-macOS.dmg` from [Releases](../../releases)
-2. Open the DMG file
-3. Drag KleverDesktop to your Applications folder
-
-4. **Important**: First Launch Security Guide
-   
-   When you first try to open KleverDesktop, you'll see these security messages. This is normal for beta software! Here's how to proceed:
-
-   <details>
-   <summary>Step-by-step security bypass guide (with screenshots)</summary>
-
-      If you see this message:
-      <img width="306" alt="First security warning" src="https://github.com/user-attachments/assets/9e170e58-0c8c-4e4c-90d3-fe752bc20143" />
-      
-      **Don't click "Move to Trash"!** Instead:
-      - Select "Open" from the context menu
-      - Or go to system permissions & Grant the requested permissions
-      <img width="740" alt="System permissions" src="https://github.com/user-attachments/assets/73cc3bfd-4851-40d5-86b7-1966a742c92a" />
-   </details>
-
-   > **Why these warnings?** These security messages appear because KleverDesktop is currently in beta and not yet registered with Apple's notarization service. The app is safe to use, and following the steps above will create a permanent security exception.
-
-   After completing these steps, KleverDesktop will launch normally
-
-### Windows (Beta)
-1. Download `KleverDesktop-Beta-Windows.msi` from [Releases](../../releases)
-2. Run the installer
-3. Follow the installation wizard
-4. Launch KleverDesktop from the Start menu
-
-## Getting Started
-
-1. **Launch KleverDesktop**
-   - The application will start and initialize the browser
-
-2. **Install Figma Plugin**
-   - Install [Klever Desktop Beta](https://www.figma.com/community/plugin/1466767342108031572/klever-desktop-beta-next-gen-ai-usability-testing)
-   - Plugin will automatically connect to KleverDesktop
-
-3. **Verify Connection**
-   - Check the connection status in both KleverDesktop and Figma plugin
-   - Green indicator shows successful connection
+Klever Desktop is an Electron-based desktop application that enables automated UI exploration and testing using local AI models (via Ollama) or remote APIs. It extracts the Self-Explorer functionality from the AppAgent project and provides a user-friendly interface for managing automation projects.
 
 ## Features
 
-- 🔄 Real-time sync with Figma plugins
-- 🌐 Automated browser control
-- 📸 Screenshot capabilities
-- 🖱️ Mouse and keyboard simulation
-- 🎨 Canvas interaction
+- **Environment Setup Wizard**: Automatic detection and setup of Python, Ollama, ADB, and Playwright
+- **Multi-Platform Support**: Automate both Android apps (via ADB) and Web apps (via Playwright)
+- **Local AI Models**: Use Ollama for completely local, free operation (no API costs)
+- **Project Management**: Create, manage, and monitor multiple automation projects
+- **Real-time Monitoring**: Live logs, screenshots, and system resource monitoring
+- **Markdown Reports**: Automatically generated reports with screenshots and action history
 
-## System Requirements
+## Tech Stack
 
-- **macOS**: 10.13 or later (Primary platform)
-- **Windows**: Windows 10 or later (Beta support)
-- **Memory**: 8GB RAM recommended
-- **Storage**: 500MB free space
-- **Browser**: Google Chrome (recommended for optimal performance)
-- **Java**: Java 17 or later required (JDK or JRE)
+- **Frontend**: Electron + React 18 + TypeScript + MUI Joy (Material-UI)
+- **Backend**: Python (AppAgent submodule)
+- **AI Models**: Ollama (qwen3-vl:4b recommended for 16GB RAM)
+- **Automation**: ADB (Android), Playwright (Web)
 
-### Java Environment Setup
+## Project Structure
 
-KleverDesktop requires Java 17 or later to run. If you don't have Java installed, you can download it from:
+```
+KleverDesktop/                 # Root is Electron project
+├── package.json               # Electron app dependencies
+├── vite.config.ts             # Vite build configuration
+├── tailwind.config.js         # Tailwind CSS config
+├── main.js                    # Electron main process (IPC handlers)
+├── preload.js                 # IPC bridge (contextBridge)
+├── index.html                 # Vite entry point
+├── src/                       # React app source
+│   ├── main.tsx               # React entry + Router
+│   ├── App.tsx                # Route configuration
+│   ├── index.css              # Tailwind + CSS variables
+│   ├── components/
+│   │   ├── Layout.tsx         # Main layout with nav
+│   │   └── ui/                # shadcn/ui components
+│   ├── pages/                 # React Router pages
+│   │   ├── SetupWizard.tsx
+│   │   ├── ProjectList.tsx
+│   │   ├── ProjectDetail.tsx
+│   │   └── Settings.tsx
+│   ├── lib/
+│   │   └── utils.ts           # Utility functions
+│   └── types/
+│       └── electron.d.ts      # TypeScript definitions
+├── appagent/                  # Python backend (git submodule)
+│   ├── scripts/
+│   │   ├── self_explorer.py   # Main automation logic
+│   │   ├── and_controller.py  # Android controller
+│   │   ├── web_controller.py  # Web controller
+│   │   └── model.py           # AI model integration
+│   ├── config.yaml            # Configuration
+│   └── requirements.txt       # Python dependencies
+├── scripts/                   # Build scripts (packaging)
+│   ├── build-appstore.sh      # macOS packaging
+│   └── build-windows-store.ps1 # Windows packaging
+└── PLANNING.md                # Detailed planning document
+```
 
-- [Eclipse Temurin (Recommended)](https://adoptium.net/temurin/releases/?version=17)
-- [Oracle Java](https://www.oracle.com/java/technologies/downloads/#java17)
+## Prerequisites
 
-#### Verifying Java Installation
+- **Python 3.11+**
+- **Node.js 18+** (for development)
+- **Ollama** (for local AI models) - [Download](https://ollama.com/download)
+- **ADB** (for Android automation) - [Setup Guide](https://developer.android.com/studio/command-line/adb)
+- **Playwright** (for web automation) - Installed via Python packages
 
-To verify your Java installation, open a terminal or command prompt and run:
+## Installation
+
+### 1. Clone the repository
 
 ```bash
-java -version
+git clone https://github.com/FigmaAI/KleverDesktop.git
+cd KleverDesktop
 ```
 
-You should see output indicating Java 17 or later, for example:
-```
-openjdk version "17.0.7" 2023-04-18
-OpenJDK Runtime Environment Temurin-17.0.7+7 (build 17.0.7+7)
-OpenJDK 64-Bit Server VM Temurin-17.0.7+7 (build 17.0.7+7, mixed mode)
-```
+### 2. Initialize submodules
 
-### Chrome Browser Setup (Recommended)
-
-KleverDesktop works best with Google Chrome for browser automation features. While the app can run without Chrome, some features may have limited functionality. If you want to use these features, you can download Chrome from:
-
-- [Google Chrome Download Page](https://www.google.com/chrome/)
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Browser Launch Failed**
-   - For optimal performance, Chrome installation is recommended
-   - Check permissions in System Preferences/Settings
-   - Restart KleverDesktop
-
-2. **Connection Issues**
-   - Verify KleverDesktop is running
-   - Check firewall settings
-   - Restart both Figma and KleverDesktop
-
-3. **Permission Errors**
-   - macOS: Grant permissions in System Preferences > Security & Privacy
-   - Windows: Run as administrator if needed
-
-4. **Chrome Browser Issues**
-   - Notice: "Chrome Browser Notice: Google Chrome is recommended for optimal performance"
-   - Solution: For best experience, install Google Chrome (see Chrome Browser Setup section)
-   - Some automation features require Chrome to be installed
-   - If Chrome is installed but not detected, try reinstalling Chrome
-   - On Windows, ensure Chrome is installed for all users or the current user
-
-5. **Java Environment Issues**
-   - Error message: "Java environment check failed. Minimum Java 17 required."
-   - Solution: Install Java 17 or later (see Java Environment Setup section)
-   - Windows: After installing Java, you may need to restart your computer
-   - macOS: Ensure Java is properly installed with `java -version` command
-   - If you have multiple Java versions installed, ensure Java 17+ is the default
-
-6. **ChromeDriver Issues**
-   - If you see errors related to ChromeDriver, try:
-     - Updating Chrome to the latest version
-     - Clearing the KleverDesktop cache folder (located at `~/.kleverdesktop/webdriver`)
-     - Reinstalling KleverDesktop
-
-## Help Us Improve
-We value your feedback! Please share your experience and report any issues:
-- 🐛 [Report a bug](https://github.com/FigmaAI/KleverDesktop/issues/new?labels=bug&template=bug_report.md)
-- 💡 [Suggest a feature](https://github.com/FigmaAI/KleverDesktop/issues/new?labels=enhancement&template=feature_request.md)
-- 📝 [View existing issues](https://github.com/FigmaAI/KleverDesktop/issues)
-
-
-## For Developers
-
-<details>
-<summary>Click to expand development details</summary>
-
-### Project Structure
-```
-KleverDesktop/
-├── app/                    # Main application
-│   ├── src/               # Source files
-│   │   └── main/kotlin/   # Kotlin source code
-│   └── User_Data/         # Chrome user data
-├── figma-client/          # Figma plugin (submodule)
-└── config/                # Configuration files
-```
-
-### Building from Source
 ```bash
-# Clone repository with submodules
-git clone --recursive [repository-url]
-
-# Build project
-./gradlew build
+git submodule update --init --recursive
 ```
 
-### Architecture
-- WebSocket Server for plugin communication
-- Selenium WebDriver for browser control
-- Kotlin/JVM backend
-</details>
+### 3. Install Python dependencies
+
+```bash
+cd appagent
+python -m pip install -r requirements.txt
+playwright install chromium
+cd ..
+```
+
+### 4. Install Ollama and download model
+
+```bash
+# Install Ollama from https://ollama.com/download
+
+# Pull recommended model (for 16GB RAM)
+ollama pull qwen3-vl:4b
+
+# Or for 24GB+ RAM
+ollama pull qwen3-vl:8b
+```
+
+### 5. Install Electron app dependencies
+
+```bash
+npm install
+```
+
+## Development
+
+### Run in development mode
+
+```bash
+npm run electron:dev
+```
+
+This will start:
+- Vite dev server on `http://localhost:5173`
+- Electron app with hot reload
+
+Or run separately:
+```bash
+# Terminal 1: Vite dev server
+npm run dev
+
+# Terminal 2: Electron
+npm run electron
+```
+
+### Build for production
+
+```bash
+npm run build      # Build React app
+npm run package    # Package Electron app
+```
+
+Built apps will be in `dist-electron/`.
+
+## Usage
+
+### 1. Setup Wizard
+
+On first launch, the Setup Wizard will guide you through:
+
+- **Step 1**: Platform tools check (Python, packages, ADB, Playwright)
+- **Step 2**: Model configuration (Ollama or API)
+- **Step 3**: Final verification
+
+### 2. Create a Project
+
+1. Click "New Project"
+2. Select platform: Android or Web
+3. For Android: Select connected device
+4. For Web: Enter URL
+5. Enter task description
+
+### 3. Run Automation
+
+- Click "Start" to begin exploration
+- Monitor real-time logs and screenshots
+- View generated markdown reports
+
+## Configuration
+
+The app uses `appagent/config.yaml` for configuration. Key settings:
+
+```yaml
+MODEL: "local"  # or "api"
+LOCAL_MODEL: "qwen3-vl:4b"
+MAX_TOKENS: 4096
+TEMPERATURE: 0.0
+
+# Android
+ANDROID_SCREENSHOT_DIR: "/sdcard"
+
+# Web
+WEB_BROWSER_TYPE: "chromium"
+WEB_HEADLESS: false
+WEB_VIEWPORT_WIDTH: 1280
+WEB_VIEWPORT_HEIGHT: 720
+```
+
+## Supported Models
+
+### Local (Ollama)
+- `qwen3-vl:4b` - Recommended for 16GB RAM
+- `qwen2.5-vl:7b` - For 24GB+ RAM
+- `llava:7b` - Alternative option
+
+### Remote API
+- OpenAI GPT-4V
+- OpenRouter (multiple models)
+- Any OpenAI-compatible API
+
+## Memory Requirements
+
+- **16GB RAM**: Use `qwen3-vl:4b` with image optimization
+- **24GB RAM**: Use `qwen2.5-vl:7b` or `llava:7b`
+- **32GB+ RAM**: Any model, no limitations
+
+## Roadmap
+
+See [PLANNING.md](./PLANNING.md) for detailed development plan.
+
+### Phase 1: Core Features ✅
+- [x] Electron app structure
+- [x] Setup Wizard UI
+- [x] IPC communication
+- [x] Basic project management
+
+### Phase 2: In Progress
+- [ ] Project creation wizard
+- [ ] Project detail page with monitoring
+- [ ] Settings panel with config.yaml sync
+
+### Phase 3: Planned
+- [ ] Real-time screenshot preview
+- [ ] System resource monitoring
+- [ ] Markdown report viewer
+- [ ] Project export/import
+
+### Phase 4: Future
+- [ ] macOS/Windows packaging
+- [ ] Auto-update mechanism
+- [ ] Plugin system
+- [ ] Cloud sync (optional)
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines (coming soon).
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT License - see LICENSE file for details.
+
+## Credits
+
+- Based on [AppAgent](https://github.com/FigmaAI/appagent)
+- UI inspired by [klever-v3](https://github.com/FigmaAI/klever-v3)
+- Built with [MUI Joy](https://mui.com/joy-ui/getting-started/)
+
+## Support
+
+- Issues: [GitHub Issues](https://github.com/FigmaAI/KleverDesktop/issues)
+- Documentation: See [PLANNING.md](./PLANNING.md)
 
 ---
 
-<p align="center">
-  <sub>Beta Version - Primarily tested on macOS</sub>
-</p>
+**Note**: This project is in active development. Some features may be incomplete or unstable.
