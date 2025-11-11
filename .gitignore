@@ -41,3 +41,9 @@ gcp-service-account.json
 *-service-account.json
 .env
 .env.backup.*
+
+# Vercel
+.vercel
+
+# Git bundles
+*.bundle
