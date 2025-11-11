@@ -186,38 +186,38 @@ export function SetupWizard() {
         transition={{ duration: 0.5 }}
         style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
       >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: 4, flex: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, p: { xs: 2, sm: 3, md: 4 }, flex: 1 }}>
           {/* Header Section */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <Box sx={{ mb: 2 }}>
-              <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5 }}>
+            <Box sx={{ mb: { xs: 1, md: 2 } }}>
+              <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
                 Welcome to Klever Desktop
               </Typography>
-              <Typography level="body-md" textColor="text.secondary">
+              <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
                 Let&apos;s set up your environment for AI-powered UI automation
               </Typography>
             </Box>
           </motion.div>
 
           {/* Stepper and Content Layout */}
-          <Box sx={{ display: 'flex', gap: 4, flex: 1 }}>
+          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2, md: 4 }, flex: 1 }}>
             {/* Vertical Stepper on the left */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              style={{ minWidth: 240 }}
+              style={{ minWidth: 'fit-content' }}
             >
               <Stepper
                 orientation="vertical"
                 sx={(theme) => ({
-                  '--Stepper-verticalGap': '2rem',
-                  '--StepIndicator-size': '2.5rem',
-                  '--Step-gap': '1rem',
+                  '--Stepper-verticalGap': { xs: '1rem', md: '2rem' },
+                  '--StepIndicator-size': { xs: '2rem', md: '2.5rem' },
+                  '--Step-gap': { xs: '0.5rem', md: '1rem' },
                   '--Step-connectorInset': '0.5rem',
                   '--Step-connectorRadius': '1rem',
                   '--Step-connectorThickness': '4px',
@@ -255,7 +255,7 @@ export function SetupWizard() {
                         </StepIndicator>
                       }
                     >
-                      <Box>
+                      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                         <Typography level="body-sm" fontWeight="md">
                           {step.label}
                         </Typography>
