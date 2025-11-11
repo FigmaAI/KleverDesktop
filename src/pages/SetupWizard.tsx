@@ -12,8 +12,6 @@ import {
   StepIndicator,
   stepClasses,
   stepIndicatorClasses,
-  Radio,
-  RadioGroup,
   Input,
   FormControl,
   FormLabel,
@@ -26,6 +24,7 @@ import {
   CircleOutlined as CircleOutlinedIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material'
+import Checkbox from '@mui/joy/Checkbox'
 import { TerminalOutput } from 'react-terminal-ui'
 
 const steps = [
@@ -35,7 +34,8 @@ const steps = [
 ]
 
 interface ModelConfig {
-  modelType: 'local' | 'api'
+  enableLocal: boolean
+  enableApi: boolean
   apiBaseUrl: string
   apiKey: string
   apiModel: string
@@ -47,7 +47,8 @@ export function SetupWizard() {
   const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(0)
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    modelType: 'local',
+    enableLocal: true,
+    enableApi: false,
     apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKey: '',
     apiModel: 'gpt-4o-mini',
@@ -78,12 +79,20 @@ export function SetupWizard() {
   }
 
   const handleTestConnection = async () => {
+    // Validate at least one model is selected
+    if (!modelConfig.enableLocal && !modelConfig.enableApi) {
+      setTestStatus('error')
+      setTestMessage('Please select at least one model type')
+      return
+    }
+
     setTestStatus('testing')
     setTestMessage('')
 
     try {
       const result = await window.electronAPI.testModelConnection({
-        modelType: modelConfig.modelType,
+        enableLocal: modelConfig.enableLocal,
+        enableApi: modelConfig.enableApi,
         apiBaseUrl: modelConfig.apiBaseUrl,
         apiKey: modelConfig.apiKey,
         apiModel: modelConfig.apiModel,
@@ -107,7 +116,8 @@ export function SetupWizard() {
   const handleSaveConfig = async () => {
     try {
       await window.electronAPI.saveModelConfig({
-        modelType: modelConfig.modelType,
+        enableLocal: modelConfig.enableLocal,
+        enableApi: modelConfig.enableApi,
         apiBaseUrl: modelConfig.apiBaseUrl,
         apiKey: modelConfig.apiKey,
         apiModel: modelConfig.apiModel,
@@ -367,21 +377,36 @@ export function SetupWizard() {
                       <Stack spacing={3}>
                         {/* Model Type Selection */}
                         <FormControl>
-                          <FormLabel>Model Provider</FormLabel>
-                          <RadioGroup
-                            value={modelConfig.modelType}
-                            onChange={(e) =>
-                              setModelConfig({ ...modelConfig, modelType: e.target.value as 'local' | 'api' })
-                            }
-                          >
-                            <Radio value="local" label="Local (Ollama)" />
-                            <Radio value="api" label="API (OpenAI, OpenRouter, etc.)" />
-                          </RadioGroup>
+                          <FormLabel>Model Provider (select at least one)</FormLabel>
+                          <Stack spacing={1}>
+                            <Checkbox
+                              label="Local (Ollama)"
+                              checked={modelConfig.enableLocal}
+                              onChange={(e) =>
+                                setModelConfig({ ...modelConfig, enableLocal: e.target.checked })
+                              }
+                            />
+                            <Checkbox
+                              label="API (OpenAI, OpenRouter, etc.)"
+                              checked={modelConfig.enableApi}
+                              onChange={(e) =>
+                                setModelConfig({ ...modelConfig, enableApi: e.target.checked })
+                              }
+                            />
+                          </Stack>
+                          {!modelConfig.enableLocal && !modelConfig.enableApi && (
+                            <FormHelperText sx={{ color: 'danger.500' }}>
+                              Please select at least one model provider
+                            </FormHelperText>
+                          )}
                         </FormControl>
 
                         {/* Local Configuration */}
-                        {modelConfig.modelType === 'local' && (
+                        {modelConfig.enableLocal && (
                           <Stack spacing={2}>
+                            <Typography level="body-sm" fontWeight="md" sx={{ mt: 1 }}>
+                              Local Model Configuration
+                            </Typography>
                             <FormControl>
                               <FormLabel>Base URL</FormLabel>
                               <Input
@@ -407,8 +432,11 @@ export function SetupWizard() {
                         )}
 
                         {/* API Configuration */}
-                        {modelConfig.modelType === 'api' && (
+                        {modelConfig.enableApi && (
                           <Stack spacing={2}>
+                            <Typography level="body-sm" fontWeight="md" sx={{ mt: 1 }}>
+                              API Model Configuration
+                            </Typography>
                             <FormControl>
                               <FormLabel>API Base URL</FormLabel>
                               <Input

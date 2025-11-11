@@ -55,7 +55,8 @@ declare global {
 
       // Model configuration and testing
       testModelConnection: (config: {
-        modelType: 'local' | 'api';
+        enableLocal: boolean;
+        enableApi: boolean;
         apiBaseUrl: string;
         apiKey: string;
         apiModel: string;
@@ -63,7 +64,8 @@ declare global {
         localModel: string;
       }) => Promise<{ success: boolean; message?: string }>;
       saveModelConfig: (config: {
-        modelType: 'local' | 'api';
+        enableLocal: boolean;
+        enableApi: boolean;
         apiBaseUrl: string;
         apiKey: string;
         apiModel: string;
