@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 
 let mainWindow;
 let pythonProcess = null;
+let integrationTestProcess = null;
 
 // Create the browser window
 function createWindow() {
@@ -87,11 +88,24 @@ ipcMain.handle('check:python', async () => {
 ipcMain.handle('check:packages', async () => {
   return new Promise((resolve) => {
     const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
-    exec(`python -m pip show -r ${requirementsPath}`, { timeout: 10000 }, (error, stdout, stderr) => {
+    console.log('[Check Packages] Checking packages from:', requirementsPath);
+    
+    // Try to install with --dry-run to see if all packages can be installed
+    exec(`python -m pip install --dry-run -r "${requirementsPath}"`, { timeout: 10000 }, (error, stdout, stderr) => {
       if (error) {
-        resolve({ success: false, error: stderr || error.message });
+        console.log('[Check Packages] Error:', stderr || error.message);
+        resolve({ success: false, error: 'Some packages are missing or cannot be installed' });
         return;
       }
+      
+      // Check if it says "would install" (meaning packages are missing)
+      if (stdout.includes('would install') || stderr.includes('would install')) {
+        console.log('[Check Packages] Packages need to be installed');
+        resolve({ success: false, error: 'Some packages are not installed' });
+        return;
+      }
+      
+      console.log('[Check Packages] All packages are satisfied');
       resolve({ success: true, output: stdout });
     });
   });
@@ -101,21 +115,46 @@ ipcMain.handle('check:packages', async () => {
 ipcMain.handle('install:packages', async () => {
   return new Promise((resolve) => {
     const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
+    console.log('[Install Packages] Starting installation from:', requirementsPath);
+    
+    // Check if requirements.txt exists
+    if (!fs.existsSync(requirementsPath)) {
+      console.error('[Install Packages] requirements.txt not found at:', requirementsPath);
+      resolve({ success: false, error: 'requirements.txt not found' });
+      return;
+    }
+
     const pip = spawn('python', ['-m', 'pip', 'install', '-r', requirementsPath]);
 
     let output = '';
+    let errorOutput = '';
+    
     pip.stdout.on('data', (data) => {
-      output += data.toString();
-      mainWindow?.webContents.send('install:progress', data.toString());
+      const text = data.toString();
+      output += text;
+      console.log('[Install Packages] stdout:', text);
+      mainWindow?.webContents.send('install:progress', text);
     });
 
     pip.stderr.on('data', (data) => {
-      output += data.toString();
-      mainWindow?.webContents.send('install:progress', data.toString());
+      const text = data.toString();
+      errorOutput += text;
+      console.log('[Install Packages] stderr:', text);
+      mainWindow?.webContents.send('install:progress', text);
     });
 
     pip.on('close', (code) => {
-      resolve({ success: code === 0, output });
+      console.log('[Install Packages] Process closed with code:', code);
+      if (code === 0) {
+        resolve({ success: true, output });
+      } else {
+        resolve({ success: false, output: output || errorOutput, error: `pip install failed with code ${code}` });
+      }
+    });
+
+    pip.on('error', (error) => {
+      console.error('[Install Packages] Process error:', error.message);
+      resolve({ success: false, error: error.message });
     });
   });
 });
@@ -177,19 +216,90 @@ ipcMain.handle('ollama:pull', async (event, modelName) => {
   });
 });
 
-// Check ADB
-ipcMain.handle('check:adb', async () => {
+// Check ADB/Android SDK
+ipcMain.handle('check:androidStudio', async () => {
   return new Promise((resolve) => {
-    exec('adb devices', { timeout: 5000 }, (error, stdout) => {
-      if (error) {
-        resolve({ success: false, error: 'ADB not found' });
+    console.log('[Android SDK Check] Starting check...');
+
+    // Method 1: Check if adb command is available (most reliable)
+    exec('adb --version', { timeout: 5000 }, (error, stdout, stderr) => {
+      if (!error) {
+        // adb is available in PATH
+        const output = stdout || stderr;
+        const versionMatch = output.match(/Android Debug Bridge version ([\d.]+)/);
+        const version = versionMatch ? versionMatch[1] : 'unknown';
+        console.log('[Android SDK Check] adb found via PATH:', version);
+        resolve({ success: true, version: version, method: 'adb_command' });
         return;
       }
-      const lines = stdout.split('\n').slice(1); // Skip header
-      const devices = lines
-        .filter((line) => line.trim() && line.includes('device'))
-        .map((line) => line.split('\t')[0]);
-      resolve({ success: true, devices });
+
+      console.log('[Android SDK Check] adb command not found in PATH');
+
+      // Method 2: Check environment variables
+      const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+      if (androidHome) {
+        const adbPath = path.join(androidHome, 'platform-tools', 'adb');
+        const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
+
+        if (fs.existsSync(adbPathExe)) {
+          console.log('[Android SDK Check] Found via ANDROID_HOME/ANDROID_SDK_ROOT:', androidHome);
+          resolve({ success: true, version: 'installed', method: 'env_variable', path: androidHome });
+          return;
+        }
+      }
+
+      console.log('[Android SDK Check] Environment variables not set or invalid');
+
+      // Method 3: Check common SDK locations
+      const commonPaths = [
+        path.join(process.env.HOME || '/root', 'Library', 'Android', 'sdk'), // macOS
+        path.join(process.env.HOME || '/root', 'Android', 'Sdk'), // Linux
+        '/Volumes/Backup/Android-SDK', // External volume (user's case)
+        'C:\\Users\\' + (process.env.USERNAME || 'user') + '\\AppData\\Local\\Android\\Sdk', // Windows
+      ];
+
+      for (const sdkPath of commonPaths) {
+        console.log('[Android SDK Check] Checking path:', sdkPath);
+        const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
+        const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
+
+        if (fs.existsSync(adbPathExe)) {
+          console.log('[Android SDK Check] Found at:', sdkPath);
+          resolve({ success: true, version: 'installed', method: 'common_path', path: sdkPath });
+          return;
+        }
+      }
+
+      // Method 4: Search in /Volumes for external drives (macOS)
+      if (process.platform === 'darwin') {
+        try {
+          const volumes = fs.readdirSync('/Volumes');
+          for (const volume of volumes) {
+            const possiblePaths = [
+              path.join('/Volumes', volume, 'Android-SDK'),
+              path.join('/Volumes', volume, 'AndroidSDK'),
+              path.join('/Volumes', volume, 'Android', 'Sdk'),
+            ];
+
+            for (const sdkPath of possiblePaths) {
+              const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
+              if (fs.existsSync(adbPath)) {
+                console.log('[Android SDK Check] Found on external volume:', sdkPath);
+                resolve({ success: true, version: 'installed', method: 'external_volume', path: sdkPath });
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('[Android SDK Check] Could not search volumes:', e.message);
+        }
+      }
+
+      console.log('[Android SDK Check] Result: NOT FOUND');
+      resolve({
+        success: false,
+        error: 'Android SDK not found. Please install Android Studio or set ANDROID_HOME environment variable.'
+      });
     });
   });
 });
@@ -203,6 +313,150 @@ ipcMain.handle('check:playwright', async () => {
         return;
       }
       resolve({ success: true, output: stdout });
+    });
+  });
+});
+
+// Install Playwright
+ipcMain.handle('install:playwright', async () => {
+  return new Promise((resolve) => {
+    console.log('[Playwright] Starting installation via pip...');
+    // First install playwright package via pip
+    const playwright = spawn('python', ['-m', 'pip', 'install', 'playwright']);
+
+    let output = '';
+    playwright.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Playwright] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    playwright.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Playwright] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    playwright.on('close', (code) => {
+      console.log('[Playwright] pip install finished with code:', code);
+      if (code === 0) {
+        // Then install browsers
+        console.log('[Playwright] Installing browsers...');
+        mainWindow?.webContents.send('install:progress', 'Installing Playwright browsers...\n');
+        const browserInstall = spawn('python', ['-m', 'playwright', 'install', 'chromium']);
+
+        let browserOutput = '';
+        browserInstall.stdout.on('data', (data) => {
+          browserOutput += data.toString();
+          console.log('[Playwright] browser install stdout:', data.toString());
+          mainWindow?.webContents.send('install:progress', data.toString());
+        });
+
+        browserInstall.stderr.on('data', (data) => {
+          browserOutput += data.toString();
+          console.log('[Playwright] browser install stderr:', data.toString());
+          mainWindow?.webContents.send('install:progress', data.toString());
+        });
+
+        browserInstall.on('close', (browserCode) => {
+          console.log('[Playwright] Browser installation finished with code:', browserCode);
+          resolve({ success: browserCode === 0, output: output + '\n' + browserOutput });
+        });
+
+        browserInstall.on('error', (error) => {
+          console.error('[Playwright] Browser install error:', error.message);
+          resolve({ success: false, error: error.message });
+        });
+      } else {
+        resolve({ success: false, error: 'Failed to install playwright package' });
+      }
+    });
+
+    playwright.on('error', (error) => {
+      console.error('[Playwright] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Install Android Studio (via Homebrew cask)
+ipcMain.handle('install:androidStudio', async () => {
+  return new Promise((resolve) => {
+    console.log('[Android Studio] Starting installation via Homebrew...');
+    const install = spawn('brew', ['install', '--cask', 'android-studio']);
+
+    let output = '';
+    install.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Android Studio] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Android Studio] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.on('close', (code) => {
+      console.log('[Android Studio] Installation finished with code:', code);
+      resolve({ success: code === 0, output });
+    });
+
+    install.on('error', (error) => {
+      console.error('[Android Studio] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Install Python (via Homebrew)
+ipcMain.handle('install:python', async () => {
+  return new Promise((resolve) => {
+    console.log('[Python] Starting installation via Homebrew...');
+    const install = spawn('brew', ['install', 'python@3.11']);
+
+    let output = '';
+    install.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log('[Python] stdout:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.stderr.on('data', (data) => {
+      output += data.toString();
+      console.log('[Python] stderr:', data.toString());
+      mainWindow?.webContents.send('install:progress', data.toString());
+    });
+
+    install.on('close', (code) => {
+      console.log('[Python] Installation finished with code:', code);
+      resolve({ success: code === 0, output });
+    });
+
+    install.on('error', (error) => {
+      console.error('[Python] Error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+});
+
+// Check Homebrew
+
+// Check Homebrew (macOS only)
+ipcMain.handle('check:homebrew', async () => {
+  return new Promise((resolve) => {
+    exec('brew --version', { timeout: 5000 }, (error, stdout) => {
+      if (error) {
+        resolve({ success: false, error: 'Homebrew not installed' });
+        return;
+      }
+      const match = stdout.match(/Homebrew ([\d.]+)/);
+      if (match) {
+        resolve({ success: true, version: match[1] });
+      } else {
+        resolve({ success: true, version: 'unknown' });
+      }
     });
   });
 });
@@ -304,15 +558,19 @@ ipcMain.handle('model:testConnection', async (event, config) => {
     const https = require('https');
     const http = require('http');
 
-    const url = config.modelType === 'local' ? config.localBaseUrl : config.apiBaseUrl;
+    // Support both old (modelType) and new (enableLocal/enableApi) formats
+    const isLocal = config.modelType === 'local' || config.enableLocal;
+    const url = isLocal ? config.localBaseUrl : config.apiBaseUrl;
+    const model = isLocal ? config.localModel : config.apiModel;
+
     const urlObj = new URL(url);
     const protocol = urlObj.protocol === 'https:' ? https : http;
 
     return new Promise((resolve) => {
       const postData = JSON.stringify({
-        model: config.modelType === 'local' ? config.localModel : config.apiModel,
+        model: model,
         messages: [{ role: 'user', content: 'Hello' }],
-        max_tokens: 10,
+        max_tokens: 50,
       });
 
       const options = {
@@ -327,7 +585,7 @@ ipcMain.handle('model:testConnection', async (event, config) => {
         timeout: 10000,
       };
 
-      if (config.modelType === 'api' && config.apiKey) {
+      if (!isLocal && config.apiKey) {
         options.headers['Authorization'] = `Bearer ${config.apiKey}`;
       }
 
@@ -367,8 +625,20 @@ ipcMain.handle('model:saveConfig', async (event, config) => {
     const yamlContent = fs.readFileSync(configPath, 'utf8');
     const yamlConfig = yaml.load(yamlContent);
 
+    // Determine primary provider: if both enabled, prefer API
+    let modelProvider = 'local';
+    if (config.enableApi && config.enableLocal) {
+      modelProvider = 'api';
+    } else if (config.enableApi) {
+      modelProvider = 'api';
+    } else if (config.enableLocal) {
+      modelProvider = 'local';
+    }
+
     // Update config
-    yamlConfig.MODEL = config.modelType;
+    yamlConfig.MODEL = modelProvider;
+    yamlConfig.ENABLE_LOCAL = config.enableLocal;
+    yamlConfig.ENABLE_API = config.enableApi;
     yamlConfig.API_BASE_URL = config.apiBaseUrl;
     yamlConfig.API_KEY = config.apiKey;
     yamlConfig.API_MODEL = config.apiModel;
@@ -384,31 +654,228 @@ ipcMain.handle('model:saveConfig', async (event, config) => {
   }
 });
 
-// Run integration test
-ipcMain.handle('integration:test', async () => {
+// Fetch API models from various providers
+ipcMain.handle('model:fetchApiModels', async (event, config) => {
   try {
-    const testScript = path.join(__dirname, 'appagent', 'integration-test.py');
+    const { apiBaseUrl, apiKey } = config;
+    const https = require('https');
+    const http = require('http');
 
-    if (!fs.existsSync(testScript)) {
-      mainWindow?.webContents.send('integration:output', 'Error: integration-test.py not found\n');
+    // Detect provider from URL
+    let provider = 'unknown';
+    let modelsEndpoint = '';
+
+    if (apiBaseUrl.includes('api.openai.com')) {
+      provider = 'openai';
+      modelsEndpoint = 'https://api.openai.com/v1/models';
+    } else if (apiBaseUrl.includes('openrouter.ai')) {
+      provider = 'openrouter';
+      modelsEndpoint = 'https://openrouter.ai/api/v1/models';
+    } else if (apiBaseUrl.includes('api.anthropic.com')) {
+      provider = 'anthropic';
+      // Anthropic doesn't have a models endpoint, return predefined list
+      return {
+        success: true,
+        provider: 'anthropic',
+        models: [
+          'claude-3-5-sonnet-20241022',
+          'claude-3-5-haiku-20241022',
+          'claude-3-opus-20240229',
+          'claude-3-sonnet-20240229',
+          'claude-3-haiku-20240307',
+        ],
+      };
+    } else if (apiBaseUrl.includes('api.x.ai') || apiBaseUrl.includes('api.grok')) {
+      provider = 'grok';
+      // Grok/X.AI doesn't have public models endpoint, return predefined list
+      return {
+        success: true,
+        provider: 'grok',
+        models: ['grok-beta', 'grok-vision-beta'],
+      };
+    }
+
+    if (!modelsEndpoint) {
+      return {
+        success: false,
+        provider: 'unknown',
+        error: 'Unknown API provider. Please enter model name manually.',
+      };
+    }
+
+    const urlObj = new URL(modelsEndpoint);
+    const protocol = urlObj.protocol === 'https:' ? https : http;
+
+    return new Promise((resolve) => {
+      const options = {
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: urlObj.pathname + (urlObj.search || ''),
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000,
+      };
+
+      if (apiKey) {
+        if (provider === 'openrouter') {
+          options.headers['Authorization'] = `Bearer ${apiKey}`;
+          options.headers['HTTP-Referer'] = 'https://github.com/FigmaAI/KleverDesktop';
+          options.headers['X-Title'] = 'Klever Desktop';
+        } else {
+          options.headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+      }
+
+      const req = protocol.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              const parsed = JSON.parse(data);
+              let models = [];
+
+              if (provider === 'openai') {
+                // OpenAI returns { data: [{ id: 'gpt-4', ... }] }
+                models = parsed.data
+                  ?.filter((m) => m.id && !m.id.includes('embedding') && !m.id.includes('tts') && !m.id.includes('whisper'))
+                  .map((m) => m.id) || [];
+              } else if (provider === 'openrouter') {
+                // OpenRouter returns { data: [{ id: 'openai/gpt-4', ... }] }
+                models = parsed.data?.map((m) => m.id) || [];
+              }
+
+              resolve({
+                success: true,
+                provider,
+                models: models.slice(0, 50), // Limit to first 50 models
+              });
+            } catch (error) {
+              resolve({ success: false, provider, error: 'Failed to parse models response' });
+            }
+          } else {
+            resolve({ success: false, provider, error: `HTTP ${res.statusCode}: ${data}` });
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        resolve({ success: false, provider, error: error.message });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({ success: false, provider, error: 'Request timeout' });
+      });
+
+      req.end();
+    });
+  } catch (error) {
+    return { success: false, provider: 'unknown', error: error.message };
+  }
+});
+
+// Run integration test
+ipcMain.handle('integration:test', async (event, config) => {
+  try {
+    const selfExplorerScript = path.join(__dirname, 'appagent', 'scripts', 'self_explorer.py');
+
+    if (!fs.existsSync(selfExplorerScript)) {
+      mainWindow?.webContents.send('integration:output', 'Error: self_explorer.py not found\n');
       mainWindow?.webContents.send('integration:complete', false);
       return { success: false };
     }
 
-    const testProcess = spawn('python', [testScript], {
-      cwd: path.join(__dirname, 'appagent'),
+    // Determine model provider
+    let modelProvider = 'local';
+    if (config.enableApi && config.enableLocal) {
+      modelProvider = 'api';
+    } else if (config.enableApi) {
+      modelProvider = 'api';
+    } else if (config.enableLocal) {
+      modelProvider = 'local';
+    }
+
+    // Prepare environment variables
+    const env = {
+      ...process.env,
+      MODEL: modelProvider,
+      ENABLE_LOCAL: config.enableLocal.toString(),
+      ENABLE_API: config.enableApi.toString(),
+      API_BASE_URL: config.apiBaseUrl || '',
+      API_KEY: config.apiKey || '',
+      API_MODEL: config.apiModel || '',
+      LOCAL_BASE_URL: config.localBaseUrl || '',
+      LOCAL_MODEL: config.localModel || '',
+      MAX_ROUNDS: '2',  // Limit to 2 rounds for quick test
+    };
+
+    mainWindow?.webContents.send('integration:output', '============================================================\n');
+    mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
+    mainWindow?.webContents.send('integration:output', '============================================================\n\n');
+    mainWindow?.webContents.send('integration:output', `Model Provider: ${modelProvider}\n`);
+
+    if (modelProvider === 'local') {
+      mainWindow?.webContents.send('integration:output', '\n');
+      mainWindow?.webContents.send('integration:output', '⚠️  LOCAL MODEL PERFORMANCE NOTICE\n');
+      mainWindow?.webContents.send('integration:output', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      mainWindow?.webContents.send('integration:output', 'You are using a local Ollama model for this test.\n');
+      mainWindow?.webContents.send('integration:output', 'This test may take 3-5 minutes or longer, depending on:\n');
+      mainWindow?.webContents.send('integration:output', '  • Your hardware (CPU/GPU performance)\n');
+      mainWindow?.webContents.send('integration:output', '  • Model size (larger models = slower inference)\n');
+      mainWindow?.webContents.send('integration:output', '  • System resources (RAM, other running processes)\n\n');
+      mainWindow?.webContents.send('integration:output', 'Expected response times per round:\n');
+      mainWindow?.webContents.send('integration:output', '  • Vision analysis: 60-120 seconds\n');
+      mainWindow?.webContents.send('integration:output', '  • Reflection: 15-30 seconds\n');
+      mainWindow?.webContents.send('integration:output', '  • Total for 2 rounds: ~3-5 minutes\n\n');
+      mainWindow?.webContents.send('integration:output', 'For faster testing, consider using API models (OpenAI, etc.)\n');
+      mainWindow?.webContents.send('integration:output', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n');
+    }
+
+    mainWindow?.webContents.send('integration:output', `Testing with Google search...\n\n`);
+
+    // Kill existing test process if running
+    if (integrationTestProcess) {
+      integrationTestProcess.kill('SIGTERM');
+      integrationTestProcess = null;
+    }
+
+    integrationTestProcess = spawn('python', [
+      '-u',  // Unbuffered output
+      selfExplorerScript,
+      '--app', 'google_search_test',
+      '--platform', 'web',
+      '--root_dir', '.',
+      '--url', 'https://www.google.com',
+      '--task', 'Find and click the "I\'m Feeling Lucky" button'
+    ], {
+      cwd: path.join(__dirname, 'appagent'),  // Run from appagent directory
+      env: env,
     });
 
-    testProcess.stdout.on('data', (data) => {
+    console.log('[Integration Test] Process started with PID:', integrationTestProcess.pid);
+
+    integrationTestProcess.stdout.on('data', (data) => {
       mainWindow?.webContents.send('integration:output', data.toString());
     });
 
-    testProcess.stderr.on('data', (data) => {
+    integrationTestProcess.stderr.on('data', (data) => {
       mainWindow?.webContents.send('integration:output', data.toString());
     });
 
-    testProcess.on('close', (code) => {
+    integrationTestProcess.on('close', (code) => {
+      mainWindow?.webContents.send('integration:output', '\n============================================================\n');
+      if (code === 0) {
+        mainWindow?.webContents.send('integration:output', 'Integration test PASSED ✓\n');
+        mainWindow?.webContents.send('integration:output', '============================================================\n');
+      } else {
+        mainWindow?.webContents.send('integration:output', `Integration test FAILED (exit code: ${code})\n`);
+        mainWindow?.webContents.send('integration:output', '============================================================\n');
+      }
       mainWindow?.webContents.send('integration:complete', code === 0);
+      integrationTestProcess = null;
     });
 
     return { success: true };
@@ -417,4 +884,16 @@ ipcMain.handle('integration:test', async () => {
     mainWindow?.webContents.send('integration:complete', false);
     return { success: false };
   }
+});
+
+// Stop integration test
+ipcMain.handle('integration:stop', async () => {
+  if (integrationTestProcess) {
+    integrationTestProcess.kill('SIGTERM');
+    integrationTestProcess = null;
+    mainWindow?.webContents.send('integration:output', '\n[Test stopped by user]\n');
+    mainWindow?.webContents.send('integration:complete', false);
+    return { success: true };
+  }
+  return { success: false, error: 'No running test' };
 });

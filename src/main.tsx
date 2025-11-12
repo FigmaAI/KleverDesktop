@@ -14,8 +14,12 @@ if (!window.electronAPI) {
     checkPython: async () => ({ success: true, version: '3.11.0', isValid: true }),
     checkPackages: async () => ({ success: true, output: 'All packages installed' }),
     installPackages: async () => ({ success: true }),
+    installPlaywright: async () => ({ success: true }),
+    installAndroidStudio: async () => ({ success: true }),
+    installPython: async () => ({ success: true }),
+    checkHomebrew: async () => ({ success: true, version: '4.0.0' }),
     checkOllama: async () => ({ success: true, running: true, models: [] }),
-    checkAdb: async () => ({ success: true, devices: [] }),
+    checkAndroidStudio: async () => ({ success: true, version: 'installed' }),
     checkPlaywright: async () => ({ success: true }),
     ollamaList: async () => ({ success: true, models: [] }),
     ollamaPull: async () => ({ success: true }),
@@ -38,6 +42,10 @@ if (!window.electronAPI) {
     saveModelConfig: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       return { success: true }
+    },
+    fetchApiModels: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return { success: true, provider: 'openai', models: ['gpt-4', 'gpt-3.5-turbo'] }
     },
     runIntegrationTest: async () => {
       setTimeout(() => {
