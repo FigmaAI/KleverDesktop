@@ -87,7 +87,15 @@ declare global {
       }>;
 
       // Integration test
-      runIntegrationTest: () => Promise<{ success: boolean }>;
+      runIntegrationTest: (config: {
+        enableLocal: boolean;
+        enableApi: boolean;
+        apiBaseUrl: string;
+        apiKey: string;
+        apiModel: string;
+        localBaseUrl: string;
+        localModel: string;
+      }) => Promise<{ success: boolean }>;
 
       // Event listeners
       onInstallProgress: (callback: (data: string) => void) => void;

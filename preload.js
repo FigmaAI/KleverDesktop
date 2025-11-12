@@ -39,7 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchApiModels: (config) => ipcRenderer.invoke('model:fetchApiModels', config),
 
   // Integration test
-  runIntegrationTest: () => ipcRenderer.invoke('integration:test'),
+  runIntegrationTest: (config) => ipcRenderer.invoke('integration:test', config),
 
   // Event listeners
   onInstallProgress: (callback) => {

@@ -29,7 +29,7 @@ import {
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
 import Checkbox from '@mui/joy/Checkbox'
-import { TerminalOutput } from 'react-terminal-ui'
+import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui';
 
 const steps = [
   { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
@@ -55,7 +55,7 @@ export function SetupWizard() {
     enableApi: false,
     apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKey: '',
-    apiModel: 'gpt-4o-mini',
+    apiModel: '',
     localBaseUrl: 'http://localhost:11434/v1/chat/completions',
     localModel: 'qwen3-vl:4b',
   })
@@ -315,6 +315,11 @@ export function SetupWizard() {
       return
     }
 
+    if (!modelConfig.apiKey) {
+      setApiModelsError('Please enter API Key first')
+      return
+    }
+
     setApiModelsLoading(true)
     setApiModelsError('')
     setApiModels([])
@@ -328,11 +333,6 @@ export function SetupWizard() {
       if (result.success && result.models) {
         setApiModels(result.models)
         setDetectedProvider(result.provider || 'unknown')
-
-        // Auto-select first model if none selected
-        if (result.models.length > 0 && !modelConfig.apiModel) {
-          setModelConfig((prev) => ({ ...prev, apiModel: result.models![0] }))
-        }
       } else {
         setApiModelsError(result.error || 'Failed to fetch models')
         setDetectedProvider(result.provider || 'unknown')
@@ -343,7 +343,7 @@ export function SetupWizard() {
     } finally {
       setApiModelsLoading(false)
     }
-  }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiModel])
+  }, [modelConfig.apiBaseUrl, modelConfig.apiKey])
 
   // Auto-fetch API models when URL or key changes
   useEffect(() => {
@@ -355,7 +355,7 @@ export function SetupWizard() {
       return () => window.clearTimeout(timeoutId)
     }
   }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, currentStep, fetchApiModels])
-  
+
 
   const handleRunIntegrationTest = async () => {
     setIntegrationTestRunning(true)
@@ -364,8 +364,8 @@ export function SetupWizard() {
     setTerminalLines([])
 
     try {
-      // Start the integration test
-      await window.electronAPI.runIntegrationTest()
+      // Start the integration test with model config
+      await window.electronAPI.runIntegrationTest(modelConfig)
 
       // Listen for stdout
       window.electronAPI.onIntegrationTestOutput((data: string) => {
@@ -782,13 +782,13 @@ export function SetupWizard() {
                               //   Install
                               // </Button>
                               <Button
-                                  size="sm"
-                                  variant="outlined"
-                                  color="warning"
-                                  onClick={() => window.electronAPI.openExternal('https://developer.android.com/studio')}
-                                >
-                                  Install Guide
-                                </Button>
+                                size="sm"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => window.electronAPI.openExternal('https://developer.android.com/studio')}
+                              >
+                                Install Guide
+                              </Button>
                             )}
                           </Sheet>
                         </motion.div>
@@ -1069,13 +1069,13 @@ export function SetupWizard() {
                                   }}
                                   options={apiModels}
                                   freeSolo
-                                  disabled={!modelConfig.enableApi}
+                                  disabled={!modelConfig.enableApi || !modelConfig.apiKey}
                                   loading={apiModelsLoading}
                                   sx={{ flex: 1 }}
                                 />
                                 <IconButton
                                   onClick={fetchApiModels}
-                                  disabled={!modelConfig.enableApi || !modelConfig.apiBaseUrl || apiModelsLoading}
+                                  disabled={!modelConfig.enableApi || !modelConfig.apiBaseUrl || !modelConfig.apiKey || apiModelsLoading}
                                   variant="outlined"
                                   color="neutral"
                                 >
@@ -1084,7 +1084,7 @@ export function SetupWizard() {
                               </Stack>
                               <FormHelperText>
                                 {apiModelsError
-                                  ? apiModelsError
+                                  ? 'Unable to fetch models - please check details below'
                                   : apiModels.length > 0
                                     ? `${apiModels.length} models available`
                                     : 'Enter model name or fetch from API'}
@@ -1101,6 +1101,19 @@ export function SetupWizard() {
                             >
                               Test Connection
                             </Button>
+
+                            {apiModelsError && (
+                              <Alert
+                                color="warning"
+                                startDecorator={<WarningIcon />}
+                                variant="soft"
+                              >
+                                <Box>
+                                  <Typography level="title-sm" fontWeight="bold">Model Fetch Error</Typography>
+                                  <Typography level="body-sm">{apiModelsError}</Typography>
+                                </Box>
+                              </Alert>
+                            )}
 
                             {apiTestStatus !== 'idle' && apiTestStatus !== 'testing' && (
                               <Alert
@@ -1155,28 +1168,12 @@ export function SetupWizard() {
 
                       {/* Terminal Output */}
                       {(integrationTestRunning || integrationTestComplete) && (
-                        <Box
-                          sx={{
-                            bgcolor: '#1e1e1e',
-                            borderRadius: 'sm',
-                            p: 2,
-                            minHeight: 300,
-                            maxHeight: 500,
-                            overflow: 'auto',
-                            fontFamily: 'monospace',
-                            fontSize: '0.875rem',
-                          }}
+                        <Terminal
+                          name="Integration Test"
+                          colorMode={ColorMode.Dark}
                         >
                           {terminalLines}
-                          {integrationTestRunning && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                              <CircularProgress size="sm" sx={{ color: '#fff' }} />
-                              <Typography level="body-sm" sx={{ color: '#fff' }}>
-                                Running test...
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
+                        </Terminal>
                       )}
 
                       {integrationTestComplete && integrationTestSuccess && (
@@ -1217,7 +1214,7 @@ export function SetupWizard() {
                 <Button
                   variant="solid"
                   color="primary"
-                  onClick={handleSaveConfig}                  disabled={
+                  onClick={handleSaveConfig} disabled={
                     (!modelConfig.enableLocal && !modelConfig.enableApi) ||
                     (modelConfig.enableLocal && localTestStatus !== 'success') ||
                     (modelConfig.enableApi && apiTestStatus !== 'success')

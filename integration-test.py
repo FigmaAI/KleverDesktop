@@ -9,6 +9,8 @@ import os
 import time
 import json
 import yaml
+import subprocess
+import signal
 
 
 def load_config(config_path="./config.yaml"):
@@ -92,6 +94,106 @@ def test_ollama_connection(config):
     except ImportError:
         print_with_color("✗ Ollama SDK not installed", "red")
         return False, "Ollama SDK not installed"
+
+
+def test_appagent_execution(config):
+    """Test actual appagent execution with Google search"""
+    print_with_color("Testing AppAgent execution...", "cyan")
+    print_with_color("Starting web automation test on google.com", "cyan")
+    print()
+
+    config_path = "./appagent/config.yaml"
+    config_backup_path = "./appagent/config.yaml.backup"
+
+    try:
+        # Backup original config
+        import shutil
+        shutil.copy(config_path, config_backup_path)
+        print_with_color("✓ Config backed up", "green")
+
+        # Modify MAX_ROUNDS to 2 for quick test
+        with open(config_path, "r") as f:
+            config_data = yaml.safe_load(f)
+
+        original_max_rounds = config_data.get("MAX_ROUNDS", 20)
+        config_data["MAX_ROUNDS"] = 2
+
+        with open(config_path, "w") as f:
+            yaml.dump(config_data, f)
+
+        print_with_color("✓ MAX_ROUNDS set to 2 for testing", "green")
+        print()
+
+        # Run self_explorer.py
+        cmd = [
+            sys.executable,  # Use current Python interpreter
+            "appagent/scripts/self_explorer.py",
+            "--app", "google_search_test",
+            "--platform", "web",
+            "--root_dir", "./appagent"
+        ]
+
+        print_with_color("Executing: " + " ".join(cmd), "cyan")
+        print_with_color("-" * 60, "cyan")
+        print()
+
+        process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1
+        )
+
+        # Send URL and task description to stdin
+        process.stdin.write("https://www.google.com\n")
+        process.stdin.write("Search for 'weather' and click on the search button\n")
+        process.stdin.flush()
+        process.stdin.close()
+
+        # Stream output in real-time
+        output_lines = []
+        try:
+            for line in process.stdout:
+                line = line.rstrip()
+                if line:
+                    print(line)
+                    output_lines.append(line)
+                    # Flush to ensure immediate output
+                    sys.stdout.flush()
+
+        except KeyboardInterrupt:
+            print_with_color("\n✗ Test interrupted by user", "yellow")
+            process.send_signal(signal.SIGINT)
+            process.wait()
+            return False, "Test interrupted by user"
+
+        exit_code = process.wait()
+
+        print()
+        print_with_color("-" * 60, "cyan")
+
+        # Check if test was successful
+        if exit_code == 0:
+            print_with_color("✓ AppAgent executed successfully", "green")
+            return True, "AppAgent execution test passed"
+        else:
+            print_with_color(f"✗ AppAgent exited with code {exit_code}", "red")
+            return False, f"AppAgent execution failed with exit code {exit_code}"
+
+    except Exception as e:
+        print_with_color(f"✗ AppAgent test failed: {str(e)}", "red")
+        return False, f"AppAgent test error: {str(e)}"
+
+    finally:
+        # Restore original config
+        try:
+            if os.path.exists(config_backup_path):
+                shutil.move(config_backup_path, config_path)
+                print_with_color("✓ Config restored", "green")
+        except Exception as e:
+            print_with_color(f"⚠ Failed to restore config: {str(e)}", "yellow")
 
 
 def test_api_connection(config):
@@ -229,6 +331,32 @@ def main():
     else:
         print_with_color(f"✗ Unknown model type: {model_type}", "red")
         print_with_color("MODEL in config.yaml must be 'local' or 'api'", "yellow")
+        return 1
+
+    # Test actual AppAgent execution
+    print()
+    print_with_color("=" * 60, "cyan")
+    print_with_color("Phase 2: AppAgent Execution Test", "cyan")
+    print_with_color("=" * 60, "cyan")
+    print()
+
+    success, message = test_appagent_execution(config)
+    results["tests"]["appagent"] = {
+        "success": success,
+        "message": message
+    }
+
+    if not success:
+        print()
+        print_with_color("=" * 60, "red")
+        print_with_color("Integration test FAILED", "red")
+        print_with_color("=" * 60, "red")
+        print_with_color(f"Error: {message}", "red")
+        print()
+        print_with_color("Troubleshooting:", "yellow")
+        print_with_color("1. Check if Playwright is properly installed", "yellow")
+        print_with_color("2. Verify model configuration is correct", "yellow")
+        print_with_color("3. Check network connection", "yellow")
         return 1
 
     # Success!

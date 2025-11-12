@@ -215,20 +215,91 @@ ipcMain.handle('ollama:pull', async (event, modelName) => {
   });
 });
 
-// Check ADB
+// Check ADB/Android SDK
 ipcMain.handle('check:androidStudio', async () => {
   return new Promise((resolve) => {
-    // Check if Android SDK exists (installed by Android Studio)
-    const sdkPath = path.join(process.env.HOME || '/root', 'Library', 'Android', 'sdk');
-    console.log('[Android Studio Check] Checking SDK path:', sdkPath);
-    
-    if (fs.existsSync(sdkPath)) {
-      console.log('[Android Studio Check] Result: FOUND');
-      resolve({ success: true, version: 'installed' });
-    } else {
-      console.log('[Android Studio Check] Result: NOT FOUND');
-      resolve({ success: false, error: 'Android Studio not found' });
-    }
+    console.log('[Android SDK Check] Starting check...');
+
+    // Method 1: Check if adb command is available (most reliable)
+    exec('adb --version', { timeout: 5000 }, (error, stdout, stderr) => {
+      if (!error) {
+        // adb is available in PATH
+        const output = stdout || stderr;
+        const versionMatch = output.match(/Android Debug Bridge version ([\d.]+)/);
+        const version = versionMatch ? versionMatch[1] : 'unknown';
+        console.log('[Android SDK Check] adb found via PATH:', version);
+        resolve({ success: true, version: version, method: 'adb_command' });
+        return;
+      }
+
+      console.log('[Android SDK Check] adb command not found in PATH');
+
+      // Method 2: Check environment variables
+      const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+      if (androidHome) {
+        const adbPath = path.join(androidHome, 'platform-tools', 'adb');
+        const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
+
+        if (fs.existsSync(adbPathExe)) {
+          console.log('[Android SDK Check] Found via ANDROID_HOME/ANDROID_SDK_ROOT:', androidHome);
+          resolve({ success: true, version: 'installed', method: 'env_variable', path: androidHome });
+          return;
+        }
+      }
+
+      console.log('[Android SDK Check] Environment variables not set or invalid');
+
+      // Method 3: Check common SDK locations
+      const commonPaths = [
+        path.join(process.env.HOME || '/root', 'Library', 'Android', 'sdk'), // macOS
+        path.join(process.env.HOME || '/root', 'Android', 'Sdk'), // Linux
+        '/Volumes/Backup/Android-SDK', // External volume (user's case)
+        'C:\\Users\\' + (process.env.USERNAME || 'user') + '\\AppData\\Local\\Android\\Sdk', // Windows
+      ];
+
+      for (const sdkPath of commonPaths) {
+        console.log('[Android SDK Check] Checking path:', sdkPath);
+        const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
+        const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
+
+        if (fs.existsSync(adbPathExe)) {
+          console.log('[Android SDK Check] Found at:', sdkPath);
+          resolve({ success: true, version: 'installed', method: 'common_path', path: sdkPath });
+          return;
+        }
+      }
+
+      // Method 4: Search in /Volumes for external drives (macOS)
+      if (process.platform === 'darwin') {
+        try {
+          const volumes = fs.readdirSync('/Volumes');
+          for (const volume of volumes) {
+            const possiblePaths = [
+              path.join('/Volumes', volume, 'Android-SDK'),
+              path.join('/Volumes', volume, 'AndroidSDK'),
+              path.join('/Volumes', volume, 'Android', 'Sdk'),
+            ];
+
+            for (const sdkPath of possiblePaths) {
+              const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
+              if (fs.existsSync(adbPath)) {
+                console.log('[Android SDK Check] Found on external volume:', sdkPath);
+                resolve({ success: true, version: 'installed', method: 'external_volume', path: sdkPath });
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.log('[Android SDK Check] Could not search volumes:', e.message);
+        }
+      }
+
+      console.log('[Android SDK Check] Result: NOT FOUND');
+      resolve({
+        success: false,
+        error: 'Android SDK not found. Please install Android Studio or set ANDROID_HOME environment variable.'
+      });
+    });
   });
 });
 
@@ -498,7 +569,7 @@ ipcMain.handle('model:testConnection', async (event, config) => {
       const postData = JSON.stringify({
         model: model,
         messages: [{ role: 'user', content: 'Hello' }],
-        max_tokens: 10,
+        max_tokens: 50,
       });
 
       const options = {
@@ -706,19 +777,60 @@ ipcMain.handle('model:fetchApiModels', async (event, config) => {
 });
 
 // Run integration test
-ipcMain.handle('integration:test', async () => {
+ipcMain.handle('integration:test', async (event, config) => {
   try {
-    const testScript = path.join(__dirname, 'integration-test.py');
+    const selfExplorerScript = path.join(__dirname, 'appagent', 'scripts', 'self_explorer.py');
 
-    if (!fs.existsSync(testScript)) {
-      mainWindow?.webContents.send('integration:output', 'Error: integration-test.py not found\n');
+    if (!fs.existsSync(selfExplorerScript)) {
+      mainWindow?.webContents.send('integration:output', 'Error: self_explorer.py not found\n');
       mainWindow?.webContents.send('integration:complete', false);
       return { success: false };
     }
 
-    const testProcess = spawn('python', [testScript], {
-      cwd: path.join(__dirname, 'appagent'),
+    // Determine model provider
+    let modelProvider = 'local';
+    if (config.enableApi && config.enableLocal) {
+      modelProvider = 'api';
+    } else if (config.enableApi) {
+      modelProvider = 'api';
+    } else if (config.enableLocal) {
+      modelProvider = 'local';
+    }
+
+    // Prepare environment variables
+    const env = {
+      ...process.env,
+      MODEL: modelProvider,
+      ENABLE_LOCAL: config.enableLocal.toString(),
+      ENABLE_API: config.enableApi.toString(),
+      API_BASE_URL: config.apiBaseUrl || '',
+      API_KEY: config.apiKey || '',
+      API_MODEL: config.apiModel || '',
+      LOCAL_BASE_URL: config.localBaseUrl || '',
+      LOCAL_MODEL: config.localModel || '',
+      MAX_ROUNDS: '2',  // Limit to 2 rounds for quick test
+    };
+
+    mainWindow?.webContents.send('integration:output', '============================================================\n');
+    mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
+    mainWindow?.webContents.send('integration:output', '============================================================\n\n');
+    mainWindow?.webContents.send('integration:output', `Model Provider: ${modelProvider}\n`);
+    mainWindow?.webContents.send('integration:output', `Testing with Google search...\n\n`);
+
+    const testProcess = spawn('python', [
+      selfExplorerScript,
+      '--app', 'google_search_test',
+      '--platform', 'web',
+      '--root_dir', '.'
+    ], {
+      cwd: path.join(__dirname, 'appagent'),  // Run from appagent directory
+      env: env,
     });
+
+    // Send URL and task description via stdin
+    testProcess.stdin.write('https://www.google.com\n');
+    testProcess.stdin.write('Search for "weather" and click the search button\n');
+    testProcess.stdin.end();
 
     testProcess.stdout.on('data', (data) => {
       mainWindow?.webContents.send('integration:output', data.toString());
@@ -729,6 +841,14 @@ ipcMain.handle('integration:test', async () => {
     });
 
     testProcess.on('close', (code) => {
+      mainWindow?.webContents.send('integration:output', '\n============================================================\n');
+      if (code === 0) {
+        mainWindow?.webContents.send('integration:output', 'Integration test PASSED ✓\n');
+        mainWindow?.webContents.send('integration:output', '============================================================\n');
+      } else {
+        mainWindow?.webContents.send('integration:output', `Integration test FAILED (exit code: ${code})\n`);
+        mainWindow?.webContents.send('integration:output', '============================================================\n');
+      }
       mainWindow?.webContents.send('integration:complete', code === 0);
     });
 
