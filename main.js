@@ -708,7 +708,7 @@ ipcMain.handle('model:fetchApiModels', async (event, config) => {
 // Run integration test
 ipcMain.handle('integration:test', async () => {
   try {
-    const testScript = path.join(__dirname, 'appagent', 'integration-test.py');
+    const testScript = path.join(__dirname, 'integration-test.py');
 
     if (!fs.existsSync(testScript)) {
       mainWindow?.webContents.send('integration:output', 'Error: integration-test.py not found\n');
