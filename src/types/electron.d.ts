@@ -1,5 +1,7 @@
 export {};
 
+import type { Project, ProjectCreateInput, Task, TaskCreateInput } from './project';
+
 interface OllamaModel {
   name: string;
   size?: number;
@@ -85,6 +87,29 @@ declare global {
 
       // Remove listeners
       removeAllListeners: (channel: string) => void;
+
+      // ============================================
+      // Project Management
+      // ============================================
+      projectList: () => Promise<{ success: boolean; projects?: Project[]; error?: string }>;
+      projectGet: (projectId: string) => Promise<{ success: boolean; project?: Project; error?: string }>;
+      projectCreate: (projectInput: ProjectCreateInput) => Promise<{ success: boolean; project?: Project; error?: string }>;
+      projectUpdate: (projectId: string, updates: Partial<Project>) => Promise<{ success: boolean; project?: Project; error?: string }>;
+      projectDelete: (projectId: string) => Promise<{ success: boolean; error?: string }>;
+
+      // ============================================
+      // Task Management
+      // ============================================
+      taskCreate: (taskInput: TaskCreateInput) => Promise<{ success: boolean; task?: Task; error?: string }>;
+      taskUpdate: (projectId: string, taskId: string, updates: Partial<Task>) => Promise<{ success: boolean; task?: Task; error?: string }>;
+      taskDelete: (projectId: string, taskId: string) => Promise<{ success: boolean; error?: string }>;
+      taskStart: (projectId: string, taskId: string) => Promise<{ success: boolean; pid?: number; error?: string }>;
+      taskStop: (projectId: string, taskId: string) => Promise<{ success: boolean; error?: string }>;
+
+      // Task event listeners
+      onTaskOutput: (callback: (data: { projectId: string; taskId: string; output: string }) => void) => void;
+      onTaskError: (callback: (data: { projectId: string; taskId: string; error: string }) => void) => void;
+      onTaskComplete: (callback: (data: { projectId: string; taskId: string; code: number }) => void) => void;
     };
   }
 }
