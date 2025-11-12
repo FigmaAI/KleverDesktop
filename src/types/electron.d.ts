@@ -96,6 +96,7 @@ declare global {
         localBaseUrl: string;
         localModel: string;
       }) => Promise<{ success: boolean }>;
+      stopIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
 
       // Event listeners
       onInstallProgress: (callback: (data: string) => void) => void;

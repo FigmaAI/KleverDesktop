@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Integration test
   runIntegrationTest: (config) => ipcRenderer.invoke('integration:test', config),
+  stopIntegrationTest: () => ipcRenderer.invoke('integration:stop'),
 
   // Event listeners
   onInstallProgress: (callback) => {

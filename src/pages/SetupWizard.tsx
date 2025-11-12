@@ -506,7 +506,7 @@ export function SetupWizard() {
             </motion.div>
 
             {/* Step Content on the right */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <AnimatePresence mode="wait">
                 {/* Step 0: Platform Tools Check */}
                 {currentStep === 0 && (
@@ -1168,12 +1168,30 @@ export function SetupWizard() {
 
                       {/* Terminal Output */}
                       {(integrationTestRunning || integrationTestComplete) && (
-                        <Terminal
-                          name="Integration Test"
-                          colorMode={ColorMode.Dark}
-                        >
-                          {terminalLines}
-                        </Terminal>
+                        <>
+                          <Box sx={{ overflowX: 'auto', mb: 2 }}>
+                            <Terminal
+                              name="Integration Test"
+                              colorMode={ColorMode.Dark}
+                            >
+                              {terminalLines}
+                            </Terminal>
+                          </Box>
+
+                          {/* Retry/Stop Button */}
+                          <Button
+                            variant="outlined"
+                            color={integrationTestRunning ? "danger" : "neutral"}
+                            onClick={integrationTestRunning ? async () => {
+                              await window.electronAPI.stopIntegrationTest();
+                            } : handleRunIntegrationTest}
+                            fullWidth
+                            sx={{ mb: 2 }}
+                            startDecorator={integrationTestRunning ? null : <RefreshIcon />}
+                          >
+                            {integrationTestRunning ? "Stop Test" : "Retry Test"}
+                          </Button>
+                        </>
                       )}
 
                       {integrationTestComplete && integrationTestSuccess && (

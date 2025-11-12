@@ -6,6 +6,7 @@ const yaml = require('js-yaml');
 
 let mainWindow;
 let pythonProcess = null;
+let integrationTestProcess = null;
 
 // Create the browser window
 function createWindow() {
@@ -817,30 +818,36 @@ ipcMain.handle('integration:test', async (event, config) => {
     mainWindow?.webContents.send('integration:output', `Model Provider: ${modelProvider}\n`);
     mainWindow?.webContents.send('integration:output', `Testing with Google search...\n\n`);
 
-    const testProcess = spawn('python', [
+    // Kill existing test process if running
+    if (integrationTestProcess) {
+      integrationTestProcess.kill('SIGTERM');
+      integrationTestProcess = null;
+    }
+
+    integrationTestProcess = spawn('python', [
+      '-u',  // Unbuffered output
       selfExplorerScript,
       '--app', 'google_search_test',
       '--platform', 'web',
-      '--root_dir', '.'
+      '--root_dir', '.',
+      '--url', 'https://www.google.com',
+      '--task', 'Find and click the "I\'m Feeling Lucky" button'
     ], {
       cwd: path.join(__dirname, 'appagent'),  // Run from appagent directory
       env: env,
     });
 
-    // Send URL and task description via stdin
-    testProcess.stdin.write('https://www.google.com\n');
-    testProcess.stdin.write('Search for "weather" and click the search button\n');
-    testProcess.stdin.end();
+    console.log('[Integration Test] Process started with PID:', integrationTestProcess.pid);
 
-    testProcess.stdout.on('data', (data) => {
+    integrationTestProcess.stdout.on('data', (data) => {
       mainWindow?.webContents.send('integration:output', data.toString());
     });
 
-    testProcess.stderr.on('data', (data) => {
+    integrationTestProcess.stderr.on('data', (data) => {
       mainWindow?.webContents.send('integration:output', data.toString());
     });
 
-    testProcess.on('close', (code) => {
+    integrationTestProcess.on('close', (code) => {
       mainWindow?.webContents.send('integration:output', '\n============================================================\n');
       if (code === 0) {
         mainWindow?.webContents.send('integration:output', 'Integration test PASSED ✓\n');
@@ -850,6 +857,7 @@ ipcMain.handle('integration:test', async (event, config) => {
         mainWindow?.webContents.send('integration:output', '============================================================\n');
       }
       mainWindow?.webContents.send('integration:complete', code === 0);
+      integrationTestProcess = null;
     });
 
     return { success: true };
@@ -858,4 +866,16 @@ ipcMain.handle('integration:test', async (event, config) => {
     mainWindow?.webContents.send('integration:complete', false);
     return { success: false };
   }
+});
+
+// Stop integration test
+ipcMain.handle('integration:stop', async () => {
+  if (integrationTestProcess) {
+    integrationTestProcess.kill('SIGTERM');
+    integrationTestProcess = null;
+    mainWindow?.webContents.send('integration:output', '\n[Test stopped by user]\n');
+    mainWindow?.webContents.send('integration:complete', false);
+    return { success: true };
+  }
+  return { success: false, error: 'No running test' };
 });
