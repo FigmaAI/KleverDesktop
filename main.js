@@ -816,6 +816,24 @@ ipcMain.handle('integration:test', async (event, config) => {
     mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
     mainWindow?.webContents.send('integration:output', '============================================================\n\n');
     mainWindow?.webContents.send('integration:output', `Model Provider: ${modelProvider}\n`);
+
+    if (modelProvider === 'local') {
+      mainWindow?.webContents.send('integration:output', '\n');
+      mainWindow?.webContents.send('integration:output', '⚠️  LOCAL MODEL PERFORMANCE NOTICE\n');
+      mainWindow?.webContents.send('integration:output', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      mainWindow?.webContents.send('integration:output', 'You are using a local Ollama model for this test.\n');
+      mainWindow?.webContents.send('integration:output', 'This test may take 3-5 minutes or longer, depending on:\n');
+      mainWindow?.webContents.send('integration:output', '  • Your hardware (CPU/GPU performance)\n');
+      mainWindow?.webContents.send('integration:output', '  • Model size (larger models = slower inference)\n');
+      mainWindow?.webContents.send('integration:output', '  • System resources (RAM, other running processes)\n\n');
+      mainWindow?.webContents.send('integration:output', 'Expected response times per round:\n');
+      mainWindow?.webContents.send('integration:output', '  • Vision analysis: 60-120 seconds\n');
+      mainWindow?.webContents.send('integration:output', '  • Reflection: 15-30 seconds\n');
+      mainWindow?.webContents.send('integration:output', '  • Total for 2 rounds: ~3-5 minutes\n\n');
+      mainWindow?.webContents.send('integration:output', 'For faster testing, consider using API models (OpenAI, etc.)\n');
+      mainWindow?.webContents.send('integration:output', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n');
+    }
+
     mainWindow?.webContents.send('integration:output', `Testing with Google search...\n\n`);
 
     // Kill existing test process if running
