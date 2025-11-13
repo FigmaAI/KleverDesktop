@@ -19,7 +19,6 @@ import {
 import {
   Add as AddIcon,
   ArrowBack,
-  Assignment,
   CheckCircle,
   Error as ErrorIcon,
   PlayArrow,
@@ -74,17 +73,17 @@ export function ProjectDetail() {
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'pending':
-        return <Schedule color="neutral" />
+        return <Schedule color="action" />
       case 'running':
         return <PlayArrow color="primary" />
       case 'completed':
         return <CheckCircle color="success" />
       case 'failed':
-        return <ErrorIcon color="danger" />
+        return <ErrorIcon color="error" />
       case 'cancelled':
-        return <Cancel color="neutral" />
+        return <Cancel color="action" />
       default:
-        return <Schedule color="neutral" />
+        return <Schedule color="action" />
     }
   }
 

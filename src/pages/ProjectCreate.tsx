@@ -13,11 +13,8 @@ import {
   Step,
   StepIndicator,
   Stepper,
-  Textarea,
   Typography,
   Sheet,
-  Select,
-  Option,
 } from '@mui/joy'
 import { Check, PhoneAndroid, Language, ArrowBack, ArrowForward } from '@mui/icons-material'
 import type { Platform } from '../types/project'
@@ -77,7 +74,7 @@ export function ProjectCreate() {
   }
 
   const canProceed = () => {
-    if (activeStep === 0) return platform !== ''
+    if (activeStep === 0) return true // Platform is always selected (default: android)
     if (activeStep === 1) return device !== ''
     if (activeStep === 2) {
       if (platform === 'web') {

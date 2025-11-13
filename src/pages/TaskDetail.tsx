@@ -9,7 +9,6 @@ import {
   Sheet,
   Stack,
   Typography,
-  Textarea,
 } from '@mui/joy'
 import {
   ArrowBack,

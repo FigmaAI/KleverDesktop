@@ -20,7 +20,6 @@ import {
   PlayArrow,
   CheckCircle,
   Error as ErrorIcon,
-  Schedule,
 } from '@mui/icons-material'
 import type { Project } from '../types/project'
 
