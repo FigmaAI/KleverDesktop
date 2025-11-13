@@ -10,8 +10,8 @@ import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/proj
 
 // Mock Electron API for browser testing
 if (!window.electronAPI) {
-  type MockCallback = (...args: any[]) => void
-  const mockCallbacks: Record<string, MockCallback[]> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockCallbacks: Record<string, any[]> = {}
 
   // Mock data storage
   let mockProjects: Project[] = []
@@ -31,6 +31,7 @@ if (!window.electronAPI) {
     ollamaPull: async () => ({ success: true }),
     configLoad: async () => ({ success: true, config: {} }),
     configSave: async () => ({ success: true }),
+    checkSetup: async () => ({ success: true, setupComplete: true }),
     projectStart: async () => ({ success: true }),
     projectStop: async () => ({ success: true }),
     openExternal: async () => ({ success: true }),
