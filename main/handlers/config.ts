@@ -4,7 +4,7 @@
  */
 
 import { IpcMain } from 'electron';
-import { loadConfig, saveConfig } from '../utils/config-manager';
+import { loadConfig, saveConfig, resetConfig } from '../utils/config-manager';
 import { checkVenvStatus } from '../utils/python-manager';
 
 /**
@@ -33,17 +33,37 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     }
   });
 
-  // Check if initial setup is complete (checks Python venv)
+  // Check if initial setup is complete (checks Python venv AND config file)
   ipcMain.handle('check:setup', async () => {
     try {
       console.log('[check:setup] Checking if setup is complete...');
+
+      // Check if config exists and has required fields
+      let hasValidConfig = false;
+      try {
+        const config = loadConfig();
+        const hasLocalEnabled = config.ENABLE_LOCAL === true;
+        const hasApiEnabled = config.ENABLE_API === true;
+
+        // Check if at least one model is configured
+        if (hasLocalEnabled && config.LOCAL_BASE_URL && config.LOCAL_MODEL) {
+          hasValidConfig = true;
+        }
+        if (hasApiEnabled && config.API_BASE_URL && config.API_KEY && config.API_MODEL) {
+          hasValidConfig = true;
+        }
+        console.log('[check:setup] Config valid:', hasValidConfig);
+      } catch (_error) {
+        console.log('[check:setup] Config does not exist or is invalid');
+        hasValidConfig = false;
+      }
 
       // Check if venv exists and is valid
       const venvStatus = checkVenvStatus();
       console.log('[check:setup] Venv status:', venvStatus);
 
-      // Setup is complete if venv is valid
-      const setupComplete = venvStatus.valid;
+      // Setup is complete if BOTH venv is valid AND config is valid
+      const setupComplete = venvStatus.valid && hasValidConfig;
       console.log('[check:setup] Setup complete:', setupComplete);
 
       return { success: true, setupComplete };
@@ -82,6 +102,20 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     } catch (error: unknown) {
       // If config doesn't exist or error loading, setup is not complete
       return { success: true, setupComplete: false };
+    }
+  });
+
+  // Reset configuration and return to setup wizard
+  ipcMain.handle('config:reset', async () => {
+    try {
+      console.log('[config:reset] Resetting configuration...');
+      resetConfig();
+      console.log('[config:reset] Configuration reset successful');
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[config:reset] Error:', message);
+      return { success: false, error: message };
     }
   });
 }

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Box,
@@ -22,11 +21,16 @@ import {
   Option,
   IconButton,
   Autocomplete,
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  LinearProgress,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material'
 import Checkbox from '@mui/joy/Checkbox'
 import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui';
@@ -48,7 +52,6 @@ interface ModelConfig {
 }
 
 export function SetupWizard() {
-  const navigate = useNavigate()
   const [currentStep, setCurrentStep] = useState(0)
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     enableLocal: true,
@@ -86,6 +89,8 @@ export function SetupWizard() {
 
   // Unified environment setup state
   const [envSetupTerminalLines, setEnvSetupTerminalLines] = useState<React.ReactNode[]>([])
+  const [envSetupProgress, setEnvSetupProgress] = useState(0)
+  const [terminalExpanded, setTerminalExpanded] = useState(false)
 
   // API models state
   const [apiModels, setApiModels] = useState<string[]>([])
@@ -98,12 +103,28 @@ export function SetupWizard() {
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
   const [integrationTestSuccess, setIntegrationTestSuccess] = useState(false)
   const [terminalLines, setTerminalLines] = useState<React.ReactNode[]>([])
+  const [integrationTerminalExpanded, setIntegrationTerminalExpanded] = useState(false)
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1)
     } else if (integrationTestSuccess) {
-      navigate('/projects')
+      // Save config before navigating to ensure App.tsx recognizes setup is complete
+      try {
+        await window.electronAPI.saveModelConfig({
+          enableLocal: modelConfig.enableLocal,
+          enableApi: modelConfig.enableApi,
+          apiBaseUrl: modelConfig.apiBaseUrl,
+          apiKey: modelConfig.apiKey,
+          apiModel: modelConfig.apiModel,
+          localBaseUrl: modelConfig.localBaseUrl,
+          localModel: modelConfig.localModel,
+        })
+        // Reload the page to trigger App.tsx to re-check setup status
+        window.location.href = '/projects'
+      } catch (error) {
+        console.error('Failed to save configuration:', error)
+      }
     }
   }
 
@@ -376,16 +397,25 @@ export function SetupWizard() {
   const handleSetupEnvironment = async () => {
     setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
     setEnvSetupTerminalLines([])
+    setEnvSetupProgress(0)
 
     try {
+      let lineCount = 0
       // Listen for progress
       window.electronAPI.onEnvProgress((data: string) => {
+        lineCount++
+        // Estimate progress based on typical installation steps (rough estimation)
+        // Creating venv: ~10%, Installing packages: ~70%, Installing Playwright: ~20%
+        const estimatedProgress = Math.min(95, lineCount * 2)
+        setEnvSetupProgress(estimatedProgress)
+        
         setEnvSetupTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
       })
 
       const result = await window.electronAPI.envSetup()
 
       if (result.success) {
+        setEnvSetupProgress(100)
         setEnvSetupTerminalLines((prev) => [
           ...prev,
           <TerminalOutput key={prev.length}>
@@ -746,7 +776,7 @@ export function SetupWizard() {
                                 ) : (
                                   <WarningIcon color="warning" />
                                 )}
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                   <Typography
                                     level="body-sm"
                                     fontWeight={toolsStatus.pythonEnv.installed ? 'md' : 'normal'}
@@ -773,13 +803,59 @@ export function SetupWizard() {
                               )}
                             </Box>
 
-                            {/* Terminal output during installation */}
-                            {toolsStatus.pythonEnv.installing && envSetupTerminalLines.length > 0 && (
-                              <Box sx={{ mt: 1 }}>
-                                <Terminal name="Environment Setup" colorMode={ColorMode.Dark}>
-                                  {envSetupTerminalLines}
-                                </Terminal>
+                            {/* Progress bar during installation */}
+                            {toolsStatus.pythonEnv.installing && (
+                              <Box sx={{ width: '100%' }}>
+                                <LinearProgress
+                                  determinate
+                                  value={envSetupProgress}
+                                  sx={{ mb: 1 }}
+                                />
+                                <Typography level="body-xs" textAlign="center" textColor="text.tertiary">
+                                  {envSetupProgress}%
+                                </Typography>
                               </Box>
+                            )}
+
+                            {/* Guide message during installation */}
+                            {toolsStatus.pythonEnv.installing && (
+                              <Alert 
+                                color="primary" 
+                                variant="soft"
+                                sx={{ mt: 1, mb: 1 }}
+                              >
+                                <Typography level="body-sm">
+                                  설치 진행 중입니다. 진행 상황을 확인하려면 아래 터미널을 펼쳐보세요.
+                                </Typography>
+                              </Alert>
+                            )}
+
+                            {/* Terminal output during installation - collapsible */}
+                            {toolsStatus.pythonEnv.installing && envSetupTerminalLines.length > 0 && (
+                              <Accordion
+                                expanded={terminalExpanded}
+                                onChange={(_, expanded) => setTerminalExpanded(expanded)}
+                              >
+                                <AccordionSummary indicator={<ExpandMoreIcon />}>
+                                  <Typography level="body-sm">
+                                    {terminalExpanded ? 'Hide' : 'Show'} installation details
+                                  </Typography>
+                                </AccordionSummary>
+                                <AccordionDetails>
+                                  <Box sx={{ 
+                                    '& .react-terminal-wrapper': { 
+                                      fontSize: '10px !important',
+                                    },
+                                    '& .react-terminal-line': {
+                                      fontSize: '10px !important',
+                                    }
+                                  }}>
+                                    <Terminal name="Environment Setup" colorMode={ColorMode.Dark}>
+                                      {envSetupTerminalLines}
+                                    </Terminal>
+                                  </Box>
+                                </AccordionDetails>
+                              </Accordion>
                             )}
                           </Sheet>
                         </motion.div>
@@ -1160,17 +1236,57 @@ export function SetupWizard() {
                         </Button>
                       )}
 
-                      {/* Terminal Output */}
+                      {/* Terminal Output - Collapsible */}
                       {(integrationTestRunning || integrationTestComplete) && (
                         <>
-                          <Box sx={{ overflowX: 'auto', mb: 2 }}>
-                            <Terminal
-                              name="Integration Test"
-                              colorMode={ColorMode.Dark}
+                          {/* Guide message when test is running */}
+                          {integrationTestRunning && (
+                            <Alert 
+                              color="primary" 
+                              variant="soft"
+                              sx={{ mb: 2 }}
                             >
-                              {terminalLines}
-                            </Terminal>
-                          </Box>
+                              <Box>
+                                <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
+                                  테스트 진행 중...
+                                </Typography>
+                                <Typography level="body-sm">
+                                  브라우저가 열렸다 닫힐 때까지 잠시만 기다려주세요. 
+                                  진행 상황을 확인하려면 아래 터미널을 펼쳐보세요.
+                                </Typography>
+                              </Box>
+                            </Alert>
+                          )}
+
+                          <Accordion
+                            expanded={integrationTerminalExpanded}
+                            onChange={(_, expanded) => setIntegrationTerminalExpanded(expanded)}
+                            sx={{ mb: 2 }}
+                          >
+                            <AccordionSummary indicator={<ExpandMoreIcon />}>
+                              <Typography level="body-sm">
+                                {integrationTerminalExpanded ? 'Hide' : 'Show'} test output
+                              </Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                              <Box sx={{ 
+                                overflowX: 'auto',
+                                '& .react-terminal-wrapper': { 
+                                  fontSize: '10px !important',
+                                },
+                                '& .react-terminal-line': {
+                                  fontSize: '10px !important',
+                                }
+                              }}>
+                                <Terminal
+                                  name="Integration Test"
+                                  colorMode={ColorMode.Dark}
+                                >
+                                  {terminalLines}
+                                </Terminal>
+                              </Box>
+                            </AccordionDetails>
+                          </Accordion>
 
                           {/* Retry/Stop Button */}
                           <Button
@@ -1222,7 +1338,22 @@ export function SetupWizard() {
               >
                 Back
               </Button>
-              {currentStep === 1 ? (
+              {currentStep === 0 ? (
+                <Button
+                  variant="solid"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={
+                    !toolsStatus.python.installed ||
+                    !toolsStatus.pythonEnv.installed ||
+                    !toolsStatus.androidStudio.installed ||
+                    (window.navigator.platform.toLowerCase().includes('mac') && !toolsStatus.homebrew.installed)
+                  }
+                  sx={{ minWidth: 100 }}
+                >
+                  Next
+                </Button>
+              ) : currentStep === 1 ? (
                 <Button
                   variant="solid"
                   color="primary"

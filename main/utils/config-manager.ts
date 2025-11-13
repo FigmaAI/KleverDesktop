@@ -54,3 +54,25 @@ export function updateConfig(updates: Record<string, unknown>): void {
   Object.assign(config, updates);
   saveConfig(config);
 }
+
+/**
+ * Reset configuration by deleting the config file
+ * This will force the user back to the setup wizard
+ */
+export function resetConfig(): void {
+  const configPath = getConfigPath();
+  
+  console.log('[config-manager] Attempting to reset configuration at:', configPath);
+  
+  if (fs.existsSync(configPath)) {
+    try {
+      fs.unlinkSync(configPath);
+      console.log('[config-manager] Configuration file successfully deleted:', configPath);
+    } catch (error) {
+      console.error('[config-manager] Failed to delete configuration file:', error);
+      throw error;
+    }
+  } else {
+    console.log('[config-manager] Configuration file does not exist (already reset):', configPath);
+  }
+}

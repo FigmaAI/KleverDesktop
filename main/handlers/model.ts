@@ -104,6 +104,68 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
       yamlConfig.API_MODEL = config.apiModel;
       yamlConfig.LOCAL_BASE_URL = config.localBaseUrl;
       yamlConfig.LOCAL_MODEL = config.localModel;
+      
+      // Add required AppAgent parameters with defaults if not present
+      // Common Settings
+      if (!yamlConfig.MAX_TOKENS) {
+        yamlConfig.MAX_TOKENS = 4096;  // Increased for qwen3-vl:4b thinking mode
+      }
+      if (!yamlConfig.TEMPERATURE) {
+        yamlConfig.TEMPERATURE = 0.0;
+      }
+      if (!yamlConfig.REQUEST_INTERVAL) {
+        yamlConfig.REQUEST_INTERVAL = 10;
+      }
+
+      // Android Configuration
+      if (!yamlConfig.ANDROID_SCREENSHOT_DIR) {
+        yamlConfig.ANDROID_SCREENSHOT_DIR = "/sdcard";
+      }
+      if (!yamlConfig.ANDROID_XML_DIR) {
+        yamlConfig.ANDROID_XML_DIR = "/sdcard";
+      }
+
+      // Web Configuration
+      if (!yamlConfig.WEB_BROWSER_TYPE) {
+        yamlConfig.WEB_BROWSER_TYPE = "chromium";
+      }
+      if (yamlConfig.WEB_HEADLESS === undefined) {
+        yamlConfig.WEB_HEADLESS = false;
+      }
+      if (!yamlConfig.WEB_VIEWPORT_WIDTH) {
+        yamlConfig.WEB_VIEWPORT_WIDTH = 1280;
+      }
+      if (!yamlConfig.WEB_VIEWPORT_HEIGHT) {
+        yamlConfig.WEB_VIEWPORT_HEIGHT = 720;
+      }
+
+      // Image Optimization
+      if (!yamlConfig.IMAGE_MAX_WIDTH) {
+        yamlConfig.IMAGE_MAX_WIDTH = 512;
+      }
+      if (!yamlConfig.IMAGE_MAX_HEIGHT) {
+        yamlConfig.IMAGE_MAX_HEIGHT = 512;
+      }
+      if (!yamlConfig.IMAGE_QUALITY) {
+        yamlConfig.IMAGE_QUALITY = 85;
+      }
+      if (yamlConfig.OPTIMIZE_IMAGES === undefined) {
+        yamlConfig.OPTIMIZE_IMAGES = true;
+      }
+
+      // Agent Behavior
+      if (yamlConfig.DOC_REFINE === undefined) {
+        yamlConfig.DOC_REFINE = false;
+      }
+      if (!yamlConfig.MAX_ROUNDS) {
+        yamlConfig.MAX_ROUNDS = 20;
+      }
+      if (yamlConfig.DARK_MODE === undefined) {
+        yamlConfig.DARK_MODE = false;
+      }
+      if (!yamlConfig.MIN_DIST) {
+        yamlConfig.MIN_DIST = 30;
+      }
 
       // Save config
       saveConfig(yamlConfig);

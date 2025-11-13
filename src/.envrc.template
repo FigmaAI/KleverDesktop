@@ -1,0 +1,13 @@
+# Use nvm instead of volta for this project
+# Remove volta from PATH and use nvm
+export PATH=$(echo $PATH | tr ':' '\n' | grep -v volta | tr '\n' ':' | sed 's/:$//')
+
+# Load nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+
+# Use Node version from .nvmrc if it exists
+if [ -f .nvmrc ]; then
+  nvm use
+fi
+
