@@ -1,4 +1,4 @@
 [submodule "appagent"]
 	path = appagent
 	url = https://github.com/FigmaAI/appagent.git
-	branch = claude/klever-desktop-setup-011CUuq1WsLc6Anz85kupFMp
+	branch = main
