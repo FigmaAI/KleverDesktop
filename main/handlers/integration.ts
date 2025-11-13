@@ -118,11 +118,13 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       integrationTestProcess.on('close', (code) => {
         mainWindow?.webContents.send('integration:output', '\n============================================================\n');
         if (code === 0) {
-          mainWindow?.webContents.send('integration:output', 'Integration test PASSED ✓\n');
+          mainWindow?.webContents.send('integration:output', '✅ Integration test PASSED - All 2 rounds completed successfully!\n');
           mainWindow?.webContents.send('integration:output', '============================================================\n');
+          console.log('[Integration Test] ✅ Test completed successfully');
         } else {
-          mainWindow?.webContents.send('integration:output', 'Integration test FAILED (exit code: ' + code + ')\n');
+          mainWindow?.webContents.send('integration:output', `❌ Integration test FAILED (exit code: ${code})\n`);
           mainWindow?.webContents.send('integration:output', '============================================================\n');
+          console.log(`[Integration Test] ❌ Test failed with code: ${code}`);
         }
         mainWindow?.webContents.send('integration:complete', code === 0);
         integrationTestProcess = null;
