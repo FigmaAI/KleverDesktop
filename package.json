@@ -1,7 +1,7 @@
 {
   "name": "klever-desktop",
   "version": "0.1.0",
-  "description": "Local UI Grounding Desktop App - Self-Explorer for Android & Web",
+  "description": "GUI Wrapper for AppAgent - Electron-based desktop application that makes Python-based UI automation accessible to non-developers. Wraps the external AppAgent open-source project with a user-friendly interface for Android (ADB) and Web (Playwright) automation.",
   "main": "dist-electron/index.js",
   "scripts": {
     "dev": "vite",
@@ -13,7 +13,11 @@
     "electron:dev": "npm run build:main && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
     "package": "npm run build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "submodule:init": "git submodule update --init --recursive",
+    "submodule:update": "git submodule update --remote appagent && git add appagent",
+    "submodule:status": "git submodule status",
+    "postinstall": "npm run submodule:init"
   },
   "keywords": [
     "electron",
