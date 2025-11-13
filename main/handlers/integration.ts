@@ -4,10 +4,11 @@
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ModelConfig } from '../types';
+import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
 
 let integrationTestProcess: ChildProcess | null = null;
 
@@ -37,9 +38,10 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         modelProvider = 'local';
       }
 
-      // Prepare environment variables
+      // Prepare environment variables (merge with venv environment)
+      const venvEnv = getPythonEnv();
       const env = {
-        ...process.env,
+        ...venvEnv,
         MODEL: modelProvider,
         ENABLE_LOCAL: config.enableLocal.toString(),
         ENABLE_API: config.enableApi.toString(),
@@ -81,10 +83,9 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         integrationTestProcess = null;
       }
 
-      const taskArg = 'Find and click the "I\'m Feeling Lucky" button';
-
-      integrationTestProcess = spawn(
-        'python',
+      // Use venv Python to run the integration test
+      // Note: self_explorer.py only accepts --app, --root_dir, and --platform arguments
+      integrationTestProcess = spawnVenvPython(
         [
           '-u',
           selfExplorerScript,
@@ -94,10 +95,6 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           'web',
           '--root_dir',
           '.',
-          '--url',
-          'https://www.google.com',
-          '--task',
-          taskArg,
         ],
         {
           cwd: path.join(process.cwd(), 'appagent'),

@@ -16,6 +16,7 @@ let taskProcesses = {}; // Map of taskId -> process
 
 /**
  * Get the path to the bundled Python executable
+ * Falls back to system Python if bundled version is not found
  */
 function getBundledPythonPath() {
   const isDev = process.env.NODE_ENV === 'development';
@@ -34,13 +35,21 @@ function getBundledPythonPath() {
     pythonPath = path.join(resourcesPath, 'python', platform, 'python', 'bin', pythonExecutable);
   }
 
-  // Fallback: Check if bundled Python exists
+  // Check if bundled Python exists
   if (fs.existsSync(pythonPath)) {
+    console.log('[Python Manager] Using bundled Python:', pythonPath);
     return pythonPath;
-  } else {
-    console.warn('[Python Manager] Bundled Python not found, falling back to system Python');
-    return 'python'; // Fallback to system Python
   }
+
+  // Fallback to system Python
+  console.warn('[Python Manager] Bundled Python not found, falling back to system Python');
+
+  // On Unix-like systems, prefer python3 over python
+  if (platform !== 'win32') {
+    return 'python3';
+  }
+
+  return 'python';
 }
 
 /**
@@ -405,19 +414,70 @@ app.on('activate', () => {
  */
 ipcMain.handle('env:check', async () => {
   try {
-    const bundledPython = getBundledPythonPath();
-    const bundledPythonExists = fs.existsSync(bundledPython);
-    const venvStatus = checkVenvStatus();
+    console.log('[env:check] ========== Starting environment check ==========');
+    const pythonPath = getBundledPythonPath();
+    console.log('[env:check] Python path:', pythonPath);
 
-    return {
+    // Check if it's a bundled Python (absolute path) or system Python (command name)
+    const isBundled = path.isAbsolute(pythonPath);
+    console.log('[env:check] Is bundled:', isBundled);
+
+    const pythonExists = isBundled ? fs.existsSync(pythonPath) : true; // Assume system Python exists
+    console.log('[env:check] Python exists (initial check):', pythonExists);
+
+    // Verify Python version and existence by running it
+    let pythonVersion = null;
+    let pythonValid = false;
+
+    try {
+      console.log('[env:check] Running:', `${pythonPath} --version`);
+      const { stdout } = await new Promise((resolve, reject) => {
+        exec(`${pythonPath} --version`, { timeout: 5000 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error('[env:check] Python execution error:', error.message);
+            reject(error);
+          } else {
+            console.log('[env:check] Python version output:', stdout || stderr);
+            resolve({ stdout: stdout || stderr });
+          }
+        });
+      });
+
+      const match = stdout.match(/Python (\d+)\.(\d+)\.(\d+)/);
+      if (match) {
+        const major = parseInt(match[1]);
+        const minor = parseInt(match[2]);
+        pythonVersion = `${major}.${minor}.${match[3]}`;
+        pythonValid = major === 3 && minor >= 11;
+        console.log('[env:check] Parsed version:', pythonVersion);
+        console.log('[env:check] Is valid (3.11+):', pythonValid);
+      } else {
+        console.warn('[env:check] Could not parse Python version from output');
+      }
+    } catch (error) {
+      console.warn('[env:check] Failed to verify Python:', error.message);
+    }
+
+    const venvStatus = checkVenvStatus();
+    console.log('[env:check] Venv status:', venvStatus);
+
+    const result = {
       success: true,
       bundledPython: {
-        path: bundledPython,
-        exists: bundledPythonExists,
+        path: pythonPath,
+        exists: pythonExists && pythonValid,
+        version: pythonVersion,
+        isBundled: isBundled,
       },
       venv: venvStatus,
     };
+
+    console.log('[env:check] Final result:', JSON.stringify(result, null, 2));
+    console.log('[env:check] ========== Environment check complete ==========');
+
+    return result;
   } catch (error) {
+    console.error('[env:check] Error:', error.message);
     return { success: false, error: error.message };
   }
 });
@@ -470,6 +530,26 @@ ipcMain.handle('env:setup', async () => {
     console.error('[Environment Setup] ❌ Error:', error.message);
     mainWindow?.webContents.send('env:progress', `\n❌ Error: ${error.message}\n`);
     return { success: false, error: error.message };
+  }
+});
+
+// Check if setup is complete
+ipcMain.handle('check:setup', async () => {
+  try {
+    console.log('[check:setup] Checking if setup is complete...');
+
+    // Check if venv exists and is valid
+    const venvStatus = checkVenvStatus();
+    console.log('[check:setup] Venv status:', venvStatus);
+
+    // Setup is complete if venv is valid
+    const setupComplete = venvStatus.valid;
+    console.log('[check:setup] Setup complete:', setupComplete);
+
+    return { success: true, setupComplete };
+  } catch (error) {
+    console.error('[check:setup] Error:', error.message);
+    return { success: true, setupComplete: false };
   }
 });
 

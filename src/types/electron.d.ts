@@ -24,6 +24,8 @@ declare global {
         bundledPython?: {
           path: string;
           exists: boolean;
+          version?: string;
+          isBundled?: boolean;
         };
         venv?: {
           exists: boolean;

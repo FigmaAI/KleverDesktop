@@ -248,25 +248,40 @@ export function SetupWizard() {
     }
 
     // Check Bundled Python and Virtual Environment
+    console.log('[SetupWizard] ========== Checking Python environment ==========')
     setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, checking: true } }))
     try {
+      console.log('[SetupWizard] Calling window.electronAPI.envCheck()')
       const envCheck = await window.electronAPI.envCheck()
+      console.log('[SetupWizard] envCheck result:', JSON.stringify(envCheck, null, 2))
 
-      // Check bundled Python
+      // Check Python (bundled or system)
       const pythonInstalled = envCheck.success && envCheck.bundledPython?.exists
+      const pythonVersion = envCheck.bundledPython?.version
+      const isBundled = envCheck.bundledPython?.isBundled
+
+      console.log('[SetupWizard] Python analysis:')
+      console.log('  - success:', envCheck.success)
+      console.log('  - bundledPython.exists:', envCheck.bundledPython?.exists)
+      console.log('  - pythonInstalled:', pythonInstalled)
+      console.log('  - pythonVersion:', pythonVersion)
+      console.log('  - isBundled:', isBundled)
+
       setToolsStatus((prev) => ({
         ...prev,
         python: {
           checking: false,
           installed: pythonInstalled || false,
-          version: pythonInstalled ? 'Bundled Python 3.11+' : undefined,
-          error: pythonInstalled ? undefined : 'Bundled Python not found',
+          version: pythonVersion ? `Python ${pythonVersion}${isBundled ? ' (Bundled)' : ' (System)'}` : undefined,
+          error: pythonInstalled ? undefined : 'Python 3.11+ not found. Please install Python.',
           installing: false,
         },
       }))
 
       // Check Python environment (venv + packages + playwright)
       const envInstalled = envCheck.success && envCheck.venv?.valid
+      console.log('[SetupWizard] Venv installed:', envInstalled)
+
       setToolsStatus((prev) => ({
         ...prev,
         pythonEnv: {
@@ -276,7 +291,10 @@ export function SetupWizard() {
           installing: false,
         },
       }))
-    } catch {
+
+      console.log('[SetupWizard] ========== Python environment check complete ==========')
+    } catch (error) {
+      console.error('[SetupWizard] Error checking Python environment:', error)
       setToolsStatus((prev) => ({
         ...prev,
         python: { checking: false, installed: false, installing: false },
