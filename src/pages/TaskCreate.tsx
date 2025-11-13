@@ -115,8 +115,8 @@ export function TaskCreate() {
               <Typography level="body-xs" textColor="text.secondary" component="ul" sx={{ pl: 2 }}>
                 <li>Be specific and clear about each step</li>
                 <li>Use numbered lists for sequential actions</li>
-                <li>Include element names or text when possible (e.g., "Click Follow button")</li>
-                <li>Specify expected outcomes (e.g., "Wait for profile page to load")</li>
+                <li>Include element names or text when possible (e.g., &quot;Click Follow button&quot;)</li>
+                <li>Specify expected outcomes (e.g., &quot;Wait for profile page to load&quot;)</li>
               </Typography>
             </Box>
 

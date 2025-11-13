@@ -223,7 +223,7 @@ export function ProjectCreate() {
                     onChange={(e) => setDevice(e.target.value)}
                   />
                   <Typography level="body-xs" textColor="text.secondary" sx={{ mt: 0.5 }}>
-                    Run "adb devices" to see connected devices
+                    Run &quot;adb devices&quot; to see connected devices
                   </Typography>
                 </FormControl>
               )}

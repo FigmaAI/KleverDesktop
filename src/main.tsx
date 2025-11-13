@@ -6,12 +6,15 @@ import CssBaseline from '@mui/joy/CssBaseline'
 import App from './App'
 import './index.css'
 
+import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/project'
+
 // Mock Electron API for browser testing
 if (!window.electronAPI) {
-  const mockCallbacks: Record<string, Function[]> = {}
+  type MockCallback = (...args: any[]) => void
+  const mockCallbacks: Record<string, MockCallback[]> = {}
 
   // Mock data storage
-  let mockProjects: any[] = []
+  let mockProjects: Project[] = []
 
   window.electronAPI = {
     checkPython: async () => ({ success: true, version: '3.11.0', isValid: true }),
@@ -56,13 +59,13 @@ if (!window.electronAPI) {
       await new Promise((resolve) => setTimeout(resolve, 300))
       return { success: true, projects: mockProjects }
     },
-    projectGet: async (projectId) => {
+    projectGet: async (projectId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const project = mockProjects.find(p => p.id === projectId)
       if (!project) return { success: false, error: 'Project not found' }
       return { success: true, project }
     },
-    projectCreate: async (projectInput) => {
+    projectCreate: async (projectInput: ProjectCreateInput) => {
       await new Promise((resolve) => setTimeout(resolve, 300))
       const newProject = {
         id: `proj_${Date.now()}`,
@@ -76,7 +79,7 @@ if (!window.electronAPI) {
       mockProjects.push(newProject)
       return { success: true, project: newProject }
     },
-    projectUpdate: async (projectId, updates) => {
+    projectUpdate: async (projectId: string, updates: Partial<Project>) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const projectIndex = mockProjects.findIndex(p => p.id === projectId)
       if (projectIndex === -1) return { success: false, error: 'Project not found' }
@@ -87,7 +90,7 @@ if (!window.electronAPI) {
       }
       return { success: true, project: mockProjects[projectIndex] }
     },
-    projectDelete: async (projectId) => {
+    projectDelete: async (projectId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const projectIndex = mockProjects.findIndex(p => p.id === projectId)
       if (projectIndex === -1) return { success: false, error: 'Project not found' }
@@ -96,7 +99,7 @@ if (!window.electronAPI) {
     },
 
     // Task Management
-    taskCreate: async (taskInput) => {
+    taskCreate: async (taskInput: TaskCreateInput) => {
       await new Promise((resolve) => setTimeout(resolve, 300))
       const project = mockProjects.find(p => p.id === taskInput.projectId)
       if (!project) return { success: false, error: 'Project not found' }
@@ -111,11 +114,11 @@ if (!window.electronAPI) {
       project.tasks.push(newTask)
       return { success: true, task: newTask }
     },
-    taskUpdate: async (projectId, taskId, updates) => {
+    taskUpdate: async (projectId: string, taskId: string, updates: Partial<Task>) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const project = mockProjects.find(p => p.id === projectId)
       if (!project) return { success: false, error: 'Project not found' }
-      const taskIndex = project.tasks.findIndex((t: any) => t.id === taskId)
+      const taskIndex = project.tasks.findIndex((t: Task) => t.id === taskId)
       if (taskIndex === -1) return { success: false, error: 'Task not found' }
       project.tasks[taskIndex] = {
         ...project.tasks[taskIndex],
@@ -124,20 +127,20 @@ if (!window.electronAPI) {
       }
       return { success: true, task: project.tasks[taskIndex] }
     },
-    taskDelete: async (projectId, taskId) => {
+    taskDelete: async (projectId: string, taskId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const project = mockProjects.find(p => p.id === projectId)
       if (!project) return { success: false, error: 'Project not found' }
-      const taskIndex = project.tasks.findIndex((t: any) => t.id === taskId)
+      const taskIndex = project.tasks.findIndex((t: Task) => t.id === taskId)
       if (taskIndex === -1) return { success: false, error: 'Task not found' }
       project.tasks.splice(taskIndex, 1)
       return { success: true }
     },
-    taskStart: async (projectId, taskId) => {
+    taskStart: async (projectId: string, taskId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 500))
       const project = mockProjects.find(p => p.id === projectId)
       if (!project) return { success: false, error: 'Project not found' }
-      const task = project.tasks.find((t: any) => t.id === taskId)
+      const task = project.tasks.find((t: Task) => t.id === taskId)
       if (!task) return { success: false, error: 'Task not found' }
       task.status = 'running' as const
       task.lastRunAt = new Date().toISOString()
@@ -151,11 +154,11 @@ if (!window.electronAPI) {
 
       return { success: true, pid: 12345 }
     },
-    taskStop: async (projectId, taskId) => {
+    taskStop: async (projectId: string, taskId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 200))
       const project = mockProjects.find(p => p.id === projectId)
       if (!project) return { success: false, error: 'Project not found' }
-      const task = project.tasks.find((t: any) => t.id === taskId)
+      const task = project.tasks.find((t: Task) => t.id === taskId)
       if (!task) return { success: false, error: 'Task not found' }
       task.status = 'cancelled' as const
       return { success: true }

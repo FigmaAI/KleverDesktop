@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -9,6 +9,7 @@ import {
   Sheet,
   Stack,
   Typography,
+  ColorPaletteProp,
 } from '@mui/joy'
 import {
   ArrowBack,
@@ -31,9 +32,31 @@ export function TaskDetail() {
   const [error, setError] = useState('')
   const outputRef = useRef<HTMLDivElement>(null)
 
+  const loadTaskData = useCallback(async () => {
+    if (!projectId || !taskId) return
+
+    setLoading(true)
+    try {
+      const result = await window.electronAPI.projectGet(projectId)
+      if (result.success && result.project) {
+        setProject(result.project)
+        const foundTask = result.project.tasks.find((t) => t.id === taskId)
+        if (foundTask) {
+          setTask(foundTask)
+          setOutput(foundTask.output || '')
+          setError(foundTask.error || '')
+        }
+      }
+    } catch (error) {
+      console.error('Error loading task:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [projectId, taskId])
+
   useEffect(() => {
     loadTaskData()
-  }, [projectId, taskId])
+  }, [loadTaskData])
 
   useEffect(() => {
     // Set up event listeners for task output
@@ -72,29 +95,7 @@ export function TaskDetail() {
       window.electronAPI.removeAllListeners('task:error')
       window.electronAPI.removeAllListeners('task:complete')
     }
-  }, [projectId, taskId])
-
-  const loadTaskData = async () => {
-    if (!projectId || !taskId) return
-
-    setLoading(true)
-    try {
-      const result = await window.electronAPI.projectGet(projectId)
-      if (result.success && result.project) {
-        setProject(result.project)
-        const foundTask = result.project.tasks.find((t) => t.id === taskId)
-        if (foundTask) {
-          setTask(foundTask)
-          setOutput(foundTask.output || '')
-          setError(foundTask.error || '')
-        }
-      }
-    } catch (error) {
-      console.error('Error loading task:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [projectId, taskId, loadTaskData])
 
   const handleStart = async () => {
     if (!projectId || !taskId) return
@@ -148,7 +149,7 @@ export function TaskDetail() {
     }
   }
 
-  const getStatusColor = (status?: Task['status']) => {
+  const getStatusColor = (status?: Task['status']): ColorPaletteProp => {
     if (!status) return 'neutral'
     switch (status) {
       case 'pending':
@@ -220,7 +221,7 @@ export function TaskDetail() {
                 <Chip
                   size="lg"
                   variant="soft"
-                  color={getStatusColor(task.status) as any}
+                  color={getStatusColor(task.status)}
                   startDecorator={getStatusIcon(task.status)}
                 >
                   {task.status}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   Sheet,
   Stack,
   Typography,
+  ColorPaletteProp,
 } from '@mui/joy'
 import {
   Add as AddIcon,
@@ -36,11 +37,7 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadProject()
-  }, [id])
-
-  const loadProject = async () => {
+  const loadProject = useCallback(async () => {
     if (!id) return
 
     setLoading(true)
@@ -54,7 +51,11 @@ export function ProjectDetail() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
+
+  useEffect(() => {
+    loadProject()
+  }, [id, loadProject])
 
   const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -87,7 +88,7 @@ export function ProjectDetail() {
     }
   }
 
-  const getStatusColor = (status: Task['status']) => {
+  const getStatusColor = (status: Task['status']): ColorPaletteProp => {
     switch (status) {
       case 'pending':
         return 'neutral'
@@ -259,7 +260,7 @@ export function ProjectDetail() {
                           <Chip
                             size="sm"
                             variant="soft"
-                            color={getStatusColor(task.status) as any}
+                            color={getStatusColor(task.status)}
                           >
                             {task.status}
                           </Chip>
