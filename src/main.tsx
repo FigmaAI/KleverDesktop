@@ -10,8 +10,8 @@ import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/proj
 
 // Mock Electron API for browser testing
 if (!window.electronAPI) {
-  type MockCallback = (...args: unknown[]) => void
-  const mockCallbacks: Record<string, MockCallback[]> = {}
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockCallbacks: Record<string, any[]> = {}
 
   // Mock data storage
   let mockProjects: Project[] = []
