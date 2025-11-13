@@ -16,7 +16,7 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
       await shell.openExternal(url);
       return { success: true };
     } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
+      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
     }
   });
 
