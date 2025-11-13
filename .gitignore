@@ -47,3 +47,6 @@ gcp-service-account.json
 
 # Git bundles
 *.bundle
+
+# Resource 
+resources
