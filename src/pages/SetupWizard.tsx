@@ -825,7 +825,7 @@ export function SetupWizard() {
                                 sx={{ mt: 1, mb: 1 }}
                               >
                                 <Typography level="body-sm">
-                                  설치 진행 중입니다. 진행 상황을 확인하려면 아래 터미널을 펼쳐보세요.
+                                  Installation in progress. Expand the terminal below to see detailed progress.
                                 </Typography>
                               </Alert>
                             )}
@@ -1248,11 +1248,11 @@ export function SetupWizard() {
                             >
                               <Box>
                                 <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                                  테스트 진행 중...
+                                  Test in progress...
                                 </Typography>
                                 <Typography level="body-sm">
-                                  브라우저가 열렸다 닫힐 때까지 잠시만 기다려주세요. 
-                                  진행 상황을 확인하려면 아래 터미널을 펼쳐보세요.
+                                  Please wait while the browser opens and closes. 
+                                  Expand the terminal below to see detailed progress.
                                 </Typography>
                               </Box>
                             </Alert>
