@@ -2,13 +2,15 @@
   "name": "klever-desktop",
   "version": "0.1.0",
   "description": "Local UI Grounding Desktop App - Self-Explorer for Android & Web",
-  "main": "main.js",
+  "main": "dist-electron/main/index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build:renderer": "tsc && vite build",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build": "npm run build:main && npm run build:renderer",
     "preview": "vite preview",
     "electron": "electron .",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "electron:dev": "npm run build:main && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
     "package": "npm run build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
@@ -62,9 +64,9 @@
       "output": "dist-electron"
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "dist/**/*"
+      "dist-electron/main/**/*",
+      "dist/**/*",
+      "appagent/**/*"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
