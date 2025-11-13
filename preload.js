@@ -3,7 +3,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Environment checks
+  // NEW: Unified Environment Setup
+  envCheck: () => ipcRenderer.invoke('env:check'),
+  envSetup: () => ipcRenderer.invoke('env:setup'),
+
+  // LEGACY: Environment checks (kept for backward compatibility)
   checkPython: () => ipcRenderer.invoke('check:python'),
   checkPackages: () => ipcRenderer.invoke('check:packages'),
   installPackages: () => ipcRenderer.invoke('install:packages'),
@@ -43,6 +47,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopIntegrationTest: () => ipcRenderer.invoke('integration:stop'),
 
   // Event listeners
+  onEnvProgress: (callback) => {
+    ipcRenderer.on('env:progress', (event, data) => callback(data));
+  },
   onInstallProgress: (callback) => {
     ipcRenderer.on('install:progress', (event, data) => callback(data));
   },

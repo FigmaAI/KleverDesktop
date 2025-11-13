@@ -17,7 +17,8 @@
     "submodule:init": "git submodule update --init --recursive",
     "submodule:update": "git submodule update --remote appagent && git add appagent",
     "submodule:status": "git submodule status",
-    "postinstall": "npm run submodule:init"
+    "python:download": "node scripts/download-python.js",
+    "postinstall": "npm run submodule:init && npm run python:download"
   },
   "keywords": [
     "electron",
@@ -70,7 +71,17 @@
     "files": [
       "dist-electron/main/**/*",
       "dist/**/*",
-      "appagent/**/*"
+      "appagent/**/*",
+      "!appagent/.git",
+      "!appagent/**/*.pyc",
+      "!appagent/**/__pycache__"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/python",
+        "to": "python",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

@@ -10,6 +10,303 @@ let pythonProcess = null;
 let integrationTestProcess = null;
 let taskProcesses = {}; // Map of taskId -> process
 
+// ============================================
+// Python Environment Manager Functions
+// ============================================
+
+/**
+ * Get the path to the bundled Python executable
+ */
+function getBundledPythonPath() {
+  const isDev = process.env.NODE_ENV === 'development';
+  const platform = os.platform();
+
+  let pythonExecutable = platform === 'win32' ? 'python.exe' : 'python3';
+  let pythonPath;
+
+  if (isDev) {
+    // Development mode: Python is in resources/python/<platform>/
+    const rootDir = __dirname;
+    pythonPath = path.join(rootDir, 'resources', 'python', platform, 'python', 'bin', pythonExecutable);
+  } else {
+    // Production mode: Python is in app.asar.unpacked or extraResources
+    const resourcesPath = process.resourcesPath;
+    pythonPath = path.join(resourcesPath, 'python', platform, 'python', 'bin', pythonExecutable);
+  }
+
+  // Fallback: Check if bundled Python exists
+  if (fs.existsSync(pythonPath)) {
+    return pythonPath;
+  } else {
+    console.warn('[Python Manager] Bundled Python not found, falling back to system Python');
+    return 'python'; // Fallback to system Python
+  }
+}
+
+/**
+ * Get the path to the virtual environment
+ */
+function getVenvPath() {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'python-env');
+}
+
+/**
+ * Get the Python executable from the virtual environment
+ */
+function getVenvPythonPath() {
+  const venvPath = getVenvPath();
+  const platform = os.platform();
+
+  if (platform === 'win32') {
+    return path.join(venvPath, 'Scripts', 'python.exe');
+  } else {
+    return path.join(venvPath, 'bin', 'python');
+  }
+}
+
+/**
+ * Get the pip executable from the virtual environment
+ */
+function getVenvPipPath() {
+  const venvPath = getVenvPath();
+  const platform = os.platform();
+
+  if (platform === 'win32') {
+    return path.join(venvPath, 'Scripts', 'pip.exe');
+  } else {
+    return path.join(venvPath, 'bin', 'pip');
+  }
+}
+
+/**
+ * Check if virtual environment exists and is valid
+ */
+function checkVenvStatus() {
+  const venvPath = getVenvPath();
+  const venvPythonPath = getVenvPythonPath();
+
+  const exists = fs.existsSync(venvPath);
+  const valid = exists && fs.existsSync(venvPythonPath);
+
+  return {
+    exists,
+    valid,
+    path: venvPath,
+    pythonExecutable: venvPythonPath,
+  };
+}
+
+/**
+ * Create a virtual environment using bundled Python
+ */
+async function createVirtualEnvironment() {
+  const bundledPython = getBundledPythonPath();
+  const venvPath = getVenvPath();
+
+  console.log('[Python Manager] Creating virtual environment...');
+  console.log('[Python Manager] Bundled Python:', bundledPython);
+  console.log('[Python Manager] Venv Path:', venvPath);
+
+  // Remove existing venv if invalid
+  if (fs.existsSync(venvPath)) {
+    console.log('[Python Manager] Removing existing virtual environment...');
+    fs.rmSync(venvPath, { recursive: true, force: true });
+  }
+
+  // Create parent directory
+  const parentDir = path.dirname(venvPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
+  return new Promise((resolve) => {
+    const venvProcess = spawn(bundledPython, ['-m', 'venv', venvPath]);
+
+    let output = '';
+    let errorOutput = '';
+
+    venvProcess.stdout.on('data', (data) => {
+      const text = data.toString();
+      output += text;
+      console.log('[Python Manager] stdout:', text);
+      mainWindow?.webContents.send('env:progress', text);
+    });
+
+    venvProcess.stderr.on('data', (data) => {
+      const text = data.toString();
+      errorOutput += text;
+      console.log('[Python Manager] stderr:', text);
+      mainWindow?.webContents.send('env:progress', text);
+    });
+
+    venvProcess.on('close', (code) => {
+      console.log('[Python Manager] venv creation finished with code:', code);
+
+      if (code === 0) {
+        const status = checkVenvStatus();
+        if (status.valid) {
+          console.log('[Python Manager] ✅ Virtual environment created successfully!');
+          resolve({ success: true });
+        } else {
+          console.error('[Python Manager] ❌ Virtual environment created but is invalid');
+          resolve({
+            success: false,
+            error: 'Virtual environment created but validation failed',
+          });
+        }
+      } else {
+        console.error('[Python Manager] ❌ Failed to create virtual environment');
+        resolve({
+          success: false,
+          error: errorOutput || `venv creation failed with code ${code}`,
+        });
+      }
+    });
+
+    venvProcess.on('error', (error) => {
+      console.error('[Python Manager] Process error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+}
+
+/**
+ * Install packages from requirements.txt
+ */
+async function installRequirements(requirementsPath) {
+  const venvPip = getVenvPipPath();
+
+  console.log('[Python Manager] Installing requirements...');
+  console.log('[Python Manager] Pip:', venvPip);
+  console.log('[Python Manager] Requirements:', requirementsPath);
+
+  if (!fs.existsSync(requirementsPath)) {
+    return { success: false, error: `requirements.txt not found at ${requirementsPath}` };
+  }
+
+  const status = checkVenvStatus();
+  if (!status.valid) {
+    return { success: false, error: 'Virtual environment is not valid. Please create it first.' };
+  }
+
+  return new Promise((resolve) => {
+    // First upgrade pip
+    console.log('[Python Manager] Upgrading pip...');
+    mainWindow?.webContents.send('env:progress', 'Upgrading pip...\n');
+
+    const upgradePip = spawn(venvPip, ['install', '--upgrade', 'pip']);
+
+    upgradePip.stdout.on('data', (data) => {
+      console.log('[Python Manager] pip upgrade stdout:', data.toString());
+      mainWindow?.webContents.send('env:progress', data.toString());
+    });
+
+    upgradePip.stderr.on('data', (data) => {
+      console.log('[Python Manager] pip upgrade stderr:', data.toString());
+      mainWindow?.webContents.send('env:progress', data.toString());
+    });
+
+    upgradePip.on('close', (code) => {
+      if (code !== 0) {
+        console.warn('[Python Manager] ⚠️  pip upgrade had non-zero exit code, continuing anyway...');
+      }
+
+      // Install requirements
+      console.log('[Python Manager] Installing from requirements.txt...');
+      mainWindow?.webContents.send('env:progress', '\nInstalling packages from requirements.txt...\n');
+
+      const installProcess = spawn(venvPip, ['install', '-r', requirementsPath]);
+
+      installProcess.stdout.on('data', (data) => {
+        console.log('[Python Manager] install stdout:', data.toString());
+        mainWindow?.webContents.send('env:progress', data.toString());
+      });
+
+      installProcess.stderr.on('data', (data) => {
+        console.log('[Python Manager] install stderr:', data.toString());
+        mainWindow?.webContents.send('env:progress', data.toString());
+      });
+
+      installProcess.on('close', (code) => {
+        console.log('[Python Manager] Package installation finished with code:', code);
+
+        if (code === 0) {
+          console.log('[Python Manager] ✅ Packages installed successfully!');
+          resolve({ success: true });
+        } else {
+          console.error('[Python Manager] ❌ Package installation failed');
+          resolve({
+            success: false,
+            error: `Package installation failed with code ${code}`,
+          });
+        }
+      });
+
+      installProcess.on('error', (error) => {
+        console.error('[Python Manager] Install process error:', error.message);
+        resolve({ success: false, error: error.message });
+      });
+    });
+
+    upgradePip.on('error', (error) => {
+      console.error('[Python Manager] Pip upgrade error:', error.message);
+      resolve({ success: false, error: `Failed to upgrade pip: ${error.message}` });
+    });
+  });
+}
+
+/**
+ * Install Playwright browsers
+ */
+async function installPlaywrightBrowsers() {
+  const venvPython = getVenvPythonPath();
+
+  console.log('[Python Manager] Installing Playwright browsers...');
+  console.log('[Python Manager] Python:', venvPython);
+
+  const status = checkVenvStatus();
+  if (!status.valid) {
+    return { success: false, error: 'Virtual environment is not valid. Please create it first.' };
+  }
+
+  return new Promise((resolve) => {
+    mainWindow?.webContents.send('env:progress', 'Installing Playwright browsers (this may take a few minutes)...\n');
+
+    const playwrightInstall = spawn(venvPython, ['-m', 'playwright', 'install', 'chromium']);
+
+    playwrightInstall.stdout.on('data', (data) => {
+      console.log('[Python Manager] playwright install stdout:', data.toString());
+      mainWindow?.webContents.send('env:progress', data.toString());
+    });
+
+    playwrightInstall.stderr.on('data', (data) => {
+      console.log('[Python Manager] playwright install stderr:', data.toString());
+      mainWindow?.webContents.send('env:progress', data.toString());
+    });
+
+    playwrightInstall.on('close', (code) => {
+      console.log('[Python Manager] Playwright browser installation finished with code:', code);
+
+      if (code === 0) {
+        console.log('[Python Manager] ✅ Playwright browsers installed successfully!');
+        resolve({ success: true });
+      } else {
+        console.error('[Python Manager] ❌ Playwright browser installation failed');
+        resolve({
+          success: false,
+          error: `Playwright installation failed with code ${code}`,
+        });
+      }
+    });
+
+    playwrightInstall.on('error', (error) => {
+      console.error('[Python Manager] Playwright install error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+}
+
 // Helper function to get projects storage path
 function getProjectsStoragePath() {
   const homeDir = os.homedir();
@@ -97,6 +394,87 @@ app.on('activate', () => {
 
 // ============================================
 // IPC Handlers
+// ============================================
+
+// ============================================
+// NEW: Unified Python Environment Setup
+// ============================================
+
+/**
+ * Check bundled Python and venv status
+ */
+ipcMain.handle('env:check', async () => {
+  try {
+    const bundledPython = getBundledPythonPath();
+    const bundledPythonExists = fs.existsSync(bundledPython);
+    const venvStatus = checkVenvStatus();
+
+    return {
+      success: true,
+      bundledPython: {
+        path: bundledPython,
+        exists: bundledPythonExists,
+      },
+      venv: venvStatus,
+    };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Setup complete Python environment (venv + packages + playwright)
+ * This is the unified "Install" button handler
+ */
+ipcMain.handle('env:setup', async () => {
+  try {
+    console.log('[Environment Setup] Starting unified setup...');
+
+    // Step 1: Create virtual environment
+    console.log('[Environment Setup] Step 1: Creating virtual environment...');
+    mainWindow?.webContents.send('env:progress', '📦 Creating virtual environment...\n');
+
+    const venvResult = await createVirtualEnvironment();
+
+    if (!venvResult.success) {
+      throw new Error(`Failed to create venv: ${venvResult.error}`);
+    }
+
+    // Step 2: Install packages from requirements.txt
+    console.log('[Environment Setup] Step 2: Installing Python packages...');
+    mainWindow?.webContents.send('env:progress', '\n📚 Installing Python packages...\n');
+
+    const requirementsPath = path.join(__dirname, 'appagent', 'requirements.txt');
+    const packagesResult = await installRequirements(requirementsPath);
+
+    if (!packagesResult.success) {
+      throw new Error(`Failed to install packages: ${packagesResult.error}`);
+    }
+
+    // Step 3: Install Playwright browsers
+    console.log('[Environment Setup] Step 3: Installing Playwright browsers...');
+    mainWindow?.webContents.send('env:progress', '\n🎭 Installing Playwright browsers...\n');
+
+    const playwrightResult = await installPlaywrightBrowsers();
+
+    if (!playwrightResult.success) {
+      throw new Error(`Failed to install Playwright: ${playwrightResult.error}`);
+    }
+
+    // Success!
+    console.log('[Environment Setup] ✅ Setup complete!');
+    mainWindow?.webContents.send('env:progress', '\n✅ Environment setup complete!\n');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Environment Setup] ❌ Error:', error.message);
+    mainWindow?.webContents.send('env:progress', `\n❌ Error: ${error.message}\n`);
+    return { success: false, error: error.message };
+  }
+});
+
+// ============================================
+// LEGACY: Existing IPC handlers (kept for backward compatibility)
 // ============================================
 
 // Check Python version
