@@ -2,7 +2,7 @@
   "name": "klever-desktop",
   "version": "0.1.0",
   "description": "Local UI Grounding Desktop App - Self-Explorer for Android & Web",
-  "main": "dist-electron/main/index.js",
+  "main": "dist-electron/index.js",
   "scripts": {
     "dev": "vite",
     "build:renderer": "tsc && vite build",

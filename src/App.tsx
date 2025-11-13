@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import {
   SetupWizard,
@@ -11,8 +12,29 @@ import {
 import { Layout } from './components'
 
 function App() {
-  // TODO: Check if setup is complete
-  const setupComplete = true; // Changed to true for development
+  const [setupComplete, setSetupComplete] = useState<boolean | null>(null)
+  const [isChecking, setIsChecking] = useState(true)
+
+  useEffect(() => {
+    const checkSetup = async () => {
+      try {
+        const result = await window.electronAPI.checkSetup()
+        setSetupComplete(result.setupComplete)
+      } catch (error) {
+        console.error('Failed to check setup status:', error)
+        setSetupComplete(false)
+      } finally {
+        setIsChecking(false)
+      }
+    }
+
+    checkSetup()
+  }, [])
+
+  // Show loading state while checking
+  if (isChecking || setupComplete === null) {
+    return null // or a loading spinner
+  }
 
   return (
     <Routes>

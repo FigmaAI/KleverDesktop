@@ -31,7 +31,7 @@ export function spawnWithProgress(options: SpawnWithProgressOptions): Promise<Sp
   const { command, args, cwd, env, progressChannel, mainWindow } = options;
 
   return new Promise((resolve) => {
-    const process = spawn(command, args, {
+    const childProcess = spawn(command, args, {
       cwd,
       env: env || process.env,
     });
@@ -39,19 +39,19 @@ export function spawnWithProgress(options: SpawnWithProgressOptions): Promise<Sp
     let output = '';
     let errorOutput = '';
 
-    process.stdout?.on('data', (data) => {
+    childProcess.stdout?.on('data', (data) => {
       const message = data.toString();
       output += message;
       mainWindow?.webContents.send(progressChannel, message);
     });
 
-    process.stderr?.on('data', (data) => {
+    childProcess.stderr?.on('data', (data) => {
       const message = data.toString();
       errorOutput += message;
       mainWindow?.webContents.send(progressChannel, message);
     });
 
-    process.on('close', (code) => {
+    childProcess.on('close', (code) => {
       resolve({
         success: code === 0,
         code,
@@ -60,7 +60,7 @@ export function spawnWithProgress(options: SpawnWithProgressOptions): Promise<Sp
       });
     });
 
-    process.on('error', (error) => {
+    childProcess.on('error', (error) => {
       errorOutput = error.message;
       mainWindow?.webContents.send(progressChannel, `Error: ${error.message}`);
       resolve({

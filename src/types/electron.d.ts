@@ -37,6 +37,7 @@ declare global {
       // Config operations
       configLoad: () => Promise<{ success: boolean; config?: AppConfig; error?: string }>;
       configSave: (config: AppConfig) => Promise<{ success: boolean; error?: string }>;
+      checkSetup: () => Promise<{ success: boolean; setupComplete: boolean }>;
 
       // Project operations
       projectStart: (projectConfig: {

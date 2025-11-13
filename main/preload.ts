@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Config operations
   configLoad: () => ipcRenderer.invoke('config:load'),
   configSave: (config: Record<string, unknown>) => ipcRenderer.invoke('config:save', config),
+  checkSetup: () => ipcRenderer.invoke('config:checkSetup'),
 
   // Project operations
   projectStart: (projectConfig: Record<string, unknown>) => ipcRenderer.invoke('project:start', projectConfig),
