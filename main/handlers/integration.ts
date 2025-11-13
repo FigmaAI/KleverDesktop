@@ -51,6 +51,9 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         LOCAL_BASE_URL: config.localBaseUrl || '',
         LOCAL_MODEL: config.localModel || '',
         MAX_ROUNDS: '2',
+        // Integration test specific
+        TASK_URL: 'https://www.google.com',
+        TASK_DESCRIPTION: 'Find and click the "I\'m Feeling Lucky" button',
       };
 
       mainWindow?.webContents.send('integration:output', '============================================================\n');
