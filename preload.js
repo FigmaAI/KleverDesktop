@@ -69,4 +69,33 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   },
+
+  // ============================================
+  // Project Management
+  // ============================================
+  projectList: () => ipcRenderer.invoke('project:list'),
+  projectGet: (projectId) => ipcRenderer.invoke('project:get', projectId),
+  projectCreate: (projectInput) => ipcRenderer.invoke('project:create', projectInput),
+  projectUpdate: (projectId, updates) => ipcRenderer.invoke('project:update', projectId, updates),
+  projectDelete: (projectId) => ipcRenderer.invoke('project:delete', projectId),
+
+  // ============================================
+  // Task Management
+  // ============================================
+  taskCreate: (taskInput) => ipcRenderer.invoke('task:create', taskInput),
+  taskUpdate: (projectId, taskId, updates) => ipcRenderer.invoke('task:update', projectId, taskId, updates),
+  taskDelete: (projectId, taskId) => ipcRenderer.invoke('task:delete', projectId, taskId),
+  taskStart: (projectId, taskId) => ipcRenderer.invoke('task:start', projectId, taskId),
+  taskStop: (projectId, taskId) => ipcRenderer.invoke('task:stop', projectId, taskId),
+
+  // Task event listeners
+  onTaskOutput: (callback) => {
+    ipcRenderer.on('task:output', (event, data) => callback(data));
+  },
+  onTaskError: (callback) => {
+    ipcRenderer.on('task:error', (event, data) => callback(data));
+  },
+  onTaskComplete: (callback) => {
+    ipcRenderer.on('task:complete', (event, data) => callback(data));
+  },
 });
