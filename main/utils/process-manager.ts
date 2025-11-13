@@ -10,7 +10,7 @@ export interface SpawnWithProgressOptions {
   command: string;
   args: string[];
   cwd?: string;
-  env?: NodeJS.ProcessEnv;
+  env?: Record<string, string>;
   progressChannel: string;
   mainWindow: BrowserWindow | null;
 }

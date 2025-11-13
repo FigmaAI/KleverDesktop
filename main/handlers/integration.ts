@@ -129,9 +129,10 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       });
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       const mainWindow = getMainWindow();
-      mainWindow?.webContents.send('integration:output', 'Error: ' + error.message + '\n');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      mainWindow?.webContents.send('integration:output', 'Error: ' + message + '\n');
       mainWindow?.webContents.send('integration:complete', false);
       return { success: false };
     }

@@ -41,8 +41,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       saveProjects(data);
 
       return { success: true, task: newTask };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -71,8 +71,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       saveProjects(data);
 
       return { success: true, task: project.tasks[taskIndex] };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -96,8 +96,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       saveProjects(data);
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -186,8 +186,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       });
 
       return { success: true, pid: taskProcess.pid };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -215,8 +215,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       }
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 }

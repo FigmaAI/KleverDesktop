@@ -19,7 +19,7 @@ export function getConfigPath(): string {
  * Load configuration from YAML file
  * @returns Parsed config object
  */
-export function loadConfig(): Record<string, any> {
+export function loadConfig(): Record<string, unknown> {
   const configPath = getConfigPath();
 
   if (!fs.existsSync(configPath)) {
@@ -28,7 +28,7 @@ export function loadConfig(): Record<string, any> {
 
   try {
     const fileContents = fs.readFileSync(configPath, 'utf8');
-    return yaml.load(fileContents) as Record<string, any>;
+    return yaml.load(fileContents) as Record<string, unknown>;
   } catch (error) {
     console.error('Error loading config:', error);
     return {};
@@ -39,7 +39,7 @@ export function loadConfig(): Record<string, any> {
  * Save configuration to YAML file
  * @param config - Configuration object to save
  */
-export function saveConfig(config: Record<string, any>): void {
+export function saveConfig(config: Record<string, unknown>): void {
   const configPath = getConfigPath();
   const yamlStr = yaml.dump(config);
   fs.writeFileSync(configPath, yamlStr, 'utf8');
@@ -49,7 +49,7 @@ export function saveConfig(config: Record<string, any>): void {
  * Update specific config values
  * @param updates - Object containing config keys to update
  */
-export function updateConfig(updates: Record<string, any>): void {
+export function updateConfig(updates: Record<string, unknown>): void {
   const config = loadConfig();
   Object.assign(config, updates);
   saveConfig(config);

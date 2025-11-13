@@ -10,7 +10,7 @@ import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/proj
 
 // Mock Electron API for browser testing
 if (!window.electronAPI) {
-  type MockCallback = (...args: any[]) => void
+  type MockCallback = (...args: unknown[]) => void
   const mockCallbacks: Record<string, MockCallback[]> = {}
 
   // Mock data storage

@@ -75,7 +75,7 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
         try {
           const data = JSON.parse(stdout);
           resolve({ success: true, running: true, models: data.models || [] });
-        } catch (e) {
+        } catch {
           resolve({ success: false, running: false, error: 'Failed to parse Ollama response' });
         }
       });
@@ -156,8 +156,9 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
                 }
               }
             }
-          } catch (e: any) {
-            console.log('[Android SDK Check] Could not search volumes:', e.message);
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Unknown error';
+            console.log('[Android SDK Check] Could not search volumes:', message);
           }
         }
 

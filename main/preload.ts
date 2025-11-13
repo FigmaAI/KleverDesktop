@@ -26,10 +26,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Config operations
   configLoad: () => ipcRenderer.invoke('config:load'),
-  configSave: (config: any) => ipcRenderer.invoke('config:save', config),
+  configSave: (config: Record<string, unknown>) => ipcRenderer.invoke('config:save', config),
 
   // Project operations
-  projectStart: (projectConfig: any) => ipcRenderer.invoke('project:start', projectConfig),
+  projectStart: (projectConfig: Record<string, unknown>) => ipcRenderer.invoke('project:start', projectConfig),
   projectStop: () => ipcRenderer.invoke('project:stop'),
 
   // Shell operations
@@ -39,12 +39,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
 
   // Model configuration and testing
-  testModelConnection: (config: any) => ipcRenderer.invoke('model:testConnection', config),
-  saveModelConfig: (config: any) => ipcRenderer.invoke('model:saveConfig', config),
-  fetchApiModels: (config: any) => ipcRenderer.invoke('model:fetchApiModels', config),
+  testModelConnection: (config: Record<string, unknown>) => ipcRenderer.invoke('model:testConnection', config),
+  saveModelConfig: (config: Record<string, unknown>) => ipcRenderer.invoke('model:saveConfig', config),
+  fetchApiModels: (config: Record<string, unknown>) => ipcRenderer.invoke('model:fetchApiModels', config),
 
   // Integration test
-  runIntegrationTest: (config: any) => ipcRenderer.invoke('integration:test', config),
+  runIntegrationTest: (config: Record<string, unknown>) => ipcRenderer.invoke('integration:test', config),
   stopIntegrationTest: () => ipcRenderer.invoke('integration:stop'),
 
   // Event listeners
@@ -80,28 +80,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ============================================
   projectList: () => ipcRenderer.invoke('project:list'),
   projectGet: (projectId: string) => ipcRenderer.invoke('project:get', projectId),
-  projectCreate: (projectInput: any) => ipcRenderer.invoke('project:create', projectInput),
-  projectUpdate: (projectId: string, updates: any) => ipcRenderer.invoke('project:update', projectId, updates),
+  projectCreate: (projectInput: Record<string, unknown>) => ipcRenderer.invoke('project:create', projectInput),
+  projectUpdate: (projectId: string, updates: Record<string, unknown>) => ipcRenderer.invoke('project:update', projectId, updates),
   projectDelete: (projectId: string) => ipcRenderer.invoke('project:delete', projectId),
 
   // ============================================
   // Task Management
   // ============================================
-  taskCreate: (taskInput: any) => ipcRenderer.invoke('task:create', taskInput),
-  taskUpdate: (projectId: string, taskId: string, updates: any) =>
+  taskCreate: (taskInput: Record<string, unknown>) => ipcRenderer.invoke('task:create', taskInput),
+  taskUpdate: (projectId: string, taskId: string, updates: Record<string, unknown>) =>
     ipcRenderer.invoke('task:update', projectId, taskId, updates),
   taskDelete: (projectId: string, taskId: string) => ipcRenderer.invoke('task:delete', projectId, taskId),
   taskStart: (projectId: string, taskId: string) => ipcRenderer.invoke('task:start', projectId, taskId),
   taskStop: (projectId: string, taskId: string) => ipcRenderer.invoke('task:stop', projectId, taskId),
 
   // Task event listeners
-  onTaskOutput: (callback: (data: any) => void) => {
-    ipcRenderer.on('task:output', (_event: IpcRendererEvent, data: any) => callback(data));
+  onTaskOutput: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('task:output', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
-  onTaskError: (callback: (data: any) => void) => {
-    ipcRenderer.on('task:error', (_event: IpcRendererEvent, data: any) => callback(data));
+  onTaskError: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('task:error', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
-  onTaskComplete: (callback: (data: any) => void) => {
-    ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: any) => callback(data));
+  onTaskComplete: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
 });

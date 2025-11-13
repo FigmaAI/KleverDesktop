@@ -25,8 +25,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     try {
       const data = loadProjects();
       return { success: true, projects: data.projects };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -39,8 +39,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         return { success: false, error: 'Project not found' };
       }
       return { success: true, project };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -69,8 +69,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       saveProjects(data);
 
       return { success: true, project: newProject };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -92,8 +92,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
       saveProjects(data);
       return { success: true, project: data.projects[projectIndex] };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -111,8 +111,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       saveProjects(data);
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 
@@ -147,8 +147,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       });
 
       return { success: true, pid: pythonProcess.pid };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : \'Unknown error\') };
     }
   });
 

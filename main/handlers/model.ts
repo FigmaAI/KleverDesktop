@@ -17,11 +17,12 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('model:testConnection', async (_event, config: ModelConfig) => {
     try {
       // Support both old (modelType) and new (enableLocal/enableApi) formats
-      const isLocal = (config as any).modelType === 'local' || config.enableLocal;
+      const configWithType = config as ModelConfig & { modelType?: string };
+      const isLocal = configWithType.modelType === 'local' || config.enableLocal;
       const url = isLocal ? config.localBaseUrl : config.apiBaseUrl;
       const model = isLocal ? config.localModel : config.apiModel;
 
-      const urlObj = new URL(url);
+      const urlObj = new globalThis.URL(url);
       const protocol = urlObj.protocol === 'https:' ? https : http;
 
       return new Promise<{ success: boolean; message?: string }>((resolve) => {
@@ -38,13 +39,13 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData),
+            'Content-Length': globalThis.Buffer.byteLength(postData),
           },
           timeout: 10000,
         };
 
         if (!isLocal && config.apiKey) {
-          (options.headers as any)['Authorization'] = `Bearer ${config.apiKey}`;
+          (options.headers as Record<string, string>)['Authorization'] = `Bearer ${config.apiKey}`;
         }
 
         const req = protocol.request(options, (res) => {
@@ -73,8 +74,9 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
         req.write(postData);
         req.end();
       });
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, message };
     }
   });
 
@@ -107,8 +109,9 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
       saveConfig(yamlConfig);
 
       return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
     }
   });
 
@@ -159,7 +162,7 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
         };
       }
 
-      const urlObj = new URL(modelsEndpoint);
+      const urlObj = new globalThis.URL(modelsEndpoint);
       const protocol = urlObj.protocol === 'https:' ? https : http;
 
       return new Promise<{ success: boolean; provider: string; models?: string[]; error?: string }>((resolve) => {
@@ -176,11 +179,11 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
 
         if (apiKey) {
           if (provider === 'openrouter') {
-            (options.headers as any)['Authorization'] = `Bearer ${apiKey}`;
-            (options.headers as any)['HTTP-Referer'] = 'https://github.com/FigmaAI/KleverDesktop';
-            (options.headers as any)['X-Title'] = 'Klever Desktop';
+            (options.headers as Record<string, string>)['Authorization'] = `Bearer ${apiKey}`;
+            (options.headers as Record<string, string>)['HTTP-Referer'] = 'https://github.com/FigmaAI/KleverDesktop';
+            (options.headers as Record<string, string>)['X-Title'] = 'Klever Desktop';
           } else {
-            (options.headers as any)['Authorization'] = `Bearer ${apiKey}`;
+            (options.headers as Record<string, string>)['Authorization'] = `Bearer ${apiKey}`;
           }
         }
 
@@ -197,16 +200,18 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
 
                 if (provider === 'openai') {
                   // OpenAI returns { data: [{ id: 'gpt-4', ... }] }
+                  interface OpenAIModel { id: string }
                   models =
                     parsed.data
                       ?.filter(
-                        (m: any) =>
+                        (m: OpenAIModel) =>
                           m.id && !m.id.includes('embedding') && !m.id.includes('tts') && !m.id.includes('whisper')
                       )
-                      .map((m: any) => m.id) || [];
+                      .map((m: OpenAIModel) => m.id) || [];
                 } else if (provider === 'openrouter') {
                   // OpenRouter returns { data: [{ id: 'openai/gpt-4', ... }] }
-                  models = parsed.data?.map((m: any) => m.id) || [];
+                  interface OpenRouterModel { id: string }
+                  models = parsed.data?.map((m: OpenRouterModel) => m.id) || [];
                 }
 
                 resolve({
@@ -214,7 +219,7 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
                   provider,
                   models: models.slice(0, 50), // Limit to first 50 models
                 });
-              } catch (error) {
+              } catch {
                 resolve({ success: false, provider, error: 'Failed to parse models response' });
               }
             } else {
@@ -234,8 +239,9 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
 
         req.end();
       });
-    } catch (error: any) {
-      return { success: false, provider: 'unknown', error: error.message };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, provider: 'unknown', error: message };
     }
   });
 }
