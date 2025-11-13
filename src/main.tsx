@@ -17,6 +17,28 @@ if (!window.electronAPI) {
   let mockProjects: Project[] = []
 
   window.electronAPI = {
+    // NEW: Unified Environment Setup
+    envCheck: async () => ({
+      success: true,
+      bundledPython: {
+        path: '/usr/bin/python3',
+        exists: true,
+        version: '3.11.0',
+        isBundled: false,
+      },
+      venv: {
+        exists: false,
+        valid: false,
+        path: '/mock/venv',
+        pythonExecutable: '/mock/venv/bin/python',
+      },
+    }),
+    envSetup: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      return { success: true }
+    },
+
+    // LEGACY: Environment checks (kept for backward compatibility)
     checkPython: async () => ({ success: true, version: '3.11.0', isValid: true }),
     checkPackages: async () => ({ success: true, output: 'All packages installed' }),
     installPackages: async () => ({ success: true }),
@@ -185,6 +207,10 @@ if (!window.electronAPI) {
     },
     stopIntegrationTest: async () => {
       return { success: true }
+    },
+    onEnvProgress: (cb) => {
+      if (!mockCallbacks['env:progress']) mockCallbacks['env:progress'] = []
+      mockCallbacks['env:progress'].push(cb)
     },
     onInstallProgress: (cb) => {
       if (!mockCallbacks['install:progress']) mockCallbacks['install:progress'] = []

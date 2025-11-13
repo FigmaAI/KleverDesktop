@@ -5,6 +5,7 @@
 
 import { IpcMain } from 'electron';
 import { loadConfig, saveConfig } from '../utils/config-manager';
+import { checkVenvStatus } from '../utils/python-manager';
 
 /**
  * Register all config handlers
@@ -32,7 +33,28 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     }
   });
 
-  // Check if initial setup is complete
+  // Check if initial setup is complete (checks Python venv)
+  ipcMain.handle('check:setup', async () => {
+    try {
+      console.log('[check:setup] Checking if setup is complete...');
+
+      // Check if venv exists and is valid
+      const venvStatus = checkVenvStatus();
+      console.log('[check:setup] Venv status:', venvStatus);
+
+      // Setup is complete if venv is valid
+      const setupComplete = venvStatus.valid;
+      console.log('[check:setup] Setup complete:', setupComplete);
+
+      return { success: true, setupComplete };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[check:setup] Error:', message);
+      return { success: true, setupComplete: false };
+    }
+  });
+
+  // LEGACY: Check if initial setup is complete (checks config only)
   ipcMain.handle('config:checkSetup', async () => {
     try {
       const config = loadConfig();

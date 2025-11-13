@@ -79,11 +79,13 @@ export function SetupWizard() {
 
   const [toolsStatus, setToolsStatus] = useState({
     python: { checking: true, installed: false, installing: false } as ToolStatus,
-    packages: { checking: false, installed: false, installing: false } as ToolStatus,
+    pythonEnv: { checking: false, installed: false, installing: false } as ToolStatus,
     androidStudio: { checking: true, installed: false, installing: false } as ToolStatus,
-    playwright: { checking: true, installed: false, installing: false } as ToolStatus,
     homebrew: { checking: true, installed: false, installing: false } as ToolStatus,
   })
+
+  // Unified environment setup state
+  const [envSetupTerminalLines, setEnvSetupTerminalLines] = useState<React.ReactNode[]>([])
 
   // API models state
   const [apiModels, setApiModels] = useState<string[]>([])
@@ -245,34 +247,59 @@ export function SetupWizard() {
       setToolsStatus((prev) => ({ ...prev, homebrew: { checking: false, installed: true, installing: false } }))
     }
 
-    // Check Python
+    // Check Bundled Python and Virtual Environment
+    console.log('[SetupWizard] ========== Checking Python environment ==========')
     setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, checking: true } }))
     try {
-      const result = await window.electronAPI.checkPython()
+      console.log('[SetupWizard] Calling window.electronAPI.envCheck()')
+      const envCheck = await window.electronAPI.envCheck()
+      console.log('[SetupWizard] envCheck result:', JSON.stringify(envCheck, null, 2))
+
+      // Check Python (bundled or system)
+      const pythonInstalled = envCheck.success && envCheck.bundledPython?.exists
+      const pythonVersion = envCheck.bundledPython?.version
+      const isBundled = envCheck.bundledPython?.isBundled
+
+      console.log('[SetupWizard] Python analysis:')
+      console.log('  - success:', envCheck.success)
+      console.log('  - bundledPython.exists:', envCheck.bundledPython?.exists)
+      console.log('  - pythonInstalled:', pythonInstalled)
+      console.log('  - pythonVersion:', pythonVersion)
+      console.log('  - isBundled:', isBundled)
+
       setToolsStatus((prev) => ({
         ...prev,
         python: {
           checking: false,
-          installed: !!(result.success && result.isValid),
-          version: result.version,
-          error: result.error,
+          installed: pythonInstalled || false,
+          version: pythonVersion ? `Python ${pythonVersion}${isBundled ? ' (Bundled)' : ' (System)'}` : undefined,
+          error: pythonInstalled ? undefined : 'Python 3.11+ not found. Please install Python.',
           installing: false,
         },
       }))
-    } catch {
-      setToolsStatus((prev) => ({ ...prev, python: { checking: false, installed: false, installing: false } }))
-    }
 
-    // Check Python Packages
-    setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, checking: true } }))
-    try {
-      const result = await window.electronAPI.checkPackages()
+      // Check Python environment (venv + packages + playwright)
+      const envInstalled = envCheck.success && envCheck.venv?.valid
+      console.log('[SetupWizard] Venv installed:', envInstalled)
+
       setToolsStatus((prev) => ({
         ...prev,
-        packages: { checking: false, installed: result.success, error: result.error, installing: false },
+        pythonEnv: {
+          checking: false,
+          installed: envInstalled || false,
+          error: envInstalled ? undefined : 'Environment not set up',
+          installing: false,
+        },
       }))
-    } catch {
-      setToolsStatus((prev) => ({ ...prev, packages: { checking: false, installed: false, installing: false } }))
+
+      console.log('[SetupWizard] ========== Python environment check complete ==========')
+    } catch (error) {
+      console.error('[SetupWizard] Error checking Python environment:', error)
+      setToolsStatus((prev) => ({
+        ...prev,
+        python: { checking: false, installed: false, installing: false },
+        pythonEnv: { checking: false, installed: false, installing: false },
+      }))
     }
 
     // Check Android Studio
@@ -286,18 +313,6 @@ export function SetupWizard() {
       }))
     } catch {
       setToolsStatus((prev) => ({ ...prev, androidStudio: { checking: false, installed: false, installing: false } }))
-    }
-
-    // Check Playwright
-    setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, checking: true } }))
-    try {
-      const result = await window.electronAPI.checkPlaywright()
-      setToolsStatus((prev) => ({
-        ...prev,
-        playwright: { checking: false, installed: result.success, error: result.error, installing: false },
-      }))
-    } catch {
-      setToolsStatus((prev) => ({ ...prev, playwright: { checking: false, installed: false, installing: false } }))
     }
   }, [])
 
@@ -356,6 +371,48 @@ export function SetupWizard() {
     }
   }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, currentStep, fetchApiModels])
 
+
+  // Unified environment setup
+  const handleSetupEnvironment = async () => {
+    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
+    setEnvSetupTerminalLines([])
+
+    try {
+      // Listen for progress
+      window.electronAPI.onEnvProgress((data: string) => {
+        setEnvSetupTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
+      })
+
+      const result = await window.electronAPI.envSetup()
+
+      if (result.success) {
+        setEnvSetupTerminalLines((prev) => [
+          ...prev,
+          <TerminalOutput key={prev.length}>
+            <span style={{ color: '#4caf50' }}>✅ Environment setup complete!</span>
+          </TerminalOutput>,
+        ])
+        // Recheck platform tools
+        await checkPlatformTools()
+      } else {
+        setEnvSetupTerminalLines((prev) => [
+          ...prev,
+          <TerminalOutput key={prev.length}>
+            <span style={{ color: '#f44336' }}>❌ Setup failed: {result.error}</span>
+          </TerminalOutput>,
+        ])
+      }
+    } catch (error) {
+      setEnvSetupTerminalLines((prev) => [
+        ...prev,
+        <TerminalOutput key={prev.length}>
+          <span style={{ color: '#f44336' }}>Error: {error instanceof Error ? error.message : 'Unknown error'}</span>
+        </TerminalOutput>,
+      ])
+    } finally {
+      setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
+    }
+  }
 
   const handleRunIntegrationTest = async () => {
     setIntegrationTestRunning(true)
@@ -657,7 +714,7 @@ export function SetupWizard() {
                           </Sheet>
                         </motion.div>
 
-                        {/* Python Packages */}
+                        {/* Python Environment (venv + packages + Playwright) */}
                         <motion.div
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -666,9 +723,9 @@ export function SetupWizard() {
                           <Sheet
                             variant="soft"
                             color={
-                              toolsStatus.packages.checking
+                              toolsStatus.pythonEnv.checking
                                 ? 'neutral'
-                                : toolsStatus.packages.installed
+                                : toolsStatus.pythonEnv.installed
                                   ? 'success'
                                   : 'warning'
                             }
@@ -676,50 +733,53 @@ export function SetupWizard() {
                               p: 2,
                               borderRadius: 'sm',
                               display: 'flex',
-                              alignItems: 'center',
+                              flexDirection: 'column',
                               gap: 2,
-                              justifyContent: 'space-between',
                             }}
                           >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                              {toolsStatus.packages.checking ? (
-                                <CircularProgress size="sm" />
-                              ) : toolsStatus.packages.installed ? (
-                                <CheckCircleIcon color="success" />
-                              ) : (
-                                <WarningIcon color="warning" />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                {toolsStatus.pythonEnv.checking ? (
+                                  <CircularProgress size="sm" />
+                                ) : toolsStatus.pythonEnv.installed ? (
+                                  <CheckCircleIcon color="success" />
+                                ) : (
+                                  <WarningIcon color="warning" />
+                                )}
+                                <Box>
+                                  <Typography
+                                    level="body-sm"
+                                    fontWeight={toolsStatus.pythonEnv.installed ? 'md' : 'normal'}
+                                    textColor={toolsStatus.pythonEnv.installed ? 'text.primary' : 'text.secondary'}
+                                  >
+                                    Python Environment
+                                  </Typography>
+                                  <Typography level="body-xs" textColor="text.tertiary">
+                                    Includes: Virtual environment, packages, and Playwright browsers
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              {!toolsStatus.pythonEnv.installed && !toolsStatus.pythonEnv.checking && (
+                                <Button
+                                  size="sm"
+                                  variant="solid"
+                                  color="primary"
+                                  loading={toolsStatus.pythonEnv.installing}
+                                  onClick={handleSetupEnvironment}
+                                  sx={{ minWidth: '100px' }}
+                                >
+                                  Setup
+                                </Button>
                               )}
-                              <Typography
-                                level="body-sm"
-                                fontWeight={toolsStatus.packages.installed ? 'md' : 'normal'}
-                                textColor={toolsStatus.packages.installed ? 'text.primary' : 'text.secondary'}
-                              >
-                                Python Packages
-                              </Typography>
                             </Box>
-                            {!toolsStatus.packages.installed && !toolsStatus.packages.checking && (
-                              <Button
-                                size="sm"
-                                variant="outlined"
-                                color="warning"
-                                loading={toolsStatus.packages.installing}
-                                onClick={async () => {
-                                  setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, installing: true } }))
-                                  try {
-                                    const result = await window.electronAPI.installPackages()
-                                    if (result.success) {
-                                      // Recheck after installation
-                                      await checkPlatformTools()
-                                    }
-                                  } catch (error) {
-                                    console.error('Failed to install packages:', error)
-                                  } finally {
-                                    setToolsStatus((prev) => ({ ...prev, packages: { ...prev.packages, installing: false } }))
-                                  }
-                                }}
-                              >
-                                Install
-                              </Button>
+
+                            {/* Terminal output during installation */}
+                            {toolsStatus.pythonEnv.installing && envSetupTerminalLines.length > 0 && (
+                              <Box sx={{ mt: 1 }}>
+                                <Terminal name="Environment Setup" colorMode={ColorMode.Dark}>
+                                  {envSetupTerminalLines}
+                                </Terminal>
+                              </Box>
                             )}
                           </Sheet>
                         </motion.div>
@@ -793,72 +853,6 @@ export function SetupWizard() {
                           </Sheet>
                         </motion.div>
 
-                        {/* Playwright */}
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.5 }}
-                        >
-                          <Sheet
-                            variant="soft"
-                            color={
-                              toolsStatus.playwright.checking
-                                ? 'neutral'
-                                : toolsStatus.playwright.installed
-                                  ? 'success'
-                                  : 'warning'
-                            }
-                            sx={{
-                              p: 2,
-                              borderRadius: 'sm',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 2,
-                              justifyContent: 'space-between',
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                              {toolsStatus.playwright.checking ? (
-                                <CircularProgress size="sm" />
-                              ) : toolsStatus.playwright.installed ? (
-                                <CheckCircleIcon color="success" />
-                              ) : (
-                                <WarningIcon color="warning" />
-                              )}
-                              <Typography
-                                level="body-sm"
-                                fontWeight={toolsStatus.playwright.installed ? 'md' : 'normal'}
-                                textColor={toolsStatus.playwright.installed ? 'text.primary' : 'text.secondary'}
-                              >
-                                Playwright (Web Automation)
-                              </Typography>
-                            </Box>
-                            {!toolsStatus.playwright.installed && !toolsStatus.playwright.checking && (
-                              <Button
-                                size="sm"
-                                variant="outlined"
-                                color="warning"
-                                loading={toolsStatus.playwright.installing}
-                                onClick={async () => {
-                                  setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, installing: true } }))
-                                  try {
-                                    const result = await window.electronAPI.installPlaywright()
-                                    if (result.success) {
-                                      // Recheck after installation
-                                      await checkPlatformTools()
-                                    }
-                                  } catch (error) {
-                                    console.error('Failed to install Playwright:', error)
-                                  } finally {
-                                    setToolsStatus((prev) => ({ ...prev, playwright: { ...prev.playwright, installing: false } }))
-                                  }
-                                }}
-                              >
-                                Install
-                              </Button>
-                            )}
-                          </Sheet>
-                        </motion.div>
                       </Stack>
                     </Sheet>
                   </motion.div>

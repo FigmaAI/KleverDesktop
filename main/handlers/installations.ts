@@ -4,15 +4,148 @@
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import {
+  getBundledPythonPath,
+  checkVenvStatus,
+  createVirtualEnvironment,
+  installRequirements,
+  installPlaywrightBrowsers
+} from '../utils/python-manager';
 
 /**
  * Register all installation handlers
  */
 export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
-  // Install Python packages
+  // NEW: Unified environment check
+  ipcMain.handle('env:check', async () => {
+    try {
+      console.log('[env:check] ========== Starting environment check ==========');
+      const pythonPath = getBundledPythonPath();
+      console.log('[env:check] Python path:', pythonPath);
+
+      // Check if it's a bundled Python (absolute path) or system Python (command name)
+      const isBundled = path.isAbsolute(pythonPath);
+      console.log('[env:check] Is bundled:', isBundled);
+
+      const pythonExists = isBundled ? fs.existsSync(pythonPath) : true; // Assume system Python exists
+      console.log('[env:check] Python exists (initial check):', pythonExists);
+
+      // Verify Python version and existence by running it
+      let pythonVersion: string | null = null;
+      let pythonValid = false;
+
+      try {
+        console.log('[env:check] Running:', `${pythonPath} --version`);
+        const { stdout } = await new Promise<{ stdout: string }>((resolve, reject) => {
+          exec(`${pythonPath} --version`, { timeout: 5000 }, (error, stdout, stderr) => {
+            if (error) {
+              console.error('[env:check] Python execution error:', error.message);
+              reject(error);
+            } else {
+              console.log('[env:check] Python version output:', stdout || stderr);
+              resolve({ stdout: stdout || stderr });
+            }
+          });
+        });
+
+        const match = stdout.match(/Python (\d+)\.(\d+)\.(\d+)/);
+        if (match) {
+          const major = parseInt(match[1]);
+          const minor = parseInt(match[2]);
+          pythonVersion = `${major}.${minor}.${match[3]}`;
+          pythonValid = major === 3 && minor >= 11;
+          console.log('[env:check] Parsed version:', pythonVersion);
+          console.log('[env:check] Is valid (3.11+):', pythonValid);
+        } else {
+          console.warn('[env:check] Could not parse Python version from output');
+        }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.warn('[env:check] Failed to verify Python:', message);
+      }
+
+      const venvStatus = checkVenvStatus();
+      console.log('[env:check] Venv status:', venvStatus);
+
+      const result = {
+        success: true,
+        bundledPython: {
+          path: pythonPath,
+          exists: pythonExists && pythonValid,
+          version: pythonVersion,
+          isBundled: isBundled,
+        },
+        venv: venvStatus,
+      };
+
+      console.log('[env:check] Final result:', JSON.stringify(result, null, 2));
+      console.log('[env:check] ========== Environment check complete ==========');
+
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[env:check] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // NEW: Unified environment setup
+  ipcMain.handle('env:setup', async () => {
+    try {
+      console.log('[Environment Setup] Starting unified setup...');
+      const mainWindow = getMainWindow();
+
+      // Step 1: Create virtual environment
+      console.log('[Environment Setup] Step 1: Creating virtual environment...');
+      mainWindow?.webContents.send('env:progress', '📦 Creating virtual environment...\n');
+
+      const onOutput = (data: string) => mainWindow?.webContents.send('env:progress', data);
+      const onError = (data: string) => mainWindow?.webContents.send('env:progress', data);
+
+      const venvResult = await createVirtualEnvironment(onOutput, onError);
+
+      if (!venvResult.success) {
+        throw new Error(`Failed to create venv: ${venvResult.error}`);
+      }
+
+      // Step 2: Install packages from requirements.txt
+      console.log('[Environment Setup] Step 2: Installing Python packages...');
+      mainWindow?.webContents.send('env:progress', '\n📚 Installing Python packages...\n');
+
+      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
+      const packagesResult = await installRequirements(requirementsPath, onOutput, onError);
+
+      if (!packagesResult.success) {
+        throw new Error(`Failed to install packages: ${packagesResult.error}`);
+      }
+
+      // Step 3: Install Playwright browsers
+      console.log('[Environment Setup] Step 3: Installing Playwright browsers...');
+      mainWindow?.webContents.send('env:progress', '\n🎭 Installing Playwright browsers...\n');
+
+      const playwrightResult = await installPlaywrightBrowsers(onOutput, onError);
+
+      if (!playwrightResult.success) {
+        throw new Error(`Failed to install Playwright: ${playwrightResult.error}`);
+      }
+
+      // Success!
+      console.log('[Environment Setup] ✅ Setup complete!');
+      mainWindow?.webContents.send('env:progress', '\n✅ Environment setup complete!\n');
+
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Environment Setup] ❌ Error:', message);
+      getMainWindow()?.webContents.send('env:progress', `\n❌ Error: ${message}\n`);
+      return { success: false, error: message };
+    }
+  });
+
+  // LEGACY: Install Python packages
   ipcMain.handle('install:packages', async () => {
     return new Promise((resolve) => {
       const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');

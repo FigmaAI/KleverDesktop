@@ -18,8 +18,27 @@ interface AppConfig {
 declare global {
   interface Window {
     electronAPI: {
-      // Environment checks
-      checkPython: () => Promise<{ success: boolean; version?: string; isValid?: boolean; error?: string }>;
+      // NEW: Unified Environment Setup
+      envCheck: () => Promise<{
+        success: boolean;
+        bundledPython?: {
+          path: string;
+          exists: boolean;
+          version?: string;
+          isBundled?: boolean;
+        };
+        venv?: {
+          exists: boolean;
+          valid: boolean;
+          path: string;
+          pythonExecutable: string;
+        };
+        error?: string;
+      }>;
+      envSetup: () => Promise<{ success: boolean; error?: string }>;
+
+      // LEGACY: Environment checks (kept for backward compatibility)
+      checkPython: () => Promise<{ success: boolean; version?: string; isValid?: boolean; error?: string; bundled?: boolean }>;
       checkPackages: () => Promise<{ success: boolean; output?: string; error?: string }>;
       installPackages: () => Promise<{ success: boolean; output?: string }>;
       installPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
@@ -102,6 +121,7 @@ declare global {
       stopIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
 
       // Event listeners
+      onEnvProgress: (callback: (data: string) => void) => void;
       onInstallProgress: (callback: (data: string) => void) => void;
       onOllamaPullProgress: (callback: (data: string) => void) => void;
       onProjectOutput: (callback: (data: string) => void) => void;
