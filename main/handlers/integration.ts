@@ -6,9 +6,11 @@
 import { IpcMain, BrowserWindow } from 'electron';
 import { ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as os from 'os';
 import * as fs from 'fs';
 import { ModelConfig } from '../types';
 import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
+import { ensureDirectoryExists } from '../utils/project-storage';
 
 let integrationTestProcess: ChildProcess | null = null;
 
@@ -86,6 +88,13 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         integrationTestProcess = null;
       }
 
+      // Setup workspace directory for integration test
+      const homeDir = os.homedir();
+      const appsDir = path.join(homeDir, 'Documents', 'apps');
+      ensureDirectoryExists(appsDir);
+
+      mainWindow?.webContents.send('integration:output', `Test results will be saved to: ${appsDir}/google_search_test/\n\n`);
+
       // Use venv Python to run the integration test
       // Note: self_explorer.py only accepts --app, --root_dir, and --platform arguments
       integrationTestProcess = spawnVenvPython(
@@ -97,7 +106,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           '--platform',
           'web',
           '--root_dir',
-          '.',
+          appsDir,
         ],
         {
           cwd: path.join(process.cwd(), 'appagent'),
