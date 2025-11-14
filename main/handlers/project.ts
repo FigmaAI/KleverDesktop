@@ -6,6 +6,7 @@
 import { IpcMain, BrowserWindow } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 import {
   loadProjects,
   saveProjects,
@@ -13,7 +14,7 @@ import {
   ensureDirectoryExists,
   sanitizeAppName,
 } from '../utils/project-storage';
-import { CreateProjectInput, UpdateProjectInput } from '../types';
+import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
 
@@ -36,6 +37,7 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     try {
       const data = loadProjects();
       const project = data.projects.find((p) => p.id === projectId);
+      console.log('Fetched project:', project);
       if (!project) {
         return { success: false, error: 'Project not found' };
       }
@@ -50,26 +52,57 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     try {
       const data = loadProjects();
 
-      const newProject = {
+      const workspaceDir = projectInput.workspaceDir || getProjectWorkspaceDir(projectInput.name);
+
+      const newProject: Project = {
         id: `proj_${Date.now()}`,
         name: projectInput.name,
         platform: projectInput.platform,
-        device: projectInput.device,
-        url: projectInput.url,
         status: 'active' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         tasks: [],
-        workspaceDir: getProjectWorkspaceDir(projectInput.name),
+        workspaceDir: workspaceDir,
       };
 
-      // Create workspace directory
-      ensureDirectoryExists(newProject.workspaceDir);
+      // Create workspace directory and verify
+      const dirCreated = ensureDirectoryExists(newProject.workspaceDir);
+      if (!dirCreated) {
+        return {
+          success: false,
+          error: `Failed to create workspace directory: ${newProject.workspaceDir}`
+        };
+      }
+
+      // Create the work_dir structure that self_explorer.py expects
+      // Structure: {workspaceDir}/apps/{sanitized_app_name}
+      const appsDir = path.join(newProject.workspaceDir, 'apps');
+      const appsDirCreated = ensureDirectoryExists(appsDir);
+      if (!appsDirCreated) {
+        return {
+          success: false,
+          error: `Failed to create apps directory: ${appsDir}`
+        };
+      }
+
+      const sanitizedAppName = sanitizeAppName(newProject.name);
+      const workDir = path.join(appsDir, sanitizedAppName);
+      const workDirCreated = ensureDirectoryExists(workDir);
+      if (!workDirCreated) {
+        return {
+          success: false,
+          error: `Failed to create work directory: ${workDir}`
+        };
+      }
 
       data.projects.push(newProject);
       saveProjects(data);
 
-      return { success: true, project: newProject };
+      return {
+        success: true,
+        project: newProject,
+        message: `Project created successfully at ${newProject.workspaceDir}\nWork directory: ${workDir}`
+      };
     } catch (error: unknown) {
       return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
     }
@@ -108,6 +141,24 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         return { success: false, error: 'Project not found' };
       }
 
+      const project = data.projects[projectIndex];
+
+      // Delete work directory: {workspaceDir}/apps/{sanitized_app_name}
+      try {
+        const sanitizedAppName = sanitizeAppName(project.name);
+        const workDir = path.join(project.workspaceDir, 'apps', sanitizedAppName);
+
+        if (fs.existsSync(workDir)) {
+          fs.rmSync(workDir, { recursive: true, force: true });
+          console.log(`Deleted work directory: ${workDir}`);
+        }
+      } catch (fsError) {
+        console.error('Error deleting work directory:', fsError);
+        // Continue with project deletion even if directory deletion fails
+        // Return warning but don't fail the entire operation
+      }
+
+      // Remove project from JSON
       data.projects.splice(projectIndex, 1);
       saveProjects(data);
 

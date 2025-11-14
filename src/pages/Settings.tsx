@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Box, Button, Sheet, Typography, Stack, Modal, ModalDialog, ModalClose, Divider, Alert } from '@mui/joy'
-import { Warning as WarningIcon, Error as ErrorIcon } from '@mui/icons-material'
+import { Box, Button, Sheet, Typography, Stack, Modal, ModalDialog, ModalClose, Divider, Alert, ToggleButtonGroup, useColorScheme } from '@mui/joy'
+import { Warning as WarningIcon, Error as ErrorIcon, DarkMode, LightMode, Contrast } from '@mui/icons-material'
 
 export function Settings() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { mode, setMode } = useColorScheme()
 
   const handleResetConfig = async () => {
     setIsResetting(true)
@@ -47,6 +48,53 @@ export function Settings() {
         </Box>
 
         <Stack spacing={3}>
+          <Sheet
+            variant="outlined"
+            sx={{
+              p: 3,
+              borderRadius: 'md',
+              bgcolor: 'background.surface',
+            }}
+          >
+            <Typography level="title-lg" sx={{ mb: 1 }}>
+              Appearance
+            </Typography>
+            <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
+              Choose your preferred color theme
+            </Typography>
+            <ToggleButtonGroup
+              value={mode}
+              onChange={(_, newValue) => {
+                if (newValue !== null) {
+                  setMode(newValue as 'system' | 'light' | 'dark')
+                }
+              }}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
+            >
+              <Button
+                value="system"
+                startDecorator={<Contrast />}
+                sx={{ flex: { xs: 1, sm: 'none' } }}
+              >
+                System
+              </Button>
+              <Button
+                value="light"
+                startDecorator={<LightMode />}
+                sx={{ flex: { xs: 1, sm: 'none' } }}
+              >
+                Light
+              </Button>
+              <Button
+                value="dark"
+                startDecorator={<DarkMode />}
+                sx={{ flex: { xs: 1, sm: 'none' } }}
+              >
+                Dark
+              </Button>
+            </ToggleButtonGroup>
+          </Sheet>
+
           <Sheet
             variant="outlined"
             sx={{

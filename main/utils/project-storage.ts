@@ -66,10 +66,18 @@ export function getProjectWorkspaceDir(projectName: string): string {
 /**
  * Ensure a directory exists, creating it if necessary
  * @param dirPath - Path to the directory
+ * @returns true if directory exists or was created successfully, false otherwise
  */
-export function ensureDirectoryExists(dirPath: string): void {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+export function ensureDirectoryExists(dirPath: string): boolean {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    // Verify the directory was created
+    return fs.existsSync(dirPath);
+  } catch (error) {
+    console.error('Error creating directory:', error);
+    return false;
   }
 }
 

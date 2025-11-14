@@ -7,7 +7,7 @@ import { IpcMain, BrowserWindow } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
-import { CreateTaskInput, UpdateTaskInput } from '../types';
+import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
 
@@ -25,12 +25,14 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         return { success: false, error: 'Project not found' };
       }
 
-      const newTask = {
+      const newTask: Task = {
         id: `task_${Date.now()}`,
         projectId: taskInput.projectId,
         name: taskInput.name,
         description: taskInput.description,
         goal: taskInput.goal,
+        url: taskInput.url,
+        device: taskInput.device,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -136,12 +138,12 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         '--root_dir', project.workspaceDir
       ];
 
-      if (project.platform === 'web' && project.url) {
-        args.push('--url', project.url);
+      if (project.platform === 'web' && task.url) {
+        args.push('--url', task.url);
       }
 
-      if (project.device) {
-        args.push('--device', project.device);
+      if (task.device) {
+        args.push('--device', task.device);
       }
 
       // Set TASK_DESCRIPTION environment variable

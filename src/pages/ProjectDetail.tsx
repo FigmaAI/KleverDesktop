@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   IconButton,
   List,
@@ -25,11 +23,10 @@ import {
   PlayArrow,
   Schedule,
   Cancel,
-  PhoneAndroid,
-  Language,
   Delete as DeleteIcon,
 } from '@mui/icons-material'
 import type { Project, Task } from '../types/project'
+import { ProjectCard } from '../components'
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -141,52 +138,14 @@ export function ProjectDetail() {
           </Button>
 
           {/* Project Header */}
-          <Card variant="outlined">
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                {project.platform === 'android' ? (
-                  <PhoneAndroid sx={{ fontSize: 32 }} color="primary" />
-                ) : (
-                  <Language sx={{ fontSize: 32 }} color="primary" />
-                )}
-                <Box>
-                  <Typography level="h2" fontWeight="bold">
-                    {project.name}
-                  </Typography>
-                  <Typography level="body-sm" textColor="text.secondary">
-                    {project.platform} • Created {new Date(project.createdAt).toLocaleDateString()}
-                  </Typography>
-                </Box>
-              </Stack>
-
-              <Stack direction="row" spacing={1}>
-                <Chip
-                  size="sm"
-                  variant="soft"
-                  color={project.platform === 'android' ? 'primary' : 'success'}
-                >
-                  {project.platform}
-                </Chip>
-                <Chip size="sm" variant="soft" color="neutral">
-                  {project.tasks.length} {project.tasks.length === 1 ? 'task' : 'tasks'}
-                </Chip>
-              </Stack>
-
-              {project.url && (
-                <Typography level="body-sm" sx={{ mt: 2 }}>
-                  <strong>URL:</strong> {project.url}
-                </Typography>
-              )}
-              {project.device && (
-                <Typography level="body-sm" sx={{ mt: 1 }}>
-                  <strong>Device:</strong> {project.device}
-                </Typography>
-              )}
-              <Typography level="body-sm" sx={{ mt: 1 }}>
-                <strong>Workspace:</strong> {project.workspaceDir}
-              </Typography>
-            </CardContent>
-          </Card>
+          <ProjectCard
+            project={project}
+            variant="card"
+            expand={true}
+            clickable={false}
+            showDelete={true}
+            onDeleted={() => navigate('/projects')}
+          />
 
           {/* Tasks Section */}
           <Stack direction="row" justifyContent="space-between" alignItems="center">

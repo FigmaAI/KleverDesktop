@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Box, Sheet, Typography, Button } from '@mui/joy'
+import { Box, Sheet, Typography, Button, Stack } from '@mui/joy'
 import { SettingsOutlined, FolderOutlined } from '@mui/icons-material'
+import logo from '../assets/logo.png'
 
 export function Layout() {
   const location = useLocation()
@@ -27,9 +28,26 @@ export function Layout() {
           px: 3,
         }}
       >
-        <Typography level="h3" fontWeight="bold">
-          Klever Desktop
-        </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            component="img"
+            src={logo}
+            alt="Self Explorer Logo"
+            sx={{
+              height: 40,
+              width: 40,
+            }}
+          />
+          <Typography
+            level="h3"
+            fontWeight="bold"
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+            }}
+          >
+            Self Explorer
+          </Typography>
+        </Stack>
 
         <Box component="nav" sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
           <Button

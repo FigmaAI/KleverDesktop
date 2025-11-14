@@ -331,16 +331,6 @@ export function TaskDetail() {
                 <Typography level="body-sm">
                   <strong>Platform:</strong> {project.platform}
                 </Typography>
-                {project.url && (
-                  <Typography level="body-sm">
-                    <strong>URL:</strong> {project.url}
-                  </Typography>
-                )}
-                {project.device && (
-                  <Typography level="body-sm">
-                    <strong>Device:</strong> {project.device}
-                  </Typography>
-                )}
                 <Typography level="body-sm">
                   <strong>Workspace:</strong> {project.workspaceDir}
                 </Typography>

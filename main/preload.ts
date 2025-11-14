@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shell operations
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  showFolderSelectDialog: () => ipcRenderer.invoke('dialog:showFolderSelect'),
+  openFolder: (folderPath: string) => ipcRenderer.invoke('dialog:openFolder', folderPath),
 
   // System info
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
