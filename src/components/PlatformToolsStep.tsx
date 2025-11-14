@@ -73,7 +73,6 @@ export function PlatformToolsStep({
           {/* Python Environment (venv + packages + Playwright) */}
           <EnvironmentSetup
             status={toolsStatus.pythonEnv}
-            onSetup={() => { }}
             setToolsStatus={setToolsStatus}
             checkPlatformTools={checkPlatformTools}
           />

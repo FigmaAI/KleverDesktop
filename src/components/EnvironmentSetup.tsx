@@ -22,14 +22,12 @@ import { ToolStatus } from '@/types/setupWizard'
 
 interface EnvironmentSetupProps {
   status: ToolStatus
-  onSetup: () => void
   setToolsStatus: React.Dispatch<React.SetStateAction<any>>
   checkPlatformTools: () => void
 }
 
 export function EnvironmentSetup({
   status,
-  onSetup,
   setToolsStatus,
   checkPlatformTools,
 }: EnvironmentSetupProps) {

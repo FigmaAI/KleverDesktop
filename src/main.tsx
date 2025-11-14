@@ -53,6 +53,7 @@ if (!window.electronAPI) {
     ollamaPull: async () => ({ success: true }),
     configLoad: async () => ({ success: true, config: {} }),
     configSave: async () => ({ success: true }),
+    configReset: async () => ({ success: true }),
     checkSetup: async () => ({ success: true, setupComplete: true }),
     projectStart: async () => ({ success: true }),
     projectStop: async () => ({ success: true }),
