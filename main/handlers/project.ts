@@ -12,6 +12,7 @@ import {
   getProjectWorkspaceDir,
   ensureDirectoryExists,
   sanitizeAppName,
+  deleteDirectory,
 } from '../utils/project-storage';
 import { CreateProjectInput, UpdateProjectInput } from '../types';
 
@@ -106,6 +107,19 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
       if (projectIndex === -1) {
         return { success: false, error: 'Project not found' };
+      }
+
+      const project = data.projects[projectIndex];
+
+      // Delete project workspace directory
+      if (project.workspaceDir) {
+        try {
+          deleteDirectory(project.workspaceDir);
+          console.log(`[Project] Deleted workspace directory: ${project.workspaceDir}`);
+        } catch (dirError) {
+          console.error(`[Project] Failed to delete workspace directory: ${dirError}`);
+          // Continue with project deletion even if directory deletion fails
+        }
       }
 
       data.projects.splice(projectIndex, 1);

@@ -55,11 +55,15 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to ~/Documents/{projectName}
+ * @returns Path to ~/Documents/apps/{projectName}
  */
 export function getProjectWorkspaceDir(projectName: string): string {
   const homeDir = os.homedir();
-  const documentsDir = path.join(homeDir, 'Documents');
+  const documentsDir = path.join(homeDir, 'Documents', 'apps');
+
+  // Ensure apps directory exists
+  ensureDirectoryExists(documentsDir);
+
   return path.join(documentsDir, projectName);
 }
 
@@ -81,4 +85,14 @@ export function ensureDirectoryExists(dirPath: string): void {
  */
 export function sanitizeAppName(appName: string): string {
   return appName.replace(/ /g, '');
+}
+
+/**
+ * Delete a directory and all its contents recursively
+ * @param dirPath - Path to the directory to delete
+ */
+export function deleteDirectory(dirPath: string): void {
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  }
 }
