@@ -371,6 +371,7 @@ export function spawnVenvPython(args: string[], options?: SpawnOptions) {
 /**
  * Get environment configuration for Python processes
  */
+// eslint-disable-next-line no-undef
 export function getPythonEnv(): NodeJS.ProcessEnv {
   const venvPath = getVenvPath();
   const platform = os.platform();

@@ -20,9 +20,16 @@ import {
 import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui'
 import { ToolStatus } from '@/types/setupWizard'
 
+interface PlatformToolsState {
+  python: ToolStatus
+  pythonEnv: ToolStatus
+  androidStudio: ToolStatus
+  homebrew: ToolStatus
+}
+
 interface EnvironmentSetupProps {
   status: ToolStatus
-  setToolsStatus: React.Dispatch<React.SetStateAction<any>>
+  setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
   checkPlatformTools: () => void
 }
 
@@ -36,7 +43,7 @@ export function EnvironmentSetup({
   const [terminalExpanded, setTerminalExpanded] = useState(false)
 
   const handleSetupEnvironment = async () => {
-    setToolsStatus((prev: any) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
+    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
     setEnvSetupTerminalLines([])
     setEnvSetupProgress(0)
 
@@ -81,7 +88,7 @@ export function EnvironmentSetup({
         </TerminalOutput>,
       ])
     } finally {
-      setToolsStatus((prev: any) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
+      setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
     }
   }
 

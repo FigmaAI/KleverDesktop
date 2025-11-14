@@ -17,8 +17,7 @@
     "submodule:init": "node scripts/init-submodule.js",
     "submodule:update": "git submodule update --remote appagent && git add appagent",
     "submodule:status": "git submodule status",
-    "python:download": "node scripts/download-python.js",
-    "postinstall": "npm run submodule:init && npm run python:download"
+    "postinstall": "npm run submodule:init"
   },
   "keywords": [
     "electron",
@@ -75,13 +74,6 @@
       "!appagent/.git",
       "!appagent/**/*.pyc",
       "!appagent/**/__pycache__"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/python",
-        "to": "python",
-        "filter": ["**/*"]
-      }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
