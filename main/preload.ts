@@ -40,8 +40,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shell operations
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+  openPath: (folderPath: string) => ipcRenderer.invoke('shell:openPath', folderPath),
   showFolderSelectDialog: () => ipcRenderer.invoke('dialog:showFolderSelect'),
   openFolder: (folderPath: string) => ipcRenderer.invoke('dialog:openFolder', folderPath),
+
+  // File operations
+  fileRead: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
+  fileExists: (filePath: string) => ipcRenderer.invoke('file:exists', filePath),
 
   // System info
   getSystemInfo: () => ipcRenderer.invoke('system:info'),

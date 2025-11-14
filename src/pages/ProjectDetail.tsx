@@ -5,15 +5,13 @@ import {
   Button,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemContent,
-  ListItemDecorator,
   Sheet,
   Stack,
+  Table,
   Typography,
   ColorPaletteProp,
+  LinearProgress,
+  Tooltip,
 } from '@mui/joy'
 import {
   Add as AddIcon,
@@ -23,16 +21,31 @@ import {
   PlayArrow,
   Schedule,
   Cancel,
+  Visibility,
+  FolderOpen,
+  Description,
+  Stop,
   Delete as DeleteIcon,
 } from '@mui/icons-material'
 import type { Project, Task } from '../types/project'
-import { ProjectCard } from '../components'
+import {
+  ProjectCard,
+  TaskCreateDialog,
+  TaskDetailDialog,
+  TaskMarkdownDialog,
+} from '../components'
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [project, setProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Dialog states
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const loadProject = useCallback(async () => {
     if (!id) return
@@ -54,34 +67,71 @@ export function ProjectDetail() {
     loadProject()
   }, [id, loadProject])
 
-  const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!id || !confirm('Are you sure you want to delete this task?')) return
+  const handleDeleteTask = async (task: Task) => {
+    if (!id || !confirm(`Are you sure you want to delete "${task.name}"?`)) return
 
     try {
-      const result = await window.electronAPI.taskDelete(id, taskId)
+      const result = await window.electronAPI.taskDelete(id, task.id)
       if (result.success) {
-        loadProject() // Reload project to get updated tasks
+        loadProject()
+      } else {
+        alert(result.error || 'Failed to delete task')
       }
     } catch (error) {
       console.error('Error deleting task:', error)
+      alert('Failed to delete task')
     }
+  }
+
+  const handleStopTask = async (task: Task) => {
+    if (!id) return
+
+    try {
+      const result = await window.electronAPI.taskStop(id, task.id)
+      if (result.success) {
+        loadProject()
+      } else {
+        alert(result.error || 'Failed to stop task')
+      }
+    } catch (error) {
+      console.error('Error stopping task:', error)
+      alert('Failed to stop task')
+    }
+  }
+
+  const handleOpenFolder = async () => {
+    if (!project) return
+    try {
+      await window.electronAPI.openPath(project.workspaceDir)
+    } catch (error) {
+      console.error('Error opening folder:', error)
+    }
+  }
+
+  const handleViewDetails = (task: Task) => {
+    setSelectedTask(task)
+    setDetailDialogOpen(true)
+  }
+
+  const handleViewMarkdown = (task: Task) => {
+    setSelectedTask(task)
+    setMarkdownDialogOpen(true)
   }
 
   const getStatusIcon = (status: Task['status']) => {
     switch (status) {
       case 'pending':
-        return <Schedule color="action" />
+        return <Schedule fontSize="small" />
       case 'running':
-        return <PlayArrow color="primary" />
+        return <PlayArrow fontSize="small" color="primary" />
       case 'completed':
-        return <CheckCircle color="success" />
+        return <CheckCircle fontSize="small" color="success" />
       case 'failed':
-        return <ErrorIcon color="error" />
+        return <ErrorIcon fontSize="small" color="error" />
       case 'cancelled':
-        return <Cancel color="action" />
+        return <Cancel fontSize="small" />
       default:
-        return <Schedule color="action" />
+        return <Schedule fontSize="small" />
     }
   }
 
@@ -100,6 +150,25 @@ export function ProjectDetail() {
       default:
         return 'neutral'
     }
+  }
+
+  // Calculate progress based on task output
+  const getTaskProgress = (task: Task): number => {
+    if (task.status === 'completed') return 100
+    if (task.status === 'running' && task.output) {
+      // Simple heuristic: count "Round" occurrences in output
+      const rounds = (task.output.match(/Round \d+/g) || []).length
+      return Math.min(rounds * 10, 90) // Cap at 90% until completed
+    }
+    return 0
+  }
+
+  const getCurrentRound = (task: Task): string => {
+    if (!task.output) return '-'
+    const matches = task.output.match(/Round (\d+)/g)
+    if (!matches || matches.length === 0) return '-'
+    const lastRound = matches[matches.length - 1]
+    return lastRound.replace('Round ', '')
   }
 
   if (loading) {
@@ -125,7 +194,7 @@ export function ProjectDetail() {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      <Box sx={{ p: 4, flex: 1 }}>
+      <Box sx={{ p: 4, flex: 1, overflow: 'auto' }}>
         <Stack spacing={3}>
           <Button
             variant="plain"
@@ -152,12 +221,22 @@ export function ProjectDetail() {
             <Typography level="h3" fontWeight="bold">
               Tasks
             </Typography>
-            <Button
-              startDecorator={<AddIcon />}
-              onClick={() => navigate(`/projects/${id}/tasks/new`)}
-            >
-              Add Task
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                size="sm"
+                variant="outlined"
+                startDecorator={<FolderOpen />}
+                onClick={handleOpenFolder}
+              >
+                Open Workspace
+              </Button>
+              <Button
+                startDecorator={<AddIcon />}
+                onClick={() => setCreateDialogOpen(true)}
+              >
+                Add Task
+              </Button>
+            </Stack>
           </Stack>
 
           {project.tasks.length === 0 ? (
@@ -180,64 +259,194 @@ export function ProjectDetail() {
                 variant="solid"
                 color="primary"
                 startDecorator={<AddIcon />}
-                onClick={() => navigate(`/projects/${id}/tasks/new`)}
+                onClick={() => setCreateDialogOpen(true)}
               >
                 Add Task
               </Button>
             </Sheet>
           ) : (
-            <List>
-              {project.tasks.map((task) => (
-                <ListItem
-                  key={task.id}
-                  endAction={
-                    <IconButton
-                      size="sm"
-                      variant="plain"
-                      color="danger"
-                      onClick={(e) => handleDeleteTask(task.id, e)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  }
-                >
-                  <ListItemButton
-                    onClick={() => navigate(`/projects/${id}/tasks/${task.id}`)}
-                  >
-                    <ListItemDecorator>
-                      {getStatusIcon(task.status)}
-                    </ListItemDecorator>
-                    <ListItemContent>
-                      <Stack spacing={0.5}>
-                        <Typography level="title-md" fontWeight="bold">
-                          {task.name}
-                        </Typography>
-                        <Typography level="body-sm" textColor="text.secondary">
-                          {task.description}
-                        </Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Chip
-                            size="sm"
-                            variant="soft"
-                            color={getStatusColor(task.status)}
+            <Sheet
+              variant="outlined"
+              sx={{
+                borderRadius: 'md',
+                overflow: 'auto',
+              }}
+            >
+              <Table
+                stickyHeader
+                hoverRow
+                sx={{
+                  '& thead th': {
+                    bgcolor: 'background.surface',
+                  },
+                }}
+              >
+                <thead>
+                  <tr>
+                    <th style={{ width: '40%' }}>Task</th>
+                    <th style={{ width: '15%' }}>Status</th>
+                    <th style={{ width: '10%' }}>Round</th>
+                    <th style={{ width: '15%' }}>Progress</th>
+                    <th style={{ width: '20%' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {project.tasks.map((task) => (
+                    <tr key={task.id}>
+                      {/* Task Info */}
+                      <td>
+                        <Stack spacing={0.5}>
+                          <Typography level="title-sm" fontWeight="bold">
+                            {task.name}
+                          </Typography>
+                          <Typography
+                            level="body-xs"
+                            textColor="text.secondary"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}
                           >
-                            {task.status}
-                          </Chip>
-                          {task.lastRunAt && (
-                            <Typography level="body-xs" textColor="text.secondary">
-                              Last run: {new Date(task.lastRunAt).toLocaleString()}
+                            {task.goal || task.description || 'No description'}
+                          </Typography>
+                          {task.startedAt && (
+                            <Typography level="body-xs" textColor="text.tertiary">
+                              Started: {new Date(task.startedAt).toLocaleString()}
                             </Typography>
                           )}
                         </Stack>
-                      </Stack>
-                    </ListItemContent>
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <Chip
+                          size="sm"
+                          variant="soft"
+                          color={getStatusColor(task.status)}
+                          startDecorator={getStatusIcon(task.status)}
+                        >
+                          {task.status}
+                        </Chip>
+                      </td>
+
+                      {/* Current Round */}
+                      <td>
+                        <Typography level="body-sm" fontWeight="bold">
+                          {task.status === 'running' ? `Round ${getCurrentRound(task)}` : '-'}
+                        </Typography>
+                      </td>
+
+                      {/* Progress Bar */}
+                      <td>
+                        <Stack spacing={0.5}>
+                          <LinearProgress
+                            determinate
+                            value={getTaskProgress(task)}
+                            color={getStatusColor(task.status)}
+                            size="sm"
+                            sx={{ minWidth: 80 }}
+                          />
+                          <Typography level="body-xs" textColor="text.secondary">
+                            {getTaskProgress(task)}%
+                          </Typography>
+                        </Stack>
+                      </td>
+
+                      {/* Actions */}
+                      <td>
+                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                          <Tooltip title="View Details">
+                            <IconButton
+                              size="sm"
+                              variant="plain"
+                              color="neutral"
+                              onClick={() => handleViewDetails(task)}
+                            >
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="View Results">
+                            <IconButton
+                              size="sm"
+                              variant="plain"
+                              color="neutral"
+                              onClick={() => handleViewMarkdown(task)}
+                              disabled={task.status !== 'completed'}
+                            >
+                              <Description />
+                            </IconButton>
+                          </Tooltip>
+
+                          {task.status === 'running' && (
+                            <Tooltip title="Stop Task">
+                              <IconButton
+                                size="sm"
+                                variant="plain"
+                                color="danger"
+                                onClick={() => handleStopTask(task)}
+                              >
+                                <Stop />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+
+                          <Tooltip title="Delete Task">
+                            <IconButton
+                              size="sm"
+                              variant="plain"
+                              color="danger"
+                              onClick={() => handleDeleteTask(task)}
+                              disabled={task.status === 'running'}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Sheet>
           )}
         </Stack>
       </Box>
+
+      {/* Dialogs */}
+      <TaskCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        projectId={id!}
+        platform={project.platform}
+        onTaskCreated={() => {
+          loadProject()
+          setCreateDialogOpen(false)
+        }}
+      />
+
+      {selectedTask && (
+        <>
+          <TaskDetailDialog
+            open={detailDialogOpen}
+            onClose={() => setDetailDialogOpen(false)}
+            task={selectedTask}
+            projectId={id!}
+            workspaceDir={project.workspaceDir}
+            onTaskUpdated={loadProject}
+          />
+
+          <TaskMarkdownDialog
+            open={markdownDialogOpen}
+            onClose={() => setMarkdownDialogOpen(false)}
+            taskName={selectedTask.name}
+            workspaceDir={project.workspaceDir}
+          />
+        </>
+      )}
     </Box>
   )
 }
