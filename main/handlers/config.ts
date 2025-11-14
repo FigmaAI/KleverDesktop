@@ -53,7 +53,7 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
           hasValidConfig = true;
         }
         console.log('[check:setup] Config valid:', hasValidConfig);
-      } catch (_error) {
+      } catch {
         console.log('[check:setup] Config does not exist or is invalid');
         hasValidConfig = false;
       }
@@ -99,7 +99,7 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
         success: true,
         setupComplete: hasModel && isConfigured
       };
-    } catch (error: unknown) {
+    } catch {
       // If config doesn't exist or error loading, setup is not complete
       return { success: true, setupComplete: false };
     }

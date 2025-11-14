@@ -6,7 +6,6 @@
 import { IpcMain, shell } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Register all utility handlers

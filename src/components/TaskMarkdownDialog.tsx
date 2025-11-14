@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   Modal,
   ModalDialog,
@@ -29,13 +29,7 @@ export function TaskMarkdownDialog({
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
 
-  useEffect(() => {
-    if (open) {
-      loadMarkdown()
-    }
-  }, [open, taskName, workspaceDir])
-
-  const loadMarkdown = async () => {
+  const loadMarkdown = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -71,7 +65,13 @@ export function TaskMarkdownDialog({
     } finally {
       setLoading(false)
     }
-  }
+  }, [taskName, workspaceDir])
+
+  useEffect(() => {
+    if (open) {
+      loadMarkdown()
+    }
+  }, [open, loadMarkdown])
 
   const handleOpenFolder = async () => {
     try {

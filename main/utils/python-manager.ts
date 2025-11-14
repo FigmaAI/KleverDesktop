@@ -138,12 +138,10 @@ export async function createVirtualEnvironment(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let output = '';
     let errorOutput = '';
 
     venvProcess.stdout?.on('data', (data) => {
       const text = data.toString();
-      output += text;
       console.log('[Python Manager] stdout:', text);
       onOutput?.(text);
     });
@@ -193,7 +191,7 @@ export async function createVirtualEnvironment(
 export async function installRequirements(
   requirementsPath: string,
   onOutput?: (data: string) => void,
-  onError?: (data: string) => void
+  _onError?: (data: string) => void
 ): Promise<{ success: boolean; error?: string }> {
   const venvPip = getVenvPipPath();
 
@@ -221,12 +219,10 @@ export async function installRequirements(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let output = '';
     let errorOutput = '';
 
     upgradePip.stdout?.on('data', (data) => {
       const text = data.toString();
-      output += text;
       console.log('[Python Manager] pip upgrade stdout:', text);
       onOutput?.(text);
     });
@@ -253,7 +249,6 @@ export async function installRequirements(
 
       installProcess.stdout?.on('data', (data) => {
         const text = data.toString();
-        output += text;
         console.log('[Python Manager] install stdout:', text);
         onOutput?.(text);
       });
@@ -298,7 +293,7 @@ export async function installRequirements(
  */
 export async function installPlaywrightBrowsers(
   onOutput?: (data: string) => void,
-  onError?: (data: string) => void
+  _onError?: (data: string) => void
 ): Promise<{ success: boolean; error?: string }> {
   const venvPython = getVenvPythonPath();
 
@@ -318,12 +313,10 @@ export async function installPlaywrightBrowsers(
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let output = '';
     let errorOutput = '';
 
     playwrightInstall.stdout?.on('data', (data) => {
       const text = data.toString();
-      output += text;
       console.log('[Python Manager] playwright install stdout:', text);
       onOutput?.(text);
     });
@@ -365,7 +358,7 @@ export function spawnVenvPython(args: string[], options?: SpawnOptions) {
 
   console.log('[Python Manager] Spawning Python process:', venvPython, args);
 
-  return spawn(venvPython, args, options);
+  return options ? spawn(venvPython, args, options) : spawn(venvPython, args);
 }
 
 /**

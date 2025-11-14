@@ -109,7 +109,7 @@ export function ApiModelCard({
           </FormLabel>
           <Stack direction="row" spacing={1}>
             <Autocomplete
-              placeholder="gpt-4o-mini"
+              placeholder="Enter or select model"
               value={modelConfig.apiModel}
               onChange={(_, newValue) => {
                 setModelConfig({ ...modelConfig, apiModel: newValue || '' })

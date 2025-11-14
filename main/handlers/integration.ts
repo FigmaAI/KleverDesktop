@@ -8,9 +8,9 @@ import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import { ModelConfig } from '../types';
+import { ModelConfig, Project } from '../types';
 import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
-import { ensureDirectoryExists } from '../utils/project-storage';
+import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
 
 let integrationTestProcess: ChildProcess | null = null;
 
@@ -90,10 +90,10 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
 
       // Setup workspace directory for integration test
       const homeDir = os.homedir();
-      const appsDir = path.join(homeDir, 'Documents', 'apps');
-      ensureDirectoryExists(appsDir);
+      const workspaceDir = path.join(homeDir, 'Documents');
+      ensureDirectoryExists(workspaceDir);
 
-      mainWindow?.webContents.send('integration:output', `Test results will be saved to: ${appsDir}/google_search_test/\n\n`);
+      mainWindow?.webContents.send('integration:output', `Test results will be saved to: ${workspaceDir}/apps/Feeling_Lucky/\n\n`);
 
       // Use venv Python to run the integration test
       // Note: self_explorer.py only accepts --app, --root_dir, and --platform arguments
@@ -102,17 +102,23 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           '-u',
           selfExplorerScript,
           '--app',
-          'google_search_test',
+          'Feeling_Lucky',
           '--platform',
           'web',
           '--root_dir',
-          appsDir,
+          workspaceDir,
         ],
         {
           cwd: path.join(process.cwd(), 'appagent'),
           env: env,
         }
       );
+
+      if (!integrationTestProcess) {
+        mainWindow?.webContents.send('integration:output', 'Error: Failed to start integration test process\n');
+        mainWindow?.webContents.send('integration:complete', false);
+        return { success: false };
+      }
 
       console.log('[Integration Test] Process started with PID:', integrationTestProcess.pid);
 
@@ -130,6 +136,39 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           mainWindow?.webContents.send('integration:output', '✅ Integration test PASSED - All 2 rounds completed successfully!\n');
           mainWindow?.webContents.send('integration:output', '============================================================\n');
           console.log('[Integration Test] ✅ Test completed successfully');
+
+          // Auto-create project for the integration test
+          try {
+            const data = loadProjects();
+            
+            // Check if project already exists
+            const existingProject = data.projects.find(p => p.name === 'Feeling_Lucky');
+            
+            if (!existingProject) {
+              const newProject: Project = {
+                id: `proj_${Date.now()}`,
+                name: 'Feeling_Lucky',
+                platform: 'web',
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                tasks: [],
+                workspaceDir: workspaceDir,
+              };
+
+              data.projects.push(newProject);
+              saveProjects(data);
+              
+              mainWindow?.webContents.send('integration:output', '\n📦 Project "Feeling_Lucky" has been automatically created!\n');
+              mainWindow?.webContents.send('integration:output', `   Location: ${workspaceDir}\n`);
+              console.log('[Integration Test] Created project:', newProject.id);
+            } else {
+              console.log('[Integration Test] Project already exists, skipping creation');
+            }
+          } catch (error) {
+            console.error('[Integration Test] Failed to create project:', error);
+            // Don't fail the integration test if project creation fails
+          }
         } else {
           mainWindow?.webContents.send('integration:output', `❌ Integration test FAILED (exit code: ${code})\n`);
           mainWindow?.webContents.send('integration:output', '============================================================\n');

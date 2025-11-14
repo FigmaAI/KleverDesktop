@@ -13,6 +13,7 @@ export interface Task {
   description?: string;
   goal: string;
   status: TaskStatus;
+  model?: string;
   output?: string;
   createdAt: string;
   updatedAt: string;
@@ -56,6 +57,7 @@ export interface CreateTaskInput {
   name: string;
   description?: string;
   goal: string;
+  model?: string;
   url?: string;
   device?: string;
 }

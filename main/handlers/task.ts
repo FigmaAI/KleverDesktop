@@ -31,6 +31,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         name: taskInput.name,
         description: taskInput.description,
         goal: taskInput.goal,
+        model: taskInput.model,
         url: taskInput.url,
         device: taskInput.device,
         status: 'pending' as const,

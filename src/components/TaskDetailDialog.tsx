@@ -38,16 +38,20 @@ export function TaskDetailDialog({
   workspaceDir,
   onTaskUpdated,
 }: TaskDetailDialogProps) {
-  const [output, setOutput] = useState<string>(task.output || '')
-  const [isRunning, setIsRunning] = useState(task.status === 'running')
+  const [output, setOutput] = useState<string>('')
+  const [isRunning, setIsRunning] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
 
+  // Reset state when task changes
   useEffect(() => {
-    if (!open) return
-
-    // Reset output when dialog opens
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOutput(task.output || '')
     setIsRunning(task.status === 'running')
+  }, [task.output, task.status])
+
+  // Setup event listeners when dialog opens
+  useEffect(() => {
+    if (!open) return
 
     // Listen to task output events
     const handleTaskOutput = (data: { projectId: string; taskId: string; output: string }) => {
