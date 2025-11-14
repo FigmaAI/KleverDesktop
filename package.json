@@ -14,7 +14,7 @@
     "package": "npm run build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "submodule:init": "git submodule update --init --recursive",
+    "submodule:init": "node scripts/init-submodule.js",
     "submodule:update": "git submodule update --remote appagent && git add appagent",
     "submodule:status": "git submodule status",
     "python:download": "node scripts/download-python.js",

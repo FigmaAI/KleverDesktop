@@ -197,8 +197,15 @@ export function ProjectCard({
             <Stack
               direction="row"
               justifyContent="space-between"
+              alignItems="center"
             >
-              <Typography level="body-xs" textColor="text.secondary">
+              <Typography 
+                level="body-xs" 
+                textColor="text.secondary"
+                sx={{
+                  minWidth: '120px'
+                }}
+              >
                 Created {new Date(project.createdAt).toLocaleDateString()}
               </Typography>
               {expand && (
@@ -206,8 +213,8 @@ export function ProjectCard({
                   startDecorator={<FolderOpen />}
                   onClick={handleOpenWorkDir}
                   sx={{
-                    cursor: 'pointer',
-                    maxWidth: '400px',
+                    cursor: 'cursor',
+                    minWidth: '160px',
                     '& > span': {
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
