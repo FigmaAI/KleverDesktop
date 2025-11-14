@@ -205,7 +205,16 @@ export function ProjectCard({
                 <Chip
                   startDecorator={<FolderOpen />}
                   onClick={handleOpenWorkDir}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{
+                    cursor: 'pointer',
+                    maxWidth: '400px',
+                    '& > span': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block',
+                    }
+                  }}
                 >
                   {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
                 </Chip>
@@ -290,7 +299,15 @@ export function ProjectCard({
                 <Typography
                   level="body-sm"
                   onClick={handleOpenWorkDir}
-                  sx={{ mt: 1, cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                  sx={{
+                    mt: 1,
+                    cursor: 'pointer',
+                    '&:hover': { textDecoration: 'underline' },
+                    maxWidth: '500px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
                   <strong>Work Dir:</strong> {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
                 </Typography>
