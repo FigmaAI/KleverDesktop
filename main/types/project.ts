@@ -20,7 +20,6 @@ export interface Task {
   startedAt?: string;
   completedAt?: string;
   url?: string;
-  device?: string;
 }
 
 export type ProjectStatus = 'active' | 'archived';
@@ -58,9 +57,7 @@ export interface CreateTaskInput {
   description?: string;
   goal: string;
   model?: string;
-  url?: string;
-  device?: string;
-}
+  url?: string;}
 
 export interface UpdateTaskInput {
   name?: string;

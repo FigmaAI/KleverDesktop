@@ -16,9 +16,6 @@ build
 # Ignore IDEA build output directory
 out/
 
-# Ignore figma-client directory (reference only)
-figma-client/
-
 # Electron app (root-level)
 node_modules/
 dist/

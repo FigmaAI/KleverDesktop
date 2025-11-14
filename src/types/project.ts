@@ -17,7 +17,6 @@ export interface Task {
   output?: string
   error?: string
   url?: string
-  device?: string
 }
 
 export type ProjectStatus = 'active' | 'archived'
@@ -46,7 +45,6 @@ export interface TaskCreateInput {
   goal: string
   model?: string
   url?: string
-  device?: string
 }
 
 export interface TaskStartInput {

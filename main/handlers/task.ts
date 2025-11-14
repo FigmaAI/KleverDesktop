@@ -33,7 +33,6 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         goal: taskInput.goal,
         model: taskInput.model,
         url: taskInput.url,
-        device: taskInput.device,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -141,10 +140,6 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       if (project.platform === 'web' && task.url) {
         args.push('--url', task.url);
-      }
-
-      if (task.device) {
-        args.push('--device', task.device);
       }
 
       // Set TASK_DESCRIPTION environment variable

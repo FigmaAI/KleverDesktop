@@ -142,7 +142,7 @@ if (!window.electronAPI) {
         description: taskInput.description,
         goal: taskInput.goal,
         url: taskInput.url,
-        device: taskInput.device,
+        model: taskInput.model,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
