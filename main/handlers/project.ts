@@ -11,6 +11,7 @@ import {
   saveProjects,
   getProjectWorkspaceDir,
   ensureDirectoryExists,
+  sanitizeAppName,
 } from '../utils/project-storage';
 import { CreateProjectInput, UpdateProjectInput } from '../types';
 
@@ -122,11 +123,21 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     name: string;
     url?: string;
     device?: string;
+    workspaceDir: string;
   }) => {
     try {
       const mainWindow = getMainWindow();
       const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
-      const args = [scriptPath, '--platform', projectConfig.platform, '--app', projectConfig.name];
+
+      // Sanitize app name (remove spaces) to match learn.py behavior
+      const sanitizedAppName = sanitizeAppName(projectConfig.name);
+
+      const args = [
+        scriptPath,
+        '--platform', projectConfig.platform,
+        '--app', sanitizedAppName,
+        '--root_dir', projectConfig.workspaceDir
+      ];
 
       if (projectConfig.platform === 'web' && projectConfig.url) {
         args.push('--url', projectConfig.url);
@@ -136,7 +147,9 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         args.push('--device', projectConfig.device);
       }
 
-      pythonProcess = spawn('python', args);
+      pythonProcess = spawn('python', args, {
+        cwd: projectConfig.workspaceDir
+      });
 
       pythonProcess.stdout?.on('data', (data) => {
         mainWindow?.webContents.send('project:output', data.toString());

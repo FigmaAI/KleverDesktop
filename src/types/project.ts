@@ -5,12 +5,13 @@ export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cance
 export interface Task {
   id: string
   name: string
-  description: string
+  description?: string
+  goal: string // Task goal/objective (used as TASK_DESCRIPTION env var)
   status: TaskStatus
   createdAt: string
   updatedAt: string
-  lastRunAt?: string
-  resultPath?: string
+  startedAt?: string
+  completedAt?: string
   output?: string
   error?: string
 }
@@ -40,7 +41,8 @@ export interface ProjectCreateInput {
 export interface TaskCreateInput {
   projectId: string
   name: string
-  description: string
+  description?: string
+  goal: string
 }
 
 export interface TaskStartInput {

@@ -6,7 +6,7 @@
 import { IpcMain, BrowserWindow } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
-import { loadProjects, saveProjects } from '../utils/project-storage';
+import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -125,7 +125,16 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       // Start Python process
       const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
-      const args = [scriptPath, '--platform', project.platform, '--app', task.name];
+
+      // Sanitize app name (remove spaces) to match learn.py behavior
+      const sanitizedAppName = sanitizeAppName(project.name);
+
+      const args = [
+        scriptPath,
+        '--platform', project.platform,
+        '--app', sanitizedAppName,
+        '--root_dir', project.workspaceDir
+      ];
 
       if (project.platform === 'web' && project.url) {
         args.push('--url', project.url);
@@ -135,8 +144,16 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         args.push('--device', project.device);
       }
 
+      // Set TASK_DESCRIPTION environment variable
+      // Use task.goal if available, otherwise use task.description
+      const taskDescription = task.goal || task.description;
+
       const taskProcess = spawn('python', args, {
         cwd: project.workspaceDir,
+        env: {
+          ...process.env,
+          TASK_DESCRIPTION: taskDescription
+        }
       });
 
       taskProcesses.set(taskId, taskProcess);

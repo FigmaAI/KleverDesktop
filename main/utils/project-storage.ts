@@ -72,3 +72,13 @@ export function ensureDirectoryExists(dirPath: string): void {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 }
+
+/**
+ * Sanitize app name for Python usage (remove spaces)
+ * Matches the behavior of learn.py: app = app.replace(" ", "")
+ * @param appName - Original app name
+ * @returns Sanitized app name without spaces
+ */
+export function sanitizeAppName(appName: string): string {
+  return appName.replace(/ /g, '');
+}
