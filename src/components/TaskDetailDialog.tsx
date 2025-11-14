@@ -12,7 +12,6 @@ import {
 } from '@mui/joy'
 import {
   FolderOpen,
-  Description,
   Stop,
   CheckCircle,
   Error as ErrorIcon,

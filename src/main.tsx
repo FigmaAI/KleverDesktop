@@ -63,6 +63,9 @@ if (!window.electronAPI) {
       return '/Users/mockuser/Documents/MockProject';
     },
     openFolder: async () => ({ success: true }),
+    openPath: async () => ({ success: true }),
+    fileRead: async () => ({ success: true, content: '' }),
+    fileExists: async () => ({ success: true, exists: true }),
     getSystemInfo: async () => ({
       platform: 'browser',
       arch: 'x64',
