@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Box, Typography, Stack, Button } from '@mui/joy'
-import { SetupStepper } from './components/SetupStepper'
-import { PlatformToolsStep } from './components/PlatformToolsStep'
-import { ModelConfigStep } from './components/ModelConfigStep'
-import { IntegrationTestStep } from './components/IntegrationTestStep'
-import { usePlatformTools } from './hooks/usePlatformTools'
-import { useModelConfig } from './hooks/useModelConfig'
-import { useIntegrationTest } from './hooks/useIntegrationTest'
-import { StepConfig } from './types'
+import { SetupStepper } from '@/components/SetupStepper'
+import { PlatformToolsStep } from '@/components/PlatformToolsStep'
+import { ModelConfigStep } from '@/components/ModelConfigStep'
+import { IntegrationTestStep } from '@/components/IntegrationTestStep'
+import { usePlatformTools } from '@/hooks/usePlatformTools'
+import { useModelConfig } from '@/hooks/useModelConfig'
+import { useIntegrationTest } from '@/hooks/useIntegrationTest'
+import { StepConfig } from '@/types/setupWizard'
 
 const steps: StepConfig[] = [
   { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },

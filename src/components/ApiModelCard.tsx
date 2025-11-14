@@ -18,7 +18,7 @@ import {
   Warning as WarningIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { ModelConfig, TestStatus } from '../../types'
+import { ModelConfig, TestStatus } from '@/types/setupWizard'
 
 interface ApiModelCardProps {
   modelConfig: ModelConfig

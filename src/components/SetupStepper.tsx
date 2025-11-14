@@ -9,7 +9,7 @@ import {
   stepIndicatorClasses,
 } from '@mui/joy'
 import { CheckCircle as CheckCircleIcon } from '@mui/icons-material'
-import { StepConfig } from '../types'
+import { StepConfig } from '@/types/setupWizard'
 
 interface SetupStepperProps {
   steps: StepConfig[]

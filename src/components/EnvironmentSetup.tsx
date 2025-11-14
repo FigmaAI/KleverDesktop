@@ -18,7 +18,7 @@ import {
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material'
 import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui'
-import { ToolStatus } from '../../types'
+import { ToolStatus } from '@/types/setupWizard'
 
 interface EnvironmentSetupProps {
   status: ToolStatus

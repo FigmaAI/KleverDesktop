@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TerminalOutput } from 'react-terminal-ui'
-import { ModelConfig } from '../types'
+import { ModelConfig } from '@/types/setupWizard'
 
 export function useIntegrationTest() {
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)

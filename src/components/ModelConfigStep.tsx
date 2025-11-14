@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Typography, Sheet, Stack, Alert } from '@mui/joy'
 import { LocalModelCard } from './LocalModelCard'
 import { ApiModelCard } from './ApiModelCard'
-import { ModelConfig, TestStatus } from '../../types'
+import { ModelConfig, TestStatus } from '@/types/setupWizard'
 
 interface ModelConfigStepProps {
   modelConfig: ModelConfig

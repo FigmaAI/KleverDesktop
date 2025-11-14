@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { Box, Typography, Sheet, Button, CircularProgress } from '@mui/joy'
 import { CheckCircle as CheckCircleIcon, Warning as WarningIcon } from '@mui/icons-material'
-import { ToolStatus } from '../../types'
+import { ToolStatus } from '@/types/setupWizard'
 
 interface ToolStatusCardProps {
   name: string

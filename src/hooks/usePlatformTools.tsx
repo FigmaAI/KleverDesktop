@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { ToolStatus } from '../types'
+import { ToolStatus } from '@/types/setupWizard'
 
 interface PlatformToolsState {
   python: ToolStatus

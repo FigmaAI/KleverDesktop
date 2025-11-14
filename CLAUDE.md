@@ -117,58 +117,55 @@ Context bridge that:
 
 ## SetupWizard Architecture (Refactored)
 
-**Location**: `/src/pages/SetupWizard/`
+The SetupWizard has been refactored from a monolithic 1,387-line component into a clean, modular structure that follows project conventions:
 
-The SetupWizard has been refactored from a monolithic 1,387-line component into a clean, modular structure:
-
-### Directory Structure
+### File Structure
 ```
-SetupWizard/
-├── index.tsx                          # Main orchestrator (250 lines)
-├── types.ts                           # Shared TypeScript types
-├── hooks/
-│   ├── usePlatformTools.ts           # Platform tools checking logic
-│   ├── useModelConfig.ts             # Model configuration state & logic
-│   └── useIntegrationTest.ts         # Integration test logic
-└── components/
-    ├── SetupStepper.tsx              # Vertical stepper component
-    ├── PlatformToolsStep/
-    │   ├── index.tsx                 # Step 0: Platform tools check
-    │   ├── ToolStatusCard.tsx        # Reusable tool status display
-    │   └── EnvironmentSetup.tsx      # Python environment setup UI
-    ├── ModelConfigStep/
-    │   ├── index.tsx                 # Step 1: Model configuration
-    │   ├── LocalModelCard.tsx        # Ollama configuration card
-    │   └── ApiModelCard.tsx          # API model configuration card
-    └── IntegrationTestStep/
-        └── index.tsx                 # Step 2: Integration test
+src/
+├── pages/
+│   └── SetupWizard.tsx               # Main orchestrator (270 lines)
+├── hooks/                             # Custom hooks (NEW)
+│   ├── usePlatformTools.tsx          # Platform tools checking logic
+│   ├── useModelConfig.tsx            # Model configuration state & logic
+│   └── useIntegrationTest.tsx        # Integration test logic
+├── components/                        # Reusable UI components
+│   ├── SetupStepper.tsx              # Vertical stepper component
+│   ├── PlatformToolsStep.tsx         # Step 0: Platform tools check
+│   ├── ToolStatusCard.tsx            # Reusable tool status display
+│   ├── EnvironmentSetup.tsx          # Python environment setup UI
+│   ├── ModelConfigStep.tsx           # Step 1: Model configuration
+│   ├── LocalModelCard.tsx            # Ollama configuration card
+│   ├── ApiModelCard.tsx              # API model configuration card
+│   └── IntegrationTestStep.tsx       # Step 2: Integration test
+└── types/
+    └── setupWizard.ts                # SetupWizard-specific types
 ```
 
 ### Custom Hooks Pattern
 
-**`usePlatformTools()`** - Manages platform tool checking:
+**`usePlatformTools()`** (`src/hooks/usePlatformTools.tsx`):
 - State: `toolsStatus` for Python, pythonEnv, androidStudio, homebrew
 - Method: `checkPlatformTools()` - Checks all tools asynchronously
 - Returns: `{ toolsStatus, setToolsStatus, checkPlatformTools }`
 
-**`useModelConfig(currentStep)`** - Manages model configuration:
+**`useModelConfig(currentStep)`** (`src/hooks/useModelConfig.tsx`):
 - State: `modelConfig`, test statuses, Ollama/API models
 - Methods: `handleTestLocalConnection()`, `handleTestApiConnection()`, `fetchOllamaModels()`, `fetchApiModels()`
 - Auto-fetches models when step changes
 - Debounces API calls (500ms) to reduce requests
 
-**`useIntegrationTest()`** - Manages integration test:
+**`useIntegrationTest()`** (`src/hooks/useIntegrationTest.tsx`):
 - State: Running status, completion, success, terminal output
 - Methods: `handleRunIntegrationTest(modelConfig)`, `handleStopIntegrationTest()`
 - Listens to IPC events for real-time output
 
-### Component Separation Benefits
+### Component Organization Benefits
 
-1. **Reduced Complexity**: Each component has a single responsibility
-2. **Improved Reusability**: `ToolStatusCard` can be used for any tool check
-3. **Better Testing**: Hooks and components can be tested in isolation
-4. **Easier Maintenance**: Changes to one step don't affect others
-5. **Type Safety**: Shared types in `types.ts` ensure consistency
+1. **Project Consistency**: Follows standard src/components/, src/hooks/, src/types/ structure
+2. **Improved Reusability**: All components can be imported from `@/components/`
+3. **Better Maintainability**: Flat structure makes navigation easier
+4. **Enhanced Testability**: Hooks and components testable in isolation
+5. **Type Safety**: Shared types in `@/types/setupWizard` ensure consistency
 
 ---
 
@@ -472,12 +469,13 @@ interface Task {
 - `main/utils/python-manager.ts` - Python venv management
 - `main/utils/process-manager.ts` - Subprocess tracking
 
-### Renderer (2,901 lines total)
+### Renderer
 - `src/main.tsx` (271 lines) - React entry point
 - `src/App.tsx` (73 lines) - Router configuration
-- `src/components/Layout.tsx` (69 lines) - App shell
-- `src/pages/SetupWizard/` (modular structure)
-- `src/pages/ProjectList.tsx`, `ProjectDetail.tsx`, etc.
+- `src/pages/SetupWizard.tsx` (270 lines) - Setup wizard page
+- `src/pages/ProjectList.tsx`, `ProjectDetail.tsx`, etc. - Other pages
+- `src/hooks/` - Custom React hooks (usePlatformTools, useModelConfig, useIntegrationTest)
+- `src/components/` - Reusable UI components (9 SetupWizard components + Layout)
 
 ### Configuration
 - `package.json` (106 lines) - Dependencies, scripts, build config
@@ -488,6 +486,7 @@ interface Task {
 ### Types
 - `src/types/electron.d.ts` - IPC method signatures
 - `src/types/project.ts` - Project and Task types
+- `src/types/setupWizard.ts` - SetupWizard types (ToolStatus, ModelConfig, TestStatus, StepConfig)
 - `main/types/model.ts` - Model configuration types
 
 ---
@@ -560,9 +559,9 @@ interface Task {
 - **Cause**: Import paths changed or types not updated
 - **Fix**: Run `npm run build:main` to check main process types, and ensure all imports use the new structure
 
-**SetupWizard not showing after refactor**:
-- **Cause**: Export path changed from `src/pages/SetupWizard.tsx` to `src/pages/SetupWizard/index.tsx`
-- **Fix**: Ensure `src/pages/index.ts` exports from correct path: `export { SetupWizard } from './SetupWizard'`
+**Import errors after refactor**:
+- **Cause**: Components moved to standard src/components/, src/hooks/, src/types/ structure
+- **Fix**: Use path alias imports: `@/components/`, `@/hooks/`, `@/types/setupWizard`
 
 ---
 
@@ -614,5 +613,5 @@ When contributing to this project:
 
 ---
 
-*Last Updated*: 2025-11-13
-*Refactored*: SetupWizard modularization completed
+*Last Updated*: 2025-11-14
+*Refactored*: SetupWizard reorganized to follow project structure conventions (src/hooks/, src/components/, src/types/)

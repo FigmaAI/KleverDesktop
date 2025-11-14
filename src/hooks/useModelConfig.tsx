@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ModelConfig, TestStatus } from '../types'
+import { ModelConfig, TestStatus } from '@/types/setupWizard'
 
 export function useModelConfig(currentStep: number) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
