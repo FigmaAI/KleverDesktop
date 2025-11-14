@@ -55,20 +55,52 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to ~/Documents/{projectName}
+ * @returns Path to ~/Documents/apps/{projectName}
  */
 export function getProjectWorkspaceDir(projectName: string): string {
   const homeDir = os.homedir();
-  const documentsDir = path.join(homeDir, 'Documents');
+  const documentsDir = path.join(homeDir, 'Documents', 'apps');
+
+  // Ensure apps directory exists
+  ensureDirectoryExists(documentsDir);
+
   return path.join(documentsDir, projectName);
 }
 
 /**
  * Ensure a directory exists, creating it if necessary
  * @param dirPath - Path to the directory
+ * @returns true if directory exists or was created successfully, false otherwise
  */
-export function ensureDirectoryExists(dirPath: string): void {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
+export function ensureDirectoryExists(dirPath: string): boolean {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    // Verify the directory was created
+    return fs.existsSync(dirPath);
+  } catch (error) {
+    console.error('Error creating directory:', error);
+    return false;
+  }
+}
+
+/**
+ * Sanitize app name for Python usage (remove spaces)
+ * Matches the behavior of learn.py: app = app.replace(" ", "")
+ * @param appName - Original app name
+ * @returns Sanitized app name without spaces
+ */
+export function sanitizeAppName(appName: string): string {
+  return appName.replace(/ /g, '');
+}
+
+/**
+ * Delete a directory and all its contents recursively
+ * @param dirPath - Path to the directory to delete
+ */
+export function deleteDirectory(dirPath: string): void {
+  if (fs.existsSync(dirPath)) {
+    fs.rmSync(dirPath, { recursive: true, force: true });
   }
 }

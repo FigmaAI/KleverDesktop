@@ -18,6 +18,8 @@ export interface Task {
   updatedAt: string;
   startedAt?: string;
   completedAt?: string;
+  url?: string;
+  device?: string;
 }
 
 export type ProjectStatus = 'active' | 'archived';
@@ -26,8 +28,6 @@ export interface Project {
   id: string;
   name: string;
   platform: PlatformType;
-  device?: string;       // For android: device ID, for web: not used
-  url?: string;          // For web: target URL, for android: optional
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
@@ -42,15 +42,12 @@ export interface ProjectsData {
 export interface CreateProjectInput {
   name: string;
   platform: PlatformType;
-  device?: string;
-  url?: string;
+  workspaceDir?: string;
 }
 
 export interface UpdateProjectInput {
   name?: string;
   platform?: PlatformType;
-  device?: string;
-  url?: string;
   status?: ProjectStatus;
 }
 
@@ -59,6 +56,8 @@ export interface CreateTaskInput {
   name: string;
   description?: string;
   goal: string;
+  url?: string;
+  device?: string;
 }
 
 export interface UpdateTaskInput {

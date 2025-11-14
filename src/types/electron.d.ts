@@ -70,6 +70,7 @@ declare global {
 
       // Shell operations
       openExternal: (url: string) => Promise<{ success: boolean }>;
+      showFolderSelectDialog: () => Promise<string | null>;
 
       // System info
       getSystemInfo: () => Promise<{
@@ -139,7 +140,8 @@ declare global {
       // ============================================
       projectList: () => Promise<{ success: boolean; projects?: Project[]; error?: string }>;
       projectGet: (projectId: string) => Promise<{ success: boolean; project?: Project; error?: string }>;
-      projectCreate: (projectInput: ProjectCreateInput) => Promise<{ success: boolean; project?: Project; error?: string }>;
+      projectCreate: (projectInput: ProjectCreateInput) => Promise<{ success: boolean; project?: Project; error?: string; message?: string }>;
+      openFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
       projectUpdate: (projectId: string, updates: Partial<Project>) => Promise<{ success: boolean; project?: Project; error?: string }>;
       projectDelete: (projectId: string) => Promise<{ success: boolean; error?: string }>;
 

@@ -58,6 +58,11 @@ if (!window.electronAPI) {
     projectStart: async () => ({ success: true }),
     projectStop: async () => ({ success: true }),
     openExternal: async () => ({ success: true }),
+    showFolderSelectDialog: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return '/Users/mockuser/Documents/MockProject';
+    },
+    openFolder: async () => ({ success: true }),
     getSystemInfo: async () => ({
       platform: 'browser',
       arch: 'x64',
@@ -91,14 +96,15 @@ if (!window.electronAPI) {
     },
     projectCreate: async (projectInput: ProjectCreateInput) => {
       await new Promise((resolve) => setTimeout(resolve, 300))
-      const newProject = {
+      const newProject: Project = {
         id: `proj_${Date.now()}`,
-        ...projectInput,
+        name: projectInput.name,
+        platform: projectInput.platform,
         status: 'active' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         tasks: [],
-        workspaceDir: `/Documents/${projectInput.name}`,
+        workspaceDir: projectInput.workspaceDir || `/Users/mockuser/Documents/${projectInput.name}`,
       }
       mockProjects.push(newProject)
       return { success: true, project: newProject }
@@ -127,10 +133,13 @@ if (!window.electronAPI) {
       await new Promise((resolve) => setTimeout(resolve, 300))
       const project = mockProjects.find(p => p.id === taskInput.projectId)
       if (!project) return { success: false, error: 'Project not found' }
-      const newTask = {
+      const newTask: Task = {
         id: `task_${Date.now()}`,
         name: taskInput.name,
         description: taskInput.description,
+        goal: taskInput.goal,
+        url: taskInput.url,
+        device: taskInput.device,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

@@ -5,14 +5,18 @@ export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cance
 export interface Task {
   id: string
   name: string
-  description: string
+  description?: string
+  goal: string // Task goal/objective (used as TASK_DESCRIPTION env var)
   status: TaskStatus
   createdAt: string
   updatedAt: string
   lastRunAt?: string
-  resultPath?: string
+  startedAt?: string
+  completedAt?: string
   output?: string
   error?: string
+  url?: string
+  device?: string
 }
 
 export type ProjectStatus = 'active' | 'archived'
@@ -21,8 +25,6 @@ export interface Project {
   id: string
   name: string
   platform: Platform
-  device?: string // For Android: device ID or emulator name
-  url?: string // For Web: website URL
   status: ProjectStatus
   createdAt: string
   updatedAt: string
@@ -33,14 +35,16 @@ export interface Project {
 export interface ProjectCreateInput {
   name: string
   platform: Platform
-  device?: string
-  url?: string
+  workspaceDir?: string
 }
 
 export interface TaskCreateInput {
   projectId: string
   name: string
-  description: string
+  description?: string
+  goal: string
+  url?: string
+  device?: string
 }
 
 export interface TaskStartInput {
