@@ -1,19 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Modal,
   ModalDialog,
   ModalClose,
   Textarea,
-  Select,
-  Option,
   Button,
   Box,
   Input,
   DialogTitle,
   DialogContent,
-  DialogActions,
+  IconButton,
+  Tooltip,
+  Stack,
 } from '@mui/joy'
-import { AutoAwesome } from '@mui/icons-material'
+import { Schedule } from '@mui/icons-material'
+import { ModelSelector } from './ModelSelector'
 import type { Platform, Task } from '../types/project'
 
 interface TaskCreateDialogProps {
@@ -33,44 +34,9 @@ export function TaskCreateDialog({
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
-  const [model, setModel] = useState('')
+  const [selectedModel, setSelectedModel] = useState<{ type: 'local' | 'api'; model: string } | undefined>()
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
-  const [availableModels, setAvailableModels] = useState<string[]>([])
-
-  // Load available models from config
-  useEffect(() => {
-    if (open) {
-      loadModels()
-    }
-  }, [open])
-
-  const loadModels = async () => {
-    try {
-      const configResult = await window.electronAPI.configLoad()
-      if (configResult.success && configResult.config) {
-        const models: string[] = []
-
-        // Add local model if enabled
-        if (configResult.config.enableLocal && configResult.config.localModel) {
-          models.push(`Local: ${configResult.config.localModel}`)
-          setModel(`Local: ${configResult.config.localModel}`)
-        }
-
-        // Add API model if enabled
-        if (configResult.config.enableApi && configResult.config.apiModel) {
-          models.push(`API: ${configResult.config.apiModel}`)
-          if (!configResult.config.enableLocal) {
-            setModel(`API: ${configResult.config.apiModel}`)
-          }
-        }
-
-        setAvailableModels(models)
-      }
-    } catch (error) {
-      console.error('Failed to load models:', error)
-    }
-  }
 
   const handleSubmit = async () => {
     if (!goal.trim()) {
@@ -130,7 +96,7 @@ export function TaskCreateDialog({
 
   return (
     <Modal open={open} onClose={handleClose}>
-      <ModalDialog layout="fullscreen">
+      <ModalDialog sx={{ maxWidth: 700, width: '90%' }}>
         <ModalClose />
         <DialogTitle>Create New Task</DialogTitle>
         <DialogContent>
@@ -164,65 +130,57 @@ export function TaskCreateDialog({
               )
             }
             endDecorator={
-              <Box
+              <Stack
+                direction="row"
+                spacing={1}
                 sx={{
-                  display: 'flex',
-                  gap: 1,
-                  pt: 1,
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
+                  width: '100%',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
+                  pt: 1,
                 }}
               >
-                {availableModels.length > 0 && (
-                  <Select
-                    value={model}
-                    onChange={(_, value) => setModel(value || '')}
-                    placeholder="Model"
+                {/* Left: Model Type & Model Selection */}
+                <ModelSelector
+                  value={selectedModel}
+                  onChange={setSelectedModel}
+                  size="sm"
+                />
+
+                {/* Right: Action Buttons */}
+                <Stack direction="row" spacing={1}>
+                  <Tooltip title="Schedule task (Coming soon)" placement="top">
+                    <IconButton
+                      size="sm"
+                      variant="outlined"
+                      color="neutral"
+                      disabled
+                    >
+                      <Schedule fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Button
+                    loading={loading}
+                    disabled={!isEligible}
+                    loadingIndicator="Running…"
+                    color="primary"
                     size="sm"
-                    sx={{ minWidth: 160 }}
+                    onClick={handleSubmit}
+                    endDecorator="⌘⏎"
                   >
-                    {availableModels.map((m) => (
-                      <Option key={m} value={m}>
-                        {m.replace('Local: ', '🖥️ ').replace('API: ', '☁️ ')}
-                      </Option>
-                    ))}
-                  </Select>
-                )}
+                    Run
+                  </Button>
 
-                <Select
-                  value={runImmediately ? 'immediate' : 'scheduled'}
-                  onChange={(_, value) => setRunImmediately(value === 'immediate')}
-                  size="sm"
-                  sx={{ minWidth: 140 }}
-                >
-                  <Option value="immediate">Run now</Option>
-                  <Option value="scheduled" disabled>
-                    Schedule (Soon)
-                  </Option>
-                </Select>
-
-                <Button
-                  loading={loading}
-                  disabled={!isEligible}
-                  loadingIndicator="Creating…"
-                  color="primary"
-                  sx={{ ml: 'auto' }}
-                  size="sm"
-                  onClick={handleSubmit}
-                  startDecorator={<AutoAwesome fontSize="small" />}
-                >
-                  {runImmediately ? 'Create & Run' : 'Create Task'}
-                </Button>
-              </Box>
+                </Stack>
+              </Stack>
             }
           />
         </DialogContent>
-        <DialogActions>
+        {/* <DialogActions>
           <Button variant="plain" color="neutral" onClick={handleClose}>
             Cancel
           </Button>
-        </DialogActions>
+        </DialogActions> */}
       </ModalDialog>
     </Modal>
   )
