@@ -7,18 +7,17 @@
     "dev": "vite",
     "build:renderer": "tsc && vite build",
     "build:main": "tsc -p tsconfig.main.json",
-    "build": "npm run build:main && npm run build:renderer",
+    "build": "yarn build:main && yarn build:renderer",
     "preview": "vite preview",
     "electron": "electron .",
-    "electron:dev": "npm run build:main && concurrently \"npm run dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
-    "package": "npm run build && electron-builder",
+    "electron:dev": "yarn build:main && concurrently \"yarn dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
+    "package": "yarn build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "submodule:init": "git submodule update --init --recursive",
+    "submodule:init": "node scripts/init-submodule.js",
     "submodule:update": "git submodule update --remote appagent && git add appagent",
     "submodule:status": "git submodule status",
-    "python:download": "node scripts/download-python.js",
-    "postinstall": "npm run submodule:init && npm run python:download"
+    "postinstall": "yarn submodule:init"
   },
   "keywords": [
     "electron",
@@ -75,13 +74,6 @@
       "!appagent/.git",
       "!appagent/**/*.pyc",
       "!appagent/**/__pycache__"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/python",
-        "to": "python",
-        "filter": ["**/*"]
-      }
     ],
     "mac": {
       "category": "public.app-category.developer-tools",

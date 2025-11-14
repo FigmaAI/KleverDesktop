@@ -70,7 +70,12 @@ declare global {
 
       // Shell operations
       openExternal: (url: string) => Promise<{ success: boolean }>;
+      openPath: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
       showFolderSelectDialog: () => Promise<string | null>;
+
+      // File operations
+      fileRead: (filePath: string) => Promise<{ success: boolean; content?: string; error?: string }>;
+      fileExists: (filePath: string) => Promise<{ success: boolean; exists?: boolean; error?: string }>;
 
       // System info
       getSystemInfo: () => Promise<{

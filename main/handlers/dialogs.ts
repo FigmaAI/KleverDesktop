@@ -1,4 +1,4 @@
-import { ipcMain, dialog, shell, BrowserWindow, IpcMain } from 'electron'
+import { dialog, shell, BrowserWindow, IpcMain } from 'electron'
 
 export function registerDialogHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null) {
   ipcMain.handle('dialog:showFolderSelect', async () => {

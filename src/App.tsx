@@ -5,8 +5,6 @@ import {
   ProjectList,
   ProjectDetail,
   ProjectCreate,
-  TaskCreate,
-  TaskDetail,
   Settings
 } from './pages'
 import { Layout } from './components'
@@ -58,8 +56,6 @@ function App() {
             <Route path="projects" element={<ProjectList />} />
             <Route path="projects/new" element={<ProjectCreate />} />
             <Route path="projects/:id" element={<ProjectDetail />} />
-            <Route path="projects/:projectId/tasks/new" element={<TaskCreate />} />
-            <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
             <Route path="settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/projects" replace />} />

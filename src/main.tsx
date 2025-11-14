@@ -63,6 +63,9 @@ if (!window.electronAPI) {
       return '/Users/mockuser/Documents/MockProject';
     },
     openFolder: async () => ({ success: true }),
+    openPath: async () => ({ success: true }),
+    fileRead: async () => ({ success: true, content: '' }),
+    fileExists: async () => ({ success: true, exists: true }),
     getSystemInfo: async () => ({
       platform: 'browser',
       arch: 'x64',
@@ -139,7 +142,7 @@ if (!window.electronAPI) {
         description: taskInput.description,
         goal: taskInput.goal,
         url: taskInput.url,
-        device: taskInput.device,
+        model: taskInput.model,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

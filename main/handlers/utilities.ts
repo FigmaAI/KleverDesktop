@@ -5,6 +5,7 @@
 
 import { IpcMain, shell } from 'electron';
 import * as os from 'os';
+import * as fs from 'fs';
 
 /**
  * Register all utility handlers
@@ -32,5 +33,39 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
         freeMemory: os.freemem(),
       },
     };
+  });
+
+  // Open folder in file explorer
+  ipcMain.handle('shell:openPath', async (_event, folderPath: string) => {
+    try {
+      const result = await shell.openPath(folderPath);
+      if (result) {
+        // openPath returns an error string if it fails, empty string if successful
+        return { success: false, error: result };
+      }
+      return { success: true };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+    }
+  });
+
+  // Read file contents
+  ipcMain.handle('file:read', async (_event, filePath: string) => {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      return { success: true, content };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+    }
+  });
+
+  // Check if file exists
+  ipcMain.handle('file:exists', async (_event, filePath: string) => {
+    try {
+      await fs.promises.access(filePath, fs.constants.F_OK);
+      return { success: true, exists: true };
+    } catch {
+      return { success: true, exists: false };
+    }
   });
 }

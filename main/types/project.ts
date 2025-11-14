@@ -13,13 +13,13 @@ export interface Task {
   description?: string;
   goal: string;
   status: TaskStatus;
+  model?: string;
   output?: string;
   createdAt: string;
   updatedAt: string;
   startedAt?: string;
   completedAt?: string;
   url?: string;
-  device?: string;
 }
 
 export type ProjectStatus = 'active' | 'archived';
@@ -56,9 +56,8 @@ export interface CreateTaskInput {
   name: string;
   description?: string;
   goal: string;
-  url?: string;
-  device?: string;
-}
+  model?: string;
+  url?: string;}
 
 export interface UpdateTaskInput {
   name?: string;

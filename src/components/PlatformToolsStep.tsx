@@ -3,10 +3,18 @@ import { Box, Typography, Sheet, Stack, Button } from '@mui/joy'
 import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { ToolStatusCard } from './ToolStatusCard'
 import { EnvironmentSetup } from './EnvironmentSetup'
+import { ToolStatus } from '@/types/setupWizard'
+
+interface PlatformToolsState {
+  python: ToolStatus
+  pythonEnv: ToolStatus
+  androidStudio: ToolStatus
+  homebrew: ToolStatus
+}
 
 interface PlatformToolsStepProps {
-  toolsStatus: any
-  setToolsStatus: any
+  toolsStatus: PlatformToolsState
+  setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
   checkPlatformTools: () => void
 }
 
