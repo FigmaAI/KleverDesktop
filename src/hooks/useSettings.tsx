@@ -5,6 +5,7 @@ export interface PlatformSettings {
   // Android settings
   androidScreenshotDir: string
   androidXmlDir: string
+  androidSdkPath: string
 
   // Web settings
   webBrowserType: 'chromium' | 'firefox' | 'webkit'
@@ -54,8 +55,9 @@ export function useSettings() {
 
   // Platform settings
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
-    androidScreenshotDir: '/sdcard',
-    androidXmlDir: '/sdcard',
+    androidScreenshotDir: '/sdcard/Pictures',
+    androidXmlDir: '/sdcard/Documents',
+    androidSdkPath: '/Volumes/Backup/Android-SDK',
     webBrowserType: 'chromium',
     webHeadless: false,
     webViewportWidth: 1280,
@@ -119,8 +121,9 @@ export function useSettings() {
 
         // Load platform settings
         setPlatformSettings({
-          androidScreenshotDir: config.android?.screenshotDir || '/sdcard',
-          androidXmlDir: config.android?.xmlDir || '/sdcard',
+          androidScreenshotDir: config.android?.screenshotDir || '/sdcard/Pictures',
+          androidXmlDir: config.android?.xmlDir || '/sdcard/Documents',
+          androidSdkPath: config.android?.sdkPath || '/Volumes/Backup/Android-SDK',
           webBrowserType: config.web?.browserType || 'chromium',
           webHeadless: config.web?.headless ?? false,
           webViewportWidth: config.web?.viewportWidth || 1280,
@@ -214,6 +217,7 @@ export function useSettings() {
         android: {
           screenshotDir: platformSettings.androidScreenshotDir,
           xmlDir: platformSettings.androidXmlDir,
+          sdkPath: platformSettings.androidSdkPath,
         },
         web: {
           browserType: platformSettings.webBrowserType,

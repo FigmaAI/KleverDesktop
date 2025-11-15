@@ -58,6 +58,23 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
         <TabPanel value={0}>
           <Stack spacing={2.5}>
             <FormControl>
+              <FormLabel>Android SDK Path</FormLabel>
+              <Input
+                value={platformSettings.androidSdkPath}
+                onChange={(e) =>
+                  setPlatformSettings({
+                    ...platformSettings,
+                    androidSdkPath: e.target.value,
+                  })
+                }
+                placeholder="/Volumes/Backup/Android-SDK"
+              />
+              <FormHelperText>
+                Path to Android SDK directory (contains platform-tools and emulator folders)
+              </FormHelperText>
+            </FormControl>
+
+            <FormControl>
               <FormLabel>Screenshot Directory</FormLabel>
               <Input
                 value={platformSettings.androidScreenshotDir}
@@ -67,7 +84,7 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                     androidScreenshotDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard"
+                placeholder="/sdcard/Pictures"
               />
               <FormHelperText>
                 Path on Android device where screenshots will be saved
@@ -84,7 +101,7 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                     androidXmlDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard"
+                placeholder="/sdcard/Documents"
               />
               <FormHelperText>
                 Path on Android device where UI hierarchy XML files will be saved
