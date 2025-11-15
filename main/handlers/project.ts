@@ -6,7 +6,7 @@
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
+import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -189,16 +190,19 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       // Build 23 environment variables from config.json
       const configEnvVars = buildEnvFromConfig(appConfig);
 
-      const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
+      // Python 실행 위치 = appagent 디렉토리
+      const appagentDir = path.join(process.cwd(), 'appagent');
+      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
 
       // Sanitize app name (remove spaces) to match learn.py behavior
       const sanitizedAppName = sanitizeAppName(projectConfig.name);
 
       const args = [
+        '-u',  // Unbuffered output for real-time logging
         scriptPath,
         '--platform', projectConfig.platform,
         '--app', sanitizedAppName,
-        '--root_dir', projectConfig.workspaceDir
+        '--root_dir', projectConfig.workspaceDir  // ← 결과물 저장 위치 (--root_dir)
       ];
 
       if (projectConfig.platform === 'web' && projectConfig.url) {
@@ -210,12 +214,15 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       }
 
       console.log('[project:start] Executing project with args:', args);
+      console.log('[project:start] Working directory (cwd):', appagentDir);
       console.log('[project:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
-      pythonProcess = spawn('python', args, {
-        cwd: projectConfig.workspaceDir,
+      // Get Python environment and merge with config environment variables
+      const pythonEnv = getPythonEnv();
+      pythonProcess = spawnVenvPython(args, {
+        cwd: appagentDir,  // ✅ Python 실행 환경 = appagent 디렉토리
         env: {
-          ...process.env,       // System environment variables
+          ...pythonEnv,         // Python venv environment variables
           ...configEnvVars      // 23 config settings from config.json
         }
       });

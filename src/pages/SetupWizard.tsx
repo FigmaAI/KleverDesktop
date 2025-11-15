@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Box, Typography, Stack, Button } from '@mui/joy'
 import { SetupStepper } from '@/components/SetupStepper'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
+import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
@@ -12,12 +13,16 @@ import { StepConfig } from '@/types/setupWizard'
 
 const steps: StepConfig[] = [
   { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
+  { label: 'Platform Config', description: 'Configure Android SDK and platform settings' },
   { label: 'Model Setup', description: 'Configure Ollama or API' },
   { label: 'Final Check', description: 'Run integration test' },
 ]
 
 export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
+
+  // Platform configuration state
+  const [androidSdkPath, setAndroidSdkPath] = useState('/Volumes/Backup/Android-SDK')
 
   // Platform tools hook
   const { toolsStatus, setToolsStatus, checkPlatformTools } = usePlatformTools()
@@ -93,18 +98,65 @@ export function SetupWizard() {
 
   const handleSaveConfig = async () => {
     try {
-      await window.electronAPI.saveModelConfig({
-        enableLocal: modelConfig.enableLocal,
-        enableApi: modelConfig.enableApi,
-        apiBaseUrl: modelConfig.apiBaseUrl,
-        apiKey: modelConfig.apiKey,
-        apiModel: modelConfig.apiModel,
-        localBaseUrl: modelConfig.localBaseUrl,
-        localModel: modelConfig.localModel,
-      })
-      handleNext()
+      // Build complete config.json with all settings
+      const config = {
+        version: '1.0',
+        model: {
+          enableLocal: modelConfig.enableLocal,
+          enableApi: modelConfig.enableApi,
+          api: {
+            baseUrl: modelConfig.apiBaseUrl,
+            key: modelConfig.apiKey,
+            model: modelConfig.apiModel,
+          },
+          local: {
+            baseUrl: modelConfig.localBaseUrl,
+            model: modelConfig.localModel,
+          },
+        },
+        execution: {
+          maxTokens: 4096,
+          temperature: 0.0,
+          requestInterval: 10,
+          maxRounds: 20,
+        },
+        android: {
+          screenshotDir: '/sdcard/Pictures',
+          xmlDir: '/sdcard/Documents',
+          sdkPath: androidSdkPath, // Use user-provided Android SDK path
+        },
+        web: {
+          browserType: 'chromium' as const,
+          headless: false,
+          viewportWidth: 1280,
+          viewportHeight: 720,
+        },
+        image: {
+          maxWidth: 512,
+          maxHeight: 512,
+          quality: 85,
+          optimize: true,
+        },
+        preferences: {
+          darkMode: false,
+          minDist: 30,
+          docRefine: false,
+        },
+      }
+
+      console.log('[SetupWizard] Saving config.json:', config)
+      const result = await window.electronAPI.configSave(config)
+
+      if (result.success) {
+        console.log('[SetupWizard] config.json saved successfully')
+        handleNext()
+      } else {
+        console.error('[SetupWizard] Failed to save config:', result.error)
+        alert(`Failed to save configuration: ${result.error}`)
+      }
     } catch (error) {
-      console.error('Failed to save configuration:', error)
+      console.error('[SetupWizard] Error saving configuration:', error)
+      alert('Failed to save configuration')
     }
   }
 
@@ -118,7 +170,7 @@ export function SetupWizard() {
     )
   }
 
-  const canProceedFromStep1 = () => {
+  const canProceedFromStep2 = () => {
     return (
       (modelConfig.enableLocal || modelConfig.enableApi) &&
       (!modelConfig.enableLocal || localTestStatus === 'success') &&
@@ -175,8 +227,16 @@ export function SetupWizard() {
                   />
                 )}
 
-                {/* Step 1: Model Configuration */}
+                {/* Step 1: Platform Configuration */}
                 {currentStep === 1 && (
+                  <PlatformConfigStep
+                    androidSdkPath={androidSdkPath}
+                    setAndroidSdkPath={setAndroidSdkPath}
+                  />
+                )}
+
+                {/* Step 2: Model Configuration */}
+                {currentStep === 2 && (
                   <ModelConfigStep
                     modelConfig={modelConfig}
                     setModelConfig={setModelConfig}
@@ -198,8 +258,8 @@ export function SetupWizard() {
                   />
                 )}
 
-                {/* Step 2: Integration Test */}
-                {currentStep === 2 && (
+                {/* Step 3: Integration Test */}
+                {currentStep === 3 && (
                   <IntegrationTestStep
                     integrationTestRunning={integrationTestRunning}
                     integrationTestComplete={integrationTestComplete}
@@ -245,8 +305,18 @@ export function SetupWizard() {
                 <Button
                   variant="solid"
                   color="primary"
+                  onClick={handleNext}
+                  disabled={!androidSdkPath.trim()}
+                  sx={{ minWidth: 100 }}
+                >
+                  Next
+                </Button>
+              ) : currentStep === 2 ? (
+                <Button
+                  variant="solid"
+                  color="primary"
                   onClick={handleSaveConfig}
-                  disabled={!canProceedFromStep1()}
+                  disabled={!canProceedFromStep2()}
                   sx={{ minWidth: 100 }}
                 >
                   Next
@@ -256,10 +326,10 @@ export function SetupWizard() {
                   variant="solid"
                   color="primary"
                   onClick={handleNext}
-                  disabled={currentStep === 2 && !integrationTestSuccess}
+                  disabled={!integrationTestSuccess}
                   sx={{ minWidth: 100 }}
                 >
-                  {currentStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                  Get Started
                 </Button>
               )}
             </Stack>

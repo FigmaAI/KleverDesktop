@@ -32,6 +32,7 @@ interface AppConfig {
   android: {
     screenshotDir: string;
     xmlDir: string;
+    sdkPath: string;
   };
   web: {
     browserType: 'chromium' | 'firefox' | 'webkit';

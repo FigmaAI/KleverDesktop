@@ -137,12 +137,23 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const taskDirName = `self_explore_${timestamp}`;
       const taskDir = path.join(appsDir, taskDirName);
 
+      console.log('[task:start] Calculated task directory:', taskDir);
+
       // Update task status
       task.status = 'running';
       task.startedAt = new Date().toISOString();
       task.output = '';
       task.resultPath = taskDir;  // Store task directory path
+
+      console.log('[task:start] Task before save:', JSON.stringify({
+        id: task.id,
+        resultPath: task.resultPath,
+        status: task.status
+      }, null, 2));
+
       saveProjects(data);
+
+      console.log('[task:start] Projects saved successfully');
 
       // Load global config from config.json
       const appConfig = loadAppConfig();

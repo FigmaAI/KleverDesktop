@@ -107,8 +107,9 @@ export function TaskDetailDialog({
 
   const handleOpenFolder = async () => {
     try {
-      // Open task-specific directory if available, otherwise workspace
+      // If task has resultPath, use it; otherwise use workspace
       const pathToOpen = task.resultPath || workspaceDir
+      console.log('[TaskDetailDialog] Opening folder:', pathToOpen, '(resultPath:', task.resultPath, ')')
       await window.electronAPI.openPath(pathToOpen)
     } catch (error) {
       console.error('Error opening folder:', error)
