@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Box,
   Button,
@@ -56,6 +56,25 @@ export function Settings() {
 
   // Auto-save with debounce
   const [hasChanges, setHasChanges] = useState(false)
+  const isInitialLoad = useRef(true)
+
+  // Mark initial load as complete
+  useEffect(() => {
+    if (!loading && isInitialLoad.current) {
+      isInitialLoad.current = false
+    }
+  }, [loading])
+
+  // Mark as changed whenever settings update (after initial load)
+  useEffect(() => {
+    if (!loading && !isInitialLoad.current) {
+      // Use setTimeout to avoid synchronous setState in effect
+      const timeoutId = setTimeout(() => {
+        setHasChanges(true)
+      }, 0)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
 
   useEffect(() => {
     if (hasChanges && !loading) {
@@ -68,13 +87,6 @@ export function Settings() {
     }
   }, [hasChanges, loading, saveSettings])
 
-  // Mark as changed whenever settings update
-  useEffect(() => {
-    if (!loading) {
-      setHasChanges(true)
-    }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
-
   const handleResetConfig = async () => {
     setIsResetting(true)
     setErrorMessage(null)
@@ -85,9 +97,9 @@ export function Settings() {
       console.log('[Settings] configReset result:', result)
 
       if (result.success) {
-        console.log('[Settings] Configuration reset successful, redirecting to setup...')
-        // Reload the page to trigger App.tsx to redirect to setup wizard
-        window.location.href = '/setup'
+        console.log('[Settings] Configuration reset successful, reloading app...')
+        // Reload the entire app to re-check setup status
+        window.location.reload()
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to reset configuration:', errorMsg)

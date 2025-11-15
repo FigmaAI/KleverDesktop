@@ -42,7 +42,16 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     try {
       console.log('[check:setup] Checking if setup is complete...');
 
-      // Check if config.json exists and has valid model configuration
+      // FIRST: Check if config.json file actually exists
+      const configFileExists = configExists();
+      console.log('[check:setup] Config file exists:', configFileExists);
+
+      if (!configFileExists) {
+        console.log('[check:setup] Config file does not exist, setup not complete');
+        return { success: true, setupComplete: false };
+      }
+
+      // Check if config.json has valid model configuration
       let hasValidConfig = false;
       try {
         const config = loadAppConfig();
@@ -56,7 +65,7 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
         }
         console.log('[check:setup] Config valid:', hasValidConfig);
       } catch {
-        console.log('[check:setup] Config does not exist or is invalid');
+        console.log('[check:setup] Config is invalid');
         hasValidConfig = false;
       }
 

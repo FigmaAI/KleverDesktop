@@ -9,10 +9,47 @@ interface OllamaModel {
 }
 
 interface AppConfig {
-  modelProvider?: 'ollama' | 'api';
-  ollamaModel?: string;
-  apiKey?: string;
-  [key: string]: unknown;
+  version: string;
+  model: {
+    enableLocal: boolean;
+    enableApi: boolean;
+    api: {
+      baseUrl: string;
+      key: string;
+      model: string;
+    };
+    local: {
+      baseUrl: string;
+      model: string;
+    };
+  };
+  execution: {
+    maxTokens: number;
+    temperature: number;
+    requestInterval: number;
+    maxRounds: number;
+  };
+  android: {
+    screenshotDir: string;
+    xmlDir: string;
+  };
+  web: {
+    browserType: 'chromium' | 'firefox' | 'webkit';
+    headless: boolean;
+    viewportWidth: number;
+    viewportHeight: number;
+  };
+  image: {
+    maxWidth: number;
+    maxHeight: number;
+    quality: number;
+    optimize: boolean;
+  };
+  preferences: {
+    darkMode: boolean;
+    minDist: number;
+    docRefine: boolean;
+  };
 }
 
 declare global {

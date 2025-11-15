@@ -104,46 +104,46 @@ export function useSettings() {
       const result = await window.electronAPI.configLoad()
 
       if (result.success && result.config) {
-        const config = result.config as Record<string, unknown>
+        const config = result.config
 
         // Load model config
         setModelConfig({
-          enableLocal: config.ENABLE_LOCAL !== false,
-          enableApi: config.ENABLE_API === true,
-          apiBaseUrl: (config.API_BASE_URL as string) || 'https://api.openai.com/v1/chat/completions',
-          apiKey: (config.API_KEY as string) || '',
-          apiModel: (config.API_MODEL as string) || '',
-          localBaseUrl: (config.LOCAL_BASE_URL as string) || 'http://localhost:11434/v1/chat/completions',
-          localModel: (config.LOCAL_MODEL as string) || 'qwen3-vl:4b',
+          enableLocal: config.model?.enableLocal ?? true,
+          enableApi: config.model?.enableApi ?? false,
+          apiBaseUrl: config.model?.api?.baseUrl || 'https://api.openai.com/v1/chat/completions',
+          apiKey: config.model?.api?.key || '',
+          apiModel: config.model?.api?.model || '',
+          localBaseUrl: config.model?.local?.baseUrl || 'http://localhost:11434/v1/chat/completions',
+          localModel: config.model?.local?.model || 'qwen3-vl:4b',
         })
 
         // Load platform settings
         setPlatformSettings({
-          androidScreenshotDir: (config.ANDROID_SCREENSHOT_DIR as string) || '/sdcard',
-          androidXmlDir: (config.ANDROID_XML_DIR as string) || '/sdcard',
-          webBrowserType: (config.WEB_BROWSER_TYPE as 'chromium' | 'firefox' | 'webkit') || 'chromium',
-          webHeadless: config.WEB_HEADLESS === true,
-          webViewportWidth: (config.WEB_VIEWPORT_WIDTH as number) || 1280,
-          webViewportHeight: (config.WEB_VIEWPORT_HEIGHT as number) || 720,
+          androidScreenshotDir: config.android?.screenshotDir || '/sdcard',
+          androidXmlDir: config.android?.xmlDir || '/sdcard',
+          webBrowserType: config.web?.browserType || 'chromium',
+          webHeadless: config.web?.headless ?? false,
+          webViewportWidth: config.web?.viewportWidth || 1280,
+          webViewportHeight: config.web?.viewportHeight || 720,
         })
 
         // Load agent settings
         setAgentSettings({
-          maxTokens: (config.MAX_TOKENS as number) || 4096,
-          temperature: (config.TEMPERATURE as number) ?? 0.0,
-          requestInterval: (config.REQUEST_INTERVAL as number) || 10,
-          maxRounds: (config.MAX_ROUNDS as number) || 20,
-          docRefine: config.DOC_REFINE === true,
-          darkMode: config.DARK_MODE === true,
-          minDist: (config.MIN_DIST as number) || 30,
+          maxTokens: config.execution?.maxTokens || 4096,
+          temperature: config.execution?.temperature ?? 0.0,
+          requestInterval: config.execution?.requestInterval || 10,
+          maxRounds: config.execution?.maxRounds || 20,
+          docRefine: config.preferences?.docRefine ?? false,
+          darkMode: config.preferences?.darkMode ?? false,
+          minDist: config.preferences?.minDist || 30,
         })
 
         // Load image settings
         setImageSettings({
-          optimizeImages: config.OPTIMIZE_IMAGES !== false,
-          imageMaxWidth: (config.IMAGE_MAX_WIDTH as number) || 512,
-          imageMaxHeight: (config.IMAGE_MAX_HEIGHT as number) || 512,
-          imageQuality: (config.IMAGE_QUALITY as number) || 85,
+          optimizeImages: config.image?.optimize ?? true,
+          imageMaxWidth: config.image?.maxWidth || 512,
+          imageMaxHeight: config.image?.maxHeight || 512,
+          imageQuality: config.image?.quality || 85,
         })
       }
     } catch (error) {
@@ -189,40 +189,49 @@ export function useSettings() {
     setSaveSuccess(false)
 
     try {
-      // Build config object
+      // Build config object with new nested structure
       const config = {
-        // Model settings
-        MODEL: modelConfig.enableApi ? 'api' : 'local',
-        ENABLE_LOCAL: modelConfig.enableLocal,
-        ENABLE_API: modelConfig.enableApi,
-        LOCAL_BASE_URL: modelConfig.localBaseUrl,
-        LOCAL_MODEL: modelConfig.localModel,
-        API_BASE_URL: modelConfig.apiBaseUrl,
-        API_KEY: modelConfig.apiKey,
-        API_MODEL: modelConfig.apiModel,
-
-        // Agent settings
-        MAX_TOKENS: agentSettings.maxTokens,
-        TEMPERATURE: agentSettings.temperature,
-        REQUEST_INTERVAL: agentSettings.requestInterval,
-        MAX_ROUNDS: agentSettings.maxRounds,
-        DOC_REFINE: agentSettings.docRefine,
-        DARK_MODE: agentSettings.darkMode,
-        MIN_DIST: agentSettings.minDist,
-
-        // Platform settings
-        ANDROID_SCREENSHOT_DIR: platformSettings.androidScreenshotDir,
-        ANDROID_XML_DIR: platformSettings.androidXmlDir,
-        WEB_BROWSER_TYPE: platformSettings.webBrowserType,
-        WEB_HEADLESS: platformSettings.webHeadless,
-        WEB_VIEWPORT_WIDTH: platformSettings.webViewportWidth,
-        WEB_VIEWPORT_HEIGHT: platformSettings.webViewportHeight,
-
-        // Image settings
-        OPTIMIZE_IMAGES: imageSettings.optimizeImages,
-        IMAGE_MAX_WIDTH: imageSettings.imageMaxWidth,
-        IMAGE_MAX_HEIGHT: imageSettings.imageMaxHeight,
-        IMAGE_QUALITY: imageSettings.imageQuality,
+        version: '1.0',
+        model: {
+          enableLocal: modelConfig.enableLocal,
+          enableApi: modelConfig.enableApi,
+          api: {
+            baseUrl: modelConfig.apiBaseUrl,
+            key: modelConfig.apiKey,
+            model: modelConfig.apiModel,
+          },
+          local: {
+            baseUrl: modelConfig.localBaseUrl,
+            model: modelConfig.localModel,
+          },
+        },
+        execution: {
+          maxTokens: agentSettings.maxTokens,
+          temperature: agentSettings.temperature,
+          requestInterval: agentSettings.requestInterval,
+          maxRounds: agentSettings.maxRounds,
+        },
+        android: {
+          screenshotDir: platformSettings.androidScreenshotDir,
+          xmlDir: platformSettings.androidXmlDir,
+        },
+        web: {
+          browserType: platformSettings.webBrowserType,
+          headless: platformSettings.webHeadless,
+          viewportWidth: platformSettings.webViewportWidth,
+          viewportHeight: platformSettings.webViewportHeight,
+        },
+        image: {
+          maxWidth: imageSettings.imageMaxWidth,
+          maxHeight: imageSettings.imageMaxHeight,
+          quality: imageSettings.imageQuality,
+          optimize: imageSettings.optimizeImages,
+        },
+        preferences: {
+          darkMode: agentSettings.darkMode,
+          minDist: agentSettings.minDist,
+          docRefine: agentSettings.docRefine,
+        },
       }
 
       const result = await window.electronAPI.configSave(config)
