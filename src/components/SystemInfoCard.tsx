@@ -102,7 +102,7 @@ export function SystemInfoCard({ systemInfo }: SystemInfoCardProps) {
               {systemInfo.arch || 'Unknown'}
             </Chip>
             <Chip size="sm" variant="soft" color="primary">
-              {systemInfo.cpuCount || 0} CPU{systemInfo.cpuCount !== 1 ? 's' : ''}
+              {systemInfo.cpus || 0} CPU{systemInfo.cpus !== 1 ? 's' : ''}
             </Chip>
           </Stack>
         </Box>

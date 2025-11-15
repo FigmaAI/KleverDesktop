@@ -33,7 +33,7 @@ export interface ImageSettings {
 export interface SystemInfo {
   platform: string
   arch: string
-  cpuCount: number
+  cpus: number
   totalMemory: number
   freeMemory: number
   pythonVersion?: string
@@ -85,7 +85,7 @@ export function useSettings() {
   const [systemInfo, setSystemInfo] = useState<SystemInfo>({
     platform: '',
     arch: '',
-    cpuCount: 0,
+    cpus: 0,
     totalMemory: 0,
     freeMemory: 0,
     envStatus: 'checking',
@@ -104,46 +104,46 @@ export function useSettings() {
       const result = await window.electronAPI.configLoad()
 
       if (result.success && result.config) {
-        const config = result.config
+        const config = result.config as Record<string, unknown>
 
         // Load model config
         setModelConfig({
           enableLocal: config.ENABLE_LOCAL !== false,
           enableApi: config.ENABLE_API === true,
-          apiBaseUrl: config.API_BASE_URL || 'https://api.openai.com/v1/chat/completions',
-          apiKey: config.API_KEY || '',
-          apiModel: config.API_MODEL || '',
-          localBaseUrl: config.LOCAL_BASE_URL || 'http://localhost:11434/v1/chat/completions',
-          localModel: config.LOCAL_MODEL || 'qwen3-vl:4b',
+          apiBaseUrl: (config.API_BASE_URL as string) || 'https://api.openai.com/v1/chat/completions',
+          apiKey: (config.API_KEY as string) || '',
+          apiModel: (config.API_MODEL as string) || '',
+          localBaseUrl: (config.LOCAL_BASE_URL as string) || 'http://localhost:11434/v1/chat/completions',
+          localModel: (config.LOCAL_MODEL as string) || 'qwen3-vl:4b',
         })
 
         // Load platform settings
         setPlatformSettings({
-          androidScreenshotDir: config.ANDROID_SCREENSHOT_DIR || '/sdcard',
-          androidXmlDir: config.ANDROID_XML_DIR || '/sdcard',
-          webBrowserType: config.WEB_BROWSER_TYPE || 'chromium',
+          androidScreenshotDir: (config.ANDROID_SCREENSHOT_DIR as string) || '/sdcard',
+          androidXmlDir: (config.ANDROID_XML_DIR as string) || '/sdcard',
+          webBrowserType: (config.WEB_BROWSER_TYPE as 'chromium' | 'firefox' | 'webkit') || 'chromium',
           webHeadless: config.WEB_HEADLESS === true,
-          webViewportWidth: config.WEB_VIEWPORT_WIDTH || 1280,
-          webViewportHeight: config.WEB_VIEWPORT_HEIGHT || 720,
+          webViewportWidth: (config.WEB_VIEWPORT_WIDTH as number) || 1280,
+          webViewportHeight: (config.WEB_VIEWPORT_HEIGHT as number) || 720,
         })
 
         // Load agent settings
         setAgentSettings({
-          maxTokens: config.MAX_TOKENS || 4096,
-          temperature: config.TEMPERATURE ?? 0.0,
-          requestInterval: config.REQUEST_INTERVAL || 10,
-          maxRounds: config.MAX_ROUNDS || 20,
+          maxTokens: (config.MAX_TOKENS as number) || 4096,
+          temperature: (config.TEMPERATURE as number) ?? 0.0,
+          requestInterval: (config.REQUEST_INTERVAL as number) || 10,
+          maxRounds: (config.MAX_ROUNDS as number) || 20,
           docRefine: config.DOC_REFINE === true,
           darkMode: config.DARK_MODE === true,
-          minDist: config.MIN_DIST || 30,
+          minDist: (config.MIN_DIST as number) || 30,
         })
 
         // Load image settings
         setImageSettings({
           optimizeImages: config.OPTIMIZE_IMAGES !== false,
-          imageMaxWidth: config.IMAGE_MAX_WIDTH || 512,
-          imageMaxHeight: config.IMAGE_MAX_HEIGHT || 512,
-          imageQuality: config.IMAGE_QUALITY || 85,
+          imageMaxWidth: (config.IMAGE_MAX_WIDTH as number) || 512,
+          imageMaxHeight: (config.IMAGE_MAX_HEIGHT as number) || 512,
+          imageQuality: (config.IMAGE_QUALITY as number) || 85,
         })
       }
     } catch (error) {
@@ -162,7 +162,7 @@ export function useSettings() {
           ...prev,
           platform: info.platform || '',
           arch: info.arch || '',
-          cpuCount: info.cpuCount || 0,
+          cpus: info.cpus || 0,
           totalMemory: info.totalMemory || 0,
           freeMemory: info.freeMemory || 0,
         }))
@@ -170,11 +170,11 @@ export function useSettings() {
 
       // Check Python environment
       const envCheck = await window.electronAPI.envCheck()
-      if (envCheck.success && envCheck.python) {
+      if (envCheck.success && envCheck.bundledPython) {
         setSystemInfo(prev => ({
           ...prev,
-          pythonVersion: envCheck.python.version,
-          envStatus: envCheck.venv.ready ? 'ready' : 'not_ready',
+          pythonVersion: envCheck.bundledPython?.version,
+          envStatus: envCheck.venv?.valid ? 'ready' : 'not_ready',
         }))
       }
     } catch (error) {
