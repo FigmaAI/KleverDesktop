@@ -56,6 +56,9 @@ export function TaskCreateDialog({
         name: `Task ${new Date().toLocaleString()}`,
         goal: goal.trim(),
         url: platform === 'web' ? url.trim() : undefined,
+        // Include model configuration if user has selected a specific model
+        modelProvider: selectedModel?.type,
+        modelName: selectedModel?.model,
       }
 
       const result = await window.electronAPI.taskCreate(taskInput)

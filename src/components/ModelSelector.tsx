@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Select, Option, Stack } from '@mui/joy'
+import { Select, Option, Stack, Skeleton } from '@mui/joy'
 
 interface ModelSelectorProps {
   value?: {
@@ -24,6 +24,7 @@ export function ModelSelector({
   const [apiModels, setApiModels] = useState<string[]>([])
   const [hasLocal, setHasLocal] = useState(false)
   const [hasApi, setHasApi] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   // Load available models from config
   useEffect(() => {
@@ -41,6 +42,7 @@ export function ModelSelector({
   }, [modelType, localModel, apiModel, onChange])
 
   const loadModels = async () => {
+    setLoading(true)
     try {
       // Load config to see what's enabled
       const configResult = await window.electronAPI.configLoad()
@@ -88,7 +90,19 @@ export function ModelSelector({
       }
     } catch (error) {
       console.error('Failed to load models:', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  // Show skeleton loading state
+  if (loading) {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Skeleton variant="rectangular" width={100} height={size === 'sm' ? 32 : size === 'md' ? 40 : 48} sx={{ borderRadius: 'sm' }} />
+        <Skeleton variant="rectangular" width={180} height={size === 'sm' ? 32 : size === 'md' ? 40 : 48} sx={{ borderRadius: 'sm' }} />
+      </Stack>
+    )
   }
 
   return (

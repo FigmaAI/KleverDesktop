@@ -175,8 +175,11 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       console.log('[task:start] Executing task with args:', args);
       console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
+      // Set cwd to appagent folder so config.yaml can be found
+      const appagentDir = path.join(process.cwd(), 'appagent');
+
       const taskProcess = spawn('python', args, {
-        cwd: project.workspaceDir,
+        cwd: appagentDir,  // Run from appagent folder (where config.yaml exists)
         env: {
           ...process.env,       // System environment variables
           ...configEnvVars      // 23 config settings from config.json
@@ -185,8 +188,30 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       taskProcesses.set(taskId, taskProcess);
 
+      // Handle process spawn errors
+      taskProcess.on('error', (error) => {
+        console.error('[task:start] Process error:', error);
+        const errorMsg = `Failed to start process: ${error.message}`;
+        mainWindow?.webContents.send('task:error', { projectId, taskId, error: errorMsg });
+
+        // Update task status
+        const currentData = loadProjects();
+        const currentProject = currentData.projects.find((p) => p.id === projectId);
+        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+        if (currentTask) {
+          currentTask.status = 'failed';
+          currentTask.error = errorMsg;
+          currentTask.output = (currentTask.output || '') + errorMsg;
+          currentTask.updatedAt = new Date().toISOString();
+          saveProjects(currentData);
+        }
+
+        taskProcesses.delete(taskId);
+      });
+
       taskProcess.stdout?.on('data', (data) => {
         const output = data.toString();
+        console.log('[task:stdout]', output);
         mainWindow?.webContents.send('task:output', { projectId, taskId, output });
 
         // Append to task output
@@ -201,6 +226,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       taskProcess.stderr?.on('data', (data) => {
         const error = data.toString();
+        console.error('[task:stderr]', error);
         mainWindow?.webContents.send('task:error', { projectId, taskId, error });
 
         // Append to task output (stderr also goes to output)
@@ -214,6 +240,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       });
 
       taskProcess.on('close', (code) => {
+        console.log('[task:close] Process exited with code:', code);
         const currentData = loadProjects();
         const currentProject = currentData.projects.find((p) => p.id === projectId);
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
