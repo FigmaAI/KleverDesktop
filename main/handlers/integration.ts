@@ -1,6 +1,8 @@
 /**
  * Integration test IPC handlers
  * Handles running and stopping integration tests
+ *
+ * IMPORTANT: Integration test now uses config.json and CLI parameters
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
@@ -11,6 +13,8 @@ import * as fs from 'fs';
 import { ModelConfig, Project } from '../types';
 import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
 import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
+import { loadAppConfig } from '../utils/config-storage';
+import { buildEnvFromConfig } from '../utils/config-env-builder';
 
 let integrationTestProcess: ChildProcess | null = null;
 
@@ -30,7 +34,16 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         return { success: false };
       }
 
-      // Determine model provider
+      // Load global config from config.json
+      const appConfig = loadAppConfig();
+
+      // Build 23 environment variables from config.json
+      const configEnvVars = buildEnvFromConfig(appConfig);
+
+      // Override MAX_ROUNDS for integration test (only 2 rounds)
+      configEnvVars.MAX_ROUNDS = '2';
+
+      // Determine model provider for display
       let modelProvider = 'local';
       if (config.enableApi && config.enableLocal) {
         modelProvider = 'api';
@@ -44,18 +57,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       const venvEnv = getPythonEnv();
       const env = {
         ...venvEnv,
-        MODEL: modelProvider,
-        ENABLE_LOCAL: config.enableLocal.toString(),
-        ENABLE_API: config.enableApi.toString(),
-        API_BASE_URL: config.apiBaseUrl || '',
-        API_KEY: config.apiKey || '',
-        API_MODEL: config.apiModel || '',
-        LOCAL_BASE_URL: config.localBaseUrl || '',
-        LOCAL_MODEL: config.localModel || '',
-        MAX_ROUNDS: '2',
-        // Integration test specific
-        TASK_URL: 'https://www.google.com',
-        TASK_DESCRIPTION: 'Find and click the "I\'m Feeling Lucky" button',
+        ...configEnvVars  // Use config.json environment variables
       };
 
       mainWindow?.webContents.send('integration:output', '============================================================\n');
@@ -96,7 +98,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       mainWindow?.webContents.send('integration:output', `Test results will be saved to: ${workspaceDir}/apps/Feeling_Lucky/\n\n`);
 
       // Use venv Python to run the integration test
-      // Note: self_explorer.py only accepts --app, --root_dir, and --platform arguments
+      // Pass task info via CLI parameters (not environment variables)
       integrationTestProcess = spawnVenvPython(
         [
           '-u',
@@ -107,6 +109,10 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           'web',
           '--root_dir',
           workspaceDir,
+          '--task_desc',
+          'Find and click the "I\'m Feeling Lucky" button',
+          '--url',
+          'https://www.google.com',
         ],
         {
           cwd: path.join(process.cwd(), 'appagent'),

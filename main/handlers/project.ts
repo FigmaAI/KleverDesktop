@@ -1,6 +1,8 @@
 /**
  * Project management IPC handlers
  * Handles CRUD operations for projects and project execution
+ *
+ * IMPORTANT: Project execution now uses config.json environment variables
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
@@ -14,6 +16,8 @@ import {
   ensureDirectoryExists,
   sanitizeAppName,
 } from '../utils/project-storage';
+import { loadAppConfig } from '../utils/config-storage';
+import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -178,6 +182,13 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
   }) => {
     try {
       const mainWindow = getMainWindow();
+
+      // Load global config from config.json
+      const appConfig = loadAppConfig();
+
+      // Build 23 environment variables from config.json
+      const configEnvVars = buildEnvFromConfig(appConfig);
+
       const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
 
       // Sanitize app name (remove spaces) to match learn.py behavior
@@ -198,8 +209,15 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         args.push('--device', projectConfig.device);
       }
 
+      console.log('[project:start] Executing project with args:', args);
+      console.log('[project:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
+
       pythonProcess = spawn('python', args, {
-        cwd: projectConfig.workspaceDir
+        cwd: projectConfig.workspaceDir,
+        env: {
+          ...process.env,       // System environment variables
+          ...configEnvVars      // 23 config settings from config.json
+        }
       });
 
       pythonProcess.stdout?.on('data', (data) => {

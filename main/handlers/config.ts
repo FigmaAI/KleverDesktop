@@ -1,20 +1,24 @@
 /**
  * Configuration IPC handlers
- * Handles loading and saving YAML config files
+ * Handles loading and saving config.json (NOT config.yaml)
+ *
+ * IMPORTANT: config.yaml is now read-only and only used as default values
+ * All user settings are stored in ~/.klever-desktop/config.json
  */
 
 import { IpcMain } from 'electron';
-import { loadConfig, saveConfig, resetConfig } from '../utils/config-manager';
+import { loadAppConfig, saveAppConfig, resetAppConfig, configExists } from '../utils/config-storage';
 import { checkVenvStatus } from '../utils/python-manager';
+import { AppConfig } from '../types/config';
 
 /**
  * Register all config handlers
  */
 export function registerConfigHandlers(ipcMain: IpcMain): void {
-  // Load config from YAML
+  // Load config from config.json
   ipcMain.handle('config:load', async () => {
     try {
-      const config = loadConfig();
+      const config = loadAppConfig();
       return { success: true, config };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -22,10 +26,10 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     }
   });
 
-  // Save config to YAML
-  ipcMain.handle('config:save', async (_event, config: Record<string, unknown>) => {
+  // Save config to config.json
+  ipcMain.handle('config:save', async (_event, config: AppConfig) => {
     try {
-      saveConfig(config);
+      saveAppConfig(config);
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -38,18 +42,16 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     try {
       console.log('[check:setup] Checking if setup is complete...');
 
-      // Check if config exists and has required fields
+      // Check if config.json exists and has valid model configuration
       let hasValidConfig = false;
       try {
-        const config = loadConfig();
-        const hasLocalEnabled = config.ENABLE_LOCAL === true;
-        const hasApiEnabled = config.ENABLE_API === true;
+        const config = loadAppConfig();
 
         // Check if at least one model is configured
-        if (hasLocalEnabled && config.LOCAL_BASE_URL && config.LOCAL_MODEL) {
+        if (config.model.enableLocal && config.model.local.baseUrl && config.model.local.model) {
           hasValidConfig = true;
         }
-        if (hasApiEnabled && config.API_BASE_URL && config.API_KEY && config.API_MODEL) {
+        if (config.model.enableApi && config.model.api.baseUrl && config.model.api.key && config.model.api.model) {
           hasValidConfig = true;
         }
         console.log('[check:setup] Config valid:', hasValidConfig);
@@ -77,27 +79,26 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   // LEGACY: Check if initial setup is complete (checks config only)
   ipcMain.handle('config:checkSetup', async () => {
     try {
-      const config = loadConfig();
+      if (!configExists()) {
+        return { success: true, setupComplete: false };
+      }
 
-      // Check if config has required fields
-      const hasModel = config.MODEL === 'local' || config.MODEL === 'api';
-      const hasLocalEnabled = config.ENABLE_LOCAL === true;
-      const hasApiEnabled = config.ENABLE_API === true;
+      const config = loadAppConfig();
 
       // Check if at least one model is configured
       let isConfigured = false;
 
-      if (hasLocalEnabled && config.LOCAL_BASE_URL && config.LOCAL_MODEL) {
+      if (config.model.enableLocal && config.model.local.baseUrl && config.model.local.model) {
         isConfigured = true;
       }
 
-      if (hasApiEnabled && config.API_BASE_URL && config.API_KEY && config.API_MODEL) {
+      if (config.model.enableApi && config.model.api.baseUrl && config.model.api.key && config.model.api.model) {
         isConfigured = true;
       }
 
       return {
         success: true,
-        setupComplete: hasModel && isConfigured
+        setupComplete: isConfigured
       };
     } catch {
       // If config doesn't exist or error loading, setup is not complete
@@ -109,7 +110,7 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   ipcMain.handle('config:reset', async () => {
     try {
       console.log('[config:reset] Resetting configuration...');
-      resetConfig();
+      resetAppConfig();
       console.log('[config:reset] Configuration reset successful');
       return { success: true };
     } catch (error: unknown) {

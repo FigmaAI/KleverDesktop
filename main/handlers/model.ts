@@ -1,12 +1,14 @@
 /**
  * Model management IPC handlers
  * Handles model configuration, connection testing, and model fetching
+ *
+ * IMPORTANT: This handler saves model configuration to config.json (NOT config.yaml)
  */
 
 import { IpcMain } from 'electron';
 import * as https from 'https';
 import * as http from 'http';
-import { loadConfig, saveConfig } from '../utils/config-manager';
+import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 import { ModelConfig } from '../types';
 
 /**
@@ -80,99 +82,31 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
     }
   });
 
-  // Save model configuration
-  ipcMain.handle('model:saveConfig', async (_event, config: ModelConfig) => {
+  // Save model configuration to config.json
+  ipcMain.handle('model:saveConfig', async (_event, modelConfig: ModelConfig) => {
     try {
-      const yamlConfig = loadConfig();
+      // Load current config (or defaults)
+      const appConfig = loadAppConfig();
 
-      // Determine primary provider: if both enabled, prefer API
-      let modelProvider = 'local';
-      if (config.enableApi && config.enableLocal) {
-        modelProvider = 'api';
-      } else if (config.enableApi) {
-        modelProvider = 'api';
-      } else if (config.enableLocal) {
-        modelProvider = 'local';
-      }
+      // Update model configuration from the received ModelConfig
+      // Note: ModelConfig from renderer has flat structure (enableLocal, localBaseUrl, etc.)
+      // We need to convert it to nested structure for AppConfig
+      appConfig.model.enableLocal = modelConfig.enableLocal;
+      appConfig.model.enableApi = modelConfig.enableApi;
+      appConfig.model.local.baseUrl = modelConfig.localBaseUrl;
+      appConfig.model.local.model = modelConfig.localModel;
+      appConfig.model.api.baseUrl = modelConfig.apiBaseUrl;
+      appConfig.model.api.key = modelConfig.apiKey;
+      appConfig.model.api.model = modelConfig.apiModel;
 
-      // Update config
-      yamlConfig.MODEL = modelProvider;
-      yamlConfig.ENABLE_LOCAL = config.enableLocal;
-      yamlConfig.ENABLE_API = config.enableApi;
-      yamlConfig.API_BASE_URL = config.apiBaseUrl;
-      yamlConfig.API_KEY = config.apiKey;
-      yamlConfig.API_MODEL = config.apiModel;
-      yamlConfig.LOCAL_BASE_URL = config.localBaseUrl;
-      yamlConfig.LOCAL_MODEL = config.localModel;
-      
-      // Add required AppAgent parameters with defaults if not present
-      // Common Settings
-      if (!yamlConfig.MAX_TOKENS) {
-        yamlConfig.MAX_TOKENS = 4096;  // Increased for qwen3-vl:4b thinking mode
-      }
-      if (!yamlConfig.TEMPERATURE) {
-        yamlConfig.TEMPERATURE = 0.0;
-      }
-      if (!yamlConfig.REQUEST_INTERVAL) {
-        yamlConfig.REQUEST_INTERVAL = 10;
-      }
+      // Save updated config to config.json
+      saveAppConfig(appConfig);
 
-      // Android Configuration
-      if (!yamlConfig.ANDROID_SCREENSHOT_DIR) {
-        yamlConfig.ANDROID_SCREENSHOT_DIR = "/sdcard";
-      }
-      if (!yamlConfig.ANDROID_XML_DIR) {
-        yamlConfig.ANDROID_XML_DIR = "/sdcard";
-      }
-
-      // Web Configuration
-      if (!yamlConfig.WEB_BROWSER_TYPE) {
-        yamlConfig.WEB_BROWSER_TYPE = "chromium";
-      }
-      if (yamlConfig.WEB_HEADLESS === undefined) {
-        yamlConfig.WEB_HEADLESS = false;
-      }
-      if (!yamlConfig.WEB_VIEWPORT_WIDTH) {
-        yamlConfig.WEB_VIEWPORT_WIDTH = 1280;
-      }
-      if (!yamlConfig.WEB_VIEWPORT_HEIGHT) {
-        yamlConfig.WEB_VIEWPORT_HEIGHT = 720;
-      }
-
-      // Image Optimization
-      if (!yamlConfig.IMAGE_MAX_WIDTH) {
-        yamlConfig.IMAGE_MAX_WIDTH = 512;
-      }
-      if (!yamlConfig.IMAGE_MAX_HEIGHT) {
-        yamlConfig.IMAGE_MAX_HEIGHT = 512;
-      }
-      if (!yamlConfig.IMAGE_QUALITY) {
-        yamlConfig.IMAGE_QUALITY = 85;
-      }
-      if (yamlConfig.OPTIMIZE_IMAGES === undefined) {
-        yamlConfig.OPTIMIZE_IMAGES = true;
-      }
-
-      // Agent Behavior
-      if (yamlConfig.DOC_REFINE === undefined) {
-        yamlConfig.DOC_REFINE = false;
-      }
-      if (!yamlConfig.MAX_ROUNDS) {
-        yamlConfig.MAX_ROUNDS = 20;
-      }
-      if (yamlConfig.DARK_MODE === undefined) {
-        yamlConfig.DARK_MODE = false;
-      }
-      if (!yamlConfig.MIN_DIST) {
-        yamlConfig.MIN_DIST = 30;
-      }
-
-      // Save config
-      saveConfig(yamlConfig);
-
+      console.log('[model:saveConfig] Model configuration saved to config.json');
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[model:saveConfig] Error:', message);
       return { success: false, error: message };
     }
   });

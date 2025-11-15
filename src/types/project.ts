@@ -6,9 +6,13 @@ export interface Task {
   id: string
   name: string
   description?: string
-  goal: string // Task goal/objective (used as TASK_DESCRIPTION env var)
+  goal: string // Task goal/objective (passed as --task_desc CLI parameter)
   status: TaskStatus
-  model?: string // Model used for this task (e.g., "qwen3-vl:4b", "gpt-4o")
+  // Model override (optional) - if not specified, uses config.json defaults
+  modelProvider?: 'api' | 'local' // Passed as --model CLI parameter
+  modelName?: string // Passed as --model_name CLI parameter (e.g., "gpt-4o", "qwen3-vl:4b")
+  // Legacy field (deprecated, use modelProvider + modelName instead)
+  model?: string
   createdAt: string
   updatedAt: string
   lastRunAt?: string
@@ -16,7 +20,7 @@ export interface Task {
   completedAt?: string
   output?: string
   error?: string
-  url?: string
+  url?: string // Web platform only - passed as --url CLI parameter
 }
 
 export type ProjectStatus = 'active' | 'archived'
@@ -43,7 +47,8 @@ export interface TaskCreateInput {
   name: string
   description?: string
   goal: string
-  model?: string
+  modelProvider?: 'api' | 'local'
+  modelName?: string
   url?: string
 }
 

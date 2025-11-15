@@ -1,12 +1,18 @@
 /**
  * Task management IPC handlers
  * Handles CRUD operations for tasks and task execution
+ *
+ * IMPORTANT: Task execution now passes data via:
+ * - CLI parameters: Project info (app, platform, root_dir) + Task info (task_desc, url, model, model_name)
+ * - Environment variables: 23 config settings from config.json
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
+import { loadAppConfig } from '../utils/config-storage';
+import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -31,7 +37,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         name: taskInput.name,
         description: taskInput.description,
         goal: taskInput.goal,
-        model: taskInput.model,
+        modelProvider: taskInput.modelProvider,
+        modelName: taskInput.modelName,
         url: taskInput.url,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
@@ -125,12 +132,20 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       task.output = '';
       saveProjects(data);
 
+      // Load global config from config.json
+      const appConfig = loadAppConfig();
+
+      // Build 23 environment variables from config.json
+      const configEnvVars = buildEnvFromConfig(appConfig);
+
       // Start Python process
       const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
 
       // Sanitize app name (remove spaces) to match learn.py behavior
       const sanitizedAppName = sanitizeAppName(project.name);
 
+      // Build CLI parameters
+      // Project info (always required)
       const args = [
         scriptPath,
         '--platform', project.platform,
@@ -138,19 +153,33 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         '--root_dir', project.workspaceDir
       ];
 
+      // Task description (required) - passed as CLI parameter
+      const taskDescription = task.goal || task.description;
+      if (taskDescription) {
+        args.push('--task_desc', taskDescription);
+      }
+
+      // Web URL (required for web platform) - passed as CLI parameter
       if (project.platform === 'web' && task.url) {
         args.push('--url', task.url);
       }
 
-      // Set TASK_DESCRIPTION environment variable
-      // Use task.goal if available, otherwise use task.description
-      const taskDescription = task.goal || task.description;
+      // Model override (optional) - passed as CLI parameters
+      if (task.modelProvider) {
+        args.push('--model', task.modelProvider);
+      }
+      if (task.modelName) {
+        args.push('--model_name', task.modelName);
+      }
+
+      console.log('[task:start] Executing task with args:', args);
+      console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
       const taskProcess = spawn('python', args, {
         cwd: project.workspaceDir,
         env: {
-          ...process.env,
-          TASK_DESCRIPTION: taskDescription
+          ...process.env,       // System environment variables
+          ...configEnvVars      // 23 config settings from config.json
         }
       });
 
