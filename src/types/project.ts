@@ -20,6 +20,7 @@ export interface Task {
   completedAt?: string
   output?: string
   error?: string
+  resultPath?: string // Task result directory path
   url?: string // Web platform only - passed as --url CLI parameter
 }
 

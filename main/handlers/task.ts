@@ -4,7 +4,7 @@
  *
  * IMPORTANT: Task execution now passes data via:
  * - CLI parameters: Project info (app, platform, root_dir) + Task info (task_desc, url, model, model_name)
- * - Environment variables: 23 config settings from config.json
+ * - Environment variables: 24 config settings from config.json (including ANDROID_HOME)
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
@@ -127,27 +127,37 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         return { success: false, error: 'Task not found' };
       }
 
+      // Sanitize app name (remove spaces) to match learn.py behavior
+      const sanitizedAppName = sanitizeAppName(project.name);
+
+      // Calculate task directory path (matches Python script's logic)
+      // {workspaceDir}/apps/{sanitizedAppName}/demos/self_explore_{timestamp}
+      const appsDir = path.join(project.workspaceDir, 'apps', sanitizedAppName, 'demos');
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '-').replace(/\..+/, '').replace('T', '_');
+      const taskDirName = `self_explore_${timestamp}`;
+      const taskDir = path.join(appsDir, taskDirName);
+
       // Update task status
       task.status = 'running';
       task.startedAt = new Date().toISOString();
       task.output = '';
+      task.resultPath = taskDir;  // Store task directory path
       saveProjects(data);
 
       // Load global config from config.json
       const appConfig = loadAppConfig();
 
-      // Build 23 environment variables from config.json
+      // Build 24 environment variables from config.json
       const configEnvVars = buildEnvFromConfig(appConfig);
 
       // Start Python process
-      const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
-
-      // Sanitize app name (remove spaces) to match learn.py behavior
-      const sanitizedAppName = sanitizeAppName(project.name);
+      const appagentDir = path.join(process.cwd(), 'appagent');
+      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
 
       // Build CLI parameters
       // Project info (always required)
       const args = [
+        '-u',  // Unbuffered output for real-time logging
         scriptPath,
         '--platform', project.platform,
         '--app', sanitizedAppName,
@@ -174,15 +184,24 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       }
 
       console.log('[task:start] Executing task with args:', args);
+      console.log('[task:start] Working directory:', appagentDir);
       console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
+      console.log('[task:start] Android SDK path:', configEnvVars.ANDROID_HOME);
 
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
+
+      // Add Android SDK paths to PATH environment variable
+      const androidHome = configEnvVars.ANDROID_HOME;
+      const androidPaths = `${androidHome}/platform-tools:${androidHome}/emulator`;
+      const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
+
       const taskProcess = spawnVenvPython(args, {
-        cwd: project.workspaceDir,
+        cwd: appagentDir,  // ✅ Changed from project.workspaceDir to appagent directory
         env: {
           ...pythonEnv,         // Python venv environment variables
-          ...configEnvVars      // 23 config settings from config.json
+          ...configEnvVars,     // 24 config settings from config.json
+          PATH: updatedPath,    // Add Android SDK tools to PATH
         }
       });
 

@@ -16,6 +16,7 @@ interface TaskMarkdownDialogProps {
   onClose: () => void
   taskName: string
   workspaceDir: string
+  taskResultPath?: string  // Task-specific directory path
 }
 
 export function TaskMarkdownDialog({
@@ -23,6 +24,7 @@ export function TaskMarkdownDialog({
   onClose,
   taskName,
   workspaceDir,
+  taskResultPath,
 }: TaskMarkdownDialogProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -75,7 +77,9 @@ export function TaskMarkdownDialog({
 
   const handleOpenFolder = async () => {
     try {
-      await window.electronAPI.openPath(workspaceDir)
+      // Open task-specific directory if available, otherwise workspace
+      const pathToOpen = taskResultPath || workspaceDir
+      await window.electronAPI.openPath(pathToOpen)
     } catch (error) {
       console.error('Error opening folder:', error)
     }

@@ -19,6 +19,7 @@ export interface Task {
   // Legacy field (deprecated, use modelProvider + modelName instead)
   model?: string;
   output?: string;
+  resultPath?: string; // Task result directory path (e.g., {workspaceDir}/apps/{app}/demos/self_explore_{timestamp})
   createdAt: string;
   updatedAt: string;
   startedAt?: string;
