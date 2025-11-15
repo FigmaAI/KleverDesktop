@@ -1,6 +1,34 @@
-import { useState } from 'react'
-import { Box, Button, Sheet, Typography, Stack, Modal, ModalDialog, ModalClose, Divider, Alert, ToggleButtonGroup, useColorScheme } from '@mui/joy'
-import { Warning as WarningIcon, Error as ErrorIcon, DarkMode, LightMode, Contrast } from '@mui/icons-material'
+import { useState, useEffect } from 'react'
+import {
+  Box,
+  Button,
+  Sheet,
+  Typography,
+  Stack,
+  Modal,
+  ModalDialog,
+  ModalClose,
+  Divider,
+  Alert,
+  ToggleButtonGroup,
+  useColorScheme,
+  CircularProgress,
+} from '@mui/joy'
+import {
+  Warning as WarningIcon,
+  Error as ErrorIcon,
+  DarkMode,
+  LightMode,
+  Contrast,
+  Save as SaveIcon,
+  CheckCircle as CheckCircleIcon,
+} from '@mui/icons-material'
+import { useSettings } from '@/hooks/useSettings'
+import { ModelSettingsCard } from '@/components/ModelSettingsCard'
+import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
+import { AgentSettingsCard } from '@/components/AgentSettingsCard'
+import { ImageSettingsCard } from '@/components/ImageSettingsCard'
+import { SystemInfoCard } from '@/components/SystemInfoCard'
 
 export function Settings() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
@@ -8,15 +36,54 @@ export function Settings() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const { mode, setMode } = useColorScheme()
 
+  // Use the settings hook
+  const {
+    modelConfig,
+    setModelConfig,
+    platformSettings,
+    setPlatformSettings,
+    agentSettings,
+    setAgentSettings,
+    imageSettings,
+    setImageSettings,
+    systemInfo,
+    loading,
+    saving,
+    saveError,
+    saveSuccess,
+    saveSettings,
+  } = useSettings()
+
+  // Auto-save with debounce
+  const [hasChanges, setHasChanges] = useState(false)
+
+  useEffect(() => {
+    if (hasChanges && !loading) {
+      const timeoutId = window.setTimeout(() => {
+        saveSettings()
+        setHasChanges(false)
+      }, 1000) // Auto-save after 1 second of no changes
+
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [hasChanges, loading, saveSettings])
+
+  // Mark as changed whenever settings update
+  useEffect(() => {
+    if (!loading) {
+      setHasChanges(true)
+    }
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
+
   const handleResetConfig = async () => {
     setIsResetting(true)
     setErrorMessage(null)
-    
+
     try {
       console.log('[Settings] Calling configReset...')
       const result = await window.electronAPI.configReset()
       console.log('[Settings] configReset result:', result)
-      
+
       if (result.success) {
         console.log('[Settings] Configuration reset successful, redirecting to setup...')
         // Reload the page to trigger App.tsx to redirect to setup wizard
@@ -35,10 +102,48 @@ export function Settings() {
     }
   }
 
+  const handleManualSave = async () => {
+    await saveSettings()
+    setHasChanges(false)
+  }
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.body',
+        }}
+      >
+        <Stack spacing={2} alignItems="center">
+          <CircularProgress size="lg" />
+          <Typography level="body-md" textColor="text.secondary">
+            Loading settings...
+          </Typography>
+        </Stack>
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      <Box sx={{ p: 4, flex: 1 }}>
-        <Box sx={{ mb: 3 }}>
+      {/* Header with Save Button */}
+      <Box
+        sx={{
+          p: 3,
+          pb: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'background.surface',
+        }}
+      >
+        <Box>
           <Typography level="h2" fontWeight="bold">
             Settings
           </Typography>
@@ -46,8 +151,43 @@ export function Settings() {
             Configure your application preferences
           </Typography>
         </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          {saveSuccess && (
+            <Alert
+              color="success"
+              variant="soft"
+              size="sm"
+              startDecorator={<CheckCircleIcon />}
+            >
+              Saved!
+            </Alert>
+          )}
+          {saveError && (
+            <Alert
+              color="danger"
+              variant="soft"
+              size="sm"
+              startDecorator={<ErrorIcon />}
+            >
+              {saveError}
+            </Alert>
+          )}
+          <Button
+            color="primary"
+            startDecorator={<SaveIcon />}
+            onClick={handleManualSave}
+            loading={saving}
+            disabled={!hasChanges || saving}
+          >
+            {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
+          </Button>
+        </Stack>
+      </Box>
 
+      {/* Settings Content */}
+      <Box sx={{ p: 4, flex: 1, overflow: 'auto' }}>
         <Stack spacing={3}>
+          {/* Appearance */}
           <Sheet
             variant="outlined"
             sx={{
@@ -71,67 +211,35 @@ export function Settings() {
               }}
               sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
-              <Button
-                value="system"
-                startDecorator={<Contrast />}
-                sx={{ flex: { xs: 1, sm: 'none' } }}
-              >
+              <Button value="system" startDecorator={<Contrast />} sx={{ flex: { xs: 1, sm: 'none' } }}>
                 System
               </Button>
-              <Button
-                value="light"
-                startDecorator={<LightMode />}
-                sx={{ flex: { xs: 1, sm: 'none' } }}
-              >
+              <Button value="light" startDecorator={<LightMode />} sx={{ flex: { xs: 1, sm: 'none' } }}>
                 Light
               </Button>
-              <Button
-                value="dark"
-                startDecorator={<DarkMode />}
-                sx={{ flex: { xs: 1, sm: 'none' } }}
-              >
+              <Button value="dark" startDecorator={<DarkMode />} sx={{ flex: { xs: 1, sm: 'none' } }}>
                 Dark
               </Button>
             </ToggleButtonGroup>
           </Sheet>
 
-          <Sheet
-            variant="outlined"
-            sx={{
-              p: 3,
-              borderRadius: 'md',
-              bgcolor: 'background.surface',
-            }}
-          >
-            <Typography level="title-lg" sx={{ mb: 1 }}>
-              Model Configuration
-            </Typography>
-            <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-              Manage AI model settings
-            </Typography>
-            <Typography level="body-sm" textColor="text.secondary">
-              Coming soon...
-            </Typography>
-          </Sheet>
+          {/* Model Configuration */}
+          <ModelSettingsCard modelConfig={modelConfig} setModelConfig={setModelConfig} />
 
-          <Sheet
-            variant="outlined"
-            sx={{
-              p: 3,
-              borderRadius: 'md',
-              bgcolor: 'background.surface',
-            }}
-          >
-            <Typography level="title-lg" sx={{ mb: 1 }}>
-              Platform Tools
-            </Typography>
-            <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-              ADB and Playwright configuration
-            </Typography>
-            <Typography level="body-sm" textColor="text.secondary">
-              Coming soon...
-            </Typography>
-          </Sheet>
+          {/* Platform Configuration */}
+          <PlatformSettingsCard
+            platformSettings={platformSettings}
+            setPlatformSettings={setPlatformSettings}
+          />
+
+          {/* Agent Behavior */}
+          <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
+
+          {/* Image Optimization */}
+          <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
+
+          {/* System Information */}
+          <SystemInfoCard systemInfo={systemInfo} />
 
           <Divider sx={{ my: 2 }} />
 
@@ -171,28 +279,31 @@ export function Settings() {
             Reset Configuration?
           </Typography>
           <Divider />
-          
+
           {errorMessage && (
-            <Alert 
-              color="danger" 
-              variant="soft" 
-              startDecorator={<ErrorIcon />}
-              sx={{ mt: 2 }}
-            >
+            <Alert color="danger" variant="soft" startDecorator={<ErrorIcon />} sx={{ mt: 2 }}>
               <Box>
-                <Typography level="title-sm" fontWeight="bold">Error</Typography>
+                <Typography level="title-sm" fontWeight="bold">
+                  Error
+                </Typography>
                 <Typography level="body-sm">{errorMessage}</Typography>
               </Box>
             </Alert>
           )}
-          
+
           <Typography level="body-md" sx={{ mt: errorMessage ? 2 : 1 }}>
             This will delete all your settings including:
           </Typography>
           <Box component="ul" sx={{ pl: 3, mt: 1 }}>
-            <Typography component="li" level="body-sm">AI model configuration</Typography>
-            <Typography component="li" level="body-sm">API keys and endpoints</Typography>
-            <Typography component="li" level="body-sm">All other preferences</Typography>
+            <Typography component="li" level="body-sm">
+              AI model configuration
+            </Typography>
+            <Typography component="li" level="body-sm">
+              API keys and endpoints
+            </Typography>
+            <Typography component="li" level="body-sm">
+              All other preferences
+            </Typography>
           </Box>
           <Typography level="body-md" sx={{ mt: 2, fontWeight: 'bold' }}>
             You will be redirected to the setup wizard to reconfigure everything.
@@ -201,9 +312,9 @@ export function Settings() {
             This action cannot be undone.
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 2 }}>
-            <Button 
-              variant="plain" 
-              color="neutral" 
+            <Button
+              variant="plain"
+              color="neutral"
               onClick={() => {
                 setResetDialogOpen(false)
                 setErrorMessage(null)
