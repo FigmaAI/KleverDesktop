@@ -15,12 +15,10 @@ import {
   PhoneAndroid,
   Language,
   Delete as DeleteIcon,
-  PlayArrow,
-  CheckCircle,
-  Error as ErrorIcon,
   FolderOpen,
 } from '@mui/icons-material'
 import type { Project } from '../types/project'
+import { TaskStatusSummary } from './TaskStatusSummary'
 
 interface ProjectCardProps {
   project: Project
@@ -105,6 +103,9 @@ export function ProjectCard({
         sx={{
           cursor: clickable ? 'pointer' : 'default',
           transition: 'all 0.2s',
+          minHeight: '240px',
+          display: 'flex',
+          flexDirection: 'column',
           ...(clickable && {
             '&:hover': {
               boxShadow: 'md',
@@ -114,117 +115,101 @@ export function ProjectCard({
         }}
         onClick={handleClick}
       >
-        <CardContent>
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-              <Stack direction="row" spacing={1} alignItems="center">
-                {project.platform === 'android' ? (
-                  <PhoneAndroid color="primary" />
-                ) : (
-                  <Language color="primary" />
+        <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Stack spacing={2} sx={{ flex: 1, justifyContent: 'space-between' }}>
+            {/* Top Section: Name and Platform grouped together */}
+            <Stack spacing={1.5}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                <Stack direction="row" spacing={1} alignItems="center">
+                  {project.platform === 'android' ? (
+                    <PhoneAndroid color="primary" />
+                  ) : (
+                    <Language color="primary" />
+                  )}
+                  <Typography level="title-lg" fontWeight="bold">
+                    {project.name}
+                  </Typography>
+                </Stack>
+                {showDelete && (
+                  <IconButton
+                    size="sm"
+                    variant="plain"
+                    color="danger"
+                    onClick={handleDelete}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
                 )}
-                <Typography level="title-lg" fontWeight="bold">
-                  {project.name}
-                </Typography>
               </Stack>
-              {showDelete && (
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="danger"
-                  onClick={handleDelete}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              )}
-            </Stack>
 
-            <Stack direction="row" spacing={1}>
               <Chip
-                size="sm"
+                size="md"
                 variant="soft"
                 color={project.platform === 'android' ? 'primary' : 'success'}
               >
                 {project.platform}
               </Chip>
-              {statusSummary.total > 0 && (
-                <Chip size="sm" variant="soft" color="neutral">
-                  {statusSummary.total} {statusSummary.total === 1 ? 'task' : 'tasks'}
-                </Chip>
-              )}
             </Stack>
 
-            {statusSummary.total > 0 && !expand && (
-              <Stack spacing={1}>
-                <Typography level="body-xs" textColor="text.secondary">
-                  Task Status:
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {statusSummary.running > 0 && (
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color="primary"
-                      startDecorator={<PlayArrow />}
-                    >
-                      {statusSummary.running} running
-                    </Chip>
-                  )}
-                  {statusSummary.completed > 0 && (
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color="success"
-                      startDecorator={<CheckCircle />}
-                    >
-                      {statusSummary.completed} completed
-                    </Chip>
-                  )}
-                  {statusSummary.failed > 0 && (
-                    <Chip
-                      size="sm"
-                      variant="soft"
-                      color="danger"
-                      startDecorator={<ErrorIcon />}
-                    >
-                      {statusSummary.failed} failed
-                    </Chip>
-                  )}
-                </Stack>
-              </Stack>
-            )}
+            {/* Bottom Section: Task Status and Created Date */}
+            <Stack spacing={2}>
+              <TaskStatusSummary
+                total={statusSummary.total}
+                running={statusSummary.running}
+                completed={statusSummary.completed}
+                failed={statusSummary.failed}
+              />
 
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Typography 
-                level="body-xs" 
-                textColor="text.secondary"
-                sx={{
-                  minWidth: '120px'
-                }}
-              >
-                Created {new Date(project.createdAt).toLocaleDateString()}
-              </Typography>
-              {expand && (
-                <Chip
-                  startDecorator={<FolderOpen />}
-                  onClick={handleOpenWorkDir}
-                  sx={{
-                    cursor: 'cursor',
-                    minWidth: '160px',
-                    '& > span': {
+              {expand ? (
+                <Stack 
+                  direction="row" 
+                  spacing={1.5} 
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ width: '100%' }}
+                >
+                  <Typography 
+                    level="body-xs" 
+                    textColor="text.secondary"
+                    sx={{ 
+                      flex: 1,
+                      whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'block',
-                    }
+                      minWidth: 0,
+                    }}
+                  >
+                    Created {new Date(project.createdAt).toLocaleDateString()}
+                  </Typography>
+                  <Chip
+                    startDecorator={<FolderOpen />}
+                    onClick={handleOpenWorkDir}
+                    sx={{
+                      cursor: 'pointer',
+                      flex: 1,
+                      minWidth: 0,
+                      '& > span': {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }
+                    }}
+                  >
+                    {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
+                  </Chip>
+                </Stack>
+              ) : (
+                <Typography 
+                  level="body-xs" 
+                  textColor="text.secondary"
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 >
-                  {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
-                </Chip>
+                  Created {new Date(project.createdAt).toLocaleDateString()}
+                </Typography>
               )}
             </Stack>
           </Stack>
@@ -254,54 +239,23 @@ export function ProjectCard({
               <Typography level="title-md" fontWeight="bold">
                 {project.name}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
                 <Chip
-                  size="sm"
+                  size="md"
                   variant="soft"
                   color={project.platform === 'android' ? 'primary' : 'success'}
                 >
                   {project.platform}
                 </Chip>
-                {statusSummary.total > 0 && (
-                  <Chip size="sm" variant="soft" color="neutral">
-                    {statusSummary.total} {statusSummary.total === 1 ? 'task' : 'tasks'}
-                  </Chip>
-                )}
-                {!expand && (
-                  <>
-                    {statusSummary.running > 0 && (
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        color="primary"
-                        startDecorator={<PlayArrow />}
-                      >
-                        {statusSummary.running}
-                      </Chip>
-                    )}
-                    {statusSummary.completed > 0 && (
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        color="success"
-                        startDecorator={<CheckCircle />}
-                      >
-                        {statusSummary.completed}
-                      </Chip>
-                    )}
-                    {statusSummary.failed > 0 && (
-                      <Chip
-                        size="sm"
-                        variant="soft"
-                        color="danger"
-                        startDecorator={<ErrorIcon />}
-                      >
-                        {statusSummary.failed}
-                      </Chip>
-                    )}
-                  </>
-                )}
               </Stack>
+              <Box sx={{ mt: 1.5 }}>
+                <TaskStatusSummary
+                  total={statusSummary.total}
+                  running={statusSummary.running}
+                  completed={statusSummary.completed}
+                  failed={statusSummary.failed}
+                />
+              </Box>
               {expand && (
                 <Typography
                   level="body-sm"

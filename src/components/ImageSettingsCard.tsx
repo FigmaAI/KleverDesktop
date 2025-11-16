@@ -5,10 +5,10 @@ import {
   Stack,
   FormControl,
   FormLabel,
-  FormHelperText,
   Slider,
   Switch,
   Alert,
+  Tooltip,
 } from '@mui/joy'
 import { Info as InfoIcon } from '@mui/icons-material'
 import { ImageSettings } from '@/hooks/useSettings'
@@ -44,9 +44,9 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
         <FormControl orientation="horizontal" sx={{ justifyContent: 'space-between' }}>
           <Box>
             <FormLabel>Enable Image Optimization</FormLabel>
-            <FormHelperText>
+            <Typography level="body-sm" textColor="text.secondary">
               Compress and resize images to reduce file size and improve performance
-            </FormHelperText>
+            </Typography>
           </Box>
           <Switch
             checked={imageSettings.optimizeImages}
@@ -63,95 +63,89 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
           <>
             {/* Max Width */}
             <FormControl>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <FormLabel>Maximum Width</FormLabel>
-                <Typography level="body-sm" fontWeight="bold">
-                  {imageSettings.imageMaxWidth}px
-                </Typography>
+              <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <Tooltip title="Images wider than this will be resized while maintaining aspect ratio" arrow>
+                  <FormLabel sx={{ minWidth: 150 }}>Maximum Width</FormLabel>
+                </Tooltip>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Slider
+                    value={imageSettings.imageMaxWidth}
+                    onChange={(_, value) =>
+                      setImageSettings({
+                        ...imageSettings,
+                        imageMaxWidth: value as number,
+                      })
+                    }
+                    min={256}
+                    max={2048}
+                    step={64}
+                    marks={false}
+                    valueLabelDisplay="on"
+                    sx={{ flex: 1 }}
+                  />
+                  <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
+                    {imageSettings.imageMaxWidth}px
+                  </Typography>
+                </Box>
               </Box>
-              <Slider
-                value={imageSettings.imageMaxWidth}
-                onChange={(_, value) =>
-                  setImageSettings({
-                    ...imageSettings,
-                    imageMaxWidth: value as number,
-                  })
-                }
-                min={256}
-                max={2048}
-                step={64}
-                marks={[
-                  { value: 256, label: '256' },
-                  { value: 512, label: '512' },
-                  { value: 1024, label: '1024' },
-                  { value: 2048, label: '2048' },
-                ]}
-              />
-              <FormHelperText>
-                Images wider than this will be resized while maintaining aspect ratio
-              </FormHelperText>
             </FormControl>
 
             {/* Max Height */}
             <FormControl>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <FormLabel>Maximum Height</FormLabel>
-                <Typography level="body-sm" fontWeight="bold">
-                  {imageSettings.imageMaxHeight}px
-                </Typography>
+              <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <Tooltip title="Images taller than this will be resized while maintaining aspect ratio" arrow>
+                  <FormLabel sx={{ minWidth: 150 }}>Maximum Height</FormLabel>
+                </Tooltip>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Slider
+                    value={imageSettings.imageMaxHeight}
+                    onChange={(_, value) =>
+                      setImageSettings({
+                        ...imageSettings,
+                        imageMaxHeight: value as number,
+                      })
+                    }
+                    min={256}
+                    max={2048}
+                    step={64}
+                    marks={false}
+                    valueLabelDisplay="on"
+                    sx={{ flex: 1 }}
+                  />
+                  <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
+                    {imageSettings.imageMaxHeight}px
+                  </Typography>
+                </Box>
               </Box>
-              <Slider
-                value={imageSettings.imageMaxHeight}
-                onChange={(_, value) =>
-                  setImageSettings({
-                    ...imageSettings,
-                    imageMaxHeight: value as number,
-                  })
-                }
-                min={256}
-                max={2048}
-                step={64}
-                marks={[
-                  { value: 256, label: '256' },
-                  { value: 512, label: '512' },
-                  { value: 1024, label: '1024' },
-                  { value: 2048, label: '2048' },
-                ]}
-              />
-              <FormHelperText>
-                Images taller than this will be resized while maintaining aspect ratio
-              </FormHelperText>
             </FormControl>
 
             {/* Image Quality */}
             <FormControl>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <FormLabel>Image Quality</FormLabel>
-                <Typography level="body-sm" fontWeight="bold">
-                  {imageSettings.imageQuality}%
-                </Typography>
+              <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <Tooltip title="JPEG compression quality (higher = better quality, larger files)" arrow>
+                  <FormLabel sx={{ minWidth: 150 }}>Image Quality</FormLabel>
+                </Tooltip>
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Slider
+                    value={imageSettings.imageQuality}
+                    onChange={(_, value) =>
+                      setImageSettings({
+                        ...imageSettings,
+                        imageQuality: value as number,
+                      })
+                    }
+                    min={10}
+                    max={100}
+                    step={5}
+                    marks={false}
+                    valueLabelDisplay="on"
+                    sx={{ flex: 1 }}
+                  />
+                  <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
+                    {imageSettings.imageQuality}%
+                  </Typography>
+                </Box>
               </Box>
-              <Slider
-                value={imageSettings.imageQuality}
-                onChange={(_, value) =>
-                  setImageSettings({
-                    ...imageSettings,
-                    imageQuality: value as number,
-                  })
-                }
-                min={10}
-                max={100}
-                step={5}
-                marks={[
-                  { value: 10, label: 'Low' },
-                  { value: 50, label: 'Medium' },
-                  { value: 85, label: 'High' },
-                  { value: 100, label: 'Max' },
-                ]}
-              />
-              <FormHelperText>
-                JPEG compression quality (higher = better quality, larger files)
-              </FormHelperText>
             </FormControl>
 
             {/* Estimated Size Info */}

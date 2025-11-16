@@ -9,10 +9,48 @@ interface OllamaModel {
 }
 
 interface AppConfig {
-  modelProvider?: 'ollama' | 'api';
-  ollamaModel?: string;
-  apiKey?: string;
-  [key: string]: unknown;
+  version: string;
+  model: {
+    enableLocal: boolean;
+    enableApi: boolean;
+    api: {
+      baseUrl: string;
+      key: string;
+      model: string;
+    };
+    local: {
+      baseUrl: string;
+      model: string;
+    };
+  };
+  execution: {
+    maxTokens: number;
+    temperature: number;
+    requestInterval: number;
+    maxRounds: number;
+  };
+  android: {
+    screenshotDir: string;
+    xmlDir: string;
+    sdkPath: string;
+  };
+  web: {
+    browserType: 'chromium' | 'firefox' | 'webkit';
+    headless: boolean;
+    viewportWidth: number;
+    viewportHeight: number;
+  };
+  image: {
+    maxWidth: number;
+    maxHeight: number;
+    quality: number;
+    optimize: boolean;
+  };
+  preferences: {
+    darkMode: boolean;
+    minDist: number;
+    docRefine: boolean;
+  };
 }
 
 declare global {
@@ -46,7 +84,7 @@ declare global {
       installPython: () => Promise<{ success: boolean; output?: string; error?: string }>;
       checkHomebrew: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
-      checkAndroidStudio: () => Promise<{ success: boolean; version?: string; error?: string }>;
+      checkAndroidStudio: () => Promise<{ success: boolean; version?: string; path?: string; method?: string; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
       // Ollama operations

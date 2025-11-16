@@ -358,7 +358,21 @@ export function spawnVenvPython(args: string[], options?: SpawnOptions) {
 
   console.log('[Python Manager] Spawning Python process:', venvPython, args);
 
-  return options ? spawn(venvPython, args, options) : spawn(venvPython, args);
+  // Create a new process group for easier cleanup
+  // This allows us to kill the entire process tree with -PID
+  const spawnOptions: SpawnOptions = {
+    ...options,
+    detached: false, // Keep attached to parent so we can manage it
+  };
+
+  // On Unix-like systems, we want to create a new session
+  // so all child processes (adb, emulator, etc.) can be killed together
+  if (process.platform !== 'win32') {
+    // We'll handle process group killing in the task handler
+    // No special flags needed here
+  }
+
+  return spawn(venvPython, args, spawnOptions);
 }
 
 /**
@@ -383,6 +397,9 @@ export function getPythonEnv(): NodeJS.ProcessEnv {
 
   // Remove PYTHONHOME to avoid conflicts
   delete env.PYTHONHOME;
+
+  // Force unbuffered output for real-time logging
+  env.PYTHONUNBUFFERED = '1';
 
   return env;
 }

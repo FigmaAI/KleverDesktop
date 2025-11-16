@@ -16,6 +16,8 @@ export function usePlatformTools() {
     homebrew: { checking: true, installed: false, installing: false },
   })
 
+  const [androidSdkPath, setAndroidSdkPath] = useState<string>('')
+
   const checkPlatformTools = useCallback(async () => {
     // Check Homebrew (macOS only)
     const isMac = window.navigator.platform.toLowerCase().includes('mac')
@@ -94,11 +96,17 @@ export function usePlatformTools() {
     setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, checking: true } }))
     try {
       const result = await window.electronAPI.checkAndroidStudio()
-      console.log('Android Studio Check Result:', result)
+      console.log('[usePlatformTools] Android Studio Check Result:', result)
       setToolsStatus((prev) => ({
         ...prev,
         androidStudio: { checking: false, installed: result.success, error: result.error, installing: false },
       }))
+
+      // Save Android SDK path if detected
+      if (result.success && result.path) {
+        console.log('[usePlatformTools] Android SDK path detected:', result.path)
+        setAndroidSdkPath(result.path)
+      }
     } catch {
       setToolsStatus((prev) => ({ ...prev, androidStudio: { checking: false, installed: false, installing: false } }))
     }
@@ -108,5 +116,7 @@ export function usePlatformTools() {
     toolsStatus,
     setToolsStatus,
     checkPlatformTools,
+    androidSdkPath,
+    setAndroidSdkPath,
   }
 }

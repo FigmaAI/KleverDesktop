@@ -35,8 +35,10 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
-    // Cleanup processes on window close
-    cleanupAllProcesses();
+    // Cleanup processes on window close (async, but don't wait)
+    cleanupAllProcesses().catch((err) => {
+      console.error('Error during cleanup:', err);
+    });
   });
 }
 
@@ -68,6 +70,8 @@ app.on('activate', () => {
 });
 
 // Cleanup on app quit
-app.on('quit', () => {
-  cleanupAllProcesses();
+app.on('before-quit', async (event) => {
+  event.preventDefault();
+  await cleanupAllProcesses();
+  app.exit(0);
 });

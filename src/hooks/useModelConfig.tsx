@@ -64,7 +64,7 @@ export function useModelConfig(currentStep: number) {
 
   // Auto-fetch Ollama models when local model is enabled
   useEffect(() => {
-    if (modelConfig.enableLocal && currentStep === 1) {
+    if (modelConfig.enableLocal && currentStep === 2) {
       fetchOllamaModels()
     }
   }, [modelConfig.enableLocal, currentStep, fetchOllamaModels])
@@ -108,7 +108,7 @@ export function useModelConfig(currentStep: number) {
 
   // Auto-fetch API models when URL or key changes
   useEffect(() => {
-    if (modelConfig.enableApi && modelConfig.apiBaseUrl && currentStep === 1) {
+    if (modelConfig.enableApi && modelConfig.apiBaseUrl && currentStep === 2) {
       const timeoutId = window.setTimeout(() => {
         fetchApiModels()
       }, 500) // Debounce API calls

@@ -6,21 +6,65 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { app } from 'electron';
 import { ProjectsData } from '../types';
 
 /**
  * Get the path to the projects storage file
- * @returns Path to ~/.klever-desktop/projects.json
+ * Now uses Electron userData path for consistency with config.json
+ * @returns Path to ~/Library/Application Support/klever-desktop/projects.json (macOS)
  */
 export function getProjectsStoragePath(): string {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'projects.json');
+}
+
+/**
+ * Get the legacy projects storage path (for migration)
+ * @returns Path to ~/.klever-desktop/projects.json
+ */
+function getLegacyProjectsStoragePath(): string {
   const homeDir = os.homedir();
   const storageDir = path.join(homeDir, '.klever-desktop');
+  return path.join(storageDir, 'projects.json');
+}
 
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
+/**
+ * Migrate projects.json from legacy location to new userData location
+ * This runs automatically on first load
+ */
+function migrateProjectsIfNeeded(): void {
+  const newPath = getProjectsStoragePath();
+  const legacyPath = getLegacyProjectsStoragePath();
+
+  // If new location already has projects.json, no migration needed
+  if (fs.existsSync(newPath)) {
+    return;
   }
 
-  return path.join(storageDir, 'projects.json');
+  // If legacy location has projects.json, migrate it
+  if (fs.existsSync(legacyPath)) {
+    try {
+      console.log('[project-storage] Migrating projects.json from legacy location');
+      console.log('[project-storage] From:', legacyPath);
+      console.log('[project-storage] To:', newPath);
+
+      // Ensure userData directory exists
+      const userDataPath = app.getPath('userData');
+      if (!fs.existsSync(userDataPath)) {
+        fs.mkdirSync(userDataPath, { recursive: true });
+      }
+
+      // Copy the file
+      const data = fs.readFileSync(legacyPath, 'utf8');
+      fs.writeFileSync(newPath, data, 'utf8');
+
+      console.log('[project-storage] Migration successful');
+      console.log('[project-storage] Legacy file will be kept for backup');
+    } catch (error) {
+      console.error('[project-storage] Migration failed:', error);
+    }
+  }
 }
 
 /**
@@ -28,6 +72,9 @@ export function getProjectsStoragePath(): string {
  * @returns Projects data object
  */
 export function loadProjects(): ProjectsData {
+  // Migrate from legacy location if needed
+  migrateProjectsIfNeeded();
+
   const projectsPath = getProjectsStoragePath();
 
   if (!fs.existsSync(projectsPath)) {

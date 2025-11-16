@@ -1,15 +1,79 @@
 /**
  * Task management IPC handlers
  * Handles CRUD operations for tasks and task execution
+ *
+ * IMPORTANT: Task execution now passes data via:
+ * - CLI parameters: Project info (app, platform, root_dir) + Task info (task_desc, url, model, model_name)
+ * - Environment variables: 22 config settings from config.json
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn, ChildProcess } from 'child_process';
+import { ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
+import { loadAppConfig } from '../utils/config-storage';
+import { buildEnvFromConfig } from '../utils/config-env-builder';
+import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
+
+/**
+ * Check if there are any pending or running Android tasks across all projects
+ * If not, stop the emulator to save resources
+ */
+async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProjects>): Promise<void> {
+  // Check all projects for pending/running Android tasks
+  const hasActiveAndroidTasks = projectsData.projects.some((project) => {
+    if (project.platform !== 'android') return false;
+    return project.tasks.some((task) => task.status === 'pending' || task.status === 'running');
+  });
+
+  if (!hasActiveAndroidTasks) {
+    console.log('[emulator-cleanup] No active Android tasks found. Stopping emulator...');
+    
+    try {
+      // Call Python script to stop emulator
+      const appagentDir = path.join(process.cwd(), 'appagent');
+      const pythonEnv = getPythonEnv();
+      
+      // Run cleanup script using Python -c with inline code
+      const cleanupCode = `
+import sys
+sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
+from scripts.and_controller import stop_emulator
+stop_emulator()
+`;
+      
+      const cleanupProcess = spawnVenvPython(['-u', '-c', cleanupCode], {
+        cwd: appagentDir,
+        env: pythonEnv,
+      });
+
+      cleanupProcess.stdout?.on('data', (data) => {
+        console.log('[emulator-cleanup]', data.toString().trim());
+      });
+
+      cleanupProcess.stderr?.on('data', (data) => {
+        console.error('[emulator-cleanup]', data.toString().trim());
+      });
+
+      cleanupProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log('[emulator-cleanup] ✓ Emulator stopped successfully');
+        } else {
+          console.error('[emulator-cleanup] Failed to stop emulator (exit code:', code, ')');
+        }
+      });
+    } catch (error) {
+      console.error('[emulator-cleanup] Error stopping emulator:', error);
+    }
+  } else {
+    console.log('[emulator-cleanup] Active Android tasks found. Keeping emulator running.');
+  }
+}
 
 /**
  * Register all task management handlers
@@ -31,7 +95,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         name: taskInput.name,
         description: taskInput.description,
         goal: taskInput.goal,
-        model: taskInput.model,
+        modelProvider: taskInput.modelProvider,
+        modelName: taskInput.modelName,
         url: taskInput.url,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
@@ -93,6 +158,22 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         return { success: false, error: 'Task not found' };
       }
 
+      const task = project.tasks[taskIndex];
+
+      // Delete task result folder if it exists
+      if (task.resultPath) {
+        try {
+          if (fs.existsSync(task.resultPath)) {
+            console.log(`[task:delete] Deleting task result folder: ${task.resultPath}`);
+            fs.rmSync(task.resultPath, { recursive: true, force: true });
+            console.log(`[task:delete] ✓ Task result folder deleted`);
+          }
+        } catch (fsError) {
+          console.warn(`[task:delete] Failed to delete result folder: ${fsError}`);
+          // Continue with task deletion even if folder deletion fails
+        }
+      }
+
       project.tasks.splice(taskIndex, 1);
       project.updatedAt = new Date().toISOString();
       saveProjects(data);
@@ -119,45 +200,103 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         return { success: false, error: 'Task not found' };
       }
 
+      // Sanitize app name (remove spaces) to match learn.py behavior
+      const sanitizedAppName = sanitizeAppName(project.name);
+
+      // Calculate task directory path (matches Python script's logic)
+      // {workspaceDir}/apps/{sanitizedAppName}/demos/self_explore_{timestamp}
+      const appsDir = path.join(project.workspaceDir, 'apps', sanitizedAppName, 'demos');
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '-').replace(/\..+/, '').replace('T', '_');
+      const taskDirName = `self_explore_${timestamp}`;
+      const taskDir = path.join(appsDir, taskDirName);
+
+      console.log('[task:start] Calculated task directory:', taskDir);
+
       // Update task status
       task.status = 'running';
       task.startedAt = new Date().toISOString();
       task.output = '';
+      task.resultPath = taskDir;  // Store task directory path
+
+      console.log('[task:start] Task before save:', JSON.stringify({
+        id: task.id,
+        resultPath: task.resultPath,
+        status: task.status
+      }, null, 2));
+
       saveProjects(data);
 
+      console.log('[task:start] Projects saved successfully');
+
+      // Load global config from config.json
+      const appConfig = loadAppConfig();
+
+      // Build 24 environment variables from config.json
+      const configEnvVars = buildEnvFromConfig(appConfig);
+
       // Start Python process
-      const scriptPath = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
+      const appagentDir = path.join(process.cwd(), 'appagent');
+      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
 
-      // Sanitize app name (remove spaces) to match learn.py behavior
-      const sanitizedAppName = sanitizeAppName(project.name);
-
+      // Build CLI parameters
+      // Project info (always required)
       const args = [
+        '-u',  // Unbuffered output for real-time logging
         scriptPath,
         '--platform', project.platform,
         '--app', sanitizedAppName,
-        '--root_dir', project.workspaceDir
+        '--root_dir', project.workspaceDir,
+        '--task_dir', taskDir,
       ];
 
+      // Task description (required) - passed as CLI parameter
+      const taskDescription = task.goal || task.description;
+      if (taskDescription) {
+        args.push('--task_desc', taskDescription);
+      }
+
+      // Web URL (required for web platform) - passed as CLI parameter
       if (project.platform === 'web' && task.url) {
         args.push('--url', task.url);
       }
 
-      // Set TASK_DESCRIPTION environment variable
-      // Use task.goal if available, otherwise use task.description
-      const taskDescription = task.goal || task.description;
+      // Model override (optional) - passed as CLI parameters
+      if (task.modelProvider) {
+        args.push('--model', task.modelProvider);
+      }
+      if (task.modelName) {
+        args.push('--model_name', task.modelName);
+      }
 
-      const taskProcess = spawn('python', args, {
-        cwd: project.workspaceDir,
+      console.log('[task:start] Executing task with args:', args);
+      console.log('[task:start] Working directory:', appagentDir);
+      console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
+
+      // Get Python environment and merge with config environment variables
+      const pythonEnv = getPythonEnv();
+
+      // Add Android SDK default paths to PATH for adb/emulator detection
+      const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
+      const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
+      const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
+
+      const taskProcess = spawnVenvPython(args, {
+        cwd: appagentDir,  // ✅ Changed from project.workspaceDir to appagent directory
         env: {
-          ...process.env,
-          TASK_DESCRIPTION: taskDescription
+          ...pythonEnv,         // Python venv environment variables (includes PYTHONUNBUFFERED=1)
+          ...configEnvVars,     // 22 config settings from config.json
+          PATH: updatedPath,    // Add Android SDK tools to PATH
+          PYTHONUNBUFFERED: '1', // Force unbuffered output (redundant but explicit)
         }
       });
 
       taskProcesses.set(taskId, taskProcess);
 
+      console.log(`[task:start] Task process started with PID: ${taskProcess.pid}`);
+
       taskProcess.stdout?.on('data', (data) => {
         const output = data.toString();
+        console.log(`[task:${taskId}] stdout:`, output.substring(0, 100));
         mainWindow?.webContents.send('task:output', { projectId, taskId, output });
 
         // Append to task output
@@ -172,6 +311,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       taskProcess.stderr?.on('data', (data) => {
         const error = data.toString();
+        console.log(`[task:${taskId}] stderr:`, error.substring(0, 100));
         mainWindow?.webContents.send('task:error', { projectId, taskId, error });
 
         // Append to task output (stderr also goes to output)
@@ -184,20 +324,41 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         }
       });
 
-      taskProcess.on('close', (code) => {
+      taskProcess.on('close', async (code) => {
+        console.log(`[task:${taskId}] Process closed with code: ${code}`);
+        
         const currentData = loadProjects();
         const currentProject = currentData.projects.find((p) => p.id === projectId);
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
 
         if (currentTask) {
-          currentTask.status = code === 0 ? 'completed' : 'failed';
+          const newStatus = code === 0 ? 'completed' : 'failed';
+          console.log(`[task:${taskId}] Updating status: ${currentTask.status} -> ${newStatus}`);
+          
+          currentTask.status = newStatus;
           currentTask.completedAt = new Date().toISOString();
           currentTask.updatedAt = new Date().toISOString();
           saveProjects(currentData);
+          
+          console.log(`[task:${taskId}] Status updated and saved`);
         }
 
         mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
         taskProcesses.delete(taskId);
+
+        // Auto-cleanup emulator if no more pending Android tasks
+        if (currentProject?.platform === 'android') {
+          await cleanupEmulatorIfIdle(currentData);
+        }
+      });
+
+      taskProcess.on('error', (error) => {
+        console.error(`[task:${taskId}] Process error:`, error);
+        mainWindow?.webContents.send('task:error', { 
+          projectId, 
+          taskId, 
+          error: `Process error: ${error.message}` 
+        });
       });
 
       return { success: true, pid: taskProcess.pid };
@@ -229,6 +390,11 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         saveProjects(data);
       }
 
+      // Auto-cleanup emulator if no more pending Android tasks
+      if (project?.platform === 'android') {
+        await cleanupEmulatorIfIdle(data);
+      }
+
       return { success: true };
     } catch (error: unknown) {
       return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
@@ -239,11 +405,48 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 /**
  * Cleanup function to kill all task processes on app exit
  */
-export function cleanupTaskProcesses(): void {
+export async function cleanupTaskProcesses(): Promise<void> {
   taskProcesses.forEach((process) => {
     if (!process.killed) {
       process.kill('SIGTERM');
     }
   });
   taskProcesses.clear();
+
+  // Always cleanup emulators on app exit
+  try {
+    console.log('[app-exit] Cleaning up emulators...');
+    const appagentDir = path.join(process.cwd(), 'appagent');
+    const pythonEnv = getPythonEnv();
+    
+    const cleanupCode = `
+import sys
+sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
+from scripts.and_controller import cleanup_emulators
+cleanup_emulators()
+`;
+    
+    const cleanupProcess = spawnVenvPython(['-u', '-c', cleanupCode], {
+      cwd: appagentDir,
+      env: pythonEnv,
+    });
+
+    // Wait for cleanup to complete
+    await new Promise<void>((resolve) => {
+      cleanupProcess.on('close', () => {
+        console.log('[app-exit] ✓ Emulator cleanup completed');
+        resolve();
+      });
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (!cleanupProcess.killed) {
+          cleanupProcess.kill('SIGTERM');
+        }
+        resolve();
+      }, 5000);
+    });
+  } catch (error) {
+    console.error('[app-exit] Error cleaning up emulators:', error);
+  }
 }

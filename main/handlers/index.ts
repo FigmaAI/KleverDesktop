@@ -35,7 +35,7 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
 /**
  * Cleanup all processes on app exit
  */
-export function cleanupAllProcesses(): void {
+export async function cleanupAllProcesses(): Promise<void> {
   cleanupProjectProcesses();
-  cleanupTaskProcesses();
+  await cleanupTaskProcesses();
 }

@@ -284,6 +284,7 @@ export function ProjectDetail() {
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
         projectId={id!}
+        projectName={project.name}
         platform={project.platform}
         onTaskCreated={() => {
           loadProject()

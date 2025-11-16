@@ -13,9 +13,10 @@ import {
   TabList,
   Tab,
   TabPanel,
+  Button,
 } from '@mui/joy'
 import { useState } from 'react'
-import { Android, Language } from '@mui/icons-material'
+import { Android, Language, FolderOpen } from '@mui/icons-material'
 import { PlatformSettings } from '@/hooks/useSettings'
 
 interface PlatformSettingsCardProps {
@@ -25,6 +26,16 @@ interface PlatformSettingsCardProps {
 
 export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: PlatformSettingsCardProps) {
   const [activeTab, setActiveTab] = useState<number>(0)
+
+  const handleBrowseSdkPath = async () => {
+    const selectedPath = await window.electronAPI.showFolderSelectDialog()
+    if (selectedPath) {
+      setPlatformSettings({
+        ...platformSettings,
+        androidSdkPath: selectedPath,
+      })
+    }
+  }
 
   return (
     <Sheet
@@ -58,6 +69,34 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
         <TabPanel value={0}>
           <Stack spacing={2.5}>
             <FormControl>
+              <FormLabel>Android SDK Path</FormLabel>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Input
+                  value={platformSettings.androidSdkPath}
+                  onChange={(e) =>
+                    setPlatformSettings({
+                      ...platformSettings,
+                      androidSdkPath: e.target.value,
+                    })
+                  }
+                  placeholder="/Volumes/Backup/Android-SDK"
+                  sx={{ flex: 1 }}
+                />
+                <Button
+                  variant="outlined"
+                  color="neutral"
+                  startDecorator={<FolderOpen />}
+                  onClick={handleBrowseSdkPath}
+                >
+                  Browse
+                </Button>
+              </Box>
+              <FormHelperText>
+                Path to Android SDK directory (contains platform-tools and emulator folders)
+              </FormHelperText>
+            </FormControl>
+
+            <FormControl>
               <FormLabel>Screenshot Directory</FormLabel>
               <Input
                 value={platformSettings.androidScreenshotDir}
@@ -67,7 +106,7 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                     androidScreenshotDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard"
+                placeholder="/sdcard/Pictures"
               />
               <FormHelperText>
                 Path on Android device where screenshots will be saved
@@ -84,7 +123,7 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                     androidXmlDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard"
+                placeholder="/sdcard/Documents"
               />
               <FormHelperText>
                 Path on Android device where UI hierarchy XML files will be saved

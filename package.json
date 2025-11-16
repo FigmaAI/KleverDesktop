@@ -76,6 +76,7 @@
       "!appagent/**/__pycache__"
     ],
     "mac": {
+      "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
       "target": [
         "dmg",
@@ -83,12 +84,14 @@
       ]
     },
     "win": {
+      "icon": "build/icon.png",
       "target": [
         "nsis",
         "zip"
       ]
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage",
         "deb"
