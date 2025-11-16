@@ -117,5 +117,6 @@ export function usePlatformTools() {
     setToolsStatus,
     checkPlatformTools,
     androidSdkPath,
+    setAndroidSdkPath,
   }
 }

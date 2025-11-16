@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Box, Typography, Stack, Button } from '@mui/joy'
 import { SetupStepper } from '@/components/SetupStepper'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
+import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
@@ -12,6 +13,7 @@ import { StepConfig } from '@/types/setupWizard'
 
 const steps: StepConfig[] = [
   { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
+  { label: 'Platform Config', description: 'Configure Android SDK path' },
   { label: 'Model Setup', description: 'Configure Ollama or API' },
   { label: 'Final Check', description: 'Run integration test' },
 ]
@@ -20,7 +22,7 @@ export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
 
   // Platform tools hook
-  const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath } = usePlatformTools()
+  const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
 
   // Model configuration hook
   const {
@@ -165,6 +167,11 @@ export function SetupWizard() {
     )
   }
 
+  const canProceedFromStep1 = () => {
+    // Android SDK path is optional but recommended
+    return true
+  }
+
   const canProceedFromStep2 = () => {
     return (
       (modelConfig.enableLocal || modelConfig.enableApi) &&
@@ -222,8 +229,16 @@ export function SetupWizard() {
                   />
                 )}
 
-                {/* Step 1: Model Configuration */}
+                {/* Step 1: Platform Configuration */}
                 {currentStep === 1 && (
+                  <PlatformConfigStep
+                    androidSdkPath={androidSdkPath}
+                    setAndroidSdkPath={setAndroidSdkPath}
+                  />
+                )}
+
+                {/* Step 2: Model Configuration */}
+                {currentStep === 2 && (
                   <ModelConfigStep
                     modelConfig={modelConfig}
                     setModelConfig={setModelConfig}
@@ -245,8 +260,8 @@ export function SetupWizard() {
                   />
                 )}
 
-                {/* Step 2: Integration Test */}
-                {currentStep === 2 && (
+                {/* Step 3: Integration Test */}
+                {currentStep === 3 && (
                   <IntegrationTestStep
                     integrationTestRunning={integrationTestRunning}
                     integrationTestComplete={integrationTestComplete}
@@ -289,6 +304,16 @@ export function SetupWizard() {
                   Next
                 </Button>
               ) : currentStep === 1 ? (
+                <Button
+                  variant="solid"
+                  color="primary"
+                  onClick={handleNext}
+                  disabled={!canProceedFromStep1()}
+                  sx={{ minWidth: 100 }}
+                >
+                  Next
+                </Button>
+              ) : currentStep === 2 ? (
                 <Button
                   variant="solid"
                   color="primary"

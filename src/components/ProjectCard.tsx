@@ -153,48 +153,64 @@ export function ProjectCard({
 
             {/* Bottom Section: Task Status and Created Date */}
             <Stack spacing={2}>
-              {!expand && (
-                <TaskStatusSummary
-                  total={statusSummary.total}
-                  running={statusSummary.running}
-                  completed={statusSummary.completed}
-                  failed={statusSummary.failed}
-                />
-              )}
+              <TaskStatusSummary
+                total={statusSummary.total}
+                running={statusSummary.running}
+                completed={statusSummary.completed}
+                failed={statusSummary.failed}
+              />
 
-              <Stack
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
-              >
-                <Typography 
-                  level="body-xs" 
-                  textColor="text.secondary"
-                  sx={{
-                    minWidth: '120px'
-                  }}
+              {expand ? (
+                <Stack 
+                  direction="row" 
+                  spacing={1.5} 
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ width: '100%' }}
                 >
-                  Created {new Date(project.createdAt).toLocaleDateString()}
-                </Typography>
-                {expand && (
+                  <Typography 
+                    level="body-xs" 
+                    textColor="text.secondary"
+                    sx={{ 
+                      flex: 1,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      minWidth: 0,
+                    }}
+                  >
+                    Created {new Date(project.createdAt).toLocaleDateString()}
+                  </Typography>
                   <Chip
                     startDecorator={<FolderOpen />}
                     onClick={handleOpenWorkDir}
                     sx={{
-                      cursor: 'cursor',
-                      minWidth: '160px',
+                      cursor: 'pointer',
+                      flex: 1,
+                      minWidth: 0,
                       '& > span': {
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        display: 'block',
                       }
                     }}
                   >
                     {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
                   </Chip>
-                )}
-              </Stack>
+                </Stack>
+              ) : (
+                <Typography 
+                  level="body-xs" 
+                  textColor="text.secondary"
+                  sx={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  Created {new Date(project.createdAt).toLocaleDateString()}
+                </Typography>
+              )}
             </Stack>
           </Stack>
         </CardContent>
@@ -223,7 +239,7 @@ export function ProjectCard({
               <Typography level="title-md" fontWeight="bold">
                 {project.name}
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
                 <Chip
                   size="md"
                   variant="soft"
@@ -231,21 +247,15 @@ export function ProjectCard({
                 >
                   {project.platform}
                 </Chip>
-                {statusSummary.total > 0 && (
-                  <Chip size="sm" variant="soft" color="neutral">
-                    {statusSummary.total} {statusSummary.total === 1 ? 'task' : 'tasks'}
-                  </Chip>
-                )}
-                {!expand && (
-                  <TaskStatusSummary
-                    total={statusSummary.total}
-                    running={statusSummary.running}
-                    completed={statusSummary.completed}
-                    failed={statusSummary.failed}
-                    showTotal={false}
-                  />
-                )}
               </Stack>
+              <Box sx={{ mt: 1.5 }}>
+                <TaskStatusSummary
+                  total={statusSummary.total}
+                  running={statusSummary.running}
+                  completed={statusSummary.completed}
+                  failed={statusSummary.failed}
+                />
+              </Box>
               {expand && (
                 <Typography
                   level="body-sm"

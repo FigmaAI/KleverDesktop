@@ -7,8 +7,10 @@ import {
   FormLabel,
   Input,
   FormHelperText,
+  Button,
+  Box,
 } from '@mui/joy'
-import { Folder } from '@mui/icons-material'
+import { Folder, FolderOpen } from '@mui/icons-material'
 
 interface PlatformConfigStepProps {
   androidSdkPath: string
@@ -19,6 +21,13 @@ export function PlatformConfigStep({
   androidSdkPath,
   setAndroidSdkPath,
 }: PlatformConfigStepProps) {
+  const handleBrowse = async () => {
+    const selectedPath = await window.electronAPI.showFolderSelectDialog()
+    if (selectedPath) {
+      setAndroidSdkPath(selectedPath)
+    }
+  }
+
   return (
     <motion.div
       key="step-1"
@@ -51,12 +60,24 @@ export function PlatformConfigStep({
                 <span>Android SDK Path</span>
               </Stack>
             </FormLabel>
-            <Input
-              value={androidSdkPath}
-              onChange={(e) => setAndroidSdkPath(e.target.value)}
-              placeholder="/Volumes/Backup/Android-SDK"
-              size="lg"
-            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Input
+                value={androidSdkPath}
+                onChange={(e) => setAndroidSdkPath(e.target.value)}
+                placeholder="/Volumes/Backup/Android-SDK"
+                size="lg"
+                sx={{ flex: 1 }}
+              />
+              <Button
+                variant="outlined"
+                color="neutral"
+                startDecorator={<FolderOpen />}
+                onClick={handleBrowse}
+                size="lg"
+              >
+                Browse
+              </Button>
+            </Box>
             <FormHelperText>
               Path to your Android SDK directory (contains platform-tools and emulator folders).
               <br />
@@ -80,7 +101,7 @@ export function PlatformConfigStep({
               • Open Android Studio → Preferences → Appearance & Behavior → System Settings → Android SDK
               <br />
               • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
-              <br />              • You can also use <code>which adb</code> in terminal and remove &quot;/platform-tools/adb&quot;
+              <br />• You can also use <code>which adb</code> in terminal and remove &quot;/platform-tools/adb&quot;
             </Typography>
           </Sheet>
 

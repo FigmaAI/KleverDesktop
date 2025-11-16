@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Card,
   CardContent,
@@ -25,6 +24,7 @@ import {
   Cancel,
 } from '@mui/icons-material'
 import type { Task } from '../types/project'
+import { TaskMetricsSummary } from './TaskMetricsSummary'
 
 interface TaskCardProps {
   task: Task
@@ -142,7 +142,7 @@ export function TaskCard({
       >
         <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Stack spacing={2} sx={{ flex: 1, justifyContent: 'space-between' }}>
-            {/* Task Description (Main Content) */}
+            {/* Top Section: Description */}
             <Typography
               level="body-md"
               sx={{
@@ -157,10 +157,165 @@ export function TaskCard({
               {task.goal || task.description || 'No description'}
             </Typography>
 
+            {/* Bottom Section: Status, Metrics, and Actions */}
+            <Stack spacing={2}>
+              {/* Status & Model */}
+              <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+                <Chip
+                  size="md"
+                  variant="soft"
+                  color={getStatusColor()}
+                  startDecorator={getStatusIcon()}
+                >
+                  {getStatusLabel()}
+                </Chip>
+                {task.model && (
+                  <Chip
+                    size="sm"
+                    variant="outlined"
+                    color="neutral"
+                  >
+                    {task.model}
+                  </Chip>
+                )}
+              </Stack>
+
+              {/* Task Metrics */}
+              {task.metrics && (
+                <TaskMetricsSummary
+                  rounds={task.metrics.rounds}
+                  maxRounds={task.metrics.maxRounds}
+                  tokens={task.metrics.tokens}
+                  estimatedCost={task.metrics.estimatedCost}
+                  cpuUsage={task.metrics.cpuUsage}
+                  memoryUsage={task.metrics.memoryUsage}
+                  modelProvider={task.modelProvider}
+                />
+              )}
+
+              {/* Bottom Row: Timestamp and Actions */}
+              <Stack 
+                direction="row" 
+                spacing={1.5} 
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ width: '100%' }}
+              >
+                {/* Left: Timestamp */}
+                <Typography 
+                  level="body-xs" 
+                  textColor="text.secondary"
+                  sx={{ 
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    minWidth: 0,
+                    flex: 1,
+                  }}
+                >
+                  {task.startedAt 
+                    ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                    : `Created ${new Date(task.createdAt).toLocaleDateString()}`
+                  }
+                </Typography>
+
+                {/* Right: Action Buttons */}
+                <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                  {task.status === 'pending' && (
+                    <Button
+                      size="sm"
+                      variant="solid"
+                      color="primary"
+                      startDecorator={<PlayArrow />}
+                      onClick={handleStart}
+                    >
+                      Start
+                    </Button>
+                  )}
+
+                  {task.status === 'running' && (
+                    <Button
+                      size="sm"
+                      variant="solid"
+                      color="danger"
+                      startDecorator={<Stop />}
+                      onClick={handleStop}
+                    >
+                      Stop
+                    </Button>
+                  )}
+
+                  <Tooltip title="View Logs">
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="neutral"
+                      onClick={handleViewLogs}
+                      disabled={!task.output && task.status === 'pending'}
+                    >
+                      <TerminalIcon />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="View Results">
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="neutral"
+                      onClick={handleViewMarkdown}
+                      disabled={task.status !== 'completed'}
+                    >
+                      <DescriptionIcon />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="Delete Task">
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="danger"
+                      onClick={handleDelete}
+                      disabled={task.status === 'running'}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </Stack>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // List View
+  return (
+    <ListItem>
+      <ListItemButton sx={{ cursor: 'default' }}>
+        <ListItemDecorator sx={{ alignSelf: 'flex-start', mt: 0.5 }}>
+          {getStatusIcon()}
+        </ListItemDecorator>
+        <ListItemContent>
+          <Stack spacing={1.5} sx={{ width: '100%' }}>
+            {/* Task Description */}
+            <Typography
+              level="body-md"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {task.goal || task.description || 'No description'}
+            </Typography>
+            
             {/* Status & Model */}
             <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
               <Chip
-                size="md"
+                size="sm"
                 variant="soft"
                 color={getStatusColor()}
                 startDecorator={getStatusIcon()}
@@ -178,16 +333,47 @@ export function TaskCard({
               )}
             </Stack>
 
-            {/* Timestamps */}
-            {task.startedAt && (
-              <Typography level="body-xs" textColor="text.tertiary">
-                Started: {new Date(task.startedAt).toLocaleString()}
-              </Typography>
+            {/* Task Metrics */}
+            {task.metrics && (
+              <TaskMetricsSummary
+                rounds={task.metrics.rounds}
+                maxRounds={task.metrics.maxRounds}
+                tokens={task.metrics.tokens}
+                estimatedCost={task.metrics.estimatedCost}
+                cpuUsage={task.metrics.cpuUsage}
+                memoryUsage={task.metrics.memoryUsage}
+                modelProvider={task.modelProvider}
+              />
             )}
 
-            {/* Action Buttons */}
-            <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent="space-between">
-              <Stack direction="row" spacing={1}>
+            {/* Bottom Row: Timestamp and Actions */}
+            <Stack 
+              direction="row" 
+              spacing={1.5} 
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ width: '100%' }}
+            >
+              {/* Left: Timestamp */}
+              <Typography 
+                level="body-xs" 
+                textColor="text.secondary"
+                sx={{ 
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                {task.startedAt 
+                  ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                  : `Created ${new Date(task.createdAt).toLocaleDateString()}`
+                }
+              </Typography>
+
+              {/* Right: Actions */}
+              <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
                 {task.status === 'pending' && (
                   <Button
                     size="sm"
@@ -211,9 +397,7 @@ export function TaskCard({
                     Stop
                   </Button>
                 )}
-              </Stack>
 
-              <Stack direction="row" spacing={0.5}>
                 <Tooltip title="View Logs">
                   <IconButton
                     size="sm"
@@ -250,128 +434,6 @@ export function TaskCard({
                   </IconButton>
                 </Tooltip>
               </Stack>
-            </Stack>
-          </Stack>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // List View
-  return (
-    <ListItem>
-      <ListItemButton sx={{ cursor: 'default' }}>
-        <ListItemDecorator sx={{ alignSelf: 'flex-start', mt: 0.5 }}>
-          {getStatusIcon()}
-        </ListItemDecorator>
-        <ListItemContent>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ width: '100%' }}>
-            {/* Left: Task Info */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {/* Task Description (Main Content) */}
-              <Typography
-                level="body-md"
-                sx={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                }}
-              >
-                {task.goal || task.description || 'No description'}
-              </Typography>
-              
-              {/* Status & Model */}
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" alignItems="center">
-                <Chip
-                  size="sm"
-                  variant="soft"
-                  color={getStatusColor()}
-                  startDecorator={getStatusIcon()}
-                >
-                  {getStatusLabel()}
-                </Chip>
-                {task.model && (
-                  <Chip
-                    size="sm"
-                    variant="outlined"
-                    color="neutral"
-                  >
-                    {task.model}
-                  </Chip>
-                )}
-              </Stack>
-
-              {/* Timestamp */}
-              {task.startedAt && (
-                <Typography level="body-xs" textColor="text.tertiary" sx={{ mt: 1 }}>
-                  Started: {new Date(task.startedAt).toLocaleString()}
-                </Typography>
-              )}
-            </Box>
-
-            {/* Right: Actions */}
-            <Stack direction="row" spacing={1} alignItems="center">
-              {task.status === 'pending' && (
-                <Button
-                  size="sm"
-                  variant="solid"
-                  color="primary"
-                  startDecorator={<PlayArrow />}
-                  onClick={handleStart}
-                >
-                  Start
-                </Button>
-              )}
-
-              {task.status === 'running' && (
-                <Button
-                  size="sm"
-                  variant="solid"
-                  color="danger"
-                  startDecorator={<Stop />}
-                  onClick={handleStop}
-                >
-                  Stop
-                </Button>
-              )}
-
-              <Tooltip title="View Logs">
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="neutral"
-                  onClick={handleViewLogs}
-                  disabled={!task.output && task.status === 'pending'}
-                >
-                  <TerminalIcon />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="View Results">
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="neutral"
-                  onClick={handleViewMarkdown}
-                  disabled={task.status !== 'completed'}
-                >
-                  <DescriptionIcon />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Delete Task">
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="danger"
-                  onClick={handleDelete}
-                  disabled={task.status === 'running'}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
             </Stack>
           </Stack>
         </ListItemContent>

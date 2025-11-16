@@ -2,6 +2,17 @@ export type Platform = 'android' | 'web'
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
+export interface TaskMetrics {
+  rounds?: number
+  maxRounds?: number
+  // API model metrics
+  tokens?: number
+  estimatedCost?: number
+  // Local model metrics
+  cpuUsage?: number
+  memoryUsage?: number
+}
+
 export interface Task {
   id: string
   name: string
@@ -22,6 +33,7 @@ export interface Task {
   error?: string
   resultPath?: string // Task result directory path
   url?: string // Web platform only - passed as --url CLI parameter
+  metrics?: TaskMetrics // Task execution metrics
 }
 
 export type ProjectStatus = 'active' | 'archived'
