@@ -80,7 +80,7 @@ export function PlatformConfigStep({
               • Open Android Studio → Preferences → Appearance & Behavior → System Settings → Android SDK
               <br />
               • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
-              <br />• You can also use <code>which adb</code> in terminal and remove "/platform-tools/adb"
+              <br />              • You can also use <code>which adb</code> in terminal and remove &quot;/platform-tools/adb&quot;
             </Typography>
           </Sheet>
 
