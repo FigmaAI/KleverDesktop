@@ -419,43 +419,6 @@ Found a bug or have a feature request? Please [open an issue](https://github.com
 
 ---
 
-## 📋 Roadmap
-
-### ✅ Phase 1: Core Foundation (Completed)
-- [x] Electron app architecture
-- [x] React frontend with TypeScript
-- [x] IPC communication layer
-- [x] Setup Wizard with tool detection
-- [x] Basic project management
-- [x] Model configuration (Local + API)
-
-### 🚧 Phase 2: Feature Enhancement (In Progress)
-- [x] Task-based workflow system
-- [x] Real-time terminal output
-- [x] Markdown report generation
-- [x] Settings management
-- [ ] Screenshot gallery viewer
-- [ ] Advanced filtering and search
-- [ ] Task templates library
-
-### 🔮 Phase 3: Advanced Features (Planned)
-- [ ] Multi-device parallel testing
-- [ ] Custom assertion system
-- [ ] Visual regression testing
-- [ ] CI/CD integration
-- [ ] Plugin/extension system
-- [ ] Cloud sync (optional)
-
-### 🌟 Phase 4: Polish & Distribution (Future)
-- [ ] macOS App Store packaging
-- [ ] Windows Store packaging
-- [ ] Auto-update mechanism
-- [ ] Comprehensive documentation site
-- [ ] Video tutorials
-- [ ] Community templates marketplace
-
----
-
 ## 📄 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
@@ -489,29 +452,6 @@ Klever Desktop stands on the shoulders of giants. Special thanks to:
 - **[MUI Joy](https://mui.com/joy-ui/)** - Beautiful, accessible UI components
 - **[Playwright](https://playwright.dev/)** - Reliable web automation
 - **[Vite](https://vitejs.dev/)** - Lightning-fast build tool
-
-### Inspiration
-
-- UI/UX inspired by [klever-v3](https://github.com/FigmaAI/klever-v3)
-- Architecture patterns from modern Electron apps
-- Community feedback and feature requests
-
----
-
-## 📞 Support & Community
-
-### Get Help
-
-- 📚 **Documentation**: [CLAUDE.md](./CLAUDE.md) - Comprehensive guide for developers
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/FigmaAI/KleverDesktop/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/FigmaAI/KleverDesktop/discussions)
-- 📧 **Email**: support@figma-ai.com (coming soon)
-
-### Stay Updated
-
-- ⭐ **Star this repo** to show support
-- 👁️ **Watch releases** for new versions
-- 🍴 **Fork** to experiment with your own features
 
 ---
 
