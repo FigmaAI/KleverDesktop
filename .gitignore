@@ -3,6 +3,9 @@
 
 # Ignore Gradle build output directory
 build
+# But keep electron-builder icon assets
+!build/
+!build/icon.png
 
 # Ignore IDEA project-specific cache directory
 .idea
