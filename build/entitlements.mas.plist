@@ -26,8 +26,6 @@
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 
-  <!-- Required for ADB and external tools -->
-  <key>com.apple.security.temporary-exception.unix-socket.client</key>
-  <true/>
+  <!-- Note: unix-socket.client temporary exception is not allowed in MAS builds -->
 </dict>
 </plist>

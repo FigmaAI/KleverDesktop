@@ -77,7 +77,7 @@
       "!appagent/**/__pycache__"
     ],
     "mac": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools",
       "target": [
         "mas"
@@ -86,13 +86,18 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist",
-      "preAutoEntitlements": false
+      "preAutoEntitlements": false,
+      "notarize": false,
+      "minimumSystemVersion": "12.0"
     },
     "mas": {
       "type": "distribution",
       "hardenedRuntime": false,
       "entitlements": "build/entitlements.mas.plist",
-      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "notarize": false,
+      "identity": "JooHyung Park (ZQC7QNZ4J8)",
+      "minimumSystemVersion": "12.0"
     },
     "win": {
       "icon": "build/icon.png",

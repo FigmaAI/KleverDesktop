@@ -107,11 +107,37 @@ else
     echo "✅ Using version from package.json: $APP_VERSION"
 fi
 
+# --- Build Number Configuration ---
+if [ -n "$BUILD_NUMBER" ]; then
+    # BUILD_NUMBER가 환경변수로 이미 설정된 경우
+    echo "✅ Using build number from environment: $BUILD_NUMBER"
+else
+    # 대화형으로 빌드 번호 입력받기
+    echo ""
+    echo "📝 Build Number (CFBundleVersion) is required for App Store submission."
+    echo "   - For first upload of version $APP_VERSION, use: 1"
+    echo "   - For subsequent uploads, increment: 2, 3, 4..."
+    echo ""
+    read -p "Enter build number [default: 1]: " INPUT_BUILD_NUMBER
+
+    # 입력이 없으면 기본값 "1" 사용
+    BUILD_NUMBER="${INPUT_BUILD_NUMBER:-1}"
+
+    # 숫자인지 검증
+    if ! [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
+        echo "❌ Error: Build number must be a positive integer"
+        exit 1
+    fi
+
+    echo "✅ Using build number: $BUILD_NUMBER"
+fi
+
 echo ""
 echo "📋 Build configuration:"
 echo "   - App Name: $APP_NAME"
 echo "   - Bundle ID: $BUNDLE_ID"
 echo "   - Version: $APP_VERSION"
+echo "   - Build Number: $BUILD_NUMBER"
 echo "   - Build Dir: $BUILD_DIR"
 echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⏭️  Disabled (use AUTO_UPLOAD=true to enable)")"
 echo ""
@@ -154,29 +180,36 @@ yarn run electron-builder --mac mas --config.mac.target=mas \
     --config.appId="$BUNDLE_ID" \
     --config.productName="$APP_NAME" \
     --config.mac.category="public.app-category.developer-tools" \
-    --config.directories.output="$BUILD_DIR"
+    --config.directories.output="$BUILD_DIR" \
+    --config.buildVersion="$BUILD_NUMBER"
 
 echo "✅ Mac App Store package created"
 
 # --- Step 4: Verify the build ---
 echo "🔍 [Step 4/5] Verifying build..."
 
-PKG_PATH="$BUILD_DIR/mas/$APP_NAME-$APP_VERSION.pkg"
-if [ -f "$PKG_PATH" ]; then
+# Find PKG file dynamically (could be in mas/ or mas-arm64/ with various naming patterns)
+PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f | head -1)
+
+if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
     PKG_SIZE=$(du -h "$PKG_PATH" | cut -f1)
     echo "✅ PKG file found: $PKG_PATH ($PKG_SIZE)"
+
+    # Verify PKG signature
+    echo "   📝 Verifying PKG signature..."
+    pkgutil --check-signature "$PKG_PATH" > /dev/null 2>&1 && echo "   ✅ PKG signature valid" || echo "   ⚠️  PKG signature verification failed"
 else
-    echo "❌ Error: PKG file not found at expected location"
-    echo "   Expected: $PKG_PATH"
-    ls -la "$BUILD_DIR/mas/" 2>/dev/null || echo "   Directory does not exist"
+    echo "❌ Error: PKG file not found in $BUILD_DIR"
+    echo "   Searching for build artifacts..."
+    find "$BUILD_DIR" -type f \( -name "*.pkg" -o -name "*.app" \) 2>/dev/null || echo "   No build artifacts found"
     exit 1
 fi
 
-# Verify code signature
-APP_PATH="$BUILD_DIR/mas/$APP_NAME.app"
-if [ -d "$APP_PATH" ]; then
-    echo "   📝 Verifying code signature..."
-    codesign --verify --verbose "$APP_PATH" && echo "   ✅ Code signature valid" || echo "   ⚠️  Code signature verification failed"
+# Find and verify .app bundle
+APP_PATH=$(find "$BUILD_DIR" -name "$APP_NAME.app" -type d | head -1)
+if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+    echo "   📝 Verifying app bundle signature..."
+    codesign --verify --verbose "$APP_PATH" 2>&1 | grep -q "valid on disk" && echo "   ✅ App bundle signature valid" || echo "   ⚠️  App bundle signature verification failed"
 else
     echo "   ⚠️  App bundle not found, skipping signature verification"
 fi
@@ -230,9 +263,10 @@ echo "🎯 BUILD SUMMARY - Klever Desktop"
 echo "═══════════════════════════════════════════════════════════════"
 echo "📱 App Name: $APP_NAME"
 echo "📦 Version: $APP_VERSION"
+echo "🔢 Build Number: $BUILD_NUMBER"
 echo "🆔 Bundle ID: $BUNDLE_ID"
-echo "📂 Build Output: $BUILD_DIR/mas/"
-if [ -f "$PKG_PATH" ]; then
+if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
+    echo "📂 Build Output: $(dirname "$PKG_PATH")"
     echo "✅ PKG File: $(basename "$PKG_PATH") ($PKG_SIZE)"
 else
     echo "❌ PKG File: Not found"
