@@ -131,14 +131,17 @@ export function TaskCard({
         variant="outlined"
         sx={{
           transition: 'all 0.2s',
+          minHeight: '240px',
+          display: 'flex',
+          flexDirection: 'column',
           '&:hover': {
             boxShadow: 'sm',
             borderColor: 'neutral.outlinedHoverBorder',
           },
         }}
       >
-        <CardContent>
-          <Stack spacing={2}>
+        <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Stack spacing={2} sx={{ flex: 1, justifyContent: 'space-between' }}>
             {/* Task Description (Main Content) */}
             <Typography
               level="body-md"
@@ -148,7 +151,7 @@ export function TaskCard({
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                minHeight: '48px',
+                minHeight: '52px',
               }}
             >
               {task.goal || task.description || 'No description'}
