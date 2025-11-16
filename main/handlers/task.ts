@@ -10,6 +10,7 @@
 import { IpcMain, BrowserWindow } from 'electron';
 import { ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
@@ -155,6 +156,22 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const taskIndex = project.tasks.findIndex((t) => t.id === taskId);
       if (taskIndex === -1) {
         return { success: false, error: 'Task not found' };
+      }
+
+      const task = project.tasks[taskIndex];
+
+      // Delete task result folder if it exists
+      if (task.resultPath) {
+        try {
+          if (fs.existsSync(task.resultPath)) {
+            console.log(`[task:delete] Deleting task result folder: ${task.resultPath}`);
+            fs.rmSync(task.resultPath, { recursive: true, force: true });
+            console.log(`[task:delete] ✓ Task result folder deleted`);
+          }
+        } catch (fsError) {
+          console.warn(`[task:delete] Failed to delete result folder: ${fsError}`);
+          // Continue with task deletion even if folder deletion fails
+        }
       }
 
       project.tasks.splice(taskIndex, 1);
