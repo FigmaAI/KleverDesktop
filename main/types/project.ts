@@ -4,7 +4,7 @@
 
 export type PlatformType = 'android' | 'web';
 
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface Task {
   id: string;

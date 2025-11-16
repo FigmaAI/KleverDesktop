@@ -276,7 +276,30 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         return { success: false, error: 'Task not running' };
       }
 
-      taskProcess.kill('SIGTERM');
+      // Kill the entire process tree (parent + all children)
+      // Use negative PID to kill the entire process group
+      if (taskProcess.pid) {
+        try {
+          // First try SIGTERM for graceful shutdown
+          process.kill(-taskProcess.pid, 'SIGTERM');
+
+          // Wait 2 seconds, then force kill if still running
+          setTimeout(() => {
+            try {
+              process.kill(-taskProcess.pid!, 'SIGKILL');
+            } catch (e) {
+              // Process already terminated, ignore
+            }
+          }, 2000);
+        } catch (killError) {
+          // If process group kill fails, try killing just the parent
+          console.warn('[task:stop] Process group kill failed, killing parent only:', killError);
+          taskProcess.kill('SIGKILL');
+        }
+      } else {
+        taskProcess.kill('SIGKILL');
+      }
+
       taskProcesses.delete(taskId);
 
       // Update task status
@@ -285,7 +308,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const task = project?.tasks.find((t) => t.id === taskId);
 
       if (task) {
-        task.status = 'failed';
+        task.status = 'cancelled';
         task.updatedAt = new Date().toISOString();
         saveProjects(data);
       }
