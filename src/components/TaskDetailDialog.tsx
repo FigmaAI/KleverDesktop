@@ -107,12 +107,25 @@ export function TaskDetailDialog({
 
   const handleOpenFolder = async () => {
     try {
-      // If task has resultPath, use it; otherwise use workspace
-      const pathToOpen = task.resultPath || workspaceDir
-      console.log('[TaskDetailDialog] Opening folder:', pathToOpen, '(resultPath:', task.resultPath, ')')
-      await window.electronAPI.openPath(pathToOpen)
+      // Try to open task result path first if it exists
+      if (task.resultPath) {
+        const existsResult = await window.electronAPI.fileExists(task.resultPath)
+        if (existsResult.success && existsResult.exists) {
+          const result = await window.electronAPI.openPath(task.resultPath)
+          if (result.success) {
+            return
+          }
+        }
+      }
+
+      // Fallback to workspace directory
+      const result = await window.electronAPI.openPath(workspaceDir)
+      if (!result.success) {
+        alert(`Failed to open folder: ${result.error}`)
+      }
     } catch (error) {
       console.error('Error opening folder:', error)
+      alert('Failed to open folder')
     }
   }
 

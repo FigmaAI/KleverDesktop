@@ -62,7 +62,7 @@ if (!window.electronAPI) {
           local: { baseUrl: 'http://localhost:11434/v1/chat/completions', model: 'qwen3-vl:4b' },
         },
         execution: { maxTokens: 4096, temperature: 0.0, requestInterval: 10, maxRounds: 20 },
-        android: { screenshotDir: '/sdcard/Pictures', xmlDir: '/sdcard/Documents', sdkPath: '/Volumes/Backup/Android-SDK' },
+        android: { screenshotDir: '/sdcard/Pictures', xmlDir: '/sdcard/Documents' },
         web: { browserType: 'chromium' as const, headless: false, viewportWidth: 1280, viewportHeight: 720 },
         image: { maxWidth: 512, maxHeight: 512, quality: 85, optimize: true },
         preferences: { darkMode: false, minDist: 30, docRefine: false },

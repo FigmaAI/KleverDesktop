@@ -4,7 +4,7 @@
  *
  * IMPORTANT: Task execution now passes data via:
  * - CLI parameters: Project info (app, platform, root_dir) + Task info (task_desc, url, model, model_name)
- * - Environment variables: 24 config settings from config.json (including ANDROID_HOME)
+ * - Environment variables: 22 config settings from config.json
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
@@ -197,21 +197,20 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       console.log('[task:start] Executing task with args:', args);
       console.log('[task:start] Working directory:', appagentDir);
       console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
-      console.log('[task:start] Android SDK path:', configEnvVars.ANDROID_HOME);
 
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
 
-      // Add Android SDK paths to PATH environment variable
-      const androidHome = configEnvVars.ANDROID_HOME;
-      const androidPaths = `${androidHome}/platform-tools:${androidHome}/emulator`;
+      // Add Android SDK default paths to PATH for adb/emulator detection
+      const androidSdkPath = path.join(require('os').homedir(), 'Library', 'Android', 'sdk');
+      const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
       const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
 
       const taskProcess = spawnVenvPython(args, {
         cwd: appagentDir,  // ✅ Changed from project.workspaceDir to appagent directory
         env: {
           ...pythonEnv,         // Python venv environment variables
-          ...configEnvVars,     // 24 config settings from config.json
+          ...configEnvVars,     // 22 config settings from config.json
           PATH: updatedPath,    // Add Android SDK tools to PATH
         }
       });

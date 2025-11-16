@@ -77,11 +77,25 @@ export function TaskMarkdownDialog({
 
   const handleOpenFolder = async () => {
     try {
-      // Open task-specific directory if available, otherwise workspace
-      const pathToOpen = taskResultPath || workspaceDir
-      await window.electronAPI.openPath(pathToOpen)
+      // Try to open task result path first if it exists
+      if (taskResultPath) {
+        const existsResult = await window.electronAPI.fileExists(taskResultPath)
+        if (existsResult.success && existsResult.exists) {
+          const result = await window.electronAPI.openPath(taskResultPath)
+          if (result.success) {
+            return
+          }
+        }
+      }
+
+      // Fallback to workspace directory
+      const result = await window.electronAPI.openPath(workspaceDir)
+      if (!result.success) {
+        alert(`Failed to open folder: ${result.error}`)
+      }
     } catch (error) {
       console.error('Error opening folder:', error)
+      alert('Failed to open folder')
     }
   }
 

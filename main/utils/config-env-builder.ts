@@ -1,7 +1,7 @@
 /**
  * Environment variable builder from AppConfig
  *
- * Converts config.json to 23 environment variables for appagent Python scripts
+ * Converts config.json to 22 environment variables for appagent Python scripts
  * These env vars serve as default values that can be overridden by CLI parameters
  */
 
@@ -9,10 +9,10 @@ import { AppConfig } from '../types/config';
 
 /**
  * Build environment variables from AppConfig
- * Returns a Record of 24 environment variable key-value pairs
+ * Returns a Record of 22 environment variable key-value pairs
  *
  * @param config - Application configuration from config.json
- * @returns Environment variables object (24 variables)
+ * @returns Environment variables object (22 variables)
  */
 export function buildEnvFromConfig(config: AppConfig): Record<string, string> {
   // Determine MODEL value based on enabled flags
@@ -48,11 +48,10 @@ export function buildEnvFromConfig(config: AppConfig): Record<string, string> {
     MAX_ROUNDS: config.execution.maxRounds.toString(),
 
     // ========================================
-    // Android Configuration (3 variables)
+    // Android Configuration (2 variables)
     // ========================================
     ANDROID_SCREENSHOT_DIR: config.android.screenshotDir,
     ANDROID_XML_DIR: config.android.xmlDir,
-    ANDROID_HOME: config.android.sdkPath,
 
     // ========================================
     // Web Configuration (4 variables)
@@ -91,14 +90,14 @@ export function logEnvVars(envVars: Record<string, string>): void {
     masked.API_KEY = masked.API_KEY.slice(0, 8) + '...';
   }
 
-  console.log('[config-env-builder] Environment variables (24 total):');
+  console.log('[config-env-builder] Environment variables (22 total):');
   console.log(JSON.stringify(masked, null, 2));
 }
 
 /**
- * Validate that all 24 required environment variables are present
+ * Validate that all 22 required environment variables are present
  * @param envVars - Environment variables object
- * @returns true if all 24 variables exist
+ * @returns true if all 22 variables exist
  */
 export function validateEnvVars(envVars: Record<string, string>): boolean {
   const requiredVars = [
@@ -114,10 +113,9 @@ export function validateEnvVars(envVars: Record<string, string>): boolean {
     'TEMPERATURE',
     'REQUEST_INTERVAL',
     'MAX_ROUNDS',
-    // Android (3)
+    // Android (2)
     'ANDROID_SCREENSHOT_DIR',
     'ANDROID_XML_DIR',
-    'ANDROID_HOME',
     // Web (4)
     'WEB_BROWSER_TYPE',
     'WEB_HEADLESS',
