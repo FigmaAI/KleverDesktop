@@ -69,7 +69,7 @@
       "output": "dist-electron"
     },
     "files": [
-      "dist-electron/main/**/*",
+      "dist-electron/**/*",
       "dist/**/*",
       "appagent/**/*",
       "!appagent/.git",
@@ -85,7 +85,8 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mas.plist",
-      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "preAutoEntitlements": false
     },
     "mas": {
       "type": "distribution",

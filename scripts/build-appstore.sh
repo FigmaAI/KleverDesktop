@@ -15,6 +15,7 @@ APP_NAME="Klever Desktop"
 BUNDLE_ID="com.klever.desktop"
 BUILD_DIR="dist-electron"
 USE_ENVIRONMENT_VERSION="${USE_ENVIRONMENT_VERSION:-false}"
+AUTO_UPLOAD="${AUTO_UPLOAD:-false}"  # Set to 'true' to automatically upload to App Store Connect
 
 # --- Check Node.js and dependencies ---
 echo "🔍 Checking build environment..."
@@ -112,6 +113,7 @@ echo "   - App Name: $APP_NAME"
 echo "   - Bundle ID: $BUNDLE_ID"
 echo "   - Version: $APP_VERSION"
 echo "   - Build Dir: $BUILD_DIR"
+echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⏭️  Disabled (use AUTO_UPLOAD=true to enable)")"
 echo ""
 
 # --- Step 1: Install dependencies ---
@@ -185,34 +187,40 @@ echo "✅ Build verification completed"
 echo ""
 echo "📤 [Step 5/5] Upload to App Store Connect..."
 
-if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
-    echo "   🚀 Attempting automatic upload..."
+if [ "$AUTO_UPLOAD" = "true" ]; then
+    if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
+        echo "   🚀 Attempting automatic upload..."
 
-    # Try to upload using altool (deprecated but still works)
-    # xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-    #     --username "$APPLE_ID" \
-    #     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-    #     --verbose
+        # Try to upload using altool (deprecated but still works)
+        # xcrun altool --upload-app --type osx --file "$PKG_PATH" \
+        #     --username "$APPLE_ID" \
+        #     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+        #     --verbose
 
-    # Try to upload using newer notarytool + altool
-    if command -v xcrun &> /dev/null; then
-        echo "   📤 Uploading to App Store Connect..."
-        xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-            --username "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --verbose
+        # Try to upload using newer notarytool + altool
+        if command -v xcrun &> /dev/null; then
+            echo "   📤 Uploading to App Store Connect..."
+            xcrun altool --upload-app --type osx --file "$PKG_PATH" \
+                --username "$APPLE_ID" \
+                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                --verbose
 
-        if [ $? -eq 0 ]; then
-            echo "   ✅ Upload successful!"
+            if [ $? -eq 0 ]; then
+                echo "   ✅ Upload successful!"
+            else
+                echo "   ❌ Upload failed. Please upload manually."
+            fi
         else
-            echo "   ❌ Upload failed. Please upload manually."
+            echo "   ⚠️  xcrun not available, skipping upload"
         fi
     else
-        echo "   ⚠️  xcrun not available, skipping upload"
+        echo "   ⚠️  Automatic upload not configured"
+        echo "   Set APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD to enable automatic upload"
     fi
 else
-    echo "   ⚠️  Automatic upload not configured"
-    echo "   Set APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD to enable"
+    echo "   ⏭️  Automatic upload disabled (AUTO_UPLOAD=$AUTO_UPLOAD)"
+    echo "   To enable automatic upload, run with: AUTO_UPLOAD=true ./scripts/build-appstore.sh"
+    echo "   Or manually upload using Xcode Organizer or xcrun altool (see Next Steps below)"
 fi
 
 # --- Summary ---
