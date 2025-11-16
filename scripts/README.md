@@ -35,44 +35,32 @@ export APPLE_TEAM_ID="YOUR_TEAM_ID"
 - `dist-electron/mas/Klever Desktop-{version}.pkg` - Mac App Store package
 - `dist-electron/mas/Klever Desktop.app` - Signed app bundle
 
----
+**⚠️ Important Notes:**
 
-#### 2. `build-mac.sh` - Standard Mac Distribution
+**Code Signing & Re-signing:**
+- Electron apps require **all internal components** to be signed with your certificates:
+  - Electron Framework and Helper apps (handled automatically by `electron-builder`)
+  - Native node modules (handled automatically)
+  - **Bundled Python runtime** (`extraResources/python/`) - requires custom signing script
+  - All `.dylib` and `.so` files in the bundle
 
-Creates DMG and ZIP files for direct distribution (outside App Store).
+- The build script uses `electron-osx-sign` under the hood to re-sign all frameworks
+- Python runtime binaries may need manual re-signing via `afterSign` hook (see Configuration section)
 
-**Usage:**
-```bash
-./scripts/build-mac.sh
-```
-
-**Requirements:**
-- macOS
-- Xcode Command Line Tools
-- **Developer ID Application** certificate (for code signing)
-- **Developer ID Installer** certificate (for notarization)
-
-**Environment Variables (Optional):**
-```bash
-export CSC_NAME="Developer ID Application: Your Name (TEAM_ID)"
-export APPLE_ID="your-apple-id@email.com"              # For notarization
-export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # For notarization
-export APPLE_TEAM_ID="YOUR_TEAM_ID"                    # For notarization
-```
-
-**Output:**
-- `dist-electron/Klever Desktop-{version}.dmg` - Installer disk image
-- `dist-electron/Klever Desktop-{version}-mac.zip` - ZIP archive
-
-**Note:** Code signing and notarization are optional but **highly recommended** for distribution. Unsigned apps will show security warnings on macOS.
+**Entitlements:**
+- Mac App Store apps require proper entitlements files
+- Two entitlements files needed:
+  - Parent app entitlements (sandbox, network access, etc.)
+  - Child/helper process entitlements (inherit sandbox)
+- See `build/entitlements.mas.plist` and `build/entitlements.mas.inherit.plist` (to be created)
 
 ---
 
 ### 🪟 Windows Build
 
-#### `build-windows.ps1` - Windows Installer
+#### `build-windows.ps1` - Microsoft Store Build
 
-Creates NSIS installer and ZIP archive for Windows distribution.
+Creates MSIX package for Microsoft Store submission.
 
 **Usage:**
 ```powershell
@@ -95,22 +83,22 @@ Creates NSIS installer and ZIP archive for Windows distribution.
 ```
 
 **Requirements:**
-- Windows 10/11 or Windows Server
+- Windows 10/11 (version 1809 or later)
 - Node.js 18+
 - Yarn
-- Code signing certificate (optional, `.pfx` file)
+- Windows 10 SDK (for MSIX packaging)
+- Microsoft Store developer account
 
-**Environment Variables (Optional, for code signing):**
+**Environment Variables (Optional, for app identity):**
 ```powershell
-$env:CSC_LINK = "C:\path\to\certificate.pfx"
-$env:CSC_KEY_PASSWORD = "your-certificate-password"
+$env:WINDOWS_STORE_PUBLISHER = "CN=YourPublisherName"
+$env:WINDOWS_STORE_IDENTITY_NAME = "YourCompany.KleverDesktop"
 ```
 
 **Output:**
-- `dist-electron/Klever Desktop Setup {version}.exe` - NSIS installer
-- `dist-electron/Klever Desktop-{version}-win.zip` - ZIP archive
+- `dist-electron/Klever Desktop-{version}.appx` - MSIX package for Microsoft Store
 
-**Note:** Code signing is optional but **highly recommended** to avoid Windows SmartScreen warnings.
+**Note:** The MSIX package will be automatically signed during the Store submission process.
 
 ---
 
@@ -136,16 +124,183 @@ Version is automatically read from `package.json`:
 
 ```json
 {
-  "version": "0.1.0"
+  "version": "2.0.0"
 }
 ```
 
 To change the version:
 ```bash
-yarn version --new-version 1.2.0
+yarn version --new-version 2.0.0
 ```
 
 Or manually edit `package.json`.
+
+---
+
+## ⚙️ Configuration for Store Distribution
+
+### Mac App Store Configuration
+
+To properly build for Mac App Store, you need to configure `electron-builder` in `package.json`:
+
+#### 1. Add MAS Target and Entitlements
+
+```json
+{
+  "build": {
+    "appId": "com.klever.desktop",
+    "mac": {
+      "target": ["mas"],
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+    },
+    "mas": {
+      "type": "distribution",
+      "hardenedRuntime": false,
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+    }
+  }
+}
+```
+
+#### 2. Create Entitlements Files
+
+**`build/entitlements.mas.plist`** (Parent app):
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <key>com.apple.security.files.downloads.read-write</key>
+  <true/>
+  <!-- Required for Python subprocess -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>
+```
+
+**`build/entitlements.mas.inherit.plist`** (Helper processes):
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <key>com.apple.security.inherit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+</dict>
+</plist>
+```
+
+#### 3. Python Runtime Re-signing (If Bundled)
+
+If you bundle Python runtime, create `scripts/afterSign.js`:
+
+```javascript
+const { execSync } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+exports.default = async function(context) {
+  const appPath = context.appOutDir + '/' + context.packager.appInfo.productFilename + '.app';
+  const pythonPath = path.join(appPath, 'Contents/Resources/python');
+
+  if (!fs.existsSync(pythonPath)) {
+    console.log('No bundled Python found, skipping re-signing');
+    return;
+  }
+
+  console.log('Re-signing bundled Python runtime...');
+
+  // Get signing identity
+  const identity = process.env.CSC_NAME;
+  if (!identity) {
+    throw new Error('CSC_NAME environment variable not set');
+  }
+
+  // Find all executables and libraries
+  const files = execSync(`find "${pythonPath}" -type f \\( -name "*.so" -o -name "*.dylib" -o -perm +111 \\)`)
+    .toString()
+    .trim()
+    .split('\n');
+
+  // Re-sign each file
+  for (const file of files) {
+    if (file) {
+      try {
+        execSync(`codesign --force --sign "${identity}" --timestamp "${file}"`, {
+          stdio: 'inherit'
+        });
+        console.log(`✓ Signed: ${file}`);
+      } catch (error) {
+        console.error(`✗ Failed to sign: ${file}`);
+      }
+    }
+  }
+
+  console.log('Python runtime re-signing complete!');
+};
+```
+
+Add to `package.json`:
+```json
+{
+  "build": {
+    "afterSign": "scripts/afterSign.js"
+  }
+}
+```
+
+### Windows MSIX Configuration
+
+Add Windows configuration to `package.json`:
+
+```json
+{
+  "build": {
+    "appx": {
+      "applicationId": "KleverDesktop",
+      "backgroundColor": "#FFFFFF",
+      "displayName": "Klever Desktop",
+      "identityName": "YourCompany.KleverDesktop",
+      "publisher": "CN=YourPublisherName",
+      "publisherDisplayName": "Your Company Name"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "appx",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    }
+  }
+}
+```
+
+**Note:** Replace `identityName` and `publisher` with values from Microsoft Partner Center.
 
 ---
 
@@ -170,42 +325,29 @@ Or manually edit `package.json`.
    security find-identity -v -p codesigning
    ```
 
-#### For Direct Distribution (`build-mac.sh`):
+### Windows App Identity
 
-1. **Install Certificates:**
-   - `Developer ID Application: Your Name (TEAM_ID)`
-   - `Developer ID Installer: Your Name (TEAM_ID)` (optional)
+For Microsoft Store distribution, you need to configure your app identity:
 
-2. **Set Environment Variables:**
-   ```bash
-   export CSC_NAME="Developer ID Application: Your Name (TEAM_ID)"
-   ```
+1. **Register Your App:**
+   - Create an app in [Microsoft Partner Center](https://partner.microsoft.com/dashboard)
+   - Reserve your app name (e.g., "Klever Desktop")
+   - Get your Publisher Display Name and Identity Name
 
-3. **For Notarization (highly recommended):**
-   ```bash
-   export APPLE_ID="your-apple-id@email.com"
-   export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
-   export APPLE_TEAM_ID="YOUR_TEAM_ID"
-   ```
-
-   Generate app-specific password at: https://appleid.apple.com/account/manage
-
-### Windows Code Signing
-
-1. **Obtain a Code Signing Certificate:**
-   - Purchase from Certificate Authorities (DigiCert, Sectigo, etc.)
-   - Export as `.pfx` file with password
-
-2. **Set Environment Variables:**
+2. **Set Environment Variables (Optional):**
    ```powershell
-   $env:CSC_LINK = "C:\path\to\certificate.pfx"
-   $env:CSC_KEY_PASSWORD = "your-password"
+   $env:WINDOWS_STORE_PUBLISHER = "CN=YourPublisherName"
+   $env:WINDOWS_STORE_IDENTITY_NAME = "YourCompany.KleverDesktop"
    ```
 
 3. **Build:**
    ```powershell
    .\scripts\build-windows.ps1
    ```
+
+4. **Submit to Store:**
+   - Upload the generated `.appx` file to Partner Center
+   - Microsoft will sign the package during certification process
 
 ---
 
@@ -219,18 +361,10 @@ dist-electron/
     └── Klever Desktop-0.1.0.pkg    # Installer package for App Store
 ```
 
-### macOS Direct Distribution
+### Windows Microsoft Store
 ```
 dist-electron/
-├── Klever Desktop-0.1.0.dmg        # Disk image installer
-└── Klever Desktop-0.1.0-mac.zip    # ZIP archive
-```
-
-### Windows
-```
-dist-electron/
-├── Klever Desktop Setup 0.1.0.exe  # NSIS installer
-└── Klever Desktop-0.1.0-win.zip    # ZIP archive
+└── Klever Desktop-0.1.0.appx       # MSIX package for Microsoft Store
 ```
 
 ---
@@ -248,7 +382,7 @@ on:
       - 'v*'
 
 jobs:
-  build-mac:
+  build-mac-appstore:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -256,18 +390,19 @@ jobs:
         with:
           node-version: 18
       - run: yarn install
-      - run: ./scripts/build-mac.sh
+      - run: ./scripts/build-appstore.sh
         env:
-          CSC_NAME: ${{ secrets.MAC_CSC_NAME }}
+          CSC_NAME: ${{ secrets.MAC_APP_STORE_CSC_NAME }}
+          CSC_INSTALLER_NAME: ${{ secrets.MAC_APP_STORE_INSTALLER_NAME }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - uses: actions/upload-artifact@v3
         with:
-          name: mac-build
-          path: dist-electron/*.dmg
+          name: mac-appstore-build
+          path: dist-electron/mas/*.pkg
 
-  build-windows:
+  build-windows-msix:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -277,12 +412,12 @@ jobs:
       - run: yarn install
       - run: .\scripts\build-windows.ps1
         env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_PASSWORD }}
+          WINDOWS_STORE_PUBLISHER: ${{ secrets.WINDOWS_STORE_PUBLISHER }}
+          WINDOWS_STORE_IDENTITY_NAME: ${{ secrets.WINDOWS_STORE_IDENTITY_NAME }}
       - uses: actions/upload-artifact@v3
         with:
-          name: windows-build
-          path: dist-electron/*.exe
+          name: windows-msix-build
+          path: dist-electron/*.appx
 ```
 
 ---
@@ -305,6 +440,27 @@ security find-identity -v -p codesigning
 2. Generate new app-specific password at https://appleid.apple.com
 3. Check Team ID is correct
 
+**Problem:** Python runtime re-signing fails
+
+**Solution:**
+1. Ensure CSC_NAME environment variable is set correctly
+2. Verify all Python binaries have correct permissions
+3. Check that `afterSign.js` script is executable
+4. Try signing manually:
+   ```bash
+   find "path/to/app/Contents/Resources/python" -type f \( -name "*.so" -o -name "*.dylib" \) -exec codesign --force --sign "YOUR_IDENTITY" --timestamp {} \;
+   ```
+
+**Problem:** App Store validation fails with "Invalid Code Signature"
+
+**Solution:**
+1. Ensure all nested binaries are signed with the correct certificate
+2. Verify entitlements match between parent and child processes
+3. Check for unsigned `.so` or `.dylib` files:
+   ```bash
+   find "path/to/app" -type f \( -name "*.so" -o -name "*.dylib" \) -exec codesign -dv {} \; 2>&1 | grep -i "not signed"
+   ```
+
 ### Windows
 
 **Problem:** Build fails with "electron-builder" not found
@@ -314,12 +470,19 @@ security find-identity -v -p codesigning
 yarn install
 ```
 
-**Problem:** Code signing fails
+**Problem:** MSIX packaging fails
 
 **Solution:**
-1. Verify `.pfx` file path is correct
-2. Check password is correct
-3. Ensure certificate is valid and not expired
+1. Ensure Windows 10 SDK is installed
+2. Verify app identity settings in `electron-builder` config
+3. Check Publisher and Identity Name match your Partner Center registration
+
+**Problem:** Microsoft Store submission rejected
+
+**Solution:**
+1. Ensure all required capabilities are declared
+2. Verify app meets [Microsoft Store Policies](https://docs.microsoft.com/en-us/windows/uwp/publish/store-policies)
+3. Check that app version follows semantic versioning
 
 ### All Platforms
 
@@ -333,9 +496,11 @@ yarn install
 
 - [Electron Builder Documentation](https://www.electron.build/)
 - [macOS Code Signing Guide](https://www.electron.build/code-signing)
-- [Windows Code Signing Guide](https://www.electron.build/configuration/win)
+- [macOS App Store Distribution Guide](https://developer.apple.com/distribute/)
 - [Notarization Guide](https://www.electron.build/configuration/mac#notarization)
-- [App Store Distribution Guide](https://developer.apple.com/distribute/)
+- [Windows MSIX Packaging](https://www.electron.build/configuration/appx)
+- [Microsoft Partner Center](https://partner.microsoft.com/dashboard)
+- [Microsoft Store Policies](https://docs.microsoft.com/en-us/windows/uwp/publish/store-policies)
 
 ---
 

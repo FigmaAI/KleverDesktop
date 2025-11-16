@@ -1,6 +1,6 @@
 {
   "name": "klever-desktop",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "GUI Wrapper for AppAgent - Electron-based desktop application that makes Python-based UI automation accessible to non-developers. Wraps the external AppAgent open-source project with a user-friendly interface for Android (ADB) and Web (Playwright) automation.",
   "main": "dist-electron/index.js",
   "scripts": {
@@ -64,6 +64,7 @@
   "build": {
     "appId": "com.klever.desktop",
     "productName": "Klever Desktop",
+    "afterSign": "scripts/afterSign.js",
     "directories": {
       "output": "dist-electron"
     },
@@ -79,16 +80,38 @@
       "icon": "build/icon.png",
       "category": "public.app-category.developer-tools",
       "target": [
-        "dmg",
-        "zip"
-      ]
+        "mas"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
+    },
+    "mas": {
+      "type": "distribution",
+      "hardenedRuntime": false,
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist"
     },
     "win": {
       "icon": "build/icon.png",
       "target": [
-        "nsis",
-        "zip"
+        {
+          "target": "appx",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ]
+    },
+    "appx": {
+      "applicationId": "KleverDesktop",
+      "backgroundColor": "#FFFFFF",
+      "displayName": "Klever Desktop",
+      "identityName": "YourCompany.KleverDesktop",
+      "publisher": "CN=YourPublisherName",
+      "publisherDisplayName": "Your Company Name"
     },
     "linux": {
       "icon": "build/icon.png",

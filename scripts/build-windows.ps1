@@ -2,8 +2,7 @@
 
 # =================================================================
 # Klever Desktop - Windows Build Script (Electron)
-# Creates Windows NSIS installer and ZIP for distribution
-# Supports code signing with optional certificate
+# Creates Windows MSIX package for Microsoft Store submission
 # =================================================================
 
 param(
@@ -28,17 +27,17 @@ if ($Help) {
     Write-Host "  -Help                 Show this help message"
     Write-Host ""
     Write-Host "Environment Variables (optional):"
-    Write-Host "  CSC_LINK              Path to .pfx certificate file or base64 certificate"
-    Write-Host "  CSC_KEY_PASSWORD      Password for the certificate"
+    Write-Host "  WINDOWS_STORE_PUBLISHER        Publisher name from Partner Center"
+    Write-Host "  WINDOWS_STORE_IDENTITY_NAME    Identity name from Partner Center"
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\scripts\build-windows.ps1                    # Build with version from package.json"
     Write-Host "  .\scripts\build-windows.ps1 -Version 1.2.0     # Build with specific version"
     Write-Host "  .\scripts\build-windows.ps1 -SkipBuild         # Skip build step"
     Write-Host ""
-    Write-Host "Code Signing (optional):"
-    Write-Host "  `$env:CSC_LINK = 'C:\path\to\certificate.pfx'"
-    Write-Host "  `$env:CSC_KEY_PASSWORD = 'your-password'"
+    Write-Host "Microsoft Store Configuration (optional):"
+    Write-Host "  `$env:WINDOWS_STORE_PUBLISHER = 'CN=YourPublisherName'"
+    Write-Host "  `$env:WINDOWS_STORE_IDENTITY_NAME = 'YourCompany.KleverDesktop'"
     Write-Host "  .\scripts\build-windows.ps1"
     Write-Host ""
     exit 0
@@ -87,27 +86,27 @@ try {
 Write-Host ""
 
 # --- Environment Variables Check ---
-Write-Host "🔍 Checking environment variables..." -ForegroundColor Cyan
+Write-Host "🔍 Checking Microsoft Store configuration..." -ForegroundColor Cyan
 Write-Host ""
 
-if ($env:CSC_LINK) {
-    Write-Host "✅ Code signing certificate configured" -ForegroundColor Green
-    Write-Host "   Certificate: $($env:CSC_LINK)" -ForegroundColor Gray
+if ($env:WINDOWS_STORE_PUBLISHER) {
+    Write-Host "✅ Publisher configured: $($env:WINDOWS_STORE_PUBLISHER)" -ForegroundColor Green
 } else {
-    Write-Host "⚠️  CSC_LINK not set - build will be unsigned" -ForegroundColor Yellow
-    Write-Host "   To enable code signing:" -ForegroundColor Gray
-    Write-Host "   `$env:CSC_LINK = 'C:\path\to\certificate.pfx'" -ForegroundColor Gray
-    Write-Host "   `$env:CSC_KEY_PASSWORD = 'your-password'" -ForegroundColor Gray
+    Write-Host "⚠️  WINDOWS_STORE_PUBLISHER not set - using default from package.json" -ForegroundColor Yellow
+    Write-Host "   To configure:" -ForegroundColor Gray
+    Write-Host "   `$env:WINDOWS_STORE_PUBLISHER = 'CN=YourPublisherName'" -ForegroundColor Gray
 }
 
-if ($env:CSC_KEY_PASSWORD) {
-    Write-Host "✅ Certificate password configured" -ForegroundColor Green
+if ($env:WINDOWS_STORE_IDENTITY_NAME) {
+    Write-Host "✅ Identity Name configured: $($env:WINDOWS_STORE_IDENTITY_NAME)" -ForegroundColor Green
 } else {
-    if ($env:CSC_LINK) {
-        Write-Host "⚠️  CSC_KEY_PASSWORD not set" -ForegroundColor Yellow
-    }
+    Write-Host "⚠️  WINDOWS_STORE_IDENTITY_NAME not set - using default from package.json" -ForegroundColor Yellow
+    Write-Host "   To configure:" -ForegroundColor Gray
+    Write-Host "   `$env:WINDOWS_STORE_IDENTITY_NAME = 'YourCompany.KleverDesktop'" -ForegroundColor Gray
 }
 
+Write-Host ""
+Write-Host "ℹ️  Note: MSIX packages are signed by Microsoft during Store certification" -ForegroundColor Cyan
 Write-Host ""
 
 # --- Version Configuration ---
@@ -138,7 +137,7 @@ Write-Host "   - App Name: $APP_NAME" -ForegroundColor White
 Write-Host "   - Bundle ID: $BUNDLE_ID" -ForegroundColor White
 Write-Host "   - Version: $APP_VERSION" -ForegroundColor White
 Write-Host "   - Build Dir: $BUILD_DIR" -ForegroundColor White
-Write-Host "   - Code Signing: $(if ($env:CSC_LINK) { 'Enabled' } else { 'Disabled' })" -ForegroundColor White
+Write-Host "   - Target: Microsoft Store (MSIX)" -ForegroundColor White
 Write-Host ""
 
 # --- Install dependencies ---
@@ -198,16 +197,16 @@ Write-Host ""
 # Set environment variables for electron-builder
 $env:ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES = "true"
 
-Write-Host "   🪟 Creating Windows NSIS installer and ZIP..." -ForegroundColor Gray
+Write-Host "   🪟 Creating Windows MSIX package for Microsoft Store..." -ForegroundColor Gray
 
 try {
-    # Build for Windows (NSIS and ZIP)
-    yarn run electron-builder --win nsis zip `
+    # Build for Windows (MSIX for Microsoft Store)
+    yarn run electron-builder --win appx `
         --config.appId="$BUNDLE_ID" `
         --config.productName="$APP_NAME" `
         --config.directories.output="$BUILD_DIR"
 
-    Write-Host "✅ Windows packages created" -ForegroundColor Green
+    Write-Host "✅ MSIX package created" -ForegroundColor Green
 } catch {
     Write-Host "❌ Packaging failed: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
@@ -219,28 +218,20 @@ Write-Host ""
 Write-Host "🔍 [Step 6/6] Verifying build..." -ForegroundColor Green
 Write-Host ""
 
-# Find build artifacts
-$NSIS_SETUP = Get-ChildItem -Path $BUILD_DIR -Filter "*Setup*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-$ZIP_FILE = Get-ChildItem -Path $BUILD_DIR -Filter "*win.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
+# Find MSIX package
+$MSIX_PACKAGE = Get-ChildItem -Path $BUILD_DIR -Filter "*.appx" -ErrorAction SilentlyContinue | Select-Object -First 1
 
-if ($NSIS_SETUP) {
-    $setupSize = [math]::Round(($NSIS_SETUP.Length / 1MB), 2)
-    Write-Host "✅ NSIS Setup found: $($NSIS_SETUP.Name) ($setupSize MB)" -ForegroundColor Green
+if ($MSIX_PACKAGE) {
+    $msixSize = [math]::Round(($MSIX_PACKAGE.Length / 1MB), 2)
+    Write-Host "✅ MSIX package found: $($MSIX_PACKAGE.Name) ($msixSize MB)" -ForegroundColor Green
 } else {
-    Write-Host "⚠️  NSIS Setup not found at expected location" -ForegroundColor Yellow
-    Write-Host "   Looking for .exe files in $BUILD_DIR..." -ForegroundColor Gray
-    Get-ChildItem -Path $BUILD_DIR -Filter "*.exe" -Recurse | ForEach-Object {
+    Write-Host "⚠️  MSIX package not found at expected location" -ForegroundColor Yellow
+    Write-Host "   Looking for .appx files in $BUILD_DIR..." -ForegroundColor Gray
+    Get-ChildItem -Path $BUILD_DIR -Filter "*.appx" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
         Write-Host "   Found: $($_.FullName)" -ForegroundColor Gray
     }
-}
-
-if ($ZIP_FILE) {
-    $zipSize = [math]::Round(($ZIP_FILE.Length / 1MB), 2)
-    Write-Host "✅ ZIP file found: $($ZIP_FILE.Name) ($zipSize MB)" -ForegroundColor Green
-} else {
-    Write-Host "⚠️  ZIP file not found at expected location" -ForegroundColor Yellow
-    Write-Host "   Looking for .zip files in $BUILD_DIR..." -ForegroundColor Gray
-    Get-ChildItem -Path $BUILD_DIR -Filter "*.zip" -Recurse | ForEach-Object {
+    Write-Host "   Looking for .msix files in $BUILD_DIR..." -ForegroundColor Gray
+    Get-ChildItem -Path $BUILD_DIR -Filter "*.msix" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
         Write-Host "   Found: $($_.FullName)" -ForegroundColor Gray
     }
 }
@@ -258,26 +249,25 @@ Write-Host "🆔 Bundle ID: $BUNDLE_ID" -ForegroundColor White
 Write-Host "📂 Build Output: $BUILD_DIR\" -ForegroundColor White
 Write-Host "" -ForegroundColor White
 Write-Host "📦 Build Artifacts:" -ForegroundColor Cyan
-if ($NSIS_SETUP) {
-    Write-Host "   ✅ NSIS Setup: $($NSIS_SETUP.Name) ($setupSize MB)" -ForegroundColor Green
+if ($MSIX_PACKAGE) {
+    Write-Host "   ✅ MSIX Package: $($MSIX_PACKAGE.Name) ($msixSize MB)" -ForegroundColor Green
+    Write-Host "      Path: $($MSIX_PACKAGE.FullName)" -ForegroundColor Gray
 } else {
-    Write-Host "   ❌ NSIS Setup: Not found" -ForegroundColor Red
-}
-if ($ZIP_FILE) {
-    Write-Host "   ✅ ZIP: $($ZIP_FILE.Name) ($zipSize MB)" -ForegroundColor Green
-} else {
-    Write-Host "   ❌ ZIP: Not found" -ForegroundColor Red
+    Write-Host "   ❌ MSIX Package: Not found" -ForegroundColor Red
 }
 Write-Host ""
 Write-Host "🚀 Next Steps:" -ForegroundColor Cyan
-Write-Host "   1. Test the installer on a clean Windows machine" -ForegroundColor White
-Write-Host "   2. Verify the app launches correctly" -ForegroundColor White
-Write-Host "   3. Distribute via:" -ForegroundColor White
-Write-Host "      - Direct download from your website" -ForegroundColor Gray
-Write-Host "      - GitHub Releases" -ForegroundColor Gray
-Write-Host "      - Microsoft Store (requires separate packaging)" -ForegroundColor Gray
+Write-Host "   1. Test the MSIX package locally:" -ForegroundColor White
+Write-Host "      - Double-click the .appx file to install" -ForegroundColor Gray
+Write-Host "      - Or use: Add-AppxPackage -Path `"path\to\package.appx`"" -ForegroundColor Gray
+Write-Host "   2. Upload to Microsoft Partner Center:" -ForegroundColor White
+Write-Host "      - Go to https://partner.microsoft.com/dashboard" -ForegroundColor Gray
+Write-Host "      - Navigate to your app submission" -ForegroundColor Gray
+Write-Host "      - Upload the .appx file in the Packages section" -ForegroundColor Gray
+Write-Host "   3. Submit for certification and publish" -ForegroundColor White
 Write-Host ""
 Write-Host "📚 Documentation:" -ForegroundColor Cyan
-Write-Host "   - Electron Builder: https://www.electron.build/configuration/win" -ForegroundColor Gray
-Write-Host "   - Code Signing: https://www.electron.build/code-signing" -ForegroundColor Gray
+Write-Host "   - Electron Builder MSIX: https://www.electron.build/configuration/appx" -ForegroundColor Gray
+Write-Host "   - Microsoft Partner Center: https://partner.microsoft.com/dashboard" -ForegroundColor Gray
+Write-Host "   - Microsoft Store Policies: https://docs.microsoft.com/en-us/windows/uwp/publish/store-policies" -ForegroundColor Gray
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
