@@ -36,7 +36,6 @@ export function ModelSelector({
         if (config.model?.enableLocal && config.model?.local?.model) {
           setHasLocal(true)
           setLocalModel(config.model.local.model)
-          setModelType('local')
 
           // Try to fetch Ollama models
           const ollamaResult = await window.electronAPI.ollamaList()
@@ -51,9 +50,6 @@ export function ModelSelector({
         if (config.model?.enableApi && config.model?.api?.model) {
           setHasApi(true)
           setApiModel(config.model.api.model)
-          if (!config.model?.enableLocal) {
-            setModelType('api')
-          }
 
           // Try to fetch API models
           if (config.model?.api?.baseUrl && config.model?.api?.key) {
@@ -69,6 +65,13 @@ export function ModelSelector({
           } else {
             setApiModels([config.model.api.model])
           }
+        }
+
+        // Set default model type: API first if available, otherwise Local
+        if (config.model?.enableApi && config.model?.api?.model) {
+          setModelType('api')
+        } else if (config.model?.enableLocal && config.model?.local?.model) {
+          setModelType('local')
         }
       }
     } catch (error) {
