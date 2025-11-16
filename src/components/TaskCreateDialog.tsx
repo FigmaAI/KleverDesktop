@@ -21,6 +21,7 @@ interface TaskCreateDialogProps {
   open: boolean
   onClose: () => void
   projectId: string
+  projectName: string
   platform: Platform
   onTaskCreated?: (task: Task) => void
 }
@@ -29,6 +30,7 @@ export function TaskCreateDialog({
   open,
   onClose,
   projectId,
+  projectName,
   platform,
   onTaskCreated,
 }: TaskCreateDialogProps) {
@@ -51,10 +53,15 @@ export function TaskCreateDialog({
 
     setLoading(true)
     try {
+      // For Android, prepend instruction to search and open the app first
+      const taskGoal = platform === 'android'
+        ? `Search and open ${projectName} app and follow the prompt below:\n\n${goal.trim()}`
+        : goal.trim()
+
       const taskInput = {
         projectId,
         name: `Task ${new Date().toLocaleString()}`,
-        goal: goal.trim(),
+        goal: taskGoal,
         url: platform === 'web' ? url.trim() : undefined,
         // Include model configuration if user has selected a specific model
         modelProvider: selectedModel?.type,
