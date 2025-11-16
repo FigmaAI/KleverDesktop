@@ -245,7 +245,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         scriptPath,
         '--platform', project.platform,
         '--app', sanitizedAppName,
-        '--root_dir', project.workspaceDir
+        '--root_dir', project.workspaceDir,
+        '--task_dir', taskDir,
       ];
 
       // Task description (required) - passed as CLI parameter
