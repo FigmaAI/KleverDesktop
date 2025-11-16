@@ -43,6 +43,7 @@ export interface ExecutionConfig {
 export interface AndroidConfig {
   screenshotDir: string;
   xmlDir: string;
+  sdkPath: string;
 }
 
 /**
@@ -115,6 +116,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   android: {
     screenshotDir: '/sdcard/Pictures',  // Android API 29+ Scoped Storage: use public Pictures directory
     xmlDir: '/sdcard/Documents',        // Android API 29+ Scoped Storage: use public Documents directory for XML files
+    sdkPath: '',                         // Android SDK path (auto-detected or set by user in SetupWizard/Settings)
   },
   web: {
     browserType: 'chromium',
@@ -154,9 +156,10 @@ export const ENV_VAR_MAPPING = {
   REQUEST_INTERVAL: 'execution.requestInterval',
   MAX_ROUNDS: 'execution.maxRounds',
 
-  // Android configuration (2 variables)
+  // Android configuration (3 variables)
   ANDROID_SCREENSHOT_DIR: 'android.screenshotDir',
   ANDROID_XML_DIR: 'android.xmlDir',
+  ANDROID_SDK_PATH: 'android.sdkPath',
 
   // Web configuration (4 variables)
   WEB_BROWSER_TYPE: 'web.browserType',

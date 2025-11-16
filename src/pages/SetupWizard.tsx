@@ -20,7 +20,7 @@ export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
 
   // Platform tools hook
-  const { toolsStatus, setToolsStatus, checkPlatformTools } = usePlatformTools()
+  const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath } = usePlatformTools()
 
   // Model configuration hook
   const {
@@ -118,6 +118,7 @@ export function SetupWizard() {
         android: {
           screenshotDir: '/sdcard/Pictures',
           xmlDir: '/sdcard/Documents',
+          sdkPath: androidSdkPath || '',
         },
         web: {
           browserType: 'chromium' as const,

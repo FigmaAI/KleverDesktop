@@ -32,6 +32,7 @@ interface AppConfig {
   android: {
     screenshotDir: string;
     xmlDir: string;
+    sdkPath: string;
   };
   web: {
     browserType: 'chromium' | 'firefox' | 'webkit';
@@ -83,7 +84,7 @@ declare global {
       installPython: () => Promise<{ success: boolean; output?: string; error?: string }>;
       checkHomebrew: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
-      checkAndroidStudio: () => Promise<{ success: boolean; version?: string; error?: string }>;
+      checkAndroidStudio: () => Promise<{ success: boolean; version?: string; path?: string; method?: string; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
       // Ollama operations

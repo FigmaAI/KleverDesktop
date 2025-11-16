@@ -95,7 +95,20 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const versionMatch = output.match(/Android Debug Bridge version ([\d.]+)/);
           const version = versionMatch ? versionMatch[1] : 'unknown';
           console.log('[Android SDK Check] adb found via PATH:', version);
-          resolve({ success: true, version: version, method: 'adb_command' });
+
+          // Try to find SDK path from adb location
+          exec('which adb', { timeout: 2000 }, (whichError, whichStdout) => {
+            let sdkPath = '';
+            if (!whichError && whichStdout) {
+              // adb path: /path/to/sdk/platform-tools/adb -> extract /path/to/sdk
+              const adbFullPath = whichStdout.trim();
+              const platformToolsIndex = adbFullPath.indexOf('/platform-tools/');
+              if (platformToolsIndex !== -1) {
+                sdkPath = adbFullPath.substring(0, platformToolsIndex);
+              }
+            }
+            resolve({ success: true, version: version, method: 'adb_command', path: sdkPath });
+          });
           return;
         }
 
