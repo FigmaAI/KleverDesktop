@@ -52,25 +52,27 @@ npm run lint:fix       # Auto-fix linting errors
 ### Three-Layer Electron Architecture
 
 #### 1. Main Process (`main/`)
-**Location**: `/main/index.ts` (74 lines)
+**Location**: `/main/index.ts` (77 lines)
 
 The Electron main process that:
 - Creates BrowserWindow (1200x800px, min 1000x600px)
 - Loads Vite dev server (localhost:5173) in dev or `dist/index.html` in production
 - Registers all IPC handlers via `registerAllHandlers()` from `main/handlers/index.ts`
 - Manages application lifecycle and cleanup
+- Handles process cleanup on app quit via `cleanupAllProcesses()`
 
 **Handler Architecture** - Modular organization in `main/handlers/`:
-- `index.ts` (39 lines) - Central registration point for all handlers
-- `system-checks.ts` (207 lines) - Python, packages, Ollama, ADB, Playwright, Homebrew checks
+- `index.ts` (41 lines) - Central registration point for all handlers
+- `task.ts` (452 lines) - CRUD operations for tasks, task execution, markdown generation
 - `installations.ts` (324 lines) - Environment setup, package installation
-- `config.ts` (121 lines) - Config load/save, setup verification
-- `model.ts` (309 lines) - Model connection testing, API model fetching
+- `project.ts` (268 lines) - CRUD operations for projects, project execution
+- `model.ts` (243 lines) - Model connection testing, API model fetching
+- `system-checks.ts` (220 lines) - Python, packages, Ollama, ADB, Playwright, Homebrew checks
+- `integration.ts` (209 lines) - Integration test execution
+- `config.ts` (131 lines) - Config load/save, setup verification
+- `utilities.ts` (71 lines) - System info and shell operations
 - `ollama.ts` (51 lines) - Ollama list and pull operations
-- `utilities.ts` (36 lines) - System info and shell operations
-- `project.ts` (179 lines) - CRUD operations for projects
-- `task.ts` (234 lines) - CRUD operations for tasks, task execution
-- `integration.ts` (155 lines) - Integration test execution
+- `dialogs.ts` (31 lines) - File/folder dialog handlers
 
 **Utilities** - Helper modules in `main/utils/`:
 - `config-manager.ts` - YAML config file management
@@ -79,64 +81,104 @@ The Electron main process that:
 - `process-manager.ts` - Subprocess spawning and tracking
 
 #### 2. Preload Script (`main/preload.ts`)
-**Location**: `/main/preload.ts` (116 lines)
+**Location**: `/main/preload.ts` (123 lines)
 
 Context bridge that:
-- Exposes 60+ IPC methods via `contextBridge.exposeInMainWorld('electronAPI', {...})`
+- Exposes 70+ IPC methods via `contextBridge.exposeInMainWorld('electronAPI', {...})`
 - Provides type-safe bridge between main and renderer processes
-- Includes event listeners: `onEnvProgress`, `onProjectOutput`, `onTaskComplete`, etc.
+- Includes event listeners: `onEnvProgress`, `onProjectOutput`, `onTaskComplete`, `onTaskOutput`, etc.
+- Supports file dialogs: `selectFolder`, `selectMarkdownFile`
 
 **CRITICAL RULE**: Every IPC handler in `main/handlers/` MUST be exposed in `preload.ts`, or you'll get "not a function" errors at runtime.
 
 #### 3. Renderer Process (`src/`)
 **Location**: `/src/` (React application)
 
-**Entry Point**: `src/main.tsx` (271 lines)
+**Entry Point**: `src/main.tsx`
 - React 18 with StrictMode
 - CssVarsProvider for MUI Joy theming
 - Mock electronAPI for browser testing (when `window.electronAPI` is undefined)
+- Comprehensive mock data for all IPC handlers to support browser-based development
 
-**Router**: `src/App.tsx` (73 lines)
+**Router**: `src/App.tsx`
+- Dynamic routing based on setup completion status
+- Checks setup status on mount via `checkSetup()` IPC handler
+- Conditional routes:
+  - If setup incomplete: redirects to `/setup`
+  - If setup complete: renders main app with Layout
+
 ```
-/setup → SetupWizard (first-time setup)
-/ → Layout (main app shell)
-  ├── /projects → ProjectList
-  ├── /projects/new → ProjectCreate
-  ├── /projects/:id → ProjectDetail
-  ├── /projects/:projectId/tasks/new → TaskCreate
-  ├── /projects/:projectId/tasks/:taskId → TaskDetail
-  └── /settings → Settings
+Setup incomplete:
+  /setup → SetupWizard (first-time setup)
+  /* → Navigate to /setup
+
+Setup complete:
+  / → Layout (main app shell)
+    ├── /projects → ProjectList
+    ├── /projects/new → ProjectCreate
+    ├── /projects/:id → ProjectDetail
+    └── /settings → Settings
+  /* → Navigate to /projects
 ```
 
 **Component Structure**:
-- `src/components/` - Shared components (Layout)
-- `src/pages/` - Page components (SetupWizard, ProjectList, etc.)
+- `src/components/` - 23+ reusable UI components (see Component Catalog below)
+- `src/pages/` - Page components (SetupWizard, ProjectList, ProjectDetail, ProjectCreate, Settings)
+- `src/hooks/` - Custom React hooks (usePlatformTools, useModelConfig, useIntegrationTest, useSettings)
 - `src/types/` - TypeScript definitions
 
 ---
 
+## Component Catalog
+
+The application includes 23+ reusable components in `src/components/`:
+
+**Setup Wizard Components**:
+- `SetupStepper.tsx` - Vertical stepper navigation
+- `PlatformToolsStep.tsx` - Step 0: Platform tools check
+- `PlatformConfigStep.tsx` - Platform configuration step
+- `ToolStatusCard.tsx` - Reusable tool status display
+- `EnvironmentSetup.tsx` - Python environment setup UI
+- `ModelConfigStep.tsx` - Step 1: Model configuration
+- `LocalModelCard.tsx` - Ollama configuration card
+- `ApiModelCard.tsx` - API model configuration card
+- `IntegrationTestStep.tsx` - Step 2: Integration test
+
+**Settings Components**:
+- `ModelSelector.tsx` - Model selection dropdown
+- `ModelSettingsCard.tsx` - Model settings configuration
+- `PlatformSettingsCard.tsx` - Platform-specific settings
+- `AgentSettingsCard.tsx` - AI agent settings
+- `ImageSettingsCard.tsx` - Image processing settings
+- `SystemInfoCard.tsx` - System information display
+
+**Project & Task Components**:
+- `ProjectCard.tsx` - Project list item card
+- `TaskCard.tsx` - Task list item card
+- `TaskCreateDialog.tsx` - Task creation dialog
+- `TaskDetailDialog.tsx` - Task detail view dialog
+- `TaskMarkdownDialog.tsx` - Markdown report viewer
+- `TaskMetricsSummary.tsx` - Task metrics display
+- `TaskStatusSummary.tsx` - Task status overview
+
+**Layout**:
+- `Layout.tsx` - Main application shell with navigation
+
 ## SetupWizard Architecture (Refactored)
 
-The SetupWizard has been refactored from a monolithic 1,387-line component into a clean, modular structure that follows project conventions:
+The SetupWizard has been refactored from a monolithic 1,387-line component into a clean, modular structure:
 
 ### File Structure
 ```
 src/
 ├── pages/
-│   └── SetupWizard.tsx               # Main orchestrator (270 lines)
-├── hooks/                             # Custom hooks (NEW)
+│   └── SetupWizard.tsx               # Main orchestrator (343 lines)
+├── hooks/                             # Custom hooks
 │   ├── usePlatformTools.tsx          # Platform tools checking logic
 │   ├── useModelConfig.tsx            # Model configuration state & logic
-│   └── useIntegrationTest.tsx        # Integration test logic
-├── components/                        # Reusable UI components
-│   ├── SetupStepper.tsx              # Vertical stepper component
-│   ├── PlatformToolsStep.tsx         # Step 0: Platform tools check
-│   ├── ToolStatusCard.tsx            # Reusable tool status display
-│   ├── EnvironmentSetup.tsx          # Python environment setup UI
-│   ├── ModelConfigStep.tsx           # Step 1: Model configuration
-│   ├── LocalModelCard.tsx            # Ollama configuration card
-│   ├── ApiModelCard.tsx              # API model configuration card
-│   └── IntegrationTestStep.tsx       # Step 2: Integration test
+│   ├── useIntegrationTest.tsx        # Integration test logic
+│   └── useSettings.tsx               # Settings state management
+├── components/                        # Reusable UI components (see Component Catalog above)
 └── types/
     └── setupWizard.ts                # SetupWizard-specific types
 ```
@@ -159,6 +201,11 @@ src/
 - Methods: `handleRunIntegrationTest(modelConfig)`, `handleStopIntegrationTest()`
 - Listens to IPC events for real-time output
 
+**`useSettings()`** (`src/hooks/useSettings.tsx`):
+- State: Settings data, loading status
+- Methods: Load, save, and update app settings
+- Syncs with `config.yaml` via IPC handlers
+
 ### Component Organization Benefits
 
 1. **Project Consistency**: Follows standard src/components/, src/hooks/, src/types/ structure
@@ -166,6 +213,7 @@ src/
 3. **Better Maintainability**: Flat structure makes navigation easier
 4. **Enhanced Testability**: Hooks and components testable in isolation
 5. **Type Safety**: Shared types in `@/types/setupWizard` ensure consistency
+6. **Scalability**: 23+ components organized by feature domain (Setup, Settings, Projects/Tasks)
 
 ---
 
@@ -401,6 +449,8 @@ getMainWindow()?.webContents.send('env:progress', outputLine)
 - `install:progress` - Installation progress
 - `ollama:pull:progress` - Ollama model download progress
 - `project:output` - Project execution output
+- `task:output` - Task execution output (real-time)
+- `task:complete` - Task execution completion
 - `integration:test:output` - Integration test output
 - `integration:test:complete` - Integration test completion
 
@@ -440,28 +490,31 @@ interface Task {
 **IPC Handlers**:
 - `project:list`, `project:create`, `project:update`, `project:delete`
 - `task:create`, `task:update`, `task:delete`
-- `task:start`, `task:stop` - Execute task with Python subprocess
+- `task:start`, `task:stop` - Execute task with Python subprocess, generates markdown reports
+- `task:getMarkdown` - Retrieve markdown report for completed task
 - `project:start`, `project:stop` - Run project exploration
+- File dialogs: `selectFolder`, `selectMarkdownFile` - Native OS file/folder selection
 
 ---
 
 ## Key Files Reference
 
 ### Main Process
-- `main/index.ts` (74 lines) - Entry point, window creation, handler registration
-- `main/preload.ts` (116 lines) - Context bridge with 60+ IPC methods
-- `main/handlers/index.ts` (39 lines) - Central handler registration
+- `main/index.ts` (77 lines) - Entry point, window creation, handler registration
+- `main/preload.ts` (123 lines) - Context bridge with 70+ IPC methods
+- `main/handlers/index.ts` (41 lines) - Central handler registration
 
-### Handlers (1,616 lines total)
-- `main/handlers/system-checks.ts` (207 lines)
-- `main/handlers/installations.ts` (324 lines)
-- `main/handlers/config.ts` (121 lines)
-- `main/handlers/model.ts` (309 lines)
-- `main/handlers/ollama.ts` (51 lines)
-- `main/handlers/utilities.ts` (36 lines)
-- `main/handlers/project.ts` (179 lines)
-- `main/handlers/task.ts` (234 lines)
-- `main/handlers/integration.ts` (155 lines)
+### Handlers (2,041 lines total)
+- `main/handlers/task.ts` (452 lines) - Task CRUD, execution, markdown generation
+- `main/handlers/installations.ts` (324 lines) - Environment setup, installations
+- `main/handlers/project.ts` (268 lines) - Project CRUD and execution
+- `main/handlers/model.ts` (243 lines) - Model testing and API fetching
+- `main/handlers/system-checks.ts` (220 lines) - System tool verification
+- `main/handlers/integration.ts` (209 lines) - Integration test execution
+- `main/handlers/config.ts` (131 lines) - Config management
+- `main/handlers/utilities.ts` (71 lines) - System utilities
+- `main/handlers/ollama.ts` (51 lines) - Ollama operations
+- `main/handlers/dialogs.ts` (31 lines) - File/folder dialogs
 
 ### Utilities
 - `main/utils/config-manager.ts` - YAML config management
@@ -470,21 +523,21 @@ interface Task {
 - `main/utils/process-manager.ts` - Subprocess tracking
 
 ### Renderer
-- `src/main.tsx` (271 lines) - React entry point
-- `src/App.tsx` (73 lines) - Router configuration
-- `src/pages/SetupWizard.tsx` (270 lines) - Setup wizard page
-- `src/pages/ProjectList.tsx`, `ProjectDetail.tsx`, etc. - Other pages
-- `src/hooks/` - Custom React hooks (usePlatformTools, useModelConfig, useIntegrationTest)
-- `src/components/` - Reusable UI components (9 SetupWizard components + Layout)
+- `src/main.tsx` - React entry point with mock API
+- `src/App.tsx` - Router with setup-based conditional rendering
+- `src/pages/SetupWizard.tsx` (343 lines) - Multi-step setup wizard
+- `src/pages/` - ProjectList, ProjectDetail, ProjectCreate, Settings
+- `src/hooks/` - usePlatformTools, useModelConfig, useIntegrationTest, useSettings
+- `src/components/` - 23+ reusable UI components (see Component Catalog section)
 
 ### Configuration
-- `package.json` (106 lines) - Dependencies, scripts, build config
-- `vite.config.ts` (22 lines) - Vite build configuration
+- `package.json` - Dependencies, scripts, build config
+- `vite.config.ts` - Vite build configuration with path alias (`@` → `./src`)
 - `tsconfig.json`, `tsconfig.main.json`, `tsconfig.node.json` - TypeScript configs
 - `eslint.config.mjs` - ESLint configuration
 
 ### Types
-- `src/types/electron.d.ts` - IPC method signatures
+- `src/types/electron.d.ts` - IPC method signatures (70+ methods)
 - `src/types/project.ts` - Project and Task types
 - `src/types/setupWizard.ts` - SetupWizard types (ToolStatus, ModelConfig, TestStatus, StepConfig)
 - `main/types/model.ts` - Model configuration types
@@ -613,5 +666,18 @@ When contributing to this project:
 
 ---
 
-*Last Updated*: 2025-11-14
-*Refactored*: SetupWizard reorganized to follow project structure conventions (src/hooks/, src/components/, src/types/)
+## Update History
+
+**2025-11-16**: Updated documentation to reflect current codebase state
+- Updated all line counts for main process files
+- Added new `dialogs.ts` handler (31 lines)
+- Documented handler growth: 1,616 → 2,041 total lines
+- Added Component Catalog section with 23+ components organized by domain
+- Documented new event channels: `task:output`, `task:complete`
+- Added new IPC handlers: `task:getMarkdown`, `selectFolder`, `selectMarkdownFile`
+- Updated hooks documentation to include `useSettings`
+- Documented App.tsx conditional routing based on setup status
+- Updated preload.ts: 60+ → 70+ IPC methods
+
+**2025-11-14**: SetupWizard refactoring
+- Reorganized to follow project structure conventions (src/hooks/, src/components/, src/types/)
