@@ -10,13 +10,15 @@ import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
-import { ModelConfig, Project } from '../types';
+import { ModelConfig, Task } from '../types';
 import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
 import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
 
 let integrationTestProcess: ChildProcess | null = null;
+let currentTask: Task | null = null;
+let currentTaskDir: string | null = null;
 
 /**
  * Register all integration test handlers
@@ -95,10 +97,60 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       const workspaceDir = path.join(homeDir, 'Documents');
       ensureDirectoryExists(workspaceDir);
 
-      mainWindow?.webContents.send('integration:output', `Test results will be saved to: ${workspaceDir}/apps/Feeling_Lucky/\n\n`);
+      // Create or get project
+      const data = loadProjects();
+      let project = data.projects.find(p => p.name === 'Feeling_Lucky');
+      
+      if (!project) {
+        project = {
+          id: `proj_${Date.now()}`,
+          name: 'Feeling_Lucky',
+          platform: 'web',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          tasks: [],
+          workspaceDir: workspaceDir,
+        };
+        data.projects.push(project);
+        mainWindow?.webContents.send('integration:output', '📦 Creating project "Feeling_Lucky"...\n');
+      } else {
+        mainWindow?.webContents.send('integration:output', '📦 Using existing project "Feeling_Lucky"...\n');
+      }
 
-      // Use venv Python to run the integration test
-      // Pass task info via CLI parameters (not environment variables)
+      // Create task for this test run
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+      const taskName = `Integration_Test_${timestamp}`;
+      currentTask = {
+        id: `task_${Date.now()}`,
+        projectId: project.id,
+        name: taskName,
+        description: 'Automated integration test for setup validation',
+        goal: 'Find and click the "I\'m Feeling Lucky" button',
+        status: 'running',
+        url: 'https://www.google.com',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        startedAt: new Date().toISOString(),
+      };
+
+      project.tasks.push(currentTask);
+      project.updatedAt = new Date().toISOString();
+      saveProjects(data);
+
+      // Create task directory structure
+      const appsDir = path.join(workspaceDir, 'apps', 'Feeling_Lucky');
+      const demosDir = path.join(appsDir, 'demos');
+      currentTaskDir = path.join(demosDir, `self_explore_${timestamp.replace(/-/g, '_')}`);
+      
+      ensureDirectoryExists(appsDir);
+      ensureDirectoryExists(demosDir);
+      ensureDirectoryExists(currentTaskDir);
+
+      mainWindow?.webContents.send('integration:output', `📝 Created task "${taskName}"\n`);
+      mainWindow?.webContents.send('integration:output', `   Task directory: ${currentTaskDir}\n\n`);
+
+      // Use venv Python to run the integration test with --task_dir and --task_desc
       integrationTestProcess = spawnVenvPython(
         [
           '-u',
@@ -109,6 +161,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           'web',
           '--root_dir',
           workspaceDir,
+          '--task_dir',
+          currentTaskDir,
           '--task_desc',
           'Find and click the "I\'m Feeling Lucky" button',
           '--url',
@@ -138,50 +192,56 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
 
       integrationTestProcess.on('close', (code) => {
         mainWindow?.webContents.send('integration:output', '\n============================================================\n');
+        
+        // Update task status based on result
+        try {
+          const data = loadProjects();
+          const project = data.projects.find(p => p.name === 'Feeling_Lucky');
+          
+          if (project && currentTask && currentTaskDir) {
+            const taskToUpdate = project.tasks.find(t => t.id === currentTask!.id);
+            
+            if (taskToUpdate) {
+              taskToUpdate.status = code === 0 ? 'completed' : 'failed';
+              taskToUpdate.completedAt = new Date().toISOString();
+              taskToUpdate.updatedAt = new Date().toISOString();
+              taskToUpdate.resultPath = currentTaskDir;
+              
+              // Check if log file exists and read it for output
+              const reportPath = path.join(currentTaskDir, 'log_report.md');
+              if (fs.existsSync(reportPath)) {
+                const output = fs.readFileSync(reportPath, 'utf8');
+                taskToUpdate.output = output.substring(0, 1000); // Store first 1000 chars
+              }
+              
+              project.updatedAt = new Date().toISOString();
+              saveProjects(data);
+              
+              console.log(`[Integration Test] Updated task status: ${taskToUpdate.status}`);
+            }
+          }
+        } catch (error) {
+          console.error('[Integration Test] Failed to update task status:', error);
+        }
+        
         if (code === 0) {
           mainWindow?.webContents.send('integration:output', '✅ Integration test PASSED - All 2 rounds completed successfully!\n');
           mainWindow?.webContents.send('integration:output', '============================================================\n');
-          console.log('[Integration Test] ✅ Test completed successfully');
-
-          // Auto-create project for the integration test
-          try {
-            const data = loadProjects();
-            
-            // Check if project already exists
-            const existingProject = data.projects.find(p => p.name === 'Feeling_Lucky');
-            
-            if (!existingProject) {
-              const newProject: Project = {
-                id: `proj_${Date.now()}`,
-                name: 'Feeling_Lucky',
-                platform: 'web',
-                status: 'active',
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                tasks: [],
-                workspaceDir: workspaceDir,
-              };
-
-              data.projects.push(newProject);
-              saveProjects(data);
-              
-              mainWindow?.webContents.send('integration:output', '\n📦 Project "Feeling_Lucky" has been automatically created!\n');
-              mainWindow?.webContents.send('integration:output', `   Location: ${workspaceDir}\n`);
-              console.log('[Integration Test] Created project:', newProject.id);
-            } else {
-              console.log('[Integration Test] Project already exists, skipping creation');
-            }
-          } catch (error) {
-            console.error('[Integration Test] Failed to create project:', error);
-            // Don't fail the integration test if project creation fails
+          mainWindow?.webContents.send('integration:output', '\n✨ Project and task have been saved!\n');
+          if (currentTaskDir) {
+            mainWindow?.webContents.send('integration:output', `   View results in: ${currentTaskDir}\n`);
           }
+          console.log('[Integration Test] ✅ Test completed successfully');
         } else {
           mainWindow?.webContents.send('integration:output', `❌ Integration test FAILED (exit code: ${code})\n`);
           mainWindow?.webContents.send('integration:output', '============================================================\n');
           console.log(`[Integration Test] ❌ Test failed with code: ${code}`);
         }
+        
         mainWindow?.webContents.send('integration:complete', code === 0);
         integrationTestProcess = null;
+        currentTask = null;
+        currentTaskDir = null;
       });
 
       return { success: true };
@@ -200,6 +260,30 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
     if (integrationTestProcess) {
       integrationTestProcess.kill('SIGTERM');
       integrationTestProcess = null;
+      
+      // Update task status to cancelled
+      if (currentTask && currentTaskDir) {
+        try {
+          const data = loadProjects();
+          const project = data.projects.find(p => p.name === 'Feeling_Lucky');
+          
+          if (project) {
+            const taskToUpdate = project.tasks.find(t => t.id === currentTask!.id);
+            if (taskToUpdate) {
+              taskToUpdate.status = 'cancelled';
+              taskToUpdate.updatedAt = new Date().toISOString();
+              project.updatedAt = new Date().toISOString();
+              saveProjects(data);
+            }
+          }
+        } catch (error) {
+          console.error('[Integration Test] Failed to update task status on stop:', error);
+        }
+      }
+      
+      currentTask = null;
+      currentTaskDir = null;
+      
       mainWindow?.webContents.send('integration:output', '\n[Test stopped by user]\n');
       mainWindow?.webContents.send('integration:complete', false);
       return { success: true };

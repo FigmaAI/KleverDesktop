@@ -13,6 +13,7 @@ export interface ToolStatus {
 export interface ModelConfig {
   enableLocal: boolean
   enableApi: boolean
+  apiProvider?: string      // Selected provider ID (e.g., 'openai', 'anthropic', 'openrouter')
   apiBaseUrl: string
   apiKey: string
   apiModel: string

@@ -4,26 +4,22 @@ import {
   Typography,
   Sheet,
   Stack,
-  Button,
   FormControl,
   FormLabel,
   FormHelperText,
   Alert,
-  Input,
   Select,
   Option,
-  Autocomplete,
   IconButton,
   CircularProgress,
   Divider,
 } from '@mui/joy'
 import Checkbox from '@mui/joy/Checkbox'
 import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { ModelConfig, TestStatus } from '@/types/setupWizard'
+import { ModelConfig } from '@/types/setupWizard'
+import { ApiModelCard } from './ApiModelCard'
 
 interface ModelSettingsCardProps {
   modelConfig: ModelConfig
@@ -36,17 +32,11 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
   const [ollamaLoading, setOllamaLoading] = useState(false)
   const [ollamaError, setOllamaError] = useState<string>('')
 
-  // API models state
+  // API models state (for ApiModelCard)
   const [apiModels, setApiModels] = useState<string[]>([])
   const [apiModelsLoading, setApiModelsLoading] = useState(false)
   const [apiModelsError, setApiModelsError] = useState<string>('')
   const [detectedProvider, setDetectedProvider] = useState<string>('')
-
-  // Test status state
-  const [localTestStatus, setLocalTestStatus] = useState<TestStatus>('idle')
-  const [localTestMessage, setLocalTestMessage] = useState<string>('')
-  const [apiTestStatus, setApiTestStatus] = useState<TestStatus>('idle')
-  const [apiTestMessage, setApiTestMessage] = useState<string>('')
 
   // Fetch Ollama models
   const fetchOllamaModels = useCallback(async () => {
@@ -79,10 +69,10 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     }
   }, [modelConfig, setModelConfig])
 
-  // Fetch API models from provider
+  // Fetch API models from provider (legacy support)
   const fetchApiModels = useCallback(async () => {
-    if (!modelConfig.apiBaseUrl) {
-      setApiModelsError('Please enter API Base URL first')
+    if (!modelConfig.apiBaseUrl && !modelConfig.apiProvider) {
+      setApiModelsError('Please select a provider first')
       return
     }
 
@@ -97,7 +87,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
 
     try {
       const result = await window.electronAPI.fetchApiModels({
-        apiBaseUrl: modelConfig.apiBaseUrl,
+        apiBaseUrl: modelConfig.apiBaseUrl || '',
         apiKey: modelConfig.apiKey,
       })
 
@@ -114,65 +104,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     } finally {
       setApiModelsLoading(false)
     }
-  }, [modelConfig.apiBaseUrl, modelConfig.apiKey])
-
-  // Test local connection
-  const handleTestLocalConnection = useCallback(async () => {
-    setLocalTestStatus('testing')
-    setLocalTestMessage('')
-
-    try {
-      const result = await window.electronAPI.testModelConnection({
-        enableLocal: true,
-        enableApi: false,
-        apiBaseUrl: '',
-        apiKey: '',
-        apiModel: '',
-        localBaseUrl: modelConfig.localBaseUrl,
-        localModel: modelConfig.localModel,
-      })
-
-      if (result.success) {
-        setLocalTestStatus('success')
-        setLocalTestMessage(result.message || 'Connection successful!')
-      } else {
-        setLocalTestStatus('error')
-        setLocalTestMessage(result.message || 'Connection failed')
-      }
-    } catch (error) {
-      setLocalTestStatus('error')
-      setLocalTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
-    }
-  }, [modelConfig.localBaseUrl, modelConfig.localModel])
-
-  // Test API connection
-  const handleTestApiConnection = useCallback(async () => {
-    setApiTestStatus('testing')
-    setApiTestMessage('')
-
-    try {
-      const result = await window.electronAPI.testModelConnection({
-        enableLocal: false,
-        enableApi: true,
-        apiBaseUrl: modelConfig.apiBaseUrl,
-        apiKey: modelConfig.apiKey,
-        apiModel: modelConfig.apiModel,
-        localBaseUrl: '',
-        localModel: '',
-      })
-
-      if (result.success) {
-        setApiTestStatus('success')
-        setApiTestMessage(result.message || 'Connection successful!')
-      } else {
-        setApiTestStatus('error')
-        setApiTestMessage(result.message || 'Connection failed')
-      }
-    } catch (error) {
-      setApiTestStatus('error')
-      setApiTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
-    }
-  }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiModel])
+  }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiProvider])
 
   // Auto-fetch Ollama models when enabled
   useEffect(() => {
@@ -180,17 +112,6 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
       fetchOllamaModels()
     }
   }, [modelConfig.enableLocal, fetchOllamaModels])
-
-  // Auto-fetch API models when URL or key changes (with debounce)
-  useEffect(() => {
-    if (modelConfig.enableApi && modelConfig.apiBaseUrl) {
-      const timeoutId = window.setTimeout(() => {
-        fetchApiModels()
-      }, 500) // Debounce API calls
-
-      return () => window.clearTimeout(timeoutId)
-    }
-  }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, fetchApiModels])
 
   return (
     <Sheet
@@ -281,32 +202,12 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
                   : 'Install models using: ollama pull <model-name>'}
               </FormHelperText>
             </FormControl>
-
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleTestLocalConnection}
-              loading={localTestStatus === 'testing'}
-              disabled={!modelConfig.enableLocal}
-              fullWidth
-            >
-              Test Connection
-            </Button>
-
-            {localTestStatus !== 'idle' && localTestStatus !== 'testing' && (
-              <Alert
-                color={localTestStatus === 'success' ? 'success' : 'danger'}
-                startDecorator={localTestStatus === 'success' ? <CheckCircleIcon /> : <WarningIcon />}
-              >
-                {localTestMessage}
-              </Alert>
-            )}
           </Stack>
         </Box>
 
         <Divider />
 
-        {/* API Model Section */}
+        {/* API Model Section - Use ApiModelCard with custom styling */}
         <Box
           sx={{
             p: 2.5,
@@ -321,7 +222,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
             <Checkbox
               label={
                 <Typography level="title-md" fontWeight="bold">
-                  API Model (OpenAI, OpenRouter, etc.)
+                  API Model (Cloud Services)
                 </Typography>
               }
               checked={modelConfig.enableApi}
@@ -331,106 +232,21 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
               sx={{ mb: 0.5 }}
             />
             <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
-              Connect to cloud-based AI services for powerful performance
+              100+ models from OpenAI, Anthropic, Google, and more
             </Typography>
           </Box>
 
-          <Stack spacing={2}>
-            <FormControl>
-              <FormLabel>API Base URL</FormLabel>
-              <Input
-                value={modelConfig.apiBaseUrl}
-                onChange={(e) => setModelConfig({ ...modelConfig, apiBaseUrl: e.target.value })}
-                placeholder="https://api.openai.com/v1/chat/completions"
-                disabled={!modelConfig.enableApi}
-              />
-              <FormHelperText>OpenAI-compatible API endpoint</FormHelperText>
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>API Key</FormLabel>
-              <Input
-                type="password"
-                value={modelConfig.apiKey}
-                onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
-                placeholder="sk-..."
-                disabled={!modelConfig.enableApi}
-              />
-              <FormHelperText>Your API key</FormHelperText>
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>
-                Model Name
-                {detectedProvider && ` (${detectedProvider})`}
-              </FormLabel>
-              <Stack direction="row" spacing={1}>
-                <Autocomplete
-                  placeholder="Enter or select model"
-                  value={modelConfig.apiModel}
-                  onChange={(_, newValue) => {
-                    setModelConfig({ ...modelConfig, apiModel: newValue || '' })
-                  }}
-                  onInputChange={(_, newValue) => {
-                    setModelConfig({ ...modelConfig, apiModel: newValue })
-                  }}
-                  options={apiModels}
-                  freeSolo
-                  disabled={!modelConfig.enableApi || !modelConfig.apiKey}
-                  loading={apiModelsLoading}
-                  sx={{ flex: 1 }}
-                />
-                <IconButton
-                  onClick={fetchApiModels}
-                  disabled={!modelConfig.enableApi || !modelConfig.apiBaseUrl || !modelConfig.apiKey || apiModelsLoading}
-                  variant="outlined"
-                  color="neutral"
-                >
-                  <RefreshIcon />
-                </IconButton>
-              </Stack>
-              <FormHelperText>
-                {apiModelsError
-                  ? 'Unable to fetch models - please check details below'
-                  : apiModels.length > 0
-                    ? `${apiModels.length} models available`
-                    : 'Enter model name or fetch from API'}
-              </FormHelperText>
-            </FormControl>
-
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleTestApiConnection}
-              loading={apiTestStatus === 'testing'}
-              disabled={!modelConfig.enableApi}
-              fullWidth
-            >
-              Test Connection
-            </Button>
-
-            {apiModelsError && (
-              <Alert
-                color="warning"
-                startDecorator={<WarningIcon />}
-                variant="soft"
-              >
-                <Box>
-                  <Typography level="title-sm" fontWeight="bold">Model Fetch Error</Typography>
-                  <Typography level="body-sm">{apiModelsError}</Typography>
-                </Box>
-              </Alert>
-            )}
-
-            {apiTestStatus !== 'idle' && apiTestStatus !== 'testing' && (
-              <Alert
-                color={apiTestStatus === 'success' ? 'success' : 'danger'}
-                startDecorator={apiTestStatus === 'success' ? <CheckCircleIcon /> : <WarningIcon />}
-              >
-                {apiTestMessage}
-              </Alert>
-            )}
-          </Stack>
+          <ApiModelCard
+            modelConfig={modelConfig}
+            setModelConfig={setModelConfig}
+            apiModels={apiModels}
+            apiModelsLoading={apiModelsLoading}
+            apiModelsError={apiModelsError}
+            detectedProvider={detectedProvider}
+            fetchApiModels={fetchApiModels}
+            showCheckbox={false}
+            standalone={false}
+          />
         </Box>
       </Stack>
     </Sheet>

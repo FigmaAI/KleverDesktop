@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Typography, Sheet, Stack, Alert } from '@mui/joy'
 import { LocalModelCard } from './LocalModelCard'
 import { ApiModelCard } from './ApiModelCard'
-import { ModelConfig, TestStatus } from '@/types/setupWizard'
+import { ModelConfig } from '@/types/setupWizard'
 
 interface ModelConfigStepProps {
   modelConfig: ModelConfig
@@ -11,17 +11,11 @@ interface ModelConfigStepProps {
   ollamaLoading: boolean
   ollamaError: string
   fetchOllamaModels: () => void
-  localTestStatus: TestStatus
-  localTestMessage: string
-  onTestLocalConnection: () => void
   apiModels: string[]
   apiModelsLoading: boolean
   apiModelsError: string
   detectedProvider: string
   fetchApiModels: () => void
-  apiTestStatus: TestStatus
-  apiTestMessage: string
-  onTestApiConnection: () => void
 }
 
 export function ModelConfigStep({
@@ -31,17 +25,11 @@ export function ModelConfigStep({
   ollamaLoading,
   ollamaError,
   fetchOllamaModels,
-  localTestStatus,
-  localTestMessage,
-  onTestLocalConnection,
   apiModels,
   apiModelsLoading,
   apiModelsError,
   detectedProvider,
   fetchApiModels,
-  apiTestStatus,
-  apiTestMessage,
-  onTestApiConnection,
 }: ModelConfigStepProps) {
   return (
     <motion.div
@@ -82,9 +70,6 @@ export function ModelConfigStep({
             ollamaLoading={ollamaLoading}
             ollamaError={ollamaError}
             fetchOllamaModels={fetchOllamaModels}
-            testStatus={localTestStatus}
-            testMessage={localTestMessage}
-            onTestConnection={onTestLocalConnection}
           />
 
           {/* API Model Card */}
@@ -96,9 +81,6 @@ export function ModelConfigStep({
             apiModelsError={apiModelsError}
             detectedProvider={detectedProvider}
             fetchApiModels={fetchApiModels}
-            testStatus={apiTestStatus}
-            testMessage={apiTestMessage}
-            onTestConnection={onTestApiConnection}
           />
         </Stack>
       </Sheet>

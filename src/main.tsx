@@ -101,6 +101,33 @@ if (!window.electronAPI) {
       await new Promise((resolve) => setTimeout(resolve, 500))
       return { success: true, provider: 'openai', models: ['gpt-4', 'gpt-3.5-turbo'] }
     },
+    fetchLiteLLMModels: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return {
+        success: true,
+        providers: [
+          {
+            id: 'openai',
+            name: 'OpenAI',
+            requiresBaseUrl: false,
+            apiKeyUrl: 'https://platform.openai.com/api-keys',
+            models: [
+              { id: 'gpt-4o', name: 'GPT-4 Omni', supportsVision: true, contextWindow: 128000 },
+              { id: 'gpt-4o-mini', name: 'GPT-4 Omni Mini', supportsVision: true, contextWindow: 128000 },
+            ],
+          },
+          {
+            id: 'anthropic',
+            name: 'Anthropic Claude',
+            requiresBaseUrl: false,
+            apiKeyUrl: 'https://console.anthropic.com/',
+            models: [
+              { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', supportsVision: true, contextWindow: 200000 },
+            ],
+          },
+        ],
+      }
+    },
 
     // Project Management
     projectList: async () => {

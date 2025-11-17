@@ -29,8 +29,8 @@ function MetricCard({ label, value, icon, color = 'neutral' }: MetricCardProps) 
         p: 1.5,
         borderRadius: 'sm',
         bgcolor: 'background.surface',
-        minWidth: 120,
-        flex: 1,
+        minWidth: 100,      // Smaller minimum width to prevent horizontal scroll
+        flex: 1,            // Equal width for all cards
         transition: 'all 0.2s',
         '&:hover': {
           borderColor: `${color}.outlinedBorder`,
@@ -40,11 +40,11 @@ function MetricCard({ label, value, icon, color = 'neutral' }: MetricCardProps) 
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         {icon}
-        <Typography level="body-xs" textColor="text.secondary">
+        <Typography level="body-xs" textColor="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
           {label}
         </Typography>
       </Box>
-      <Typography level="h4" fontWeight="bold" textColor={`${color}.plainColor`}>
+      <Typography level="h4" fontWeight="bold" textColor={`${color}.plainColor`} sx={{ whiteSpace: 'nowrap' }}>
         {value}
       </Typography>
     </Sheet>
@@ -106,17 +106,9 @@ export function TaskStatusSummary({
     <Box
       sx={{
         display: 'flex',
-        flexWrap: 'nowrap',
+        flexWrap: 'wrap',
         gap: 1.5,
         width: '100%',
-        overflowX: 'auto',
-        '&::-webkit-scrollbar': {
-          height: '4px',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'neutral.outlinedBorder',
-          borderRadius: '4px',
-        },
       }}
     >
       {metrics.map((metric, index) => (

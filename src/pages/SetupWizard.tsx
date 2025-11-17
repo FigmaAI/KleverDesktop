@@ -28,10 +28,6 @@ export function SetupWizard() {
   const {
     modelConfig,
     setModelConfig,
-    localTestStatus,
-    localTestMessage,
-    apiTestStatus,
-    apiTestMessage,
     ollamaModels,
     ollamaLoading,
     ollamaError,
@@ -41,8 +37,6 @@ export function SetupWizard() {
     apiModelsError,
     detectedProvider,
     fetchApiModels,
-    handleTestLocalConnection,
-    handleTestApiConnection,
   } = useModelConfig(currentStep)
 
   // Integration test hook
@@ -66,24 +60,22 @@ export function SetupWizard() {
 
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1)
-    } else if (integrationTestSuccess) {
-      // Save config before navigating to ensure App.tsx recognizes setup is complete
-      try {
-        await window.electronAPI.saveModelConfig({
-          enableLocal: modelConfig.enableLocal,
-          enableApi: modelConfig.enableApi,
-          apiBaseUrl: modelConfig.apiBaseUrl,
-          apiKey: modelConfig.apiKey,
-          apiModel: modelConfig.apiModel,
-          localBaseUrl: modelConfig.localBaseUrl,
-          localModel: modelConfig.localModel,
-        })
-        // Reload the page to trigger App.tsx to re-check setup status
-        window.location.href = '/projects'
-      } catch (error) {
-        console.error('Failed to save configuration:', error)
+      // If moving from Step 2 (Model Config) to Step 3 (Integration Test), save config first
+      if (currentStep === 2) {
+        try {
+          await handleSaveConfig()
+          // Config saved successfully, move to next step
+          setCurrentStep(currentStep + 1)
+        } catch {
+          // Error already handled in handleSaveConfig (alert shown)
+          console.error('[SetupWizard] Failed to save config, staying on current step')
+        }
+      } else {
+        setCurrentStep(currentStep + 1)
       }
+    } else if (integrationTestSuccess) {
+      // Already saved config in step 2, just navigate to projects
+      window.location.href = '/projects'
     }
   }
 
@@ -146,14 +138,16 @@ export function SetupWizard() {
 
       if (result.success) {
         console.log('[SetupWizard] config.json saved successfully')
-        handleNext()
+        // Note: Navigation is handled by caller (either step progression or final navigation)
       } else {
         console.error('[SetupWizard] Failed to save config:', result.error)
         alert(`Failed to save configuration: ${result.error}`)
+        throw new Error(result.error)
       }
     } catch (error) {
       console.error('[SetupWizard] Error saving configuration:', error)
       alert('Failed to save configuration')
+      throw error
     }
   }
 
@@ -173,11 +167,16 @@ export function SetupWizard() {
   }
 
   const canProceedFromStep2 = () => {
-    return (
-      (modelConfig.enableLocal || modelConfig.enableApi) &&
-      (!modelConfig.enableLocal || localTestStatus === 'success') &&
-      (!modelConfig.enableApi || apiTestStatus === 'success')
-    )
+    // At least one provider must be enabled
+    if (!modelConfig.enableLocal && !modelConfig.enableApi) return false
+    
+    // If local is enabled, must have a model selected
+    if (modelConfig.enableLocal && !modelConfig.localModel) return false
+    
+    // If API is enabled, must have provider, key, and model
+    if (modelConfig.enableApi && (!modelConfig.apiProvider || !modelConfig.apiKey || !modelConfig.apiModel)) return false
+    
+    return true
   }
 
   return (
@@ -246,17 +245,11 @@ export function SetupWizard() {
                     ollamaLoading={ollamaLoading}
                     ollamaError={ollamaError}
                     fetchOllamaModels={fetchOllamaModels}
-                    localTestStatus={localTestStatus}
-                    localTestMessage={localTestMessage}
-                    onTestLocalConnection={handleTestLocalConnection}
                     apiModels={apiModels}
                     apiModelsLoading={apiModelsLoading}
                     apiModelsError={apiModelsError}
                     detectedProvider={detectedProvider}
                     fetchApiModels={fetchApiModels}
-                    apiTestStatus={apiTestStatus}
-                    apiTestMessage={apiTestMessage}
-                    onTestApiConnection={handleTestApiConnection}
                   />
                 )}
 
@@ -317,7 +310,7 @@ export function SetupWizard() {
                 <Button
                   variant="solid"
                   color="primary"
-                  onClick={handleSaveConfig}
+                  onClick={handleNext}
                   disabled={!canProceedFromStep2()}
                   sx={{ minWidth: 100 }}
                 >

@@ -1,21 +1,17 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ModelConfig, TestStatus } from '@/types/setupWizard'
+import { ModelConfig } from '@/types/setupWizard'
 
 export function useModelConfig(currentStep: number) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    enableLocal: true,
+    enableLocal: false,
     enableApi: false,
-    apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
+    apiProvider: '',        // No provider selected by default
+    apiBaseUrl: '',         // Empty - will be set when provider is selected
     apiKey: '',
     apiModel: '',
     localBaseUrl: 'http://localhost:11434/v1/chat/completions',
     localModel: 'qwen3-vl:4b',
   })
-
-  const [localTestStatus, setLocalTestStatus] = useState<TestStatus>('idle')
-  const [localTestMessage, setLocalTestMessage] = useState<string>('')
-  const [apiTestStatus, setApiTestStatus] = useState<TestStatus>('idle')
-  const [apiTestMessage, setApiTestMessage] = useState<string>('')
 
   // Ollama models state
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
@@ -117,69 +113,9 @@ export function useModelConfig(currentStep: number) {
     }
   }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, currentStep, fetchApiModels])
 
-  const handleTestLocalConnection = async () => {
-    setLocalTestStatus('testing')
-    setLocalTestMessage('')
-
-    try {
-      const result = await window.electronAPI.testModelConnection({
-        enableLocal: true,
-        enableApi: false,
-        apiBaseUrl: '',
-        apiKey: '',
-        apiModel: '',
-        localBaseUrl: modelConfig.localBaseUrl,
-        localModel: modelConfig.localModel,
-      })
-
-      if (result.success) {
-        setLocalTestStatus('success')
-        setLocalTestMessage(result.message || 'Connection successful!')
-      } else {
-        setLocalTestStatus('error')
-        setLocalTestMessage(result.message || 'Connection failed')
-      }
-    } catch (error) {
-      setLocalTestStatus('error')
-      setLocalTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
-    }
-  }
-
-  const handleTestApiConnection = async () => {
-    setApiTestStatus('testing')
-    setApiTestMessage('')
-
-    try {
-      const result = await window.electronAPI.testModelConnection({
-        enableLocal: false,
-        enableApi: true,
-        apiBaseUrl: modelConfig.apiBaseUrl,
-        apiKey: modelConfig.apiKey,
-        apiModel: modelConfig.apiModel,
-        localBaseUrl: '',
-        localModel: '',
-      })
-
-      if (result.success) {
-        setApiTestStatus('success')
-        setApiTestMessage(result.message || 'Connection successful!')
-      } else {
-        setApiTestStatus('error')
-        setApiTestMessage(result.message || 'Connection failed')
-      }
-    } catch (error) {
-      setApiTestStatus('error')
-      setApiTestMessage(error instanceof Error ? error.message : 'Unknown error occurred')
-    }
-  }
-
   return {
     modelConfig,
     setModelConfig,
-    localTestStatus,
-    localTestMessage,
-    apiTestStatus,
-    apiTestMessage,
     ollamaModels,
     ollamaLoading,
     ollamaError,
@@ -189,7 +125,5 @@ export function useModelConfig(currentStep: number) {
     apiModelsError,
     detectedProvider,
     fetchApiModels,
-    handleTestLocalConnection,
-    handleTestApiConnection,
   }
 }

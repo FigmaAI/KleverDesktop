@@ -3,7 +3,6 @@ import {
   Typography,
   Sheet,
   Stack,
-  Button,
   FormControl,
   FormLabel,
   FormHelperText,
@@ -15,11 +14,9 @@ import {
 } from '@mui/joy'
 import Checkbox from '@mui/joy/Checkbox'
 import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import { ModelConfig, TestStatus } from '@/types/setupWizard'
+import { ModelConfig } from '@/types/setupWizard'
 
 interface LocalModelCardProps {
   modelConfig: ModelConfig
@@ -28,9 +25,6 @@ interface LocalModelCardProps {
   ollamaLoading: boolean
   ollamaError: string
   fetchOllamaModels: () => void
-  testStatus: TestStatus
-  testMessage: string
-  onTestConnection: () => void
 }
 
 export function LocalModelCard({
@@ -40,9 +34,6 @@ export function LocalModelCard({
   ollamaLoading,
   ollamaError,
   fetchOllamaModels,
-  testStatus,
-  testMessage,
-  onTestConnection,
 }: LocalModelCardProps) {
   return (
     <Sheet
@@ -120,26 +111,6 @@ export function LocalModelCard({
               : 'Install models using: ollama pull <model-name>'}
           </FormHelperText>
         </FormControl>
-
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={onTestConnection}
-          loading={testStatus === 'testing'}
-          disabled={!modelConfig.enableLocal}
-          fullWidth
-        >
-          Test Connection
-        </Button>
-
-        {testStatus !== 'idle' && testStatus !== 'testing' && (
-          <Alert
-            color={testStatus === 'success' ? 'success' : 'danger'}
-            startDecorator={testStatus === 'success' ? <CheckCircleIcon /> : <WarningIcon />}
-          >
-            {testMessage}
-          </Alert>
-        )}
       </Stack>
     </Sheet>
   )

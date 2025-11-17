@@ -97,11 +97,13 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       // Check if at least one model is configured
       let isConfigured = false;
 
+      // Local model: requires baseUrl and model
       if (config.model.enableLocal && config.model.local.baseUrl && config.model.local.model) {
         isConfigured = true;
       }
 
-      if (config.model.enableApi && config.model.api.baseUrl && config.model.api.key && config.model.api.model) {
+      // API model: requires key and model (baseUrl is optional for most providers)
+      if (config.model.enableApi && config.model.api.key && config.model.api.model) {
         isConfigured = true;
       }
 

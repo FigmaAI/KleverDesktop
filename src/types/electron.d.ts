@@ -152,6 +152,25 @@ declare global {
         models?: string[];
         error?: string
       }>;
+      fetchLiteLLMModels: () => Promise<{
+        success: boolean;
+        providers?: Array<{
+          id: string;
+          name: string;
+          requiresBaseUrl: boolean;
+          defaultBaseUrl?: string;
+          apiKeyUrl: string;
+          models: Array<{
+            id: string;
+            name: string;
+            maxInputTokens?: number;
+            maxOutputTokens?: number;
+            supportsVision?: boolean;
+          }>;
+          description?: string;
+        }>;
+        error?: string;
+      }>;
 
       // Integration test
       runIntegrationTest: (config: {

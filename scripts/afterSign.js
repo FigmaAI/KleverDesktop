@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -72,7 +73,7 @@ async function resignPythonRuntime(pythonPath) {
         // Remove extended attributes that might cause issues
         try {
           execSync(`xattr -cr "${file}"`, { stdio: 'pipe' });
-        } catch (e) {
+        } catch {
           // xattr might fail if no attributes exist, that's ok
         }
 

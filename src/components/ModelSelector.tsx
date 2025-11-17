@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
-import { Select, Option, Stack } from '@mui/joy'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Select, Option, Stack, Autocomplete, AutocompleteOption, Box, Typography, Chip } from '@mui/joy'
+import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
 
 interface ModelSelectorProps {
   value?: {
     type: 'local' | 'api'
     model: string
+    provider?: string  // For API models, store provider ID
   }
-  onChange?: (value: { type: 'local' | 'api'; model: string }) => void
+  onChange?: (value: { type: 'local' | 'api'; model: string; provider?: string }) => void
   size?: 'sm' | 'md' | 'lg'
   disabled?: boolean
 }
@@ -20,12 +22,38 @@ export function ModelSelector({
   const [modelType, setModelType] = useState<'local' | 'api'>(value?.type || 'local')
   const [localModel, setLocalModel] = useState(value?.type === 'local' ? value.model : '')
   const [apiModel, setApiModel] = useState(value?.type === 'api' ? value.model : '')
+  const [apiProvider, setApiProvider] = useState(value?.provider || '')
   const [localModels, setLocalModels] = useState<string[]>([])
-  const [apiModels, setApiModels] = useState<string[]>([])
   const [hasLocal, setHasLocal] = useState(false)
   const [hasApi, setHasApi] = useState(false)
+  
+  // Use LiteLLM providers hook for API models
+  const { providers, getProviderModels } = useLiteLLMProviders()
 
-  const loadModels = async () => {
+  // Get models for selected API provider
+  const providerModels = useMemo(() => {
+    if (!apiProvider) return []
+    return getProviderModels(apiProvider)
+  }, [apiProvider, getProviderModels])
+
+  // Model options for API autocomplete
+  const apiModelOptions = useMemo(() => {
+    return providerModels.map(m => m.id).sort()
+  }, [providerModels])
+
+  // Helper to detect provider from model name
+  const detectProviderFromModel = useCallback((modelName: string): string => {
+    if (modelName.startsWith('gpt-')) return 'openai'
+    if (modelName.startsWith('claude-') || modelName.startsWith('anthropic/')) return 'anthropic'
+    if (modelName.startsWith('grok')) return 'xai'
+    if (modelName.startsWith('gemini/')) return 'gemini'
+    if (modelName.startsWith('openrouter/')) return 'openrouter'
+    if (modelName.startsWith('mistral/')) return 'mistral'
+    if (modelName.startsWith('deepseek/')) return 'deepseek'
+    return 'openai' // Default to OpenAI
+  }, [])
+
+  const loadModels = useCallback(async () => {
     try {
       // Load config to see what's enabled
       const configResult = await window.electronAPI.configLoad()
@@ -50,20 +78,12 @@ export function ModelSelector({
         if (config.model?.enableApi && config.model?.api?.model) {
           setHasApi(true)
           setApiModel(config.model.api.model)
-
-          // Try to fetch API models
-          if (config.model?.api?.baseUrl && config.model?.api?.key) {
-            const apiModelsResult = await window.electronAPI.fetchApiModels({
-              apiBaseUrl: config.model.api.baseUrl,
-              apiKey: config.model.api.key,
-            })
-            if (apiModelsResult.success && apiModelsResult.models) {
-              setApiModels(apiModelsResult.models)
-            } else {
-              setApiModels([config.model.api.model])
-            }
-          } else {
-            setApiModels([config.model.api.model])
+          
+          // Try to detect provider from model name
+          const modelName = config.model.api.model
+          const detectedProvider = detectProviderFromModel(modelName)
+          if (detectedProvider) {
+            setApiProvider(detectedProvider)
           }
         }
 
@@ -77,27 +97,28 @@ export function ModelSelector({
     } catch (error) {
       console.error('Failed to load models:', error)
     }
-  }
+  }, [detectProviderFromModel])
 
   // Load available models from config
   useEffect(() => {
     // Initial data loading is a valid use case for setState in effect
-    // eslint-disable-next-line
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadModels()
-  }, [])
+  }, [loadModels])
 
   // Notify parent of changes
   useEffect(() => {
     if (onChange) {
-      const selectedModel = modelType === 'local' ? localModel : apiModel
-      if (selectedModel) {
-        onChange({ type: modelType, model: selectedModel })
+      if (modelType === 'local' && localModel) {
+        onChange({ type: 'local', model: localModel })
+      } else if (modelType === 'api' && apiModel) {
+        onChange({ type: 'api', model: apiModel, provider: apiProvider })
       }
     }
-  }, [modelType, localModel, apiModel, onChange])
+  }, [modelType, localModel, apiModel, apiProvider, onChange])
 
   return (
-    <Stack direction="row" spacing={1}>
+    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
       {/* Model Type Selection */}
       {(hasLocal || hasApi) && (
         <Select
@@ -120,7 +141,7 @@ export function ModelSelector({
         </Select>
       )}
 
-      {/* Model Selection */}
+      {/* Local Model Selection */}
       {modelType === 'local' && localModels.length > 0 && (
         <Select
           value={localModel}
@@ -138,21 +159,67 @@ export function ModelSelector({
         </Select>
       )}
 
-      {modelType === 'api' && apiModels.length > 0 && (
-        <Select
-          value={apiModel}
-          onChange={(_, value) => setApiModel(value || '')}
-          placeholder="Select model"
-          size={size}
-          disabled={disabled}
-          sx={{ minWidth: 180 }}
-        >
-          {apiModels.map((m) => (
-            <Option key={m} value={m}>
-              {m}
-            </Option>
-          ))}
-        </Select>
+      {/* API Model Selection - Provider + Model */}
+      {modelType === 'api' && hasApi && (
+        <>
+          {/* Provider Selection */}
+          <Select
+            value={apiProvider}
+            onChange={(_, value) => {
+              setApiProvider(value || '')
+              setApiModel('') // Reset model when provider changes
+            }}
+            placeholder="Provider"
+            size={size}
+            disabled={disabled}
+            sx={{ minWidth: 140 }}
+          >
+            {providers.map((provider) => (
+              <Option key={provider.id} value={provider.id}>
+                {provider.name}
+              </Option>
+            ))}
+          </Select>
+
+          {/* Model Selection with Vision tags */}
+          {apiProvider && (
+            <Autocomplete
+              value={apiModel}
+              onChange={(_, newValue) => setApiModel(newValue || '')}
+              onInputChange={(_, newValue) => setApiModel(newValue)}
+              options={apiModelOptions}
+              placeholder="Model"
+              size={size}
+              disabled={disabled}
+              freeSolo
+              sx={{ minWidth: 200 }}
+              renderOption={(props, option) => {
+                const modelInfo = providerModels.find(m => m.id === option)
+                return (
+                  <AutocompleteOption {...props} key={option}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                      <Typography level="body-sm" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {option}
+                      </Typography>
+                      {modelInfo && (
+                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
+                          {modelInfo.supportsVision && (
+                            <Chip size="sm" color="success" variant="soft">Vision</Chip>
+                          )}
+                          {modelInfo.maxInputTokens && (
+                            <Chip size="sm" variant="soft">
+                              {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
+                            </Chip>
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </AutocompleteOption>
+                )
+              }}
+            />
+          )}
+        </>
       )}
     </Stack>
   )

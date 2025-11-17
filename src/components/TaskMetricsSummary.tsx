@@ -89,17 +89,9 @@ export function TaskMetricsSummary({
     <Box
       sx={{
         display: 'flex',
-        flexWrap: 'nowrap',
+        flexWrap: 'wrap',
         gap: 1.5,
         width: '100%',
-        overflowX: 'auto',
-        '&::-webkit-scrollbar': {
-          height: '4px',
-        },
-        '&::-webkit-scrollbar-thumb': {
-          backgroundColor: 'neutral.outlinedBorder',
-          borderRadius: '4px',
-        },
       }}
     >
       {metrics.map((metric, index) => (

@@ -10,6 +10,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 import { ModelConfig } from '../types';
+import { fetchLiteLLMModels } from '../utils/litellm-providers';
 
 /**
  * Register all model management handlers
@@ -111,7 +112,27 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
     }
   });
 
-  // Fetch API models from various providers
+  // Fetch all LiteLLM providers and models from GitHub
+  ipcMain.handle('model:fetchLiteLLMModels', async () => {
+    try {
+      console.log('[model:fetchLiteLLMModels] Fetching model data from LiteLLM GitHub...');
+      const result = await fetchLiteLLMModels();
+      
+      if (result.success) {
+        console.log(`[model:fetchLiteLLMModels] Success: ${result.providers?.length} providers, ${result.providers?.reduce((acc, p) => acc + p.models.length, 0)} models`);
+      } else {
+        console.error(`[model:fetchLiteLLMModels] Failed: ${result.error}`);
+      }
+      
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[model:fetchLiteLLMModels] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Fetch API models from various providers (legacy support)
   ipcMain.handle('model:fetchApiModels', async (_event, config: { apiBaseUrl: string; apiKey: string }) => {
     try {
       const { apiBaseUrl, apiKey } = config;

@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   configLoad: () => ipcRenderer.invoke('config:load'),
   configSave: (config: Record<string, unknown>) => ipcRenderer.invoke('config:save', config),
   configReset: () => ipcRenderer.invoke('config:reset'),
-  checkSetup: () => ipcRenderer.invoke('check:setup'),
+  checkSetup: () => ipcRenderer.invoke('config:checkSetup'),
 
   // Project operations
   projectStart: (projectConfig: Record<string, unknown>) => ipcRenderer.invoke('project:start', projectConfig),
@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testModelConnection: (config: Record<string, unknown>) => ipcRenderer.invoke('model:testConnection', config),
   saveModelConfig: (config: Record<string, unknown>) => ipcRenderer.invoke('model:saveConfig', config),
   fetchApiModels: (config: Record<string, unknown>) => ipcRenderer.invoke('model:fetchApiModels', config),
+  fetchLiteLLMModels: () => ipcRenderer.invoke('model:fetchLiteLLMModels'),
 
   // Integration test
   runIntegrationTest: (config: Record<string, unknown>) => ipcRenderer.invoke('integration:test', config),
