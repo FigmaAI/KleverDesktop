@@ -1,6 +1,20 @@
 /**
  * Python Environment Manager
  *
+ * @deprecated This module is DEPRECATED as of 2024-11-18.
+ * Use `python-runtime.ts` instead for simplified bundled Python management.
+ *
+ * This file is kept for reference only. The venv-based approach has been
+ * replaced with a simpler bundled Python solution that:
+ * - Eliminates runtime venv creation
+ * - Removes system Python fallback complexity
+ * - Provides deterministic Python environment
+ * - Offers clearer error messages
+ *
+ * DO NOT USE THIS MODULE IN NEW CODE.
+ * See: main/utils/python-runtime.ts
+ *
+ * Legacy description:
  * Manages bundled Python runtime and virtual environments for Klever Desktop.
  * Provides complete isolation from system Python installation.
  */
