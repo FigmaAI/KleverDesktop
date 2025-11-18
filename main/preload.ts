@@ -12,6 +12,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   envCheck: () => ipcRenderer.invoke('env:check'),
   envSetup: () => ipcRenderer.invoke('env:setup'),
 
+  // Python Runtime Management (Post-Install Download)
+  pythonCheckInstalled: () => ipcRenderer.invoke('python:checkInstalled'),
+  pythonGetInstallPath: () => ipcRenderer.invoke('python:getInstallPath'),
+  pythonDownload: () => ipcRenderer.invoke('python:download'),
+
   // LEGACY: Environment checks (kept for backward compatibility)
   checkPython: () => ipcRenderer.invoke('check:python'),
   checkPackages: () => ipcRenderer.invoke('check:packages'),
@@ -67,6 +72,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onInstallProgress: (callback: (data: string) => void) => {
     ipcRenderer.on('install:progress', (_event: IpcRendererEvent, data: string) => callback(data));
+  },
+  onPythonProgress: (callback: (data: string) => void) => {
+    ipcRenderer.on('python:progress', (_event: IpcRendererEvent, data: string) => callback(data));
   },
   onOllamaPullProgress: (callback: (data: string) => void) => {
     ipcRenderer.on('ollama:pull:progress', (_event: IpcRendererEvent, data: string) => callback(data));

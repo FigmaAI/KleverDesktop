@@ -1,9 +1,9 @@
 /**
- * Python Runtime Manager (Simplified)
+ * Python Runtime Manager (Post-Install Download)
  *
- * Manages bundled Python runtime for Klever Desktop.
- * No fallback - always uses bundled Python.
- * No venv creation - dependencies are pre-installed in site-packages.
+ * Manages Python runtime downloaded to user data directory.
+ * Python is downloaded during setup wizard, not bundled with the app.
+ * This reduces app bundle size from ~1GB to ~200MB.
  */
 
 import * as path from 'path';
@@ -13,19 +13,24 @@ import { app } from 'electron';
 import { spawn, SpawnOptions } from 'child_process';
 
 /**
- * Get bundled Python executable path
- * No fallback - always use bundled Python
+ * Get the directory where Python should be installed
+ * Located in user data directory: ~/.klever-desktop/python/
  */
-export function getPythonPath(): string {
-  const isDev = process.env.NODE_ENV === 'development';
+export function getPythonInstallDir(): string {
   const platform = os.platform();
   const arch = os.arch();
+  const userDataPath = app.getPath('userData');
 
-  const basePath = isDev
-    ? path.join(__dirname, '..', '..')
-    : process.resourcesPath;
+  return path.join(userDataPath, 'python', `${platform}-${arch}`, 'python');
+}
 
-  const pythonDir = path.join(basePath, 'resources', 'python', `${platform}-${arch}`, 'python');
+/**
+ * Get Python executable path
+ * Now located in user data directory instead of app bundle
+ */
+export function getPythonPath(): string {
+  const platform = os.platform();
+  const pythonDir = getPythonInstallDir();
 
   let pythonExe: string;
   if (platform === 'win32') {
@@ -34,16 +39,27 @@ export function getPythonPath(): string {
     pythonExe = path.join(pythonDir, 'bin', 'python3');
   }
 
-  // ✨ Bundled Python must exist - no fallback
   if (!fs.existsSync(pythonExe)) {
     throw new Error(
-      `Bundled Python not found at ${pythonExe}. ` +
-      `Please run 'yarn python:build' to download Python runtime.`
+      `Python runtime not found at ${pythonExe}. ` +
+      `Please install Python from the Setup Wizard.`
     );
   }
 
-  console.log('[Python Runtime] Using bundled Python:', pythonExe);
+  console.log('[Python Runtime] Using Python:', pythonExe);
   return pythonExe;
+}
+
+/**
+ * Check if Python is installed in user data directory
+ */
+export function isPythonInstalled(): boolean {
+  try {
+    const pythonExe = getPythonPath();
+    return fs.existsSync(pythonExe);
+  } catch {
+    return false;
+  }
 }
 
 /**

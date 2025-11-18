@@ -75,6 +75,24 @@ declare global {
       }>;
       envSetup: () => Promise<{ success: boolean; error?: string }>;
 
+      // Python Runtime Management (Post-Install Download)
+      pythonCheckInstalled: () => Promise<{
+        success: boolean;
+        installed: boolean;
+        path: string;
+        error?: string;
+      }>;
+      pythonGetInstallPath: () => Promise<{
+        success: boolean;
+        path: string;
+        error?: string;
+      }>;
+      pythonDownload: () => Promise<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>;
+
       // LEGACY: Environment checks (kept for backward compatibility)
       checkPython: () => Promise<{ success: boolean; version?: string; isValid?: boolean; error?: string; bundled?: boolean }>;
       checkPackages: () => Promise<{ success: boolean; output?: string; error?: string }>;
@@ -187,6 +205,7 @@ declare global {
       // Event listeners
       onEnvProgress: (callback: (data: string) => void) => void;
       onInstallProgress: (callback: (data: string) => void) => void;
+      onPythonProgress: (callback: (data: string) => void) => void;
       onOllamaPullProgress: (callback: (data: string) => void) => void;
       onProjectOutput: (callback: (data: string) => void) => void;
       onProjectError: (callback: (data: string) => void) => void;

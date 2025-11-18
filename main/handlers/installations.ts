@@ -1,15 +1,22 @@
 /**
- * Installation IPC handlers (Refactored)
- * Handles Playwright installation only
- * Python runtime and dependencies are pre-bundled
+ * Installation IPC handlers (Runtime Download)
+ * Handles Python and Playwright installation during setup wizard
+ * Python is downloaded post-install to reduce app bundle size
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import { app } from 'electron';
 import {
   checkPythonRuntime,
   checkPlaywrightBrowsers,
-  installPlaywrightBrowsers
+  installPlaywrightBrowsers,
+  isPythonInstalled,
+  getPythonInstallDir,
+  getPythonPath
 } from '../utils/python-runtime';
 
 /**
@@ -186,10 +193,174 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
   // DEPRECATED: Python is bundled with app
   ipcMain.handle('install:python', async () => {
-    console.warn('[install:python] DEPRECATED: Python is bundled with app');
+    console.warn('[install:python] DEPRECATED: Use python:download instead');
     return {
       success: true,
-      message: 'Python runtime is bundled with the app. No installation needed.'
+      message: 'Use python:download handler instead.'
     };
+  });
+
+  // Check if Python is installed
+  ipcMain.handle('python:checkInstalled', async () => {
+    try {
+      const installed = isPythonInstalled();
+      const installPath = installed ? getPythonPath() : getPythonInstallDir();
+
+      return {
+        success: true,
+        installed,
+        path: installPath
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Get Python install directory
+  ipcMain.handle('python:getInstallPath', async () => {
+    try {
+      return {
+        success: true,
+        path: getPythonInstallDir()
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Download and install Python runtime
+  ipcMain.handle('python:download', async () => {
+    try {
+      const mainWindow = getMainWindow();
+      console.log('[Python Download] Starting Python installation...');
+
+      // Check if already installed
+      if (isPythonInstalled()) {
+        mainWindow?.webContents.send('python:progress', '✓ Python is already installed\n');
+        return { success: true, message: 'Python is already installed' };
+      }
+
+      const platform = os.platform();
+      const arch = os.arch();
+      const platformKey = `${platform}-${arch}`;
+
+      mainWindow?.webContents.send('python:progress', `📦 Downloading Python 3.11.9 for ${platformKey}...\n`);
+
+      // Python download URLs
+      const PYTHON_VERSION = '3.11.9';
+      const PYTHON_URLS: Record<string, string> = {
+        'darwin-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macos11.pkg`,
+        'darwin-arm64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macos11.pkg`,
+        'win32-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip`,
+        'linux-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz`
+      };
+
+      const downloadUrl = PYTHON_URLS[platformKey];
+      if (!downloadUrl) {
+        throw new Error(`Unsupported platform: ${platformKey}`);
+      }
+
+      const userDataPath = app.getPath('userData');
+      const tempDir = path.join(userDataPath, '.temp-python-download');
+      const targetDir = getPythonInstallDir();
+
+      // Create directories
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(tempDir, { recursive: true });
+      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+
+      const filename = path.basename(downloadUrl);
+      const downloadPath = path.join(tempDir, filename);
+
+      // Download using curl
+      mainWindow?.webContents.send('python:progress', '⬇️  Downloading...\n');
+
+      await new Promise<void>((resolve, reject) => {
+        exec(`curl -L -o "${downloadPath}" "${downloadUrl}"`, (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(`Download failed: ${error.message}`));
+            return;
+          }
+
+          // Verify file exists and has size
+          const stats = fs.statSync(downloadPath);
+          if (stats.size < 1000000) { // Less than 1MB means error
+            reject(new Error('Downloaded file is too small, may be corrupted'));
+            return;
+          }
+
+          resolve();
+        });
+      });
+
+      mainWindow?.webContents.send('python:progress', '✓ Download complete\n');
+      mainWindow?.webContents.send('python:progress', '📦 Extracting Python...\n');
+
+      // Extract based on platform
+      await new Promise<void>((resolve, reject) => {
+        let extractCmd: string;
+
+        if (platform === 'darwin') {
+          // macOS: Use system Python or installed Python to extract
+          mainWindow?.webContents.send('python:progress', '⚠️  macOS .pkg files require manual installation\n');
+          reject(new Error('macOS installation requires manual .pkg installation. Please use system Python.'));
+          return;
+        } else if (platform === 'win32') {
+          // Windows: Unzip
+          extractCmd = `unzip -q "${downloadPath}" -d "${targetDir}"`;
+        } else {
+          // Linux: Extract tar.gz and build
+          extractCmd = `tar -xzf "${downloadPath}" -C "${tempDir}" && cd "${tempDir}/Python-${PYTHON_VERSION}" && ./configure --prefix="${targetDir}" && make && make install`;
+        }
+
+        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error) => {
+          if (error) {
+            reject(new Error(`Extraction failed: ${error.message}`));
+            return;
+          }
+          resolve();
+        });
+      });
+
+      mainWindow?.webContents.send('python:progress', '✓ Extraction complete\n');
+      mainWindow?.webContents.send('python:progress', '📦 Installing dependencies...\n');
+
+      // Install Python dependencies
+      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
+      if (fs.existsSync(requirementsPath)) {
+        const pythonExe = getPythonPath();
+
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, (error) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+              // Don't fail - dependencies might already be installed
+            }
+            resolve();
+          });
+        });
+      }
+
+      mainWindow?.webContents.send('python:progress', '✓ Dependencies installed\n');
+
+      // Clean up temp directory
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+
+      mainWindow?.webContents.send('python:progress', '✅ Python installation complete!\n');
+      console.log('[Python Download] ✓ Installation complete');
+
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Python Download] ✗ Error:', message);
+      getMainWindow()?.webContents.send('python:progress', `\n❌ Error: ${message}\n`);
+      return { success: false, error: message };
+    }
   });
 }
