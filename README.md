@@ -42,11 +42,11 @@ Whether you're a QA engineer automating test scenarios, a developer exploring UI
 
 ### 🛠️ **Smart Setup Wizard**
 Automatic detection and configuration of:
-- Python 3.11+ environment
+- Python 3.11+ bundled runtime
 - Ollama or API models
 - ADB for Android automation
 - Playwright for web automation
-- Virtual environment management
+- Simplified environment setup
 
 ### 📱 **Android Automation**
 - Connect via ADB to real devices/emulators
@@ -105,7 +105,7 @@ Automatic detection and configuration of:
 |-------|-------------|
 | **Frontend** | React 18 • TypeScript 5 • MUI Joy • Framer Motion |
 | **Desktop** | Electron 31 • Vite 5 • IPC Communication |
-| **Backend** | Python 3.11+ • AppAgent (submodule) |
+| **Backend** | Python 3.11+ • AppAgent (monorepo) |
 | **Automation** | ADB (Android) • Playwright (Web) |
 | **AI** | Ollama (local) • OpenAI API • OpenRouter |
 | **Build** | Vite • TypeScript • ESLint • Electron Builder |
@@ -134,26 +134,18 @@ git clone https://github.com/FigmaAI/KleverDesktop.git
 cd KleverDesktop
 ```
 
-#### 2️⃣ Initialize Submodules
-
-```bash
-git submodule update --init --recursive
-```
-
-#### 3️⃣ Install Dependencies
+#### 2️⃣ Install Dependencies
 
 ```bash
 # Install Node.js dependencies
 npm install
 
 # Install Python dependencies
-cd appagent
-python -m pip install -r requirements.txt
-playwright install chromium
-cd ..
+python3 -m pip install -r appagent/requirements.txt
+python3 -m playwright install chromium
 ```
 
-#### 4️⃣ Set Up Ollama (Optional)
+#### 3️⃣ Set Up Ollama (Optional)
 
 ```bash
 # Install Ollama from https://ollama.com/download
@@ -165,7 +157,7 @@ ollama pull qwen3-vl:4b
 ollama pull qwen2.5-vl:7b
 ```
 
-#### 5️⃣ Launch the Application
+#### 4️⃣ Launch the Application
 
 ```bash
 # Development mode (hot reload)
@@ -186,14 +178,30 @@ The app will launch and guide you through the setup wizard on first run! 🎉
 
 #### Available Scripts
 
+**Development:**
 ```bash
 npm run electron:dev    # Full dev environment (Vite + Electron with hot reload)
 npm run dev            # Vite dev server only (http://localhost:5173)
 npm run electron       # Electron only (requires Vite running separately)
+```
+
+**Build & Package:**
+```bash
 npm run build          # Build both main and renderer processes
 npm run build:main     # Build Electron main process → dist-electron/
 npm run build:renderer # Build React app → dist/
 npm run package        # Package Electron app for distribution
+```
+
+**Python Bundling (New):**
+```bash
+node scripts/build-python.js    # Download & setup Python 3.11.9 runtime
+node scripts/verify-bundle.js   # Verify all required files before packaging
+node scripts/fetch-appagent.js  # Update appagent code (optional)
+```
+
+**Linting:**
+```bash
 npm run lint           # Check for linting errors
 npm run lint:fix       # Auto-fix linting errors
 ```
