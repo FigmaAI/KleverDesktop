@@ -37,58 +37,60 @@ export function usePlatformTools() {
       setToolsStatus((prev) => ({ ...prev, homebrew: { checking: false, installed: true, installing: false } }))
     }
 
-    // Check Bundled Python and Virtual Environment
-    console.log('[usePlatformTools] ========== Checking Python environment ==========')
+    // Check Python (post-install download to user data directory)
+    console.log('[usePlatformTools] ========== Checking Python installation ==========')
     setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, checking: true } }))
     try {
-      console.log('[usePlatformTools] Calling window.electronAPI.envCheck()')
-      const envCheck = await window.electronAPI.envCheck()
-      console.log('[usePlatformTools] envCheck result:', JSON.stringify(envCheck, null, 2))
-
-      // Check Python (bundled or system)
-      const pythonInstalled = envCheck.success && envCheck.bundledPython?.exists
-      const pythonVersion = envCheck.bundledPython?.version
-      const isBundled = envCheck.bundledPython?.isBundled
-
-      console.log('[usePlatformTools] Python analysis:')
-      console.log('  - success:', envCheck.success)
-      console.log('  - bundledPython.exists:', envCheck.bundledPython?.exists)
-      console.log('  - pythonInstalled:', pythonInstalled)
-      console.log('  - pythonVersion:', pythonVersion)
-      console.log('  - isBundled:', isBundled)
+      console.log('[usePlatformTools] Calling window.electronAPI.pythonCheckInstalled()')
+      const pythonCheck = await window.electronAPI.pythonCheckInstalled()
+      console.log('[usePlatformTools] pythonCheck result:', JSON.stringify(pythonCheck, null, 2))
 
       setToolsStatus((prev) => ({
         ...prev,
         python: {
           checking: false,
-          installed: pythonInstalled || false,
-          version: pythonVersion ? `Python ${pythonVersion}${isBundled ? ' (Bundled)' : ' (System)'}` : undefined,
-          error: pythonInstalled ? undefined : 'Python 3.11+ not found. Please install Python.',
+          installed: pythonCheck.installed || false,
+          version: pythonCheck.installed ? 'Python 3.11.9' : undefined,
+          error: pythonCheck.installed ? undefined : 'Python not installed',
           installing: false,
         },
       }))
 
-      // Check Python environment (venv + packages + playwright)
-      const envInstalled = envCheck.success && envCheck.venv?.valid
-      console.log('[usePlatformTools] Venv installed:', envInstalled)
+      console.log('[usePlatformTools] Python check complete')
+    } catch (error) {
+      console.error('[usePlatformTools] Error checking Python:', error)
+      setToolsStatus((prev) => ({
+        ...prev,
+        python: { checking: false, installed: false, error: 'Failed to check Python', installing: false },
+      }))
+    }
+
+    // Check Playwright browsers (only if Python is installed)
+    console.log('[usePlatformTools] ========== Checking Playwright browsers ==========')
+    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, checking: true } }))
+    try {
+      const envCheck = await window.electronAPI.envCheck()
+      console.log('[usePlatformTools] envCheck result:', JSON.stringify(envCheck, null, 2))
+
+      const playwrightInstalled = envCheck.success && envCheck.playwright?.installed
+      console.log('[usePlatformTools] Playwright installed:', playwrightInstalled)
 
       setToolsStatus((prev) => ({
         ...prev,
         pythonEnv: {
           checking: false,
-          installed: envInstalled || false,
-          error: envInstalled ? undefined : 'Environment not set up',
+          installed: playwrightInstalled || false,
+          error: playwrightInstalled ? undefined : 'Playwright browsers not installed',
           installing: false,
         },
       }))
 
-      console.log('[usePlatformTools] ========== Python environment check complete ==========')
+      console.log('[usePlatformTools] ========== Playwright check complete ==========')
     } catch (error) {
-      console.error('[usePlatformTools] Error checking Python environment:', error)
+      console.error('[usePlatformTools] Error checking Playwright:', error)
       setToolsStatus((prev) => ({
         ...prev,
-        python: { checking: false, installed: false, installing: false },
-        pythonEnv: { checking: false, installed: false, installing: false },
+        pythonEnv: { checking: false, installed: false, error: 'Failed to check Playwright', installing: false },
       }))
     }
 
@@ -112,10 +114,48 @@ export function usePlatformTools() {
     }
   }, [])
 
+  const downloadPython = useCallback(async () => {
+    console.log('[usePlatformTools] ========== Starting Python download ==========')
+    setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, installing: true } }))
+
+    try {
+      const result = await window.electronAPI.pythonDownload()
+
+      if (result.success) {
+        console.log('[usePlatformTools] ✓ Python download complete')
+        // Recheck Python status
+        await checkPlatformTools()
+      } else {
+        console.error('[usePlatformTools] ✗ Python download failed:', result.error)
+        setToolsStatus((prev) => ({
+          ...prev,
+          python: {
+            ...prev.python,
+            installing: false,
+            error: result.error || 'Download failed',
+          },
+        }))
+      }
+    } catch (error) {
+      console.error('[usePlatformTools] Error downloading Python:', error)
+      setToolsStatus((prev) => ({
+        ...prev,
+        python: {
+          ...prev.python,
+          installing: false,
+          error: error instanceof Error ? error.message : 'Download failed',
+        },
+      }))
+    }
+
+    console.log('[usePlatformTools] ========== Python download complete ==========')
+  }, [checkPlatformTools])
+
   return {
     toolsStatus,
     setToolsStatus,
     checkPlatformTools,
+    downloadPython,
     androidSdkPath,
     setAndroidSdkPath,
   }

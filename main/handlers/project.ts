@@ -18,7 +18,7 @@ import {
 } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
+import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -219,10 +219,10 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
-      pythonProcess = spawnVenvPython(args, {
+      pythonProcess = spawnBundledPython(args, {
         cwd: appagentDir,  // ✅ Python 실행 환경 = appagent 디렉토리
         env: {
-          ...pythonEnv,         // Python venv environment variables
+          ...pythonEnv,         // Python bundled environment variables
           ...configEnvVars      // 23 config settings from config.json
         }
       });

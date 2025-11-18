@@ -1,84 +1,73 @@
 /**
- * Installation IPC handlers
- * Handles installing required tools: Python packages, Playwright, Android Studio, Python
+ * Installation IPC handlers (Runtime Download)
+ * Handles Python and Playwright installation during setup wizard
+ * Python is downloaded post-install to reduce app bundle size
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
 import { spawn, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
+import { app } from 'electron';
 import {
-  getBundledPythonPath,
-  checkVenvStatus,
-  createVirtualEnvironment,
-  installRequirements,
-  installPlaywrightBrowsers
-} from '../utils/python-manager';
+  checkPythonRuntime,
+  checkPlaywrightBrowsers,
+  installPlaywrightBrowsers,
+  isPythonInstalled,
+  getPythonInstallDir,
+  getPythonPath
+} from '../utils/python-runtime';
 
 /**
  * Register all installation handlers
  */
 export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
-  // NEW: Unified environment check
+  // Environment check (simplified - Python is bundled)
   ipcMain.handle('env:check', async () => {
     try {
       console.log('[env:check] ========== Starting environment check ==========');
-      const pythonPath = getBundledPythonPath();
-      console.log('[env:check] Python path:', pythonPath);
 
-      // Check if it's a bundled Python (absolute path) or system Python (command name)
-      const isBundled = path.isAbsolute(pythonPath);
-      console.log('[env:check] Is bundled:', isBundled);
+      // Check bundled Python runtime
+      const pythonStatus = checkPythonRuntime();
+      console.log('[env:check] Python status:', pythonStatus);
 
-      const pythonExists = isBundled ? fs.existsSync(pythonPath) : true; // Assume system Python exists
-      console.log('[env:check] Python exists (initial check):', pythonExists);
-
-      // Verify Python version and existence by running it
-      let pythonVersion: string | null = null;
-      let pythonValid = false;
-
-      try {
-        console.log('[env:check] Running:', `${pythonPath} --version`);
-        const { stdout } = await new Promise<{ stdout: string }>((resolve, reject) => {
-          exec(`${pythonPath} --version`, { timeout: 5000 }, (error, stdout, stderr) => {
-            if (error) {
-              console.error('[env:check] Python execution error:', error.message);
-              reject(error);
-            } else {
-              console.log('[env:check] Python version output:', stdout || stderr);
-              resolve({ stdout: stdout || stderr });
-            }
-          });
-        });
-
-        const match = stdout.match(/Python (\d+)\.(\d+)\.(\d+)/);
-        if (match) {
-          const major = parseInt(match[1]);
-          const minor = parseInt(match[2]);
-          pythonVersion = `${major}.${minor}.${match[3]}`;
-          pythonValid = major === 3 && minor >= 11;
-          console.log('[env:check] Parsed version:', pythonVersion);
-          console.log('[env:check] Is valid (3.11+):', pythonValid);
-        } else {
-          console.warn('[env:check] Could not parse Python version from output');
-        }
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        console.warn('[env:check] Failed to verify Python:', message);
+      if (!pythonStatus.available) {
+        console.error('[env:check] Python runtime not available:', pythonStatus.error);
+        return {
+          success: false,
+          error: pythonStatus.error,
+          bundledPython: {
+            exists: false,
+            path: pythonStatus.pythonPath,
+            version: null,
+            isBundled: true,
+          },
+          playwright: {
+            installed: false,
+          }
+        };
       }
 
-      const venvStatus = checkVenvStatus();
-      console.log('[env:check] Venv status:', venvStatus);
+      // Check Playwright browsers
+      const playwrightInstalled = await checkPlaywrightBrowsers();
+      console.log('[env:check] Playwright installed:', playwrightInstalled);
 
       const result = {
         success: true,
         bundledPython: {
-          path: pythonPath,
-          exists: pythonExists && pythonValid,
-          version: pythonVersion,
-          isBundled: isBundled,
+          exists: true,
+          path: pythonStatus.pythonPath,
+          version: '3.11.9', // Bundled version
+          isBundled: true,
         },
-        venv: venvStatus,
+        playwright: {
+          installed: playwrightInstalled,
+        },
+        appagent: {
+          path: pythonStatus.appagentPath,
+          exists: true,
+        }
       };
 
       console.log('[env:check] Final result:', JSON.stringify(result, null, 2));
@@ -92,41 +81,26 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     }
   });
 
-  // NEW: Unified environment setup
+  // Environment setup (simplified - only Playwright)
   ipcMain.handle('env:setup', async () => {
     try {
-      console.log('[Environment Setup] Starting unified setup...');
+      console.log('[Environment Setup] Starting Playwright installation...');
       const mainWindow = getMainWindow();
 
-      // Step 1: Create virtual environment
-      console.log('[Environment Setup] Step 1: Creating virtual environment...');
-      mainWindow?.webContents.send('env:progress', '📦 Creating virtual environment...\n');
-
-      const onOutput = (data: string) => mainWindow?.webContents.send('env:progress', data);
-      const onError = (data: string) => mainWindow?.webContents.send('env:progress', data);
-
-      const venvResult = await createVirtualEnvironment(onOutput, onError);
-
-      if (!venvResult.success) {
-        throw new Error(`Failed to create venv: ${venvResult.error}`);
+      // Verify Python runtime is available
+      const pythonStatus = checkPythonRuntime();
+      if (!pythonStatus.available) {
+        throw new Error(`Python runtime not available: ${pythonStatus.error}. Please run 'yarn python:build' first.`);
       }
 
-      // Step 2: Install packages from requirements.txt
-      console.log('[Environment Setup] Step 2: Installing Python packages...');
-      mainWindow?.webContents.send('env:progress', '\n📚 Installing Python packages...\n');
+      mainWindow?.webContents.send('env:progress', '✓ Python runtime verified\n');
 
-      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
-      const packagesResult = await installRequirements(requirementsPath, onOutput, onError);
-
-      if (!packagesResult.success) {
-        throw new Error(`Failed to install packages: ${packagesResult.error}`);
-      }
-
-      // Step 3: Install Playwright browsers
-      console.log('[Environment Setup] Step 3: Installing Playwright browsers...');
+      // Install Playwright browsers
+      console.log('[Environment Setup] Installing Playwright browsers...');
       mainWindow?.webContents.send('env:progress', '\n🎭 Installing Playwright browsers...\n');
 
-      const playwrightResult = await installPlaywrightBrowsers(onOutput, onError);
+      const onProgress = (data: string) => mainWindow?.webContents.send('env:progress', data);
+      const playwrightResult = await installPlaywrightBrowsers(onProgress);
 
       if (!playwrightResult.success) {
         throw new Error(`Failed to install Playwright: ${playwrightResult.error}`);
@@ -145,130 +119,52 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     }
   });
 
-  // LEGACY: Install Python packages
-  ipcMain.handle('install:packages', async () => {
-    return new Promise((resolve) => {
-      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
-      console.log('[Install Packages] Starting installation from:', requirementsPath);
+  // Install Playwright browsers only
+  ipcMain.handle('install:playwright', async () => {
+    try {
+      console.log('[Playwright] Starting installation...');
+      const mainWindow = getMainWindow();
 
-      // Check if requirements.txt exists
-      if (!fs.existsSync(requirementsPath)) {
-        console.error('[Install Packages] requirements.txt not found at:', requirementsPath);
-        resolve({ success: false, error: 'requirements.txt not found' });
+      const onProgress = (data: string) => {
+        console.log('[Playwright]', data);
+        mainWindow?.webContents.send('install:progress', data);
+      };
+
+      const result = await installPlaywrightBrowsers(onProgress);
+
+      if (result.success) {
+        console.log('[Playwright] ✓ Installation complete');
+      } else {
+        console.error('[Playwright] ✗ Installation failed:', result.error);
+      }
+
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Playwright] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Install Android Studio (via Homebrew cask) - LEGACY
+  ipcMain.handle('install:androidStudio', async () => {
+    return new Promise((resolve) => {
+      if (process.platform !== 'darwin') {
+        resolve({ success: false, error: 'Android Studio installation via Homebrew is only supported on macOS' });
         return;
       }
 
-      const pip = spawn('python', ['-m', 'pip', 'install', '-r', requirementsPath]);
-
-      let output = '';
-      let errorOutput = '';
-
-      pip.stdout.on('data', (data) => {
-        const text = data.toString();
-        output += text;
-        console.log('[Install Packages] stdout:', text);
-        getMainWindow()?.webContents.send('install:progress', text);
-      });
-
-      pip.stderr.on('data', (data) => {
-        const text = data.toString();
-        errorOutput += text;
-        console.log('[Install Packages] stderr:', text);
-        getMainWindow()?.webContents.send('install:progress', text);
-      });
-
-      pip.on('close', (code) => {
-        console.log('[Install Packages] Process closed with code:', code);
-        if (code === 0) {
-          resolve({ success: true, output });
-        } else {
-          resolve({ success: false, output: output || errorOutput, error: `pip install failed with code ${code}` });
-        }
-      });
-
-      pip.on('error', (error) => {
-        console.error('[Install Packages] Process error:', error.message);
-        resolve({ success: false, error: error.message });
-      });
-    });
-  });
-
-  // Install Playwright
-  ipcMain.handle('install:playwright', async () => {
-    return new Promise((resolve) => {
-      console.log('[Playwright] Starting installation via pip...');
-      // First install playwright package via pip
-      const playwright = spawn('python', ['-m', 'pip', 'install', 'playwright']);
-
-      let output = '';
-      playwright.stdout.on('data', (data) => {
-        output += data.toString();
-        console.log('[Playwright] stdout:', data.toString());
-        getMainWindow()?.webContents.send('install:progress', data.toString());
-      });
-
-      playwright.stderr.on('data', (data) => {
-        output += data.toString();
-        console.log('[Playwright] stderr:', data.toString());
-        getMainWindow()?.webContents.send('install:progress', data.toString());
-      });
-
-      playwright.on('close', (code) => {
-        console.log('[Playwright] pip install finished with code:', code);
-        if (code === 0) {
-          // Then install browsers
-          console.log('[Playwright] Installing browsers...');
-          getMainWindow()?.webContents.send('install:progress', 'Installing Playwright browsers...\n');
-          const browserInstall = spawn('python', ['-m', 'playwright', 'install', 'chromium']);
-
-          let browserOutput = '';
-          browserInstall.stdout.on('data', (data) => {
-            browserOutput += data.toString();
-            console.log('[Playwright] browser install stdout:', data.toString());
-            getMainWindow()?.webContents.send('install:progress', data.toString());
-          });
-
-          browserInstall.stderr.on('data', (data) => {
-            browserOutput += data.toString();
-            console.log('[Playwright] browser install stderr:', data.toString());
-            getMainWindow()?.webContents.send('install:progress', data.toString());
-          });
-
-          browserInstall.on('close', (browserCode) => {
-            console.log('[Playwright] Browser installation finished with code:', browserCode);
-            resolve({ success: browserCode === 0, output: output + '\n' + browserOutput });
-          });
-
-          browserInstall.on('error', (error) => {
-            console.error('[Playwright] Browser install error:', error.message);
-            resolve({ success: false, error: error.message });
-          });
-        } else {
-          resolve({ success: false, error: 'Failed to install playwright package' });
-        }
-      });
-
-      playwright.on('error', (error) => {
-        console.error('[Playwright] Error:', error.message);
-        resolve({ success: false, error: error.message });
-      });
-    });
-  });
-
-  // Install Android Studio (via Homebrew cask)
-  ipcMain.handle('install:androidStudio', async () => {
-    return new Promise((resolve) => {
       console.log('[Android Studio] Starting installation via Homebrew...');
       const install = spawn('brew', ['install', '--cask', 'android-studio']);
 
       let output = '';
-      install.stdout.on('data', (data) => {
+      install.stdout?.on('data', (data) => {
         output += data.toString();
         console.log('[Android Studio] stdout:', data.toString());
         getMainWindow()?.webContents.send('install:progress', data.toString());
       });
 
-      install.stderr.on('data', (data) => {
+      install.stderr?.on('data', (data) => {
         output += data.toString();
         console.log('[Android Studio] stderr:', data.toString());
         getMainWindow()?.webContents.send('install:progress', data.toString());
@@ -286,39 +182,214 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     });
   });
 
-  // Install Python (via Homebrew)
+  // DEPRECATED: Python packages are pre-bundled
+  ipcMain.handle('install:packages', async () => {
+    console.warn('[install:packages] DEPRECATED: Python packages are pre-bundled in app');
+    return {
+      success: true,
+      message: 'Python packages are pre-bundled. No installation needed.'
+    };
+  });
+
+  // DEPRECATED: Python is bundled with app
   ipcMain.handle('install:python', async () => {
-    return new Promise((resolve) => {
-      if (process.platform !== 'darwin') {
-        resolve({ success: false, error: 'Python installation via Homebrew is only supported on macOS' });
-        return;
+    console.warn('[install:python] DEPRECATED: Use python:download instead');
+    return {
+      success: true,
+      message: 'Use python:download handler instead.'
+    };
+  });
+
+  // Check if Python is installed
+  ipcMain.handle('python:checkInstalled', async () => {
+    try {
+      const installed = isPythonInstalled();
+      const installPath = installed ? getPythonPath() : getPythonInstallDir();
+
+      return {
+        success: true,
+        installed,
+        path: installPath
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Get Python install directory
+  ipcMain.handle('python:getInstallPath', async () => {
+    try {
+      return {
+        success: true,
+        path: getPythonInstallDir()
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, error: message };
+    }
+  });
+
+  // Download and install Python runtime
+  ipcMain.handle('python:download', async () => {
+    try {
+      const mainWindow = getMainWindow();
+      console.log('[Python Download] Starting Python installation...');
+
+      // Check if already installed
+      if (isPythonInstalled()) {
+        mainWindow?.webContents.send('python:progress', '✓ Python is already installed\n');
+        return { success: true, message: 'Python is already installed' };
       }
 
-      console.log('[Python] Starting installation via Homebrew...');
-      const install = spawn('brew', ['install', 'python@3.11']);
+      const platform = os.platform();
+      const arch = os.arch();
+      const platformKey = `${platform}-${arch}`;
 
-      let output = '';
-      install.stdout.on('data', (data) => {
-        output += data.toString();
-        console.log('[Python] stdout:', data.toString());
-        getMainWindow()?.webContents.send('install:progress', data.toString());
+      mainWindow?.webContents.send('python:progress', `📦 Downloading Python 3.11.9 for ${platformKey}...\n`);
+
+      // Python download URLs
+      const PYTHON_VERSION = '3.11.9';
+      const RELEASE_DATE = '20240814'; // Fallback release date
+
+      let downloadUrl: string;
+
+      if (platform === 'darwin') {
+        // Use standalone Python build for macOS
+        const archStr = arch === 'arm64' ? 'aarch64' : 'x86_64';
+        downloadUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${RELEASE_DATE}/cpython-${PYTHON_VERSION}+${RELEASE_DATE}-${archStr}-apple-darwin-install_only.tar.gz`;
+      } else if (platform === 'win32') {
+        downloadUrl = `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip`;
+      } else if (platform === 'linux') {
+        downloadUrl = `https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz`;
+      } else {
+        throw new Error(`Unsupported platform: ${platformKey}`);
+      }
+
+      const userDataPath = app.getPath('userData');
+      const tempDir = path.join(userDataPath, '.temp-python-download');
+      const targetDir = getPythonInstallDir();
+
+      // Create directories
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(tempDir, { recursive: true });
+      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+
+      const filename = path.basename(downloadUrl);
+      const downloadPath = path.join(tempDir, filename);
+
+      // Download using curl
+      mainWindow?.webContents.send('python:progress', '⬇️  Downloading...\n');
+
+      await new Promise<void>((resolve, reject) => {
+        exec(`curl -L -o "${downloadPath}" "${downloadUrl}"`, (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(`Download failed: ${error.message}`));
+            return;
+          }
+
+          // Verify file exists and has size
+          const stats = fs.statSync(downloadPath);
+          if (stats.size < 1000000) { // Less than 1MB means error
+            reject(new Error('Downloaded file is too small, may be corrupted'));
+            return;
+          }
+
+          resolve();
+        });
       });
 
-      install.stderr.on('data', (data) => {
-        output += data.toString();
-        console.log('[Python] stderr:', data.toString());
-        getMainWindow()?.webContents.send('install:progress', data.toString());
+      mainWindow?.webContents.send('python:progress', '✓ Download complete\n');
+      mainWindow?.webContents.send('python:progress', '📦 Extracting Python...\n');
+
+      // Extract based on platform
+      await new Promise<void>((resolve, reject) => {
+        let extractCmd: string;
+
+        if (platform === 'darwin') {
+          // macOS: Extract standalone Python build (tar.gz)
+          extractCmd = `mkdir -p "${targetDir}" && tar -xzf "${downloadPath}" -C "${targetDir}" --strip-components=1`;
+        } else if (platform === 'win32') {
+          // Windows: Unzip embedded Python
+          extractCmd = `unzip -q "${downloadPath}" -d "${targetDir}"`;
+        } else {
+          // Linux: Extract source and build
+          extractCmd = `tar -xzf "${downloadPath}" -C "${tempDir}" && cd "${tempDir}/Python-${PYTHON_VERSION}" && ./configure --prefix="${targetDir}" && make && make install`;
+        }
+
+        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+            reject(new Error(`Extraction failed: ${error.message}`));
+            return;
+          }
+          resolve();
+        });
       });
 
-      install.on('close', (code) => {
-        console.log('[Python] Installation finished with code:', code);
-        resolve({ success: code === 0, output });
+      mainWindow?.webContents.send('python:progress', '✓ Extraction complete\n');
+      mainWindow?.webContents.send('python:progress', '📦 Installing dependencies...\n');
+
+      // Install Python dependencies
+      const pythonExe = getPythonPath();
+      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
+
+      // 1. Upgrade pip
+      mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
+      await new Promise<void>((resolve) => {
+        exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+          }
+          if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+          resolve();
+        });
       });
 
-      install.on('error', (error) => {
-        console.error('[Python] Error:', error.message);
-        resolve({ success: false, error: error.message });
+      // 2. Install requirements
+      if (fs.existsSync(requirementsPath)) {
+        mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
+        await new Promise<void>((resolve) => {
+          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+            }
+            if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            resolve();
+          });
+        });
+      }
+
+      // 3. Install Playwright browsers
+      mainWindow?.webContents.send('python:progress', 'Installing Playwright browsers...\n');
+      await new Promise<void>((resolve) => {
+        exec(`"${pythonExe}" -m playwright install chromium`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+          }
+          if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+          resolve();
+        });
       });
-    });
+
+      mainWindow?.webContents.send('python:progress', '✓ Dependencies installed\n');
+
+      // Clean up temp directory
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+
+      mainWindow?.webContents.send('python:progress', '✅ Python installation complete!\n');
+      console.log('[Python Download] ✓ Installation complete');
+
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[Python Download] ✗ Error:', message);
+      getMainWindow()?.webContents.send('python:progress', `\n❌ Error: ${message}\n`);
+      return { success: false, error: message };
+    }
   });
 }
