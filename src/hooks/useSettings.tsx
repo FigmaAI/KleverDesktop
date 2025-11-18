@@ -192,8 +192,16 @@ export function useSettings() {
     setSaveSuccess(false)
 
     try {
-      // Build config object with new nested structure
+      // IMPORTANT: Load current config first to preserve all existing fields
+      // This prevents overwriting fields that aren't in our React state
+      const currentResult = await window.electronAPI.configLoad()
+      const currentConfig = currentResult.success && currentResult.config
+        ? currentResult.config
+        : { version: '1.0' }
+
+      // Build updated config by merging with current config
       const config = {
+        ...currentConfig, // Preserve any existing fields
         version: '1.0',
         model: {
           enableLocal: modelConfig.enableLocal,
