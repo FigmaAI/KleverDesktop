@@ -182,6 +182,31 @@ export function getPythonEnv(): NodeJS.ProcessEnv {
 }
 
 /**
+ * Spawn bundled Python with arbitrary arguments
+ * This is a low-level function for cases where executePythonScript is not suitable
+ * (e.g., using -c flag for inline code execution)
+ */
+export function spawnBundledPython(
+  args: string[],
+  options?: SpawnOptions
+) {
+  const pythonExe = getPythonPath();
+  const appagentDir = getAppagentPath();
+
+  const env = {
+    ...process.env,
+    PYTHONPATH: appagentDir,
+    PYTHONUNBUFFERED: '1',
+    ...options?.env,
+  };
+
+  return spawn(pythonExe, args, {
+    ...options,
+    env,
+  });
+}
+
+/**
  * Verify Python runtime is available
  * Returns detailed status information
  */

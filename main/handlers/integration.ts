@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
-import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
+import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
 import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
@@ -150,8 +150,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       mainWindow?.webContents.send('integration:output', `📝 Created task "${taskName}"\n`);
       mainWindow?.webContents.send('integration:output', `   Task directory: ${currentTaskDir}\n\n`);
 
-      // Use venv Python to run the integration test with --task_dir and --task_desc
-      integrationTestProcess = spawnVenvPython(
+      // Use bundled Python to run the integration test with --task_dir and --task_desc
+      integrationTestProcess = spawnBundledPython(
         [
           '-u',
           selfExplorerScript,

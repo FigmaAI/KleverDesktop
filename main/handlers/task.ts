@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnVenvPython, getPythonEnv } from '../utils/python-manager';
+import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -47,7 +47,7 @@ from scripts.and_controller import stop_emulator
 stop_emulator()
 `;
       
-      const cleanupProcess = spawnVenvPython(['-u', '-c', cleanupCode], {
+      const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
         cwd: appagentDir,
         env: pythonEnv,
       });
@@ -280,10 +280,10 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
       const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
 
-      const taskProcess = spawnVenvPython(args, {
+      const taskProcess = spawnBundledPython(args, {
         cwd: appagentDir,  // ✅ Changed from project.workspaceDir to appagent directory
         env: {
-          ...pythonEnv,         // Python venv environment variables (includes PYTHONUNBUFFERED=1)
+          ...pythonEnv,         // Python bundled environment variables (includes PYTHONUNBUFFERED=1)
           ...configEnvVars,     // 22 config settings from config.json
           PATH: updatedPath,    // Add Android SDK tools to PATH
           PYTHONUNBUFFERED: '1', // Force unbuffered output (redundant but explicit)
@@ -426,7 +426,7 @@ from scripts.and_controller import cleanup_emulators
 cleanup_emulators()
 `;
     
-    const cleanupProcess = spawnVenvPython(['-u', '-c', cleanupCode], {
+    const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
       cwd: appagentDir,
       env: pythonEnv,
     });
