@@ -22,7 +22,7 @@ export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
 
   // Platform tools hook
-  const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
+  const { toolsStatus, setToolsStatus, checkPlatformTools, downloadPython, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
 
   // Model configuration hook
   const {
@@ -225,6 +225,7 @@ export function SetupWizard() {
                     toolsStatus={toolsStatus}
                     setToolsStatus={setToolsStatus}
                     checkPlatformTools={checkPlatformTools}
+                    downloadPython={downloadPython}
                   />
                 )}
 

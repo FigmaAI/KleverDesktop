@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Box, Typography, Sheet, Stack, Button } from '@mui/joy'
 import { Refresh as RefreshIcon } from '@mui/icons-material'
 import { ToolStatusCard } from './ToolStatusCard'
+import { PythonInstallCard } from './PythonInstallCard'
 import { EnvironmentSetup } from './EnvironmentSetup'
 import { ToolStatus } from '@/types/setupWizard'
 
@@ -16,12 +17,14 @@ interface PlatformToolsStepProps {
   toolsStatus: PlatformToolsState
   setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
   checkPlatformTools: () => void
+  downloadPython: () => void
 }
 
 export function PlatformToolsStep({
   toolsStatus,
   setToolsStatus,
   checkPlatformTools,
+  downloadPython,
 }: PlatformToolsStepProps) {
   const isMac = window.navigator.platform.toLowerCase().includes('mac')
 
@@ -71,14 +74,14 @@ export function PlatformToolsStep({
             />
           )}
 
-          {/* Python 3.11+ */}
-          <ToolStatusCard
-            name="Python 3.11+"
+          {/* Python 3.11.9 (Post-Install Download) */}
+          <PythonInstallCard
             status={toolsStatus.python}
+            onInstall={downloadPython}
             delay={0.2}
           />
 
-          {/* Python Environment (venv + packages + Playwright) */}
+          {/* Playwright Browsers (Chromium for web automation) */}
           <EnvironmentSetup
             status={toolsStatus.pythonEnv}
             setToolsStatus={setToolsStatus}

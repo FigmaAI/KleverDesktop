@@ -38,6 +38,21 @@ if (!window.electronAPI) {
       return { success: true }
     },
 
+    // Python Runtime Management (Post-Install Download)
+    pythonCheckInstalled: async () => ({
+      success: true,
+      installed: true,
+      path: '/mock/.klever-desktop/python/darwin-arm64/python',
+    }),
+    pythonGetInstallPath: async () => ({
+      success: true,
+      path: '/mock/.klever-desktop/python/darwin-arm64/python',
+    }),
+    pythonDownload: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+      return { success: true }
+    },
+
     // LEGACY: Environment checks (kept for backward compatibility)
     checkPython: async () => ({ success: true, version: '3.11.0', isValid: true }),
     checkPackages: async () => ({ success: true, output: 'All packages installed' }),
@@ -272,6 +287,10 @@ if (!window.electronAPI) {
     onInstallProgress: (cb) => {
       if (!mockCallbacks['install:progress']) mockCallbacks['install:progress'] = []
       mockCallbacks['install:progress'].push(cb)
+    },
+    onPythonProgress: (cb) => {
+      if (!mockCallbacks['python:progress']) mockCallbacks['python:progress'] = []
+      mockCallbacks['python:progress'].push(cb)
     },
     onOllamaPullProgress: (cb) => {
       if (!mockCallbacks['ollama:pull:progress']) mockCallbacks['ollama:pull:progress'] = []

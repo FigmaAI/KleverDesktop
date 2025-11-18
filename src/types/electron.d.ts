@@ -71,6 +71,13 @@ declare global {
           path: string;
           pythonExecutable: string;
         };
+        playwright?: {
+          installed: boolean;
+        };
+        appagent?: {
+          path?: string;
+          exists?: boolean;
+        };
         error?: string;
       }>;
       envSetup: () => Promise<{ success: boolean; error?: string }>;
