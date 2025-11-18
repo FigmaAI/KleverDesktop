@@ -111,15 +111,59 @@ export function executePythonScript(
 export async function checkPlaywrightBrowsers(): Promise<boolean> {
   try {
     const pythonExe = getPythonPath();
+    console.log('[Playwright Check] Using Python:', pythonExe);
 
     return new Promise((resolve) => {
-      const proc = spawn(pythonExe, ['-m', 'playwright', 'list']);
+      const proc = spawn(pythonExe, ['-m', 'playwright', '--version']);
 
-      proc.on('close', (code) => {
-        resolve(code === 0);
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout?.on('data', (data) => {
+        stdout += data.toString();
       });
 
-      proc.on('error', () => {
+      proc.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        console.log('[Playwright Check] Exit code:', code);
+        console.log('[Playwright Check] stdout:', stdout.trim());
+        if (stderr) console.log('[Playwright Check] stderr:', stderr.trim());
+
+        // If playwright module is installed, check browsers
+        if (code === 0) {
+          // Now check if chromium is installed
+          const checkBrowsers = spawn(pythonExe, ['-c',
+            'import playwright.sync_api; from pathlib import Path; ' +
+            'pw = playwright.sync_api.sync_playwright().start(); ' +
+            'browser_path = Path(pw.chromium.executable_path); ' +
+            'print("installed" if browser_path.exists() else "not_installed"); ' +
+            'pw.stop()'
+          ]);
+
+          let output = '';
+          checkBrowsers.stdout?.on('data', (data) => {
+            output += data.toString();
+          });
+
+          checkBrowsers.on('close', (checkCode) => {
+            console.log('[Playwright Check] Browser check output:', output.trim());
+            resolve(checkCode === 0 && output.includes('installed'));
+          });
+
+          checkBrowsers.on('error', (error) => {
+            console.error('[Playwright Check] Browser check error:', error);
+            resolve(false);
+          });
+        } else {
+          resolve(false);
+        }
+      });
+
+      proc.on('error', (error) => {
+        console.error('[Playwright Check] Process error:', error);
         resolve(false);
       });
     });
