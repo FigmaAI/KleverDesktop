@@ -8,7 +8,7 @@
 
 import { IpcMain } from 'electron';
 import { loadAppConfig, saveAppConfig, resetAppConfig, configExists } from '../utils/config-storage';
-import { checkVenvStatus } from '../utils/python-manager';
+import { checkPythonRuntime } from '../utils/python-runtime';
 import { AppConfig } from '../types/config';
 
 /**
@@ -69,12 +69,12 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
         hasValidConfig = false;
       }
 
-      // Check if venv exists and is valid
-      const venvStatus = checkVenvStatus();
-      console.log('[check:setup] Venv status:', venvStatus);
+      // Check if Python runtime is available
+      const pythonStatus = checkPythonRuntime();
+      console.log('[check:setup] Python runtime status:', pythonStatus);
 
-      // Setup is complete if BOTH venv is valid AND config is valid
-      const setupComplete = venvStatus.valid && hasValidConfig;
+      // Setup is complete if BOTH Python runtime is available AND config is valid
+      const setupComplete = pythonStatus.available && hasValidConfig;
       console.log('[check:setup] Setup complete:', setupComplete);
 
       return { success: true, setupComplete };

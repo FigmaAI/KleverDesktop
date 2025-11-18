@@ -15,13 +15,9 @@
     "package": "yarn build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "submodule:init": "node scripts/init-submodule.js",
-    "submodule:update": "node scripts/update-submodule.js",
-    "submodule:status": "git submodule status",
     "appagent:fetch": "node scripts/fetch-appagent.js",
     "python:build": "node scripts/build-python.js",
-    "python:verify": "node scripts/verify-bundle.js",
-    "postinstall": "yarn submodule:init"
+    "python:verify": "node scripts/verify-bundle.js"
   },
   "keywords": [
     "electron",
@@ -79,6 +75,13 @@
       "!appagent/.git",
       "!appagent/**/*.pyc",
       "!appagent/**/__pycache__"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/python",
+        "to": "resources/python",
+        "filter": ["**/*"]
+      }
     ],
     "mac": {
       "icon": "build/icon.icns",

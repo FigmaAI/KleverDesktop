@@ -1,0 +1,11 @@
+argparse
+beautifulsoup4
+colorama
+ollama
+opencv-python
+playwright
+pyshine
+pyyaml
+requests
+litellm
+anthropic
