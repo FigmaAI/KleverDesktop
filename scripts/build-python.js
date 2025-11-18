@@ -75,6 +75,25 @@ function exec(command, opts = {}) {
   }
 }
 
+function getLatestReleaseTag() {
+  console.log('🔎 Fetching latest release tag for Python 3.11 from GitHub...');
+  // Find a release that contains a CPython 3.11 build for macOS aarch64
+  const command = "curl -sL https://api.github.com/repos/astral-sh/python-build-standalone/releases | jq -r '[.[] | select(.assets[]?.name | contains(\"cpython-3.11\") and contains(\"aarch64-apple-darwin\")))] | .[0].tag_name'";
+  try {
+    const tagName = exec(command, { silent: true }).trim();
+    if (!tagName || tagName === "null") {
+      throw new Error('Could not find a release with Python 3.11 for macOS aarch64.');
+    }
+    console.log(`✓ Found best release tag: ${tagName}`);
+    return tagName;
+  } catch (error) {
+    console.error('❌ Failed to fetch latest release tag.', error.message);
+    const fallbackTag = '20240814';
+    console.warn(`⚠️ Using fallback release tag: ${fallbackTag}`);
+    return fallbackTag;
+  }
+}
+
 function getPythonTargetDir() {
   const platformKey = `${options.platform}-${options.arch}`;
   return path.join(PYTHON_BASE_DIR, platformKey, 'python');
@@ -132,11 +151,31 @@ function downloadPython() {
       console.log('For now, using standalone Python build approach...');
 
       // Alternative: Download standalone Python build
-      const standaloneUrl = `https://github.com/indygreg/python-build-standalone/releases/download/20240224/cpython-${PYTHON_VERSION}+20240224-${options.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin-install_only.tar.gz`;
+      let standalonePath;
+      try {
+        const releaseDate = getLatestReleaseTag();
+        standalonePath = path.join(tempDir, 'python-standalone.tar.gz');
+        const standaloneUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${releaseDate}/cpython-${PYTHON_VERSION}+${releaseDate}-${options.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin-install_only.tar.gz`;
+        
+        console.log(`URL: ${standaloneUrl}`);
+        exec(`curl -L -f -o "${standalonePath}" "${standaloneUrl}"`);
+        
+        const stats = fs.statSync(standalonePath);
+        if (stats.size < 1000000) {
+          throw new Error('Downloaded file is too small. Download failed.');
+        }
+        console.log(`✓ Download successful (${(stats.size / 1024 / 1024).toFixed(1)} MB)`);
 
-      console.log(`Downloading standalone build from: ${standaloneUrl}`);
-      const standalonePath = path.join(tempDir, 'python-standalone.tar.gz');
-      exec(`curl -L -o "${standalonePath}" "${standaloneUrl}"`);
+      } catch (e) {
+        console.warn(`⚠️  Auto-detection failed: ${e.message}`);
+        console.log('Retrying with a known good release...');
+        const fallbackTag = '20240814';
+        standalonePath = path.join(tempDir, 'python-standalone.tar.gz');
+        const standaloneUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${fallbackTag}/cpython-${PYTHON_VERSION}+${fallbackTag}-${options.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin-install_only.tar.gz`;
+        
+        console.log(`Fallback URL: ${standaloneUrl}`);
+        exec(`curl -L -f -o "${standalonePath}" "${standaloneUrl}"`);
+      }
 
       exec(`mkdir -p "${targetDir}"`);
       exec(`tar -xzf "${standalonePath}" -C "${targetDir}" --strip-components=1`);

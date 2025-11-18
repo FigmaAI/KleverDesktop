@@ -70,17 +70,18 @@
     },
     "files": [
       "dist-electron/**/*",
-      "dist/**/*",
-      "appagent/**/*",
-      "!appagent/.git",
-      "!appagent/**/*.pyc",
-      "!appagent/**/__pycache__"
+      "dist/**/*"
     ],
     "extraResources": [
       {
         "from": "resources/python",
         "to": "resources/python",
         "filter": ["**/*"]
+      },
+      {
+        "from": "appagent",
+        "to": "appagent",
+        "filter": ["**/*", "!.git", "!**/*.pyc", "!**/__pycache__"]
       }
     ],
     "mac": {
