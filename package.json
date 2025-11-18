@@ -8,16 +8,16 @@
     "build:renderer": "tsc && vite build",
     "build:main": "tsc -p tsconfig.main.json",
     "build": "yarn build:main && yarn build:renderer",
+    "prebuild": "node scripts/verify-bundle.js --skip-python",
     "preview": "vite preview",
     "electron": "electron .",
     "electron:dev": "yarn build:main && concurrently \"yarn dev\" \"wait-on http://localhost:5173 && NODE_ENV=development electron .\"",
     "package": "yarn build && electron-builder",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "submodule:init": "node scripts/init-submodule.js",
-    "submodule:update": "node scripts/update-submodule.js",
-    "submodule:status": "git submodule status",
-    "postinstall": "yarn submodule:init"
+    "appagent:fetch": "node scripts/fetch-appagent.js",
+    "python:build": "node scripts/build-python.js",
+    "python:verify": "node scripts/verify-bundle.js"
   },
   "keywords": [
     "electron",
@@ -70,11 +70,14 @@
     },
     "files": [
       "dist-electron/**/*",
-      "dist/**/*",
-      "appagent/**/*",
-      "!appagent/.git",
-      "!appagent/**/*.pyc",
-      "!appagent/**/__pycache__"
+      "dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "appagent",
+        "to": "appagent",
+        "filter": ["**/*", "!.git", "!**/*.pyc", "!**/__pycache__"]
+      }
     ],
     "mac": {
       "icon": "build/icon.icns",

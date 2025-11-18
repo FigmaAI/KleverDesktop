@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Box,
@@ -20,87 +20,76 @@ import {
 import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui'
 import { ToolStatus } from '@/types/setupWizard'
 
-interface PlatformToolsState {
-  python: ToolStatus
-  pythonEnv: ToolStatus
-  androidStudio: ToolStatus
-  homebrew: ToolStatus
-}
-
-interface EnvironmentSetupProps {
+interface PythonInstallCardProps {
   status: ToolStatus
-  setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
-  checkPlatformTools: () => void
+  onInstall: () => void
+  delay: number
 }
 
-export function EnvironmentSetup({
+export function PythonInstallCard({
   status,
-  setToolsStatus,
-  checkPlatformTools,
-}: EnvironmentSetupProps) {
-  const [envSetupTerminalLines, setEnvSetupTerminalLines] = useState<React.ReactNode[]>([])
-  const [envSetupProgress, setEnvSetupProgress] = useState(0)
+  onInstall,
+  delay,
+}: PythonInstallCardProps) {
+  const [terminalLines, setTerminalLines] = useState<React.ReactNode[]>([])
+  const [progress, setProgress] = useState(0)
   const [terminalExpanded, setTerminalExpanded] = useState(false)
 
-  const handleSetupEnvironment = async () => {
-    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
-    setEnvSetupTerminalLines([])
-    setEnvSetupProgress(0)
+  // Listen for Python download progress
+  useEffect(() => {
+    if (!status.installing) return
 
-    try {
-      let lineCount = 0
-      // Listen for progress
-      window.electronAPI.onEnvProgress((data: string) => {
-        lineCount++
-        // Estimate progress based on typical installation steps (rough estimation)
-        // Creating venv: ~10%, Installing packages: ~70%, Installing Playwright: ~20%
-        const estimatedProgress = Math.min(95, lineCount * 2)
-        setEnvSetupProgress(estimatedProgress)
+    let lineCount = 0
 
-        setEnvSetupTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
-      })
+    const handleProgress = (data: string) => {
+      lineCount++
+      // Estimate progress based on output lines
+      // Download: ~30%, Extract: ~30%, Dependencies: ~40%
+      const estimatedProgress = Math.min(95, lineCount * 5)
+      setProgress(estimatedProgress)
 
-      const result = await window.electronAPI.envSetup()
-
-      if (result.success) {
-        setEnvSetupProgress(100)
-        setEnvSetupTerminalLines((prev) => [
-          ...prev,
-          <TerminalOutput key={prev.length}>
-            <span style={{ color: '#4caf50' }}>✅ Environment setup complete!</span>
-          </TerminalOutput>,
-        ])
-        // Recheck platform tools
-        await checkPlatformTools()
-      } else {
-        setEnvSetupTerminalLines((prev) => [
-          ...prev,
-          <TerminalOutput key={prev.length}>
-            <span style={{ color: '#f44336' }}>❌ Setup failed: {result.error}</span>
-          </TerminalOutput>,
-        ])
-      }
-    } catch (error) {
-      setEnvSetupTerminalLines((prev) => [
+      setTerminalLines((prev) => [
         ...prev,
-        <TerminalOutput key={prev.length}>
-          <span style={{ color: '#f44336' }}>Error: {error instanceof Error ? error.message : 'Unknown error'}</span>
-        </TerminalOutput>,
+        <TerminalOutput key={prev.length}>{data}</TerminalOutput>,
       ])
-    } finally {
-      setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
     }
+
+    window.electronAPI.onPythonProgress(handleProgress)
+
+    return () => {
+      window.electronAPI.removeAllListeners('python:progress')
+    }
+  }, [status.installing])
+
+  // Reset state when installation starts
+  useEffect(() => {
+    if (status.installing) {
+      setTerminalLines([])
+      setProgress(0)
+    }
+  }, [status.installing])
+
+  // Set progress to 100% when installed successfully
+  useEffect(() => {
+    if (status.installed && !status.installing) {
+      setProgress(100)
+    }
+  }, [status.installed, status.installing])
+
+  const getColor = () => {
+    if (status.checking) return 'neutral'
+    return status.installed ? 'success' : 'warning'
   }
 
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.3 }}
+      transition={{ delay }}
     >
       <Sheet
         variant="soft"
-        color={status.checking ? 'neutral' : status.installed ? 'success' : 'warning'}
+        color={getColor()}
         sx={{
           p: 2,
           borderRadius: 'sm',
@@ -124,11 +113,23 @@ export function EnvironmentSetup({
                 fontWeight={status.installed ? 'md' : 'normal'}
                 textColor={status.installed ? 'text.primary' : 'text.secondary'}
               >
-                Playwright Browsers
+                Python 3.11.9
               </Typography>
-              <Typography level="body-xs" textColor="text.tertiary">
-                Required for web automation (Chromium browser)
-              </Typography>
+              {status.version && (
+                <Typography level="body-xs" textColor="text.tertiary">
+                  {status.version}
+                </Typography>
+              )}
+              {!status.installed && !status.installing && (
+                <Typography level="body-xs" textColor="text.tertiary">
+                  Will be installed to ~/.klever-desktop/python/
+                </Typography>
+              )}
+              {status.error && !status.installing && (
+                <Typography level="body-xs" textColor="danger.500">
+                  {status.error}
+                </Typography>
+              )}
             </Box>
           </Box>
           {!status.installed && !status.checking && (
@@ -137,10 +138,10 @@ export function EnvironmentSetup({
               variant="solid"
               color="primary"
               loading={status.installing}
-              onClick={handleSetupEnvironment}
+              onClick={onInstall}
               sx={{ minWidth: '100px' }}
             >
-              Setup
+              {status.error ? 'Retry' : 'Install'}
             </Button>
           )}
         </Box>
@@ -150,11 +151,11 @@ export function EnvironmentSetup({
           <Box sx={{ width: '100%' }}>
             <LinearProgress
               determinate
-              value={envSetupProgress}
+              value={progress}
               sx={{ mb: 1 }}
             />
             <Typography level="body-xs" textAlign="center" textColor="text.tertiary">
-              {envSetupProgress}%
+              {progress}%
             </Typography>
           </Box>
         )}
@@ -167,13 +168,14 @@ export function EnvironmentSetup({
             sx={{ mt: 1, mb: 1 }}
           >
             <Typography level="body-sm">
-              Installation in progress. Expand the terminal below to see detailed progress.
+              Downloading Python 3.11.9 and dependencies. This may take a few minutes.
+              Expand the terminal below to see detailed progress.
             </Typography>
           </Alert>
         )}
 
         {/* Terminal output during installation - collapsible */}
-        {status.installing && envSetupTerminalLines.length > 0 && (
+        {status.installing && terminalLines.length > 0 && (
           <Accordion
             expanded={terminalExpanded}
             onChange={(_, expanded) => setTerminalExpanded(expanded)}
@@ -192,12 +194,25 @@ export function EnvironmentSetup({
                   fontSize: '10px !important',
                 }
               }}>
-                <Terminal name="Environment Setup" colorMode={ColorMode.Dark}>
-                  {envSetupTerminalLines}
+                <Terminal name="Python Installation" colorMode={ColorMode.Dark}>
+                  {terminalLines}
                 </Terminal>
               </Box>
             </AccordionDetails>
           </Accordion>
+        )}
+
+        {/* Error message with retry guidance */}
+        {status.error && !status.installing && (
+          <Alert
+            color="danger"
+            variant="soft"
+          >
+            <Typography level="body-sm">
+              Installation failed. Please check your internet connection and try again.
+              If the problem persists, you may need to install Python manually.
+            </Typography>
+          </Alert>
         )}
       </Sheet>
     </motion.div>
