@@ -85,13 +85,13 @@ graph TB
     subgraph "Electron Main Process"
         A[main/index.ts] --> B[handlers/task.ts]
         B --> C[utils/python-manager.ts]
-        C --> D{번들 Python 찾기}
+        C --> D["번들 Python 찾기"]
         D -->|실패| E[시스템 Python 사용]
         D -->|성공| F[번들 Python 사용]
     end
 
     subgraph "Python 환경"
-        E --> G[~/.klever-desktop/python-env/]
+        E --> G["~/.klever-desktop/python-env/"]
         F --> G
         G --> H[venv 생성]
         H --> I[pip install requirements.txt]
@@ -100,7 +100,7 @@ graph TB
 
     subgraph "Python 실행"
         J --> K[appagent/scripts/self_explorer.py]
-        K --> L{Platform?}
+        K --> L["Platform?"]
         L -->|android| M[and_controller.py]
         L -->|web| N[web_controller.py]
         M --> O[ADB 명령]
@@ -1363,20 +1363,20 @@ graph TB
     end
 
     subgraph "Python Runtime ✨ 번들됨"
-        C --> D[resources/python/{platform}/python/bin/python3]
-        D --> E[site-packages/ ✨ 사전 설치됨]
+        C --> D["resources/python/platform/python/bin/python3"]
+        D --> E["site-packages/ ✨ 사전 설치됨"]
     end
 
     subgraph "Python Execution"
         E --> F[appagent/scripts/self_explorer.py]
-        F --> G{Platform?}
+        F --> G["Platform?"]
         G -->|android| H[and_controller.py]
         G -->|web| I[web_controller.py]
     end
 
     subgraph "External Tools"
         H --> J[ADB]
-        I --> K[Playwright Chromium ✨ 런타임 설치]
+        I --> K["Playwright Chromium ✨ 런타임 설치"]
     end
 
     style D fill:#4ecdc4
