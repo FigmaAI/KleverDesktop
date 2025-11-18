@@ -250,15 +250,19 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
       // Python download URLs
       const PYTHON_VERSION = '3.11.9';
-      const PYTHON_URLS: Record<string, string> = {
-        'darwin-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macos11.pkg`,
-        'darwin-arm64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-macos11.pkg`,
-        'win32-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip`,
-        'linux-x64': `https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz`
-      };
+      const RELEASE_DATE = '20240814'; // Fallback release date
 
-      const downloadUrl = PYTHON_URLS[platformKey];
-      if (!downloadUrl) {
+      let downloadUrl: string;
+
+      if (platform === 'darwin') {
+        // Use standalone Python build for macOS
+        const archStr = arch === 'arm64' ? 'aarch64' : 'x86_64';
+        downloadUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${RELEASE_DATE}/cpython-${PYTHON_VERSION}+${RELEASE_DATE}-${archStr}-apple-darwin-install_only.tar.gz`;
+      } else if (platform === 'win32') {
+        downloadUrl = `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-embed-amd64.zip`;
+      } else if (platform === 'linux') {
+        downloadUrl = `https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz`;
+      } else {
         throw new Error(`Unsupported platform: ${platformKey}`);
       }
 
@@ -305,20 +309,19 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         let extractCmd: string;
 
         if (platform === 'darwin') {
-          // macOS: Use system Python or installed Python to extract
-          mainWindow?.webContents.send('python:progress', '⚠️  macOS .pkg files require manual installation\n');
-          reject(new Error('macOS installation requires manual .pkg installation. Please use system Python.'));
-          return;
+          // macOS: Extract standalone Python build (tar.gz)
+          extractCmd = `mkdir -p "${targetDir}" && tar -xzf "${downloadPath}" -C "${targetDir}" --strip-components=1`;
         } else if (platform === 'win32') {
-          // Windows: Unzip
+          // Windows: Unzip embedded Python
           extractCmd = `unzip -q "${downloadPath}" -d "${targetDir}"`;
         } else {
-          // Linux: Extract tar.gz and build
+          // Linux: Extract source and build
           extractCmd = `tar -xzf "${downloadPath}" -C "${tempDir}" && cd "${tempDir}/Python-${PYTHON_VERSION}" && ./configure --prefix="${targetDir}" && make && make install`;
         }
 
-        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error) => {
+        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
           if (error) {
+            mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
             reject(new Error(`Extraction failed: ${error.message}`));
             return;
           }
@@ -330,20 +333,46 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       mainWindow?.webContents.send('python:progress', '📦 Installing dependencies...\n');
 
       // Install Python dependencies
+      const pythonExe = getPythonPath();
       const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
-      if (fs.existsSync(requirementsPath)) {
-        const pythonExe = getPythonPath();
 
-        await new Promise<void>((resolve, reject) => {
-          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, (error) => {
+      // 1. Upgrade pip
+      mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
+      await new Promise<void>((resolve) => {
+        exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+          }
+          if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+          resolve();
+        });
+      });
+
+      // 2. Install requirements
+      if (fs.existsSync(requirementsPath)) {
+        mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
+        await new Promise<void>((resolve) => {
+          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
               mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
-              // Don't fail - dependencies might already be installed
             }
+            if (stdout) mainWindow?.webContents.send('python:progress', stdout);
             resolve();
           });
         });
       }
+
+      // 3. Install Playwright browsers
+      mainWindow?.webContents.send('python:progress', 'Installing Playwright browsers...\n');
+      await new Promise<void>((resolve) => {
+        exec(`"${pythonExe}" -m playwright install chromium`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+          }
+          if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+          resolve();
+        });
+      });
 
       mainWindow?.webContents.send('python:progress', '✓ Dependencies installed\n');
 
