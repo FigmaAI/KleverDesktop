@@ -60,7 +60,7 @@ export function Layout() {
           <Box
             component="img"
             src={logo}
-            alt="Self Explorer Logo"
+            alt="Klever Logo"
             sx={{
               height: 40,
               width: 40,
@@ -73,7 +73,7 @@ export function Layout() {
               display: { xs: 'none', sm: 'block' },
             }}
           >
-            Self Explorer
+            Klever
           </Typography>
         </Stack>
 
