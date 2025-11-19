@@ -5,6 +5,7 @@
 
 import { Box, Typography } from '@mui/joy'
 import type { TerminalLine as TerminalLineType } from '@/types/terminal'
+import { renderAnsi } from '@/utils/ansiParser'
 
 interface TerminalLineProps {
   line: TerminalLineType
@@ -100,7 +101,7 @@ export function TerminalLine({ line, showTimestamp = true }: TerminalLineProps) 
           color: getColor(),
         }}
       >
-        {line.content}
+        {renderAnsi(line.content)}
       </Typography>
     </Box>
   )
