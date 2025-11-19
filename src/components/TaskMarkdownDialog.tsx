@@ -23,6 +23,75 @@ interface TaskMarkdownDialogProps {
   taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'  // Task status for real-time updates
 }
 
+// Component to load and display images from file system
+function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!src) {
+      setLoading(false);
+      return;
+    }
+
+    // Skip if already a data URL or HTTP URL
+    if (src.startsWith('data:') || src.startsWith('http')) {
+      setImageSrc(src);
+      setLoading(false);
+      return;
+    }
+
+    // Load image from file system
+    const loadImage = async () => {
+      try {
+        const result = await window.electronAPI.fileReadImage(src);
+        if (result?.success && result.dataUrl) {
+          setImageSrc(result.dataUrl);
+          setError(null);
+        } else {
+          setError(result?.error || 'Failed to load image');
+          setImageSrc(null);
+        }
+      } catch (err) {
+        console.error('Failed to load image:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setImageSrc(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadImage();
+  }, [src]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, my: 2 }}>
+        <CircularProgress size="sm" />
+        <Typography level="body-sm" textColor="text.secondary">
+          Loading image...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (error && !imageSrc) {
+    return (
+      <Box sx={{ p: 2, border: '1px solid', borderColor: 'danger.300', borderRadius: 'sm', my: 2 }}>
+        <Typography level="body-sm" textColor="danger.500">
+          {error}
+        </Typography>
+        <Typography level="body-xs" textColor="text.secondary" mt={0.5}>
+          {src}
+        </Typography>
+      </Box>
+    );
+  }
+
+  return <img src={imageSrc || undefined} alt={alt} style={{ maxWidth: '100%', height: 'auto' }} />;
+}
+
 export function TaskMarkdownDialog({
   open,
   onClose,
@@ -74,7 +143,25 @@ export function TaskMarkdownDialog({
         const readResult = await window.electronAPI.fileRead(mdPath)
 
         if (readResult.success && readResult.content) {
-          setContent(readResult.content)
+          // Convert relative image paths to absolute paths
+          let processedContent = readResult.content;
+          const lastSlash = Math.max(mdPath.lastIndexOf('/'), mdPath.lastIndexOf('\\'));
+          const markdownDir = lastSlash > 0 ? mdPath.substring(0, lastSlash) : mdPath;
+
+          // Replace image paths: ![alt](relative/path.png) -> ![alt](absolute/path.png)
+          processedContent = processedContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imgPath) => {
+            // Skip if already absolute or URL
+            if (imgPath.startsWith('/') || imgPath.startsWith('http') || imgPath.startsWith('file://') || imgPath.startsWith('data:')) {
+              return match;
+            }
+            // Convert relative path to absolute
+            const normalizedPath = imgPath.replace(/^\.\//, '').replace(/\\/g, '/');
+            const absolutePath = `${markdownDir}/${normalizedPath}`;
+            // Store absolute path - MarkdownImage component will handle loading
+            return `![${alt}](${absolutePath})`;
+          });
+
+          setContent(processedContent)
           setError(null)
         } else {
           setError(readResult.error || 'Failed to read markdown file')
@@ -348,7 +435,14 @@ export function TaskMarkdownDialog({
                 },
               }}
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  img({ src, alt }) {
+                    return <MarkdownImage src={src} alt={alt} />;
+                  },
+                }}
+              >
                 {content}
               </ReactMarkdown>
             </Box>

@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File operations
   fileRead: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   fileExists: (filePath: string) => ipcRenderer.invoke('file:exists', filePath),
+  fileReadImage: (filePath: string) => ipcRenderer.invoke('file:readImage', filePath),
 
   // System info
   getSystemInfo: () => ipcRenderer.invoke('system:info'),
