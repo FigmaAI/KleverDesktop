@@ -21,10 +21,12 @@ import {
   Warning as WarningIcon,
   Refresh as RefreshIcon,
   OpenInNew as OpenInNewIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material'
 import { ModelConfig } from '@/types/setupWizard'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 interface ApiModelCardProps {
   modelConfig: ModelConfig
@@ -50,6 +52,7 @@ export function ApiModelCard({
   standalone = true,
 }: ApiModelCardProps) {
   const { providers, loading: providersLoading, error: providersError, getProvider, getProviderModels } = useLiteLLMProviders()
+  const [showApiKey, setShowApiKey] = useState(false)
 
   // Get selected provider details
   const selectedProvider = useMemo(() => {
@@ -215,14 +218,28 @@ export function ApiModelCard({
         <FormControl>
           <FormLabel>API Key</FormLabel>
           <Input
-            type="password"
+            type={showApiKey ? 'text' : 'password'}
             value={modelConfig.apiKey}
             onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
             placeholder={selectedProvider ? 'Enter your API key...' : 'Select a provider first'}
             disabled={!modelConfig.enableApi || !selectedProvider}
+            endDecorator={
+              modelConfig.apiKey && (
+                <IconButton
+                  variant="plain"
+                  color="neutral"
+                  size="sm"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  disabled={!modelConfig.enableApi || !selectedProvider}
+                  sx={{ mr: -1 }}
+                >
+                  {showApiKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                </IconButton>
+              )
+            }
           />
           <FormHelperText>
-            {selectedProvider 
+            {selectedProvider
               ? 'Your API key (stored securely on your device)'
               : 'Select a provider to continue'
             }

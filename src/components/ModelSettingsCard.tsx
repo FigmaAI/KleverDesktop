@@ -52,10 +52,8 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
         )
         setOllamaModels(modelNames)
 
-        // Auto-select first model if none selected
-        if (modelNames.length > 0 && !modelConfig.localModel) {
-          setModelConfig({ ...modelConfig, localModel: modelNames[0] })
-        }
+        // Auto-select first model if none selected (only on manual refresh)
+        // Don't auto-select to avoid triggering Settings auto-save
       } else {
         setOllamaError('Ollama is not running or no models found')
         setOllamaModels([])
@@ -67,7 +65,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     } finally {
       setOllamaLoading(false)
     }
-  }, [modelConfig, setModelConfig])
+  }, []) // Remove modelConfig and setModelConfig from dependencies
 
   // Fetch API models from provider (legacy support)
   const fetchApiModels = useCallback(async () => {
@@ -106,12 +104,13 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     }
   }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiProvider])
 
-  // Auto-fetch Ollama models when enabled
+  // Auto-fetch Ollama models when enabled (only once on mount if enabled)
   useEffect(() => {
     if (modelConfig.enableLocal) {
       fetchOllamaModels()
     }
-  }, [modelConfig.enableLocal, fetchOllamaModels])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelConfig.enableLocal]) // Only re-fetch if enableLocal changes
 
   return (
     <Sheet
