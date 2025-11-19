@@ -275,6 +275,13 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
 
+      // Add appagent/scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(appagentDir, 'scripts');
+      const existingPythonPath = pythonEnv.PYTHONPATH || '';
+      const pythonPath = existingPythonPath
+        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+        : scriptsDir;
+
       // Add Android SDK default paths to PATH for adb/emulator detection
       const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
       const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
@@ -286,6 +293,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
           ...pythonEnv,         // Python bundled environment variables (includes PYTHONUNBUFFERED=1)
           ...configEnvVars,     // 22 config settings from config.json
           PATH: updatedPath,    // Add Android SDK tools to PATH
+          PYTHONPATH: pythonPath,  // Add scripts directory to PYTHONPATH
           PYTHONUNBUFFERED: '1', // Force unbuffered output (redundant but explicit)
         }
       });

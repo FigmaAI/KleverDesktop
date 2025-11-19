@@ -219,11 +219,20 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
+
+      // Add appagent/scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(appagentDir, 'scripts');
+      const existingPythonPath = pythonEnv.PYTHONPATH || '';
+      const pythonPath = existingPythonPath
+        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+        : scriptsDir;
+
       pythonProcess = spawnBundledPython(args, {
         cwd: appagentDir,  // ✅ Python 실행 환경 = appagent 디렉토리
         env: {
           ...pythonEnv,         // Python bundled environment variables
-          ...configEnvVars      // 23 config settings from config.json
+          ...configEnvVars,     // 23 config settings from config.json
+          PYTHONPATH: pythonPath  // Add scripts directory to PYTHONPATH
         }
       });
 

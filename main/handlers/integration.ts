@@ -57,9 +57,18 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
 
       // Prepare environment variables (merge with venv environment)
       const venvEnv = getPythonEnv();
+
+      // Add appagent/scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(process.cwd(), 'appagent', 'scripts');
+      const existingPythonPath = venvEnv.PYTHONPATH || '';
+      const pythonPath = existingPythonPath
+        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+        : scriptsDir;
+
       const env = {
         ...venvEnv,
-        ...configEnvVars  // Use config.json environment variables
+        ...configEnvVars,  // Use config.json environment variables
+        PYTHONPATH: pythonPath  // Add scripts directory to PYTHONPATH
       };
 
       mainWindow?.webContents.send('integration:output', '============================================================\n');
