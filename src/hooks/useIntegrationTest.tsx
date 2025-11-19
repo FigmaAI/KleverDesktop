@@ -1,105 +1,104 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { ModelConfig } from '@/types/setupWizard'
 import { useTerminal } from './useTerminal'
 
 export function useIntegrationTest() {
-  const { addLine, clearLines } = useTerminal()
+  const { addLine, addProcess, updateProcess, clearLines, setIsOpen, setActiveTab } = useTerminal()
 
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
   const [integrationTestSuccess, setIntegrationTestSuccess] = useState(false)
 
-  // Use ref to store latest addLine function
-  const addLineRef = useRef(addLine)
-  useEffect(() => {
-    addLineRef.current = addLine
-  }, [addLine])
-
-  // Setup event listeners with useEffect (empty deps to run only once on mount)
-  useEffect(() => {
-    console.log('[useIntegrationTest] Setting up event listeners')
-
-    const handleOutput = (data: string) => {
-      console.log('[useIntegrationTest] Received output:', data.substring(0, 50))
-      addLineRef.current({
-        source: 'integration',
-        sourceId: 'integration-test',
-        type: 'stdout',
-        content: data,
-      })
-    }
-
-    const handleComplete = (success: boolean) => {
-      console.log('[useIntegrationTest] ⭐⭐⭐ Integration test completed:', success)
-      setIntegrationTestRunning(false)
-      setIntegrationTestComplete(true)
-      setIntegrationTestSuccess(success)
-
-      if (success) {
-        addLineRef.current({
-          source: 'integration',
-          sourceId: 'integration-test',
-          type: 'stdout',
-          content: '✓ Integration test completed successfully!',
-        })
-      } else {
-        addLineRef.current({
-          source: 'integration',
-          sourceId: 'integration-test',
-          type: 'stderr',
-          content: '✗ Integration test failed. Please check the output above.',
-        })
-      }
-    }
-
-    // Register listeners
-    console.log('[useIntegrationTest] Registering listeners...')
-    window.electronAPI.onIntegrationTestOutput(handleOutput)
-    window.electronAPI.onIntegrationTestComplete(handleComplete)
-    console.log('[useIntegrationTest] Listeners registered!')
-
-    // Cleanup on unmount
-    return () => {
-      console.log('[useIntegrationTest] Cleaning up event listeners')
-      window.electronAPI.removeAllListeners('integration:output')
-      window.electronAPI.removeAllListeners('integration:complete')
-    }
-  }, []) // Empty dependency array - run only once on mount!
-
-  const handleRunIntegrationTest = useCallback(async (modelConfig: ModelConfig) => {
-    console.log('[useIntegrationTest] handleRunIntegrationTest called')
+  const handleRunIntegrationTest = async (modelConfig: ModelConfig) => {
     setIntegrationTestRunning(true)
     setIntegrationTestComplete(false)
     setIntegrationTestSuccess(false)
     clearLines()
+    setIsOpen(true)
+    setActiveTab('setup')
+
+    const processId = 'integration-test'
+    addProcess({
+      id: processId,
+      name: 'Integration Test',
+      type: 'integration',
+      status: 'running',
+    })
 
     try {
-      console.log('[useIntegrationTest] Starting integration test...')
+      // Start the integration test with model config
       await window.electronAPI.runIntegrationTest(modelConfig)
-      console.log('[useIntegrationTest] Integration test started')
+
+      // Listen for stdout
+      window.electronAPI.onIntegrationTestOutput((data: string) => {
+        addLine({
+          source: 'integration',
+          sourceId: processId,
+          type: 'stdout',
+          content: data,
+        })
+      })
+
+      // Listen for completion
+      window.electronAPI.onIntegrationTestComplete((success: boolean) => {
+        setIntegrationTestRunning(false)
+        setIntegrationTestComplete(true)
+        setIntegrationTestSuccess(success)
+
+        updateProcess(processId, {
+          status: success ? 'completed' : 'failed',
+          exitCode: success ? 0 : 1,
+          hasError: !success,
+        })
+
+        if (success) {
+          addLine({
+            source: 'integration',
+            sourceId: processId,
+            type: 'stdout',
+            content: '✓ Integration test completed successfully!',
+          })
+        } else {
+          addLine({
+            source: 'integration',
+            sourceId: processId,
+            type: 'stderr',
+            content: '✗ Integration test failed. Please check the output above.',
+          })
+        }
+      })
     } catch (error) {
-      console.error('[useIntegrationTest] Error starting test:', error)
       setIntegrationTestRunning(false)
       setIntegrationTestComplete(true)
       setIntegrationTestSuccess(false)
-      addLineRef.current({
+      updateProcess(processId, {
+        status: 'failed',
+        exitCode: 1,
+        hasError: true,
+      })
+      addLine({
         source: 'integration',
-        sourceId: 'integration-test',
+        sourceId: processId,
         type: 'stderr',
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       })
     }
-  }, [clearLines])
+  }
 
-  const handleStopIntegrationTest = useCallback(async () => {
+  const handleStopIntegrationTest = async () => {
     await window.electronAPI.stopIntegrationTest()
-    addLineRef.current({
+    updateProcess('integration-test', {
+      status: 'cancelled',
+      exitCode: 1,
+      hasError: true,
+    })
+    addLine({
       source: 'integration',
       sourceId: 'integration-test',
       type: 'stderr',
       content: 'Integration test cancelled by user.',
     })
-  }, [])
+  }
 
   return {
     integrationTestRunning,
