@@ -67,8 +67,21 @@ def draw_bbox_multi(img_path, output_path, elem_list, record_mode=False, dark_mo
     count = 1
     for elem in elem_list:
         try:
+            # Validate bbox exists and has correct structure
+            if not hasattr(elem, 'bbox') or not elem.bbox or len(elem.bbox) < 2:
+                print_with_color(f"WARNING: Element {count} has invalid bbox, skipping", "yellow")
+                count += 1
+                continue
+
             top_left = elem.bbox[0]
             bottom_right = elem.bbox[1]
+
+            # Validate bbox coordinates
+            if not top_left or not bottom_right or len(top_left) < 2 or len(bottom_right) < 2:
+                print_with_color(f"WARNING: Element {count} has invalid bbox coordinates, skipping", "yellow")
+                count += 1
+                continue
+
             left, top = top_left[0], top_left[1]
             right, bottom = bottom_right[0], bottom_right[1]
             label = str(count)
@@ -89,7 +102,7 @@ def draw_bbox_multi(img_path, output_path, elem_list, record_mode=False, dark_mo
                                     vspace=10, hspace=10, font_scale=1, thickness=2, background_RGB=bg_color,
                                     text_RGB=text_color, alpha=0.5)
         except Exception as e:
-            print_with_color(f"ERROR: An exception occurs while labeling the image\n{e}", "red")
+            print_with_color(f"ERROR: An exception occurs while labeling element {count}\n{e}", "red")
         count += 1
     cv2.imwrite(output_path, imgcv)
     return imgcv
