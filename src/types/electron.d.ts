@@ -140,6 +140,7 @@ declare global {
       // File operations
       fileRead: (filePath: string) => Promise<{ success: boolean; content?: string; error?: string }>;
       fileExists: (filePath: string) => Promise<{ success: boolean; exists?: boolean; error?: string }>;
+      fileReadImage: (filePath: string) => Promise<{ success: boolean; dataUrl?: string; error?: string }>;
 
       // System info
       getSystemInfo: () => Promise<{

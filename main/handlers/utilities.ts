@@ -68,4 +68,20 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
       return { success: true, exists: false };
     }
   });
+
+  // Read image file as base64
+  ipcMain.handle('file:readImage', async (_event, filePath: string) => {
+    try {
+      const buffer = await fs.promises.readFile(filePath);
+      const base64 = buffer.toString('base64');
+      const ext = filePath.toLowerCase().split('.').pop() || 'png';
+      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+                       ext === 'gif' ? 'image/gif' :
+                       ext === 'webp' ? 'image/webp' :
+                       ext === 'svg' ? 'image/svg+xml' : 'image/png';
+      return { success: true, dataUrl: `data:${mimeType};base64,${base64}` };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+    }
+  });
 }
