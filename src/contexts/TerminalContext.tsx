@@ -129,10 +129,10 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       prev.map((p) =>
         p.id === id
           ? {
-              ...p,
-              ...updates,
-              completedAt: updates.status && updates.status !== 'running' ? new Date() : p.completedAt,
-            }
+            ...p,
+            ...updates,
+            completedAt: updates.status && updates.status !== 'running' ? new Date() : p.completedAt,
+          }
           : p
       )
     )
@@ -226,6 +226,24 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       })
     }
 
+    // Python download events
+    const handlePythonProgress = (data: string) => {
+      addLine({
+        source: 'env',
+        type: 'stdout',
+        content: data,
+      })
+    }
+
+    // Installation events
+    const handleInstallProgress = (data: string) => {
+      addLine({
+        source: 'env',
+        type: 'stdout',
+        content: data,
+      })
+    }
+
     // Project events
     const handleProjectOutput = (data: string) => {
       addLine({
@@ -243,32 +261,20 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       })
     }
 
-    // Integration test events
-    const handleIntegrationOutput = (data: string) => {
-      addLine({
-        source: 'integration',
-        type: 'stdout',
-        content: data,
-      })
-    }
-
-    const handleIntegrationComplete = (success: boolean) => {
-      updateProcess('integration-test', {
-        status: success ? 'completed' : 'failed',
-        exitCode: success ? 0 : 1,
-        hasError: !success,
-      })
-    }
+    // NOTE: Integration test events are handled by useIntegrationTest hook directly
 
     // Register listeners
     window.electronAPI.onTaskOutput(handleTaskOutput)
     window.electronAPI.onTaskError(handleTaskError)
     window.electronAPI.onTaskComplete(handleTaskComplete)
     window.electronAPI.onEnvProgress(handleEnvProgress)
+    window.electronAPI.onPythonProgress(handlePythonProgress)
+    window.electronAPI.onInstallProgress(handleInstallProgress)
     window.electronAPI.onProjectOutput(handleProjectOutput)
     window.electronAPI.onProjectError(handleProjectError)
-    window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
-    window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
+    // NOTE: Integration test events are handled by useIntegrationTest hook directly
+    // window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
+    // window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
 
     // Cleanup
     return () => {
@@ -277,6 +283,8 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       window.electronAPI.removeAllListeners('task:error')
       window.electronAPI.removeAllListeners('task:complete')
       window.electronAPI.removeAllListeners('env:progress')
+      window.electronAPI.removeAllListeners('python:progress')
+      window.electronAPI.removeAllListeners('install:progress')
       window.electronAPI.removeAllListeners('project:output')
       window.electronAPI.removeAllListeners('project:error')
       window.electronAPI.removeAllListeners('integration:output')

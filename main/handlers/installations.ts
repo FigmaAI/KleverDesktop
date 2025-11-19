@@ -311,14 +311,16 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
           // macOS: Extract standalone Python build (tar.gz)
           extractCmd = `mkdir -p "${targetDir}" && tar -xzf "${downloadPath}" -C "${targetDir}" --strip-components=1`;
         } else if (platform === 'win32') {
-          // Windows: Unzip embedded Python
-          extractCmd = `unzip -q "${downloadPath}" -d "${targetDir}"`;
+          // Windows: Use PowerShell to expand zip archive
+          const targetDirWin = targetDir.replace(/\//g, '\\');
+          const downloadPathWin = downloadPath.replace(/\//g, '\\');
+          extractCmd = `powershell -Command "Expand-Archive -Path '${downloadPathWin}' -DestinationPath '${targetDirWin}' -Force"`;
         } else {
           // Linux: Extract source and build
           extractCmd = `tar -xzf "${downloadPath}" -C "${tempDir}" && cd "${tempDir}/Python-${PYTHON_VERSION}" && ./configure --prefix="${targetDir}" && make && make install`;
         }
 
-        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024, shell: platform === 'win32' ? 'powershell.exe' : undefined }, (error, stdout, stderr) => {
           if (error) {
             mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
             reject(new Error(`Extraction failed: ${error.message}`));
@@ -329,33 +331,117 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       });
 
       mainWindow?.webContents.send('python:progress', '✓ Extraction complete\n');
-      mainWindow?.webContents.send('python:progress', '📦 Installing dependencies...\n');
 
-      // Install Python dependencies
+      // Get Python executable path
       const pythonExe = getPythonPath();
       const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
 
-      // 1. Upgrade pip
-      mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
-      await new Promise<void>((resolve) => {
-        exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
-          if (error) {
-            mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
-          }
-          if (stdout) mainWindow?.webContents.send('python:progress', stdout);
-          resolve();
-        });
-      });
+      // Windows embeddable Python: Enable pip and site-packages
+      if (platform === 'win32') {
+        mainWindow?.webContents.send('python:progress', '🔧 Configuring Windows embeddable Python...\n');
 
-      // 2. Install requirements
-      if (fs.existsSync(requirementsPath)) {
-        mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
+        // 1. Modify python311._pth to enable site-packages
+        const pthFile = path.join(targetDir, 'python311._pth');
+        if (fs.existsSync(pthFile)) {
+          mainWindow?.webContents.send('python:progress', '📝 Modifying python311._pth...\n');
+
+          // Build new .pth content with required paths
+          const newContent = [
+            'python311.zip',
+            '.',
+            'Lib',
+            'Lib/site-packages',
+            'import site'
+          ].join('\n') + '\n';
+
+          fs.writeFileSync(pthFile, newContent);
+          mainWindow?.webContents.send('python:progress', '✓ python311._pth updated:\n');
+          mainWindow?.webContents.send('python:progress', newContent);
+        }
+
+        // 2. Download and install get-pip.py
+        mainWindow?.webContents.send('python:progress', '📦 Installing pip...\n');
+        const getPipPath = path.join(tempDir, 'get-pip.py');
+        const getPipPathWin = getPipPath.replace(/\//g, '\\');
+
+        await new Promise<void>((resolve, reject) => {
+          const downloadCmd = `powershell -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '${getPipPathWin}'"`;
+          exec(downloadCmd, { shell: 'powershell.exe' }, (error) => {
+            if (error) {
+              reject(new Error(`Failed to download get-pip.py: ${error.message}`));
+              return;
+            }
+            resolve();
+          });
+        });
+
+        // Install pip
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" "${getPipPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `❌ pip installation failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
+              mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+              reject(new Error(`Failed to install pip: ${error.message}`));
+              return;
+            }
+            if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            if (stderr) mainWindow?.webContents.send('python:progress', stderr);
+            mainWindow?.webContents.send('python:progress', '✓ pip installed\n');
+            resolve();
+          });
+        });
+
+        // Verify pip installation
+        mainWindow?.webContents.send('python:progress', '🔍 Verifying pip installation...\n');
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" -m pip --version`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `❌ pip verification failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
+              mainWindow?.webContents.send('python:progress', `stdout: ${stdout}\n`);
+              mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+              reject(new Error(`pip verification failed: ${error.message}. Please try running 'python -m ensurepip' manually.`));
+              return;
+            }
+            mainWindow?.webContents.send('python:progress', `✓ ${stdout.trim()}\n`);
+            resolve();
+          });
+        });
+      }
+
+      mainWindow?.webContents.send('python:progress', '📦 Installing dependencies...\n');
+
+      // 1. Upgrade pip (skip on Windows - already latest from get-pip.py)
+      if (platform !== 'win32') {
+        mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
         await new Promise<void>((resolve) => {
-          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
+          exec(`"${pythonExe}" -m pip install --no-warn-script-location --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
             if (error) {
               mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
             }
             if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            resolve();
+          });
+        });
+      }
+
+      // 2. Install requirements
+      if (fs.existsSync(requirementsPath)) {
+        mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" -m pip install --no-warn-script-location -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `❌ Package installation failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
+              if (stdout) mainWindow?.webContents.send('python:progress', `stdout: ${stdout}\n`);
+              if (stderr) mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+              reject(new Error(`Failed to install packages: ${error.message}`));
+              return;
+            }
+            if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            if (stderr) mainWindow?.webContents.send('python:progress', stderr);
+            mainWindow?.webContents.send('python:progress', '✓ Packages installed\n');
             resolve();
           });
         });

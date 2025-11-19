@@ -23,7 +23,7 @@ interface TaskMarkdownDialogProps {
 }
 
 // Component to load and display images from file system
-function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+function MarkdownImage({ src, alt, baseDir }: { src?: string; alt?: string; baseDir?: string }) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
     // Load image from file system
     const loadImage = async () => {
       try {
-        const result = await window.electronAPI.fileReadImage(src);
+        const result = await window.electronAPI.fileReadImage(src, baseDir);
         if (result?.success && result.dataUrl) {
           setImageSrc(result.dataUrl);
           setError(null);
@@ -62,7 +62,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
     };
 
     loadImage();
-  }, [src]);
+  }, [src, baseDir]);
 
   if (loading) {
     return (
@@ -103,6 +103,7 @@ export function TaskMarkdownDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
+  const [markdownDir, setMarkdownDir] = useState<string>('')
 
   const loadMarkdown = useCallback(async () => {
     setLoading(true)
@@ -116,14 +117,25 @@ export function TaskMarkdownDialog({
 
       if (taskResultPath) {
         // Extract task name from path (last directory name)
-        const taskDirName = taskResultPath.split('/').filter(Boolean).pop() || ''
-        mdPath = `${taskResultPath}/log_report_${taskDirName}.md`
+        // Support both forward slash and backslash for Windows
+        const taskDirName = taskResultPath.split(/[/\\]/).filter(Boolean).pop() || ''
+        // Always use forward slashes for internal path handling to avoid markdown escape issues
+        const normalizedPath = taskResultPath.replace(/\\/g, '/')
+        mdPath = `${normalizedPath}/log_report_${taskDirName}.md`
       } else {
         // Fallback to old pattern
-        mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+        const normalizedWorkspace = workspaceDir.replace(/\\/g, '/')
+        mdPath = `${normalizedWorkspace}/${taskName.replace(/\s+/g, '_')}.md`
       }
 
       setMarkdownPath(mdPath)
+
+      // Extract markdown directory for resolving relative image paths
+      // Use Node.js path separator handling via main process (cross-platform)
+      const normalizedMdPath = mdPath.replace(/\\/g, '/');
+      const lastSlash = normalizedMdPath.lastIndexOf('/');
+      const baseDir = lastSlash > 0 ? normalizedMdPath.substring(0, lastSlash) : normalizedMdPath;
+      setMarkdownDir(baseDir)
 
       // Check if file exists
       const existsResult = await window.electronAPI.fileExists(mdPath)
@@ -142,25 +154,9 @@ export function TaskMarkdownDialog({
         const readResult = await window.electronAPI.fileRead(mdPath)
 
         if (readResult.success && readResult.content) {
-          // Convert relative image paths to absolute paths
-          let processedContent = readResult.content;
-          const lastSlash = Math.max(mdPath.lastIndexOf('/'), mdPath.lastIndexOf('\\'));
-          const markdownDir = lastSlash > 0 ? mdPath.substring(0, lastSlash) : mdPath;
-
-          // Replace image paths: ![alt](relative/path.png) -> ![alt](absolute/path.png)
-          processedContent = processedContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imgPath) => {
-            // Skip if already absolute or URL
-            if (imgPath.startsWith('/') || imgPath.startsWith('http') || imgPath.startsWith('file://') || imgPath.startsWith('data:')) {
-              return match;
-            }
-            // Convert relative path to absolute
-            const normalizedPath = imgPath.replace(/^\.\//, '').replace(/\\/g, '/');
-            const absolutePath = `${markdownDir}/${normalizedPath}`;
-            // Store absolute path - MarkdownImage component will handle loading
-            return `![${alt}](${absolutePath})`;
-          });
-
-          setContent(processedContent)
+          // Keep relative image paths as-is - they will be resolved by main process
+          // using Node.js path module for cross-platform compatibility
+          setContent(readResult.content)
           setError(null)
         } else {
           setError(readResult.error || 'Failed to read markdown file')
@@ -275,7 +271,7 @@ export function TaskMarkdownDialog({
                 size="sm"
                 variant="outlined"
                 onClick={handleOpenInEditor}
-                disabled={!content && !loading}
+                disabled={!markdownPath || loading}
               >
                 <OpenInNew />
               </IconButton>
@@ -447,7 +443,7 @@ export function TaskMarkdownDialog({
                 remarkPlugins={[remarkGfm]}
                 components={{
                   img({ src, alt }) {
-                    return <MarkdownImage src={src} alt={alt} />;
+                    return <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />;
                   },
                   p: ({ children }) => <div style={{ marginBottom: '1rem' }}>{children}</div>,
                 }}

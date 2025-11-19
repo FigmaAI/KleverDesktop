@@ -8,16 +8,11 @@ import {
   CircularProgress,
   Alert,
   LinearProgress,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
-  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material'
-import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui'
 import { ToolStatus } from '@/types/setupWizard'
 
 interface PlatformToolsState {
@@ -38,55 +33,34 @@ export function EnvironmentSetup({
   setToolsStatus,
   checkPlatformTools,
 }: EnvironmentSetupProps) {
-  const [envSetupTerminalLines, setEnvSetupTerminalLines] = useState<React.ReactNode[]>([])
   const [envSetupProgress, setEnvSetupProgress] = useState(0)
-  const [terminalExpanded, setTerminalExpanded] = useState(false)
 
   const handleSetupEnvironment = async () => {
     setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
-    setEnvSetupTerminalLines([])
     setEnvSetupProgress(0)
 
     try {
       let lineCount = 0
-      // Listen for progress
-      window.electronAPI.onEnvProgress((data: string) => {
+      // Listen for progress to estimate completion
+      window.electronAPI.onEnvProgress(() => {
         lineCount++
-        // Estimate progress based on typical installation steps (rough estimation)
-        // Creating venv: ~10%, Installing packages: ~70%, Installing Playwright: ~20%
+        // Estimate progress based on typical installation steps
         const estimatedProgress = Math.min(95, lineCount * 2)
         setEnvSetupProgress(estimatedProgress)
-
-        setEnvSetupTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
       })
 
       const result = await window.electronAPI.envSetup()
 
       if (result.success) {
         setEnvSetupProgress(100)
-        setEnvSetupTerminalLines((prev) => [
-          ...prev,
-          <TerminalOutput key={prev.length}>
-            <span style={{ color: '#4caf50' }}>✅ Environment setup complete!</span>
-          </TerminalOutput>,
-        ])
         // Recheck platform tools
         await checkPlatformTools()
       } else {
-        setEnvSetupTerminalLines((prev) => [
-          ...prev,
-          <TerminalOutput key={prev.length}>
-            <span style={{ color: '#f44336' }}>❌ Setup failed: {result.error}</span>
-          </TerminalOutput>,
-        ])
+        // Error will be shown in universal terminal
+        console.error('[EnvironmentSetup] Setup failed:', result.error)
       }
     } catch (error) {
-      setEnvSetupTerminalLines((prev) => [
-        ...prev,
-        <TerminalOutput key={prev.length}>
-          <span style={{ color: '#f44336' }}>Error: {error instanceof Error ? error.message : 'Unknown error'}</span>
-        </TerminalOutput>,
-      ])
+      console.error('[EnvironmentSetup] Error:', error)
     } finally {
       setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
     }
@@ -167,37 +141,9 @@ export function EnvironmentSetup({
             sx={{ mt: 1, mb: 1 }}
           >
             <Typography level="body-sm">
-              Installation in progress. Expand the terminal below to see detailed progress.
+              Installation in progress. Check the Universal Terminal (top right) for detailed progress.
             </Typography>
           </Alert>
-        )}
-
-        {/* Terminal output during installation - collapsible */}
-        {status.installing && envSetupTerminalLines.length > 0 && (
-          <Accordion
-            expanded={terminalExpanded}
-            onChange={(_, expanded) => setTerminalExpanded(expanded)}
-          >
-            <AccordionSummary indicator={<ExpandMoreIcon />}>
-              <Typography level="body-sm">
-                {terminalExpanded ? 'Hide' : 'Show'} installation details
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{
-                '& .react-terminal-wrapper': {
-                  fontSize: '10px !important',
-                },
-                '& .react-terminal-line': {
-                  fontSize: '10px !important',
-                }
-              }}>
-                <Terminal name="Environment Setup" colorMode={ColorMode.Dark}>
-                  {envSetupTerminalLines}
-                </Terminal>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
         )}
       </Sheet>
     </motion.div>

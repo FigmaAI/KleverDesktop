@@ -102,7 +102,7 @@ def draw_bbox_multi(img_path, output_path, elem_list, record_mode=False, dark_mo
                                     vspace=10, hspace=10, font_scale=1, thickness=2, background_RGB=bg_color,
                                     text_RGB=text_color, alpha=0.5)
         except Exception as e:
-            print_with_color(f"ERROR: An exception occurs while labeling element {count}\n{e}", "red")
+            print_with_color(f"WARNING: Failed to label element {count}: {e}", "yellow")
         count += 1
     cv2.imwrite(output_path, imgcv)
     return imgcv

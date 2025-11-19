@@ -2,7 +2,14 @@ import os
 import yaml
 
 
-def load_config(config_path="./config.yaml"):
+def load_config(config_path=None):
+    if config_path is None:
+        # Default to config.yaml in the parent directory of this script
+        # appagent/scripts/config.py -> appagent/config.yaml
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        config_path = os.path.join(parent_dir, "config.yaml")
+
     # Load YAML first as defaults
     with open(config_path, "r") as file:
         configs = yaml.safe_load(file)

@@ -57,10 +57,26 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
 
       // Prepare environment variables (merge with venv environment)
       const venvEnv = getPythonEnv();
+
+      // Add appagent/scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(process.cwd(), 'appagent', 'scripts');
+      const existingPythonPath = venvEnv.PYTHONPATH || '';
+      const pythonPath = existingPythonPath
+        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+        : scriptsDir;
+
       const env = {
         ...venvEnv,
-        ...configEnvVars  // Use config.json environment variables
+        ...configEnvVars,  // Use config.json environment variables
+        PYTHONPATH: pythonPath,  // Add scripts directory to PYTHONPATH
+        PYTHONIOENCODING: 'utf-8'  // Fix Unicode encoding issues on Windows
       };
+
+      console.log('[Integration Test] ========== Starting Integration Test ==========');
+      console.log('[Integration Test] Python executable:', getPythonEnv().PYTHON_EXECUTABLE || 'bundled');
+      console.log('[Integration Test] Scripts directory:', scriptsDir);
+      console.log('[Integration Test] PYTHONPATH:', pythonPath);
+      console.log('[Integration Test] Working directory:', path.join(process.cwd(), 'appagent'));
 
       mainWindow?.webContents.send('integration:output', '============================================================\n');
       mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
@@ -150,11 +166,33 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       mainWindow?.webContents.send('integration:output', `📝 Created task "${taskName}"\n`);
       mainWindow?.webContents.send('integration:output', `   Task directory: ${currentTaskDir}\n\n`);
 
-      // Use bundled Python to run the integration test with --task_dir and --task_desc
+      // Create a wrapper script to add scripts directory to sys.path before importing
+      // This ensures imports work correctly on all platforms (especially Windows)
+      const wrapperScript = `import sys
+import os
+
+# Add scripts directory to sys.path for imports
+scripts_dir = os.path.join(os.path.dirname(__file__), 'scripts')
+sys.path.insert(0, scripts_dir)
+
+# Change to scripts directory and execute self_explorer
+os.chdir(scripts_dir)
+with open('self_explorer.py', 'r', encoding='utf-8') as f:
+    code = compile(f.read(), 'self_explorer.py', 'exec')
+    exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
+`;
+
+      const appagentDir = path.join(process.cwd(), 'appagent');
+      const wrapperPath = path.join(appagentDir, '_integration_wrapper.py');
+      fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
+
+      console.log('[Integration Test] Created wrapper script:', wrapperPath);
+
+      // Use bundled Python to run the integration test via wrapper
       integrationTestProcess = spawnBundledPython(
         [
           '-u',
-          selfExplorerScript,
+          wrapperPath,
           '--app',
           'Feeling_Lucky',
           '--platform',
@@ -169,7 +207,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           'https://www.google.com',
         ],
         {
-          cwd: path.join(process.cwd(), 'appagent'),
+          cwd: appagentDir,
           env: env,
         }
       );
