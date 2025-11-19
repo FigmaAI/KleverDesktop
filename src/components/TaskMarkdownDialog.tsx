@@ -68,7 +68,7 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
     return (
       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, my: 2 }}>
         <CircularProgress size="sm" />
-        <Typography level="body-sm" textColor="text.secondary">
+        <Typography component="span" level="body-sm" textColor="text.secondary">
           Loading image...
         </Typography>
       </Box>
@@ -78,10 +78,10 @@ function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
   if (error && !imageSrc) {
     return (
       <Box sx={{ p: 2, border: '1px solid', borderColor: 'danger.300', borderRadius: 'sm', my: 2 }}>
-        <Typography level="body-sm" textColor="danger.500">
+        <Typography component="div" level="body-sm" textColor="danger.500">
           {error}
         </Typography>
-        <Typography level="body-xs" textColor="text.secondary" mt={0.5}>
+        <Typography component="div" level="body-xs" textColor="text.secondary" mt={0.5}>
           {src}
         </Typography>
       </Box>
@@ -376,7 +376,7 @@ export function TaskMarkdownDialog({
                   mt: 1.5,
                   mb: 0.75,
                 },
-                '& p': {
+                '& > div': {
                   mb: 1.5,
                   lineHeight: 1.6,
                 },
@@ -449,6 +449,7 @@ export function TaskMarkdownDialog({
                   img({ src, alt }) {
                     return <MarkdownImage src={src} alt={alt} />;
                   },
+                  p: ({ children }) => <div style={{ marginBottom: '1rem' }}>{children}</div>,
                 }}
               >
                 {content}
