@@ -773,6 +773,15 @@ When contributing to this project:
 
 ## Update History
 
+**2025-11-19**: Documentation cleanup and improvements
+- **Removed Unnecessary Files**: Deleted `PLANNING.md` and `REFACTORING_PROPOSAL.md` (outdated planning documents)
+- **README Updates**:
+  - Updated appagent description from "submodule" to "monorepo"
+  - Updated python-manager.ts reference to python-runtime.ts
+  - Corrected installations.ts line count (324 → 196 lines)
+  - Improved Python setup instructions with bundled runtime options
+- **Documentation Status**: All core documentation (CLAUDE.md, README.md) now up-to-date with current architecture
+
 **2024-11-18**: Major Python bundling refactoring
 - **Architecture Change**: Migrated from git submodule to monorepo structure
 - **Python Runtime**: Replaced `python-manager.ts` with simplified `python-runtime.ts`

@@ -140,7 +140,14 @@ cd KleverDesktop
 # Install Node.js dependencies
 npm install
 
-# Install Python dependencies
+# Set up bundled Python runtime (for development)
+node scripts/build-python.js
+
+# Or use system Python (create symlink for development)
+mkdir -p resources/python/linux-x64/python/bin
+ln -s $(which python3) resources/python/linux-x64/python/bin/python3
+
+# Install Python dependencies (if using system Python)
 python3 -m pip install -r appagent/requirements.txt
 python3 -m playwright install chromium
 ```
@@ -243,7 +250,7 @@ KleverDesktop/
 │   ├── handlers/                 # IPC handlers (2,041 lines total)
 │   │   ├── index.ts              # Central registration
 │   │   ├── task.ts               # Task CRUD & execution (452 lines)
-│   │   ├── installations.ts      # Environment setup (324 lines)
+│   │   ├── installations.ts      # Environment setup (196 lines)
 │   │   ├── project.ts            # Project CRUD (268 lines)
 │   │   ├── model.ts              # Model testing & API (243 lines)
 │   │   ├── system-checks.ts      # System verification (220 lines)
@@ -253,16 +260,16 @@ KleverDesktop/
 │   └── utils/                    # Helper modules
 │       ├── config-manager.ts     # YAML config management
 │       ├── project-storage.ts    # JSON project storage
-│       ├── python-manager.ts     # Python venv management
+│       ├── python-runtime.ts     # Bundled Python runtime management
 │       └── process-manager.ts    # Subprocess tracking
 │
-├── appagent/                     # Python automation backend (submodule)
+├── appagent/                     # Python automation backend (monorepo)
 │   ├── scripts/
 │   │   ├── self_explorer.py      # Main automation loop
 │   │   ├── and_controller.py     # Android ADB controller
 │   │   ├── web_controller.py     # Web Playwright controller
 │   │   └── model.py              # AI model integration
-│   ├── config.yaml               # Runtime configuration
+│   ├── config.yaml               # Runtime configuration (auto-generated)
 │   └── requirements.txt          # Python dependencies
 │
 ├── vite.config.ts                # Vite build configuration
