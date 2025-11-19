@@ -3,7 +3,7 @@
  * Converts ANSI escape codes to React elements with proper styling
  */
 
-import { Fragment } from 'react'
+import { Fragment, type JSX } from 'react'
 
 // ANSI color codes mapping
 const ANSI_COLORS: Record<string, string> = {
@@ -78,6 +78,8 @@ interface TextSegment {
 export function parseAnsi(text: string): TextSegment[] {
   // Remove common ANSI escape sequences patterns
   // Pattern: \x1b[<codes>m or \x1b[<codes>m or \[<codes>m
+  // ANSI escape sequence를 파싱하기 위해 제어 문자가 필요합니다
+  // eslint-disable-next-line no-control-regex
   const ansiRegex = /\x1b\[([0-9;]*)m|\[([0-9;]*)m/g
 
   const segments: TextSegment[] = []
