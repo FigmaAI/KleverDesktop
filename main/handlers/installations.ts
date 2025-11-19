@@ -343,15 +343,20 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         // 1. Modify python311._pth to enable site-packages
         const pthFile = path.join(targetDir, 'python311._pth');
         if (fs.existsSync(pthFile)) {
-          let pthContent = fs.readFileSync(pthFile, 'utf-8');
-          if (!pthContent.includes('import site')) {
-            pthContent = pthContent.replace('#import site', 'import site');
-            if (!pthContent.includes('import site')) {
-              pthContent += '\nimport site\n';
-            }
-            fs.writeFileSync(pthFile, pthContent);
-            mainWindow?.webContents.send('python:progress', '✓ Enabled site-packages\n');
-          }
+          mainWindow?.webContents.send('python:progress', '📝 Modifying python311._pth...\n');
+
+          // Build new .pth content with required paths
+          const newContent = [
+            'python311.zip',
+            '.',
+            'Lib',
+            'Lib/site-packages',
+            'import site'
+          ].join('\n') + '\n';
+
+          fs.writeFileSync(pthFile, newContent);
+          mainWindow?.webContents.send('python:progress', '✓ python311._pth updated:\n');
+          mainWindow?.webContents.send('python:progress', newContent);
         }
 
         // 2. Download and install get-pip.py
@@ -374,12 +379,32 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         await new Promise<void>((resolve, reject) => {
           exec(`"${pythonExe}" "${getPipPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
+              mainWindow?.webContents.send('python:progress', `❌ pip installation failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
               mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
               reject(new Error(`Failed to install pip: ${error.message}`));
               return;
             }
             if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            if (stderr) mainWindow?.webContents.send('python:progress', stderr);
             mainWindow?.webContents.send('python:progress', '✓ pip installed\n');
+            resolve();
+          });
+        });
+
+        // Verify pip installation
+        mainWindow?.webContents.send('python:progress', '🔍 Verifying pip installation...\n');
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" -m pip --version`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            if (error) {
+              mainWindow?.webContents.send('python:progress', `❌ pip verification failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
+              mainWindow?.webContents.send('python:progress', `stdout: ${stdout}\n`);
+              mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+              reject(new Error(`pip verification failed: ${error.message}. Please try running 'python -m ensurepip' manually.`));
+              return;
+            }
+            mainWindow?.webContents.send('python:progress', `✓ ${stdout.trim()}\n`);
             resolve();
           });
         });
@@ -404,12 +429,19 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // 2. Install requirements
       if (fs.existsSync(requirementsPath)) {
         mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
-        await new Promise<void>((resolve) => {
-          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
+        await new Promise<void>((resolve, reject) => {
+          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
-              mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
+              mainWindow?.webContents.send('python:progress', `❌ Package installation failed\n`);
+              mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
+              if (stdout) mainWindow?.webContents.send('python:progress', `stdout: ${stdout}\n`);
+              if (stderr) mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
+              reject(new Error(`Failed to install packages: ${error.message}`));
+              return;
             }
             if (stdout) mainWindow?.webContents.send('python:progress', stdout);
+            if (stderr) mainWindow?.webContents.send('python:progress', stderr);
+            mainWindow?.webContents.send('python:progress', '✓ Packages installed\n');
             resolve();
           });
         });
