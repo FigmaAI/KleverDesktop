@@ -99,7 +99,7 @@ if (!window.electronAPI) {
     openPath: async () => ({ success: true }),
     fileRead: async () => ({ success: true, content: '' }),
     fileExists: async () => ({ success: true, exists: true }),
-    fileReadImage: async () => ({ success: true, dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }),
+    fileReadImage: async (_filePath: string, _baseDir?: string) => ({ success: true, dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }),
     getSystemInfo: async () => ({
       platform: 'browser',
       arch: 'x64',

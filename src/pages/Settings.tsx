@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Box,
   Button,
@@ -71,7 +71,7 @@ export function Settings() {
   })
 
   // Menu items
-  const menuItems: MenuItem[] = [
+  const menuItems: MenuItem[] = useMemo(() => [
     { id: 'appearance', label: 'Appearance', icon: <PaletteIcon /> },
     { id: 'model', label: 'Model', icon: <ModelIcon /> },
     { id: 'platform', label: 'Platform', icon: <PlatformIcon /> },
@@ -79,7 +79,7 @@ export function Settings() {
     { id: 'image', label: 'Image', icon: <ImageIcon /> },
     { id: 'system', label: 'System Info', icon: <InfoIcon /> },
     { id: 'danger', label: 'Danger Zone', icon: <WarningIcon /> },
-  ]
+  ], [])
 
   // Use the settings hook
   const {
@@ -190,17 +190,17 @@ export function Settings() {
     setHasChanges(false)
   }
 
-  const scrollToSection = (section: SettingsSection) => {
+  const scrollToSection = useCallback((section: SettingsSection) => {
     setActiveSection(section)
     setSidebarOpen(false) // Close drawer after selection
     const element = sectionRefs.current[section]
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }
+  }, [])
 
   // Sidebar menu component (reusable for both desktop and mobile)
-  const SidebarMenu = () => (
+  const SidebarMenu = useMemo(() => (
     <List sx={{ p: 2, gap: 0.5 }}>
       {menuItems.map((item) => (
         <ListItemButton
@@ -220,7 +220,7 @@ export function Settings() {
         </ListItemButton>
       ))}
     </List>
-  )
+  ), [menuItems, activeSection, scrollToSection])
 
   if (loading) {
     return (
@@ -323,7 +323,7 @@ export function Settings() {
             overflow: 'auto',
           }}
         >
-          <SidebarMenu />
+          {SidebarMenu}
         </Box>
 
         {/* Mobile Drawer Menu */}
@@ -334,7 +334,7 @@ export function Settings() {
                 Settings Menu
               </Typography>
             </Box>
-            <SidebarMenu />
+            {SidebarMenu}
           </Box>
         </Drawer>
 

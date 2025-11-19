@@ -6,6 +6,7 @@
 import { IpcMain, shell } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Register all utility handlers
@@ -70,11 +71,17 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
   });
 
   // Read image file as base64
-  ipcMain.handle('file:readImage', async (_event, filePath: string) => {
+  ipcMain.handle('file:readImage', async (_event, filePath: string, baseDir?: string) => {
     try {
-      const buffer = await fs.promises.readFile(filePath);
+      // If baseDir is provided and filePath is relative, resolve it
+      let fullPath = filePath;
+      if (baseDir && !path.isAbsolute(filePath)) {
+        fullPath = path.resolve(baseDir, filePath);
+      }
+
+      const buffer = await fs.promises.readFile(fullPath);
       const base64 = buffer.toString('base64');
-      const ext = filePath.toLowerCase().split('.').pop() || 'png';
+      const ext = fullPath.toLowerCase().split('.').pop() || 'png';
       const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
                        ext === 'gif' ? 'image/gif' :
                        ext === 'webp' ? 'image/webp' :
