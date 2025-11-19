@@ -11,6 +11,10 @@ import {
   Tooltip,
 } from '@mui/joy'
 import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface TaskMarkdownDialogProps {
   open: boolean
@@ -239,6 +243,7 @@ export function TaskMarkdownDialog({
             </Box>
           ) : content ? (
             <Box
+              className="markdown-body"
               sx={{
                 p: 3,
                 '& h1': {
@@ -262,6 +267,24 @@ export function TaskMarkdownDialog({
                   mt: 2,
                   mb: 1,
                 },
+                '& h4': {
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 1,
+                },
+                '& h5': {
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 0.75,
+                },
+                '& h6': {
+                  fontSize: '0.95rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 0.75,
+                },
                 '& p': {
                   mb: 1.5,
                   lineHeight: 1.6,
@@ -282,24 +305,21 @@ export function TaskMarkdownDialog({
                   fontSize: '0.875em',
                 },
                 '& pre': {
-                  bgcolor: '#1e1e1e',
-                  color: '#d4d4d4',
-                  p: 2,
-                  borderRadius: 'sm',
-                  overflow: 'auto',
                   mb: 2,
+                  borderRadius: 'sm',
+                  overflow: 'hidden',
                 },
                 '& pre code': {
                   bgcolor: 'transparent',
                   px: 0,
                   py: 0,
-                  color: 'inherit',
                 },
                 '& blockquote': {
                   borderLeft: '4px solid',
                   borderColor: 'primary.500',
                   pl: 2,
                   ml: 0,
+                  my: 2,
                   fontStyle: 'italic',
                   color: 'text.secondary',
                 },
@@ -324,31 +344,38 @@ export function TaskMarkdownDialog({
                   bgcolor: 'background.level1',
                   fontWeight: 'bold',
                 },
+                '& hr': {
+                  my: 2,
+                  borderColor: 'divider',
+                },
               }}
             >
-              {/* Simple markdown-like rendering */}
-              {content.split('\n').map((line, index) => {
-                // Headers
-                if (line.startsWith('# ')) {
-                  return <Typography key={index} component="h1">{line.substring(2)}</Typography>
-                }
-                if (line.startsWith('## ')) {
-                  return <Typography key={index} component="h2">{line.substring(3)}</Typography>
-                }
-                if (line.startsWith('### ')) {
-                  return <Typography key={index} component="h3">{line.substring(4)}</Typography>
-                }
-                // Code blocks
-                if (line.startsWith('```')) {
-                  return <Box key={index} component="pre"><code>{line.substring(3)}</code></Box>
-                }
-                // Empty lines
-                if (line.trim() === '') {
-                  return <Box key={index} sx={{ height: '0.5rem' }} />
-                }
-                // Regular paragraphs
-                return <Typography key={index} level="body-md">{line}</Typography>
-              })}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '')
+                    const language = match ? match[1] : ''
+
+                    return !inline && language ? (
+                      <SyntaxHighlighter
+                        style={vscDarkPlus}
+                        language={language}
+                        PreTag="div"
+                        {...props}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    )
+                  },
+                }}
+              >
+                {content}
+              </ReactMarkdown>
             </Box>
           ) : (
             <Box sx={{ p: 4, textAlign: 'center' }}>
