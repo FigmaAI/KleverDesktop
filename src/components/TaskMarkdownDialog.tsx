@@ -354,13 +354,12 @@ export function TaskMarkdownDialog({
                 remarkPlugins={[remarkGfm]}
                 components={{
                   code(props) {
-                    const { children, className, node, ...rest } = props
+                    const { children, className, node, ref, ...rest } = props
                     const match = /language-(\w+)/.exec(className || '')
                     const language = match ? match[1] : ''
 
                     return className && language ? (
                       <SyntaxHighlighter
-                        {...rest}
                         style={vscDarkPlus as any}
                         language={language}
                         PreTag="div"
