@@ -5,25 +5,17 @@ import {
   Sheet,
   Button,
   Alert,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
-  ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material'
-import Terminal, { ColorMode } from 'react-terminal-ui'
 
 interface IntegrationTestStepProps {
   integrationTestRunning: boolean
   integrationTestComplete: boolean
   integrationTestSuccess: boolean
-  terminalLines: React.ReactNode[]
-  integrationTerminalExpanded: boolean
-  setIntegrationTerminalExpanded: (expanded: boolean) => void
   onRunTest: () => void
   onStopTest: () => void
 }
@@ -32,9 +24,6 @@ export function IntegrationTestStep({
   integrationTestRunning,
   integrationTestComplete,
   integrationTestSuccess,
-  terminalLines,
-  integrationTerminalExpanded,
-  setIntegrationTerminalExpanded,
   onRunTest,
   onStopTest,
 }: IntegrationTestStepProps) {
@@ -73,70 +62,37 @@ export function IntegrationTestStep({
           </Button>
         )}
 
-        {/* Terminal Output - Collapsible */}
+        {/* Guide message when test is running */}
+        {integrationTestRunning && (
+          <Alert
+            color="primary"
+            variant="soft"
+            sx={{ mb: 2 }}
+          >
+            <Box>
+              <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
+                Test in progress...
+              </Typography>
+              <Typography level="body-sm">
+                Please wait while the browser opens and closes.
+                The terminal below will show detailed progress.
+              </Typography>
+            </Box>
+          </Alert>
+        )}
+
+        {/* Retry/Stop Button */}
         {(integrationTestRunning || integrationTestComplete) && (
-          <>
-            {/* Guide message when test is running */}
-            {integrationTestRunning && (
-              <Alert
-                color="primary"
-                variant="soft"
-                sx={{ mb: 2 }}
-              >
-                <Box>
-                  <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                    Test in progress...
-                  </Typography>
-                  <Typography level="body-sm">
-                    Please wait while the browser opens and closes.
-                    Expand the terminal below to see detailed progress.
-                  </Typography>
-                </Box>
-              </Alert>
-            )}
-
-            <Accordion
-              expanded={integrationTerminalExpanded}
-              onChange={(_, expanded) => setIntegrationTerminalExpanded(expanded)}
-              sx={{ mb: 2 }}
-            >
-              <AccordionSummary indicator={<ExpandMoreIcon />}>
-                <Typography level="body-sm">
-                  {integrationTerminalExpanded ? 'Hide' : 'Show'} test output
-                </Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{
-                  overflowX: 'auto',
-                  '& .react-terminal-wrapper': {
-                    fontSize: '10px !important',
-                  },
-                  '& .react-terminal-line': {
-                    fontSize: '10px !important',
-                  }
-                }}>
-                  <Terminal
-                    name="Integration Test"
-                    colorMode={ColorMode.Dark}
-                  >
-                    {terminalLines}
-                  </Terminal>
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-
-            {/* Retry/Stop Button */}
-            <Button
-              variant="outlined"
-              color={integrationTestRunning ? "danger" : "neutral"}
-              onClick={integrationTestRunning ? onStopTest : onRunTest}
-              fullWidth
-              sx={{ mb: 2 }}
-              startDecorator={integrationTestRunning ? null : <RefreshIcon />}
-            >
-              {integrationTestRunning ? "Stop Test" : "Retry Test"}
-            </Button>
-          </>
+          <Button
+            variant="outlined"
+            color={integrationTestRunning ? "danger" : "neutral"}
+            onClick={integrationTestRunning ? onStopTest : onRunTest}
+            fullWidth
+            sx={{ mb: 2 }}
+            startDecorator={integrationTestRunning ? null : <RefreshIcon />}
+          >
+            {integrationTestRunning ? "Stop Test" : "Retry Test"}
+          </Button>
         )}
 
         {integrationTestComplete && integrationTestSuccess && (

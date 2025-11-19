@@ -1,19 +1,29 @@
 import { useState } from 'react'
-import { TerminalOutput } from 'react-terminal-ui'
 import { ModelConfig } from '@/types/setupWizard'
+import { useTerminal } from './useTerminal'
 
 export function useIntegrationTest() {
+  const { addLine, addProcess, updateProcess, clearLines, setIsOpen, setActiveTab } = useTerminal()
+
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
   const [integrationTestSuccess, setIntegrationTestSuccess] = useState(false)
-  const [terminalLines, setTerminalLines] = useState<React.ReactNode[]>([])
-  const [integrationTerminalExpanded, setIntegrationTerminalExpanded] = useState(false)
 
   const handleRunIntegrationTest = async (modelConfig: ModelConfig) => {
     setIntegrationTestRunning(true)
     setIntegrationTestComplete(false)
     setIntegrationTestSuccess(false)
-    setTerminalLines([])
+    clearLines()
+    setIsOpen(true)
+    setActiveTab('setup')
+
+    const processId = 'integration-test'
+    addProcess({
+      id: processId,
+      name: 'Integration Test',
+      type: 'integration',
+      status: 'running',
+    })
 
     try {
       // Start the integration test with model config
@@ -21,7 +31,12 @@ export function useIntegrationTest() {
 
       // Listen for stdout
       window.electronAPI.onIntegrationTestOutput((data: string) => {
-        setTerminalLines((prev) => [...prev, <TerminalOutput key={prev.length}>{data}</TerminalOutput>])
+        addLine({
+          source: 'integration',
+          sourceId: processId,
+          type: 'stdout',
+          content: data,
+        })
       })
 
       // Listen for completion
@@ -30,46 +45,65 @@ export function useIntegrationTest() {
         setIntegrationTestComplete(true)
         setIntegrationTestSuccess(success)
 
+        updateProcess(processId, {
+          status: success ? 'completed' : 'failed',
+          exitCode: success ? 0 : 1,
+          hasError: !success,
+        })
+
         if (success) {
-          setTerminalLines((prev) => [
-            ...prev,
-            <TerminalOutput key={prev.length}>
-              <span style={{ color: '#4caf50' }}>✓ Integration test completed successfully!</span>
-            </TerminalOutput>,
-          ])
+          addLine({
+            source: 'integration',
+            sourceId: processId,
+            type: 'stdout',
+            content: '✓ Integration test completed successfully!',
+          })
         } else {
-          setTerminalLines((prev) => [
-            ...prev,
-            <TerminalOutput key={prev.length}>
-              <span style={{ color: '#f44336' }}>✗ Integration test failed. Please check the output above.</span>
-            </TerminalOutput>,
-          ])
+          addLine({
+            source: 'integration',
+            sourceId: processId,
+            type: 'stderr',
+            content: '✗ Integration test failed. Please check the output above.',
+          })
         }
       })
     } catch (error) {
       setIntegrationTestRunning(false)
       setIntegrationTestComplete(true)
       setIntegrationTestSuccess(false)
-      setTerminalLines((prev) => [
-        ...prev,
-        <TerminalOutput key={prev.length}>
-          <span style={{ color: '#f44336' }}>Error: {error instanceof Error ? error.message : 'Unknown error'}</span>
-        </TerminalOutput>,
-      ])
+      updateProcess(processId, {
+        status: 'failed',
+        exitCode: 1,
+        hasError: true,
+      })
+      addLine({
+        source: 'integration',
+        sourceId: processId,
+        type: 'stderr',
+        content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      })
     }
   }
 
   const handleStopIntegrationTest = async () => {
     await window.electronAPI.stopIntegrationTest()
+    updateProcess('integration-test', {
+      status: 'cancelled',
+      exitCode: 1,
+      hasError: true,
+    })
+    addLine({
+      source: 'integration',
+      sourceId: 'integration-test',
+      type: 'stderr',
+      content: 'Integration test cancelled by user.',
+    })
   }
 
   return {
     integrationTestRunning,
     integrationTestComplete,
     integrationTestSuccess,
-    terminalLines,
-    integrationTerminalExpanded,
-    setIntegrationTerminalExpanded,
     handleRunIntegrationTest,
     handleStopIntegrationTest,
   }

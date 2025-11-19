@@ -1,13 +1,28 @@
-/**
- * Terminal Button
- * Header button with badge for error/running status
- */
-
 import { IconButton, Badge, Tooltip } from '@mui/joy'
 import { Terminal as TerminalIcon } from '@mui/icons-material'
 import { useTerminal } from '@/hooks/useTerminal'
+import { keyframes } from '@emotion/react'
 
-export function TerminalButton() {
+const pulseAnimation = keyframes`
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
+  }
+`
+
+interface TerminalButtonProps {
+  animateAttention?: boolean
+}
+
+export function TerminalButton({ animateAttention = false }: TerminalButtonProps) {
   const { isOpen, setIsOpen, processes, errorCount, warningCount, clearNotifications } = useTerminal()
 
   const runningCount = processes.filter((p) => p.status === 'running').length
@@ -51,12 +66,7 @@ export function TerminalButton() {
         onClick={handleClick}
         sx={{
           position: 'relative',
-          // Subtle pulse animation on error
-          animation: errorCount > 0 ? 'errorPulse 2s ease-in-out infinite' : 'none',
-          '@keyframes errorPulse': {
-            '0%, 100%': { opacity: 1 },
-            '50%': { opacity: 0.7 },
-          },
+          animation: animateAttention ? `${pulseAnimation} 1s ease-out forwards` : 'none',
         }}
       >
         <Badge badgeContent={getBadgeContent()} color={getBadgeColor()} size="sm">

@@ -21,6 +21,7 @@ const steps: StepConfig[] = [
 
 export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
+  const [animateTerminalButton, setAnimateTerminalButton] = useState(false)
 
   // Platform tools hook
   const { toolsStatus, setToolsStatus, checkPlatformTools, downloadPython, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
@@ -45,9 +46,6 @@ export function SetupWizard() {
     integrationTestRunning,
     integrationTestComplete,
     integrationTestSuccess,
-    terminalLines,
-    integrationTerminalExpanded,
-    setIntegrationTerminalExpanded,
     handleRunIntegrationTest,
     handleStopIntegrationTest,
   } = useIntegrationTest()
@@ -58,6 +56,17 @@ export function SetupWizard() {
       checkPlatformTools()
     }
   }, [currentStep, checkPlatformTools])
+
+  // Animate terminal button when integration test starts
+  useEffect(() => {
+    if (integrationTestRunning) {
+      setAnimateTerminalButton(true)
+      const timer = setTimeout(() => {
+        setAnimateTerminalButton(false)
+      }, 3000) // Animate for 3 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [integrationTestRunning])
 
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
@@ -212,7 +221,7 @@ export function SetupWizard() {
                   Let&apos;s set up your environment for AI-powered UI automation
                 </Typography>
               </Box>
-              <TerminalButton />
+              <TerminalButton animateAttention={animateTerminalButton} />
             </Box>
           </motion.div>
 
@@ -265,9 +274,6 @@ export function SetupWizard() {
                     integrationTestRunning={integrationTestRunning}
                     integrationTestComplete={integrationTestComplete}
                     integrationTestSuccess={integrationTestSuccess}
-                    terminalLines={terminalLines}
-                    integrationTerminalExpanded={integrationTerminalExpanded}
-                    setIntegrationTerminalExpanded={setIntegrationTerminalExpanded}
                     onRunTest={() => handleRunIntegrationTest(modelConfig)}
                     onStopTest={handleStopIntegrationTest}
                   />
