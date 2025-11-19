@@ -1,11 +1,38 @@
+import { useEffect, useState, useRef } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Box, Sheet, Typography, Button, Stack } from '@mui/joy'
 import { SettingsOutlined, FolderOutlined } from '@mui/icons-material'
 import logo from '../assets/logo.png'
 import { TerminalButton } from '@/components/UniversalTerminal'
+import { useTerminal } from '@/hooks/useTerminal'
 
 export function Layout() {
   const location = useLocation()
+  const { processes } = useTerminal()
+  const [animateTerminalButton, setAnimateTerminalButton] = useState(false)
+  const prevRunningCountRef = useRef(0)
+
+  // Track running processes count
+  const runningCount = processes.filter((p) => p.status === 'running').length
+
+  // Animate terminal button when a new task starts running
+  useEffect(() => {
+    // Only animate when runningCount increases (new task started)
+    if (runningCount > prevRunningCountRef.current && runningCount > 0) {
+      // Use setTimeout to defer state update and avoid cascading renders
+      const timer = setTimeout(() => {
+        setAnimateTerminalButton(true)
+        setTimeout(() => {
+          setAnimateTerminalButton(false)
+        }, 3000) // Animate for 3 seconds
+      }, 0)
+
+      prevRunningCountRef.current = runningCount
+      return () => clearTimeout(timer)
+    } else {
+      prevRunningCountRef.current = runningCount
+    }
+  }, [runningCount])
 
   return (
     <Box
@@ -71,7 +98,7 @@ export function Layout() {
           </Button>
 
           {/* Terminal Button */}
-          <TerminalButton />
+          <TerminalButton animateAttention={animateTerminalButton} />
         </Box>
       </Sheet>
 

@@ -6,10 +6,13 @@ import {
   Typography,
   Stack,
   Box,
-  Button,
+  IconButton,
   CircularProgress,
+  Tooltip,
 } from '@mui/joy'
-import { FolderOpen, Refresh } from '@mui/icons-material'
+import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface TaskMarkdownDialogProps {
   open: boolean
@@ -17,6 +20,7 @@ interface TaskMarkdownDialogProps {
   taskName: string
   workspaceDir: string
   taskResultPath?: string  // Task-specific directory path
+  taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'  // Task status for real-time updates
 }
 
 export function TaskMarkdownDialog({
@@ -25,6 +29,7 @@ export function TaskMarkdownDialog({
   taskName,
   workspaceDir,
   taskResultPath,
+  taskStatus = 'pending',
 }: TaskMarkdownDialogProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -37,24 +42,40 @@ export function TaskMarkdownDialog({
 
     try {
       // Construct markdown file path
-      // The markdown file is typically saved as explore_{timestamp}.md or similar
-      // We'll look for the most recent markdown file in the workspace
-      const mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+      // Python generates: log_report_{task_name}.md where task_name is the directory basename
+      // Example: /path/to/self_explore_2025-11-19_04-24-12/log_report_self_explore_2025-11-19_04-24-12.md
+      let mdPath: string
+
+      if (taskResultPath) {
+        // Extract task name from path (last directory name)
+        const taskDirName = taskResultPath.split('/').filter(Boolean).pop() || ''
+        mdPath = `${taskResultPath}/log_report_${taskDirName}.md`
+      } else {
+        // Fallback to old pattern
+        mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+      }
+
       setMarkdownPath(mdPath)
 
       // Check if file exists
       const existsResult = await window.electronAPI.fileExists(mdPath)
 
       if (!existsResult.success || !existsResult.exists) {
-        // Try to find any markdown file in the workspace
-        setError('Markdown file not found. The task may not have generated output yet.')
-        setContent('')
+        // If task is running, show "generating" message instead of error
+        if (taskStatus === 'running') {
+          setError('Report is being generated... This view will auto-refresh.')
+          setContent('')
+        } else {
+          setError('Markdown file not found. The task may not have generated output yet.')
+          setContent('')
+        }
       } else {
         // Read file contents
         const readResult = await window.electronAPI.fileRead(mdPath)
 
         if (readResult.success && readResult.content) {
           setContent(readResult.content)
+          setError(null)
         } else {
           setError(readResult.error || 'Failed to read markdown file')
           setContent('')
@@ -67,13 +88,24 @@ export function TaskMarkdownDialog({
     } finally {
       setLoading(false)
     }
-  }, [taskName, workspaceDir])
+  }, [taskName, workspaceDir, taskResultPath, taskStatus])
 
   useEffect(() => {
     if (open) {
       loadMarkdown()
     }
   }, [open, loadMarkdown])
+
+  // Auto-refresh when task is running
+  useEffect(() => {
+    if (open && taskStatus === 'running') {
+      const interval = setInterval(() => {
+        loadMarkdown()
+      }, 2000) // Refresh every 2 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [open, taskStatus, loadMarkdown])
 
   const handleOpenFolder = async () => {
     try {
@@ -99,6 +131,31 @@ export function TaskMarkdownDialog({
     }
   }
 
+  const handleOpenInEditor = async () => {
+    try {
+      if (!markdownPath) {
+        alert('Markdown file path not found')
+        return
+      }
+
+      // Check if file exists
+      const existsResult = await window.electronAPI.fileExists(markdownPath)
+      if (!existsResult.success || !existsResult.exists) {
+        alert('Markdown file does not exist yet')
+        return
+      }
+
+      // Open the markdown file with system default editor
+      const result = await window.electronAPI.openPath(markdownPath)
+      if (!result.success) {
+        alert(`Failed to open file: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Error opening file:', error)
+      alert('Failed to open file in editor')
+    }
+  }
+
   return (
     <Modal open={open} onClose={onClose}>
       <ModalDialog
@@ -115,34 +172,39 @@ export function TaskMarkdownDialog({
 
         {/* Header */}
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Stack spacing={0.5}>
-            <Typography level="h4" fontWeight="bold">
-              Task Results: {taskName}
-            </Typography>
-            {markdownPath && (
-              <Typography level="body-xs" textColor="text.secondary">
-                {markdownPath}
-              </Typography>
-            )}
-          </Stack>
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<Refresh />}
-              onClick={loadMarkdown}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<FolderOpen />}
-              onClick={handleOpenFolder}
-            >
-              Open Folder
-            </Button>
+          <Typography level="h4" fontWeight="bold">
+            Task Result
+          </Typography>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Refresh">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={loadMarkdown}
+                disabled={loading}
+              >
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Open in Editor">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={handleOpenInEditor}
+                disabled={!content && !loading}
+              >
+                <OpenInNew />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Open Folder">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={handleOpenFolder}
+              >
+                <FolderOpen />
+              </IconButton>
+            </Tooltip>
           </Stack>
         </Stack>
 
@@ -179,6 +241,7 @@ export function TaskMarkdownDialog({
             </Box>
           ) : content ? (
             <Box
+              className="markdown-body"
               sx={{
                 p: 3,
                 '& h1': {
@@ -202,6 +265,24 @@ export function TaskMarkdownDialog({
                   mt: 2,
                   mb: 1,
                 },
+                '& h4': {
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 1,
+                },
+                '& h5': {
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 0.75,
+                },
+                '& h6': {
+                  fontSize: '0.95rem',
+                  fontWeight: 'bold',
+                  mt: 1.5,
+                  mb: 0.75,
+                },
                 '& p': {
                   mb: 1.5,
                   lineHeight: 1.6,
@@ -222,24 +303,21 @@ export function TaskMarkdownDialog({
                   fontSize: '0.875em',
                 },
                 '& pre': {
-                  bgcolor: '#1e1e1e',
-                  color: '#d4d4d4',
-                  p: 2,
-                  borderRadius: 'sm',
-                  overflow: 'auto',
                   mb: 2,
+                  borderRadius: 'sm',
+                  overflow: 'hidden',
                 },
                 '& pre code': {
                   bgcolor: 'transparent',
                   px: 0,
                   py: 0,
-                  color: 'inherit',
                 },
                 '& blockquote': {
                   borderLeft: '4px solid',
                   borderColor: 'primary.500',
                   pl: 2,
                   ml: 0,
+                  my: 2,
                   fontStyle: 'italic',
                   color: 'text.secondary',
                 },
@@ -264,31 +342,15 @@ export function TaskMarkdownDialog({
                   bgcolor: 'background.level1',
                   fontWeight: 'bold',
                 },
+                '& hr': {
+                  my: 2,
+                  borderColor: 'divider',
+                },
               }}
             >
-              {/* Simple markdown-like rendering */}
-              {content.split('\n').map((line, index) => {
-                // Headers
-                if (line.startsWith('# ')) {
-                  return <Typography key={index} component="h1">{line.substring(2)}</Typography>
-                }
-                if (line.startsWith('## ')) {
-                  return <Typography key={index} component="h2">{line.substring(3)}</Typography>
-                }
-                if (line.startsWith('### ')) {
-                  return <Typography key={index} component="h3">{line.substring(4)}</Typography>
-                }
-                // Code blocks
-                if (line.startsWith('```')) {
-                  return <Box key={index} component="pre"><code>{line.substring(3)}</code></Box>
-                }
-                // Empty lines
-                if (line.trim() === '') {
-                  return <Box key={index} sx={{ height: '0.5rem' }} />
-                }
-                // Regular paragraphs
-                return <Typography key={index} level="body-md">{line}</Typography>
-              })}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </ReactMarkdown>
             </Box>
           ) : (
             <Box sx={{ p: 4, textAlign: 'center' }}>
