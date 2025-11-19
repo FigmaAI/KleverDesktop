@@ -354,20 +354,20 @@ export function TaskMarkdownDialog({
                 remarkPlugins={[remarkGfm]}
                 components={{
                   code(props) {
-                    const { children, className, node, ref, ...rest } = props
+                    const { children, className, ...rest } = props
                     const match = /language-(\w+)/.exec(className || '')
                     const language = match ? match[1] : ''
 
                     if (className && language) {
-                      const HighlighterComponent = SyntaxHighlighter as any
                       return (
-                        <HighlighterComponent
-                          style={vscDarkPlus}
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        <SyntaxHighlighter
+                          style={vscDarkPlus as any}
                           language={language}
                           PreTag="div"
                         >
                           {String(children).replace(/\n$/, '')}
-                        </HighlighterComponent>
+                        </SyntaxHighlighter>
                       )
                     }
 
