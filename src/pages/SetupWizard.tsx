@@ -6,6 +6,7 @@ import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
+import { TerminalButton } from '@/components/UniversalTerminal'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
 import { useModelConfig } from '@/hooks/useModelConfig'
 import { useIntegrationTest } from '@/hooks/useIntegrationTest'
@@ -202,13 +203,16 @@ export function SetupWizard() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <Box sx={{ mb: { xs: 1, md: 2 } }}>
-              <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-                Welcome to Klever Desktop
-              </Typography>
-              <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
-                Let&apos;s set up your environment for AI-powered UI automation
-              </Typography>
+            <Box sx={{ mb: { xs: 1, md: 2 }, display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <Box>
+                <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
+                  Welcome to Klever Desktop
+                </Typography>
+                <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
+                  Let&apos;s set up your environment for AI-powered UI automation
+                </Typography>
+              </Box>
+              <TerminalButton />
             </Box>
           </motion.div>
 
