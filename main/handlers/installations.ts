@@ -416,7 +416,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       if (platform !== 'win32') {
         mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
         await new Promise<void>((resolve) => {
-          exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
+          exec(`"${pythonExe}" -m pip install --no-warn-script-location --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
             if (error) {
               mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
             }
@@ -430,7 +430,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       if (fs.existsSync(requirementsPath)) {
         mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
         await new Promise<void>((resolve, reject) => {
-          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          exec(`"${pythonExe}" -m pip install --no-warn-script-location -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
               mainWindow?.webContents.send('python:progress', `❌ Package installation failed\n`);
               mainWindow?.webContents.send('python:progress', `Error: ${error.message}\n`);
