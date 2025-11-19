@@ -309,6 +309,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
           ...configEnvVars,     // 22 config settings from config.json
           PATH: updatedPath,    // Add Android SDK tools to PATH
           PYTHONUNBUFFERED: '1', // Force unbuffered output (redundant but explicit)
+          PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
         }
       });
 

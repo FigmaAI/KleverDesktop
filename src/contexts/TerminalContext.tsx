@@ -129,10 +129,10 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       prev.map((p) =>
         p.id === id
           ? {
-              ...p,
-              ...updates,
-              completedAt: updates.status && updates.status !== 'running' ? new Date() : p.completedAt,
-            }
+            ...p,
+            ...updates,
+            completedAt: updates.status && updates.status !== 'running' ? new Date() : p.completedAt,
+          }
           : p
       )
     )
@@ -261,22 +261,7 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       })
     }
 
-    // Integration test events
-    const handleIntegrationOutput = (data: string) => {
-      addLine({
-        source: 'integration',
-        type: 'stdout',
-        content: data,
-      })
-    }
-
-    const handleIntegrationComplete = (success: boolean) => {
-      updateProcess('integration-test', {
-        status: success ? 'completed' : 'failed',
-        exitCode: success ? 0 : 1,
-        hasError: !success,
-      })
-    }
+    // NOTE: Integration test events are handled by useIntegrationTest hook directly
 
     // Register listeners
     window.electronAPI.onTaskOutput(handleTaskOutput)
@@ -287,8 +272,9 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     window.electronAPI.onInstallProgress(handleInstallProgress)
     window.electronAPI.onProjectOutput(handleProjectOutput)
     window.electronAPI.onProjectError(handleProjectError)
-    window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
-    window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
+    // NOTE: Integration test events are handled by useIntegrationTest hook directly
+    // window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
+    // window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
 
     // Cleanup
     return () => {

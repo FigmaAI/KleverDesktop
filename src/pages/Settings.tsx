@@ -17,6 +17,8 @@ import {
   ListItemButton,
   ListItemDecorator,
   ListItemContent,
+  IconButton,
+  Drawer,
 } from '@mui/joy'
 import {
   Warning as WarningIcon,
@@ -32,6 +34,7 @@ import {
   Psychology as AgentIcon,
   Image as ImageIcon,
   Info as InfoIcon,
+  Menu as MenuIcon,
 } from '@mui/icons-material'
 import { useSettings } from '@/hooks/useSettings'
 import { ModelSettingsCard } from '@/components/ModelSettingsCard'
@@ -53,6 +56,7 @@ export function Settings() {
   const [isResetting, setIsResetting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { mode, setMode } = useColorScheme()
 
   // Section refs for scrolling
@@ -188,11 +192,35 @@ export function Settings() {
 
   const scrollToSection = (section: SettingsSection) => {
     setActiveSection(section)
+    setSidebarOpen(false) // Close drawer after selection
     const element = sectionRefs.current[section]
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }
+
+  // Sidebar menu component (reusable for both desktop and mobile)
+  const SidebarMenu = () => (
+    <List sx={{ p: 2, gap: 0.5 }}>
+      {menuItems.map((item) => (
+        <ListItemButton
+          key={item.id}
+          selected={activeSection === item.id}
+          onClick={() => scrollToSection(item.id)}
+          color={item.id === 'danger' ? 'danger' : 'neutral'}
+          sx={{
+            borderRadius: 'sm',
+            '&.Joy-selected': {
+              bgcolor: item.id === 'danger' ? 'danger.softBg' : 'primary.softBg',
+            },
+          }}
+        >
+          <ListItemDecorator>{item.icon}</ListItemDecorator>
+          <ListItemContent>{item.label}</ListItemContent>
+        </ListItemButton>
+      ))}
+    </List>
+  )
 
   if (loading) {
     return (
@@ -230,13 +258,24 @@ export function Settings() {
           bgcolor: 'background.surface',
         }}
       >
-        <Box>
-          <Typography level="h2" fontWeight="bold">
-            Settings
-          </Typography>
-          <Typography level="body-md" textColor="text.secondary">
-            Configure your application preferences
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Mobile menu button */}
+          <IconButton
+            variant="outlined"
+            color="neutral"
+            onClick={() => setSidebarOpen(true)}
+            sx={{ display: { xs: 'flex', md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Box>
+            <Typography level="h2" fontWeight="bold">
+              Settings
+            </Typography>
+            <Typography level="body-md" textColor="text.secondary">
+              Configure your application preferences
+            </Typography>
+          </Box>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
           {saveSuccess && (
@@ -273,9 +312,10 @@ export function Settings() {
 
       {/* Main Content Area with Sidebar */}
       <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar Menu */}
+        {/* Desktop Sidebar Menu */}
         <Box
           sx={{
+            display: { xs: 'none', md: 'block' },
             width: 240,
             borderRight: '1px solid',
             borderColor: 'divider',
@@ -283,26 +323,20 @@ export function Settings() {
             overflow: 'auto',
           }}
         >
-          <List sx={{ p: 2, gap: 0.5 }}>
-            {menuItems.map((item) => (
-              <ListItemButton
-                key={item.id}
-                selected={activeSection === item.id}
-                onClick={() => scrollToSection(item.id)}
-                color={item.id === 'danger' ? 'danger' : 'neutral'}
-                sx={{
-                  borderRadius: 'sm',
-                  '&.Joy-selected': {
-                    bgcolor: item.id === 'danger' ? 'danger.softBg' : 'primary.softBg',
-                  },
-                }}
-              >
-                <ListItemDecorator>{item.icon}</ListItemDecorator>
-                <ListItemContent>{item.label}</ListItemContent>
-              </ListItemButton>
-            ))}
-          </List>
+          <SidebarMenu />
         </Box>
+
+        {/* Mobile Drawer Menu */}
+        <Drawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+          <Box sx={{ width: 240 }}>
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Typography level="title-lg" fontWeight="bold">
+                Settings Menu
+              </Typography>
+            </Box>
+            <SidebarMenu />
+          </Box>
+        </Drawer>
 
         {/* Settings Content */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 4 }}>

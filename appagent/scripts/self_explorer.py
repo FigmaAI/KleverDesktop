@@ -11,6 +11,8 @@ import sys
 import time
 
 import cv2
+# Add current script directory to sys.path to ensure imports work
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import prompts
 from config import load_config
 from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, list_available_emulators, stop_emulator

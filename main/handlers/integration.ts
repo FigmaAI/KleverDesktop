@@ -68,7 +68,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       const env = {
         ...venvEnv,
         ...configEnvVars,  // Use config.json environment variables
-        PYTHONPATH: pythonPath  // Add scripts directory to PYTHONPATH
+        PYTHONPATH: pythonPath,  // Add scripts directory to PYTHONPATH
+        PYTHONIOENCODING: 'utf-8'  // Fix Unicode encoding issues on Windows
       };
 
       console.log('[Integration Test] ========== Starting Integration Test ==========');
@@ -275,6 +276,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
           console.log(`[Integration Test] ❌ Test failed with code: ${code}`);
         }
         
+        console.log('[Integration Test] Sending integration:complete event with success:', code === 0);
         mainWindow?.webContents.send('integration:complete', code === 0);
         integrationTestProcess = null;
         currentTask = null;
