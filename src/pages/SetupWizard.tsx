@@ -6,6 +6,7 @@ import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
+import { TerminalButton } from '@/components/UniversalTerminal'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
 import { useModelConfig } from '@/hooks/useModelConfig'
 import { useIntegrationTest } from '@/hooks/useIntegrationTest'
@@ -20,6 +21,7 @@ const steps: StepConfig[] = [
 
 export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
+  const [animateTerminalButton, setAnimateTerminalButton] = useState(false)
 
   // Platform tools hook
   const { toolsStatus, setToolsStatus, checkPlatformTools, downloadPython, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
@@ -44,9 +46,6 @@ export function SetupWizard() {
     integrationTestRunning,
     integrationTestComplete,
     integrationTestSuccess,
-    terminalLines,
-    integrationTerminalExpanded,
-    setIntegrationTerminalExpanded,
     handleRunIntegrationTest,
     handleStopIntegrationTest,
   } = useIntegrationTest()
@@ -57,6 +56,17 @@ export function SetupWizard() {
       checkPlatformTools()
     }
   }, [currentStep, checkPlatformTools])
+
+  // Animate terminal button when integration test starts
+  useEffect(() => {
+    if (integrationTestRunning) {
+      setAnimateTerminalButton(true)
+      const timer = setTimeout(() => {
+        setAnimateTerminalButton(false)
+      }, 3000) // Animate for 3 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [integrationTestRunning])
 
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
@@ -202,13 +212,16 @@ export function SetupWizard() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <Box sx={{ mb: { xs: 1, md: 2 } }}>
-              <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
-                Welcome to Klever Desktop
-              </Typography>
-              <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
-                Let&apos;s set up your environment for AI-powered UI automation
-              </Typography>
+            <Box sx={{ mb: { xs: 1, md: 2 }, display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <Box>
+                <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
+                  Welcome to Klever Desktop
+                </Typography>
+                <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
+                  Let&apos;s set up your environment for AI-powered UI automation
+                </Typography>
+              </Box>
+              <TerminalButton animateAttention={animateTerminalButton} />
             </Box>
           </motion.div>
 
@@ -261,9 +274,6 @@ export function SetupWizard() {
                     integrationTestRunning={integrationTestRunning}
                     integrationTestComplete={integrationTestComplete}
                     integrationTestSuccess={integrationTestSuccess}
-                    terminalLines={terminalLines}
-                    integrationTerminalExpanded={integrationTerminalExpanded}
-                    setIntegrationTerminalExpanded={setIntegrationTerminalExpanded}
                     onRunTest={() => handleRunIntegrationTest(modelConfig)}
                     onStopTest={handleStopIntegrationTest}
                   />

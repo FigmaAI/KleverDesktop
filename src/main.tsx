@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom'
 import { CssVarsProvider } from '@mui/joy/styles'
 import CssBaseline from '@mui/joy/CssBaseline'
 import App from './App'
+import { TerminalProvider } from '@/contexts/TerminalContext'
+import { UniversalTerminal } from '@/components/UniversalTerminal'
 import './index.css'
 
 import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/project'
@@ -339,7 +341,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <CssVarsProvider>
       <CssBaseline />
       <BrowserRouter>
-        <App />
+        <TerminalProvider>
+          <App />
+          <UniversalTerminal />
+        </TerminalProvider>
       </BrowserRouter>
     </CssVarsProvider>
   </React.StrictMode>,

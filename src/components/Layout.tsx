@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import { Box, Sheet, Typography, Button, Stack } from '@mui/joy'
 import { SettingsOutlined, FolderOutlined } from '@mui/icons-material'
 import logo from '../assets/logo.png'
+import { TerminalButton } from '@/components/UniversalTerminal'
 
 export function Layout() {
   const location = useLocation()
@@ -49,7 +50,7 @@ export function Layout() {
           </Typography>
         </Stack>
 
-        <Box component="nav" sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+        <Box component="nav" sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
           <Button
             component={Link}
             to="/projects"
@@ -68,6 +69,9 @@ export function Layout() {
           >
             Settings
           </Button>
+
+          {/* Terminal Button */}
+          <TerminalButton />
         </Box>
       </Sheet>
 
