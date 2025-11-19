@@ -9,7 +9,7 @@ import {
   Button,
   CircularProgress,
 } from '@mui/joy'
-import { FolderOpen, Refresh } from '@mui/icons-material'
+import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
 
 interface TaskMarkdownDialogProps {
   open: boolean
@@ -126,6 +126,31 @@ export function TaskMarkdownDialog({
     }
   }
 
+  const handleOpenInEditor = async () => {
+    try {
+      if (!markdownPath) {
+        alert('Markdown file path not found')
+        return
+      }
+
+      // Check if file exists
+      const existsResult = await window.electronAPI.fileExists(markdownPath)
+      if (!existsResult.success || !existsResult.exists) {
+        alert('Markdown file does not exist yet')
+        return
+      }
+
+      // Open the markdown file with system default editor
+      const result = await window.electronAPI.openPath(markdownPath)
+      if (!result.success) {
+        alert(`Failed to open file: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Error opening file:', error)
+      alert('Failed to open file in editor')
+    }
+  }
+
   return (
     <Modal open={open} onClose={onClose}>
       <ModalDialog
@@ -161,6 +186,15 @@ export function TaskMarkdownDialog({
               disabled={loading}
             >
               Refresh
+            </Button>
+            <Button
+              size="sm"
+              variant="outlined"
+              startDecorator={<OpenInNew />}
+              onClick={handleOpenInEditor}
+              disabled={!content && !loading}
+            >
+              Open in Editor
             </Button>
             <Button
               size="sm"
