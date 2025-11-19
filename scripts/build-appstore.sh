@@ -142,13 +142,51 @@ echo "   - Build Dir: $BUILD_DIR"
 echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⏭️  Disabled (use AUTO_UPLOAD=true to enable)")"
 echo ""
 
+# --- Step 0: Generate macOS icons ---
+echo "🎨 [Step 0/6] Generating macOS icons..."
+
+# Check if icon.icns exists and is recent
+ICON_PNG="build/icon.png"
+ICON_ICNS="build/icon.icns"
+REGENERATE_ICON=false
+
+if [ ! -f "$ICON_ICNS" ]; then
+    echo "   ⚠️  icon.icns not found, generating..."
+    REGENERATE_ICON=true
+elif [ "$ICON_PNG" -nt "$ICON_ICNS" ]; then
+    echo "   ⚠️  icon.png is newer than icon.icns, regenerating..."
+    REGENERATE_ICON=true
+else
+    echo "   ✅ icon.icns exists and is up-to-date"
+fi
+
+if [ "$REGENERATE_ICON" = true ]; then
+    if [ -f "scripts/generate-icons.sh" ]; then
+        bash scripts/generate-icons.sh
+        echo "✅ Icons generated successfully"
+    else
+        echo "   ⚠️  Icon generation script not found at scripts/generate-icons.sh"
+        echo "   Please run manually or ensure icon.icns exists in build/"
+
+        if [ ! -f "$ICON_ICNS" ]; then
+            echo "   ❌ Error: $ICON_ICNS is required for Mac App Store build"
+            echo ""
+            echo "   To generate icons manually:"
+            echo "   1. On macOS: ./scripts/generate-icons.sh"
+            echo "   2. Or use online converter: https://cloudconvert.com/png-to-icns"
+            echo "   3. Or use: npm install -g png2icons && png2icons build/icon.png build/"
+            exit 1
+        fi
+    fi
+fi
+
 # --- Step 1: Install dependencies ---
-echo "📦 [Step 1/5] Installing dependencies..."
+echo "📦 [Step 1/6] Installing dependencies..."
 yarn install --frozen-lockfile
 echo "✅ Dependencies installed"
 
 # --- Step 2: Build the application ---
-echo "🔨 [Step 2/5] Building Klever Desktop..."
+echo "🔨 [Step 2/6] Building Klever Desktop..."
 
 # Clean previous builds
 if [ -d "$BUILD_DIR" ]; then
@@ -167,7 +205,7 @@ yarn build:renderer
 echo "✅ Application built successfully"
 
 # --- Step 3: Package for Mac App Store ---
-echo "📦 [Step 3/5] Packaging for Mac App Store..."
+echo "📦 [Step 3/6] Packaging for Mac App Store..."
 
 # Set environment variables for electron-builder
 export ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
@@ -186,7 +224,7 @@ yarn run electron-builder --mac mas --config.mac.target=mas \
 echo "✅ Mac App Store package created"
 
 # --- Step 4: Verify the build ---
-echo "🔍 [Step 4/5] Verifying build..."
+echo "🔍 [Step 4/6] Verifying build..."
 
 # Find PKG file dynamically (could be in mas/ or mas-arm64/ with various naming patterns)
 PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f | head -1)
@@ -218,7 +256,7 @@ echo "✅ Build verification completed"
 
 # --- Step 5: Upload to App Store Connect (Optional) ---
 echo ""
-echo "📤 [Step 5/5] Upload to App Store Connect..."
+echo "📤 [Step 5/6] Upload to App Store Connect..."
 
 if [ "$AUTO_UPLOAD" = "true" ]; then
     if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
