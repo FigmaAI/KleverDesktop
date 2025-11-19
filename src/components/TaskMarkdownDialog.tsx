@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Modal,
   ModalDialog,
-  ModalClose,
   Typography,
   Stack,
   Box,
@@ -10,7 +9,7 @@ import {
   CircularProgress,
   Tooltip,
 } from '@mui/joy'
-import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
+import { FolderOpen, Refresh, OpenInNew, Close } from '@mui/icons-material'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -255,8 +254,6 @@ export function TaskMarkdownDialog({
           flexDirection: 'column',
         }}
       >
-        <ModalClose />
-
         {/* Header */}
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
           <Typography level="h4" fontWeight="bold">
@@ -290,6 +287,15 @@ export function TaskMarkdownDialog({
                 onClick={handleOpenFolder}
               >
                 <FolderOpen />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Close">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={onClose}
+              >
+                <Close />
               </IconButton>
             </Tooltip>
           </Stack>
@@ -410,7 +416,9 @@ export function TaskMarkdownDialog({
                 },
                 '& img': {
                   maxWidth: '100%',
+                  maxHeight: '512px',
                   height: 'auto',
+                  objectFit: 'contain',
                   borderRadius: 'sm',
                   my: 2,
                 },
