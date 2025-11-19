@@ -14,6 +14,7 @@ interface AppConfig {
     enableLocal: boolean;
     enableApi: boolean;
     api: {
+      provider?: string;
       baseUrl: string;
       key: string;
       model: string;
