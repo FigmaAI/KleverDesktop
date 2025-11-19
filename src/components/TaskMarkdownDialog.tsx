@@ -358,15 +358,20 @@ export function TaskMarkdownDialog({
                     const match = /language-(\w+)/.exec(className || '')
                     const language = match ? match[1] : ''
 
-                    return className && language ? (
-                      <SyntaxHighlighter
-                        style={vscDarkPlus as any}
-                        language={language}
-                        PreTag="div"
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    ) : (
+                    if (className && language) {
+                      const HighlighterComponent = SyntaxHighlighter as any
+                      return (
+                        <HighlighterComponent
+                          style={vscDarkPlus}
+                          language={language}
+                          PreTag="div"
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </HighlighterComponent>
+                      )
+                    }
+
+                    return (
                       <code {...rest} className={className}>
                         {children}
                       </code>
