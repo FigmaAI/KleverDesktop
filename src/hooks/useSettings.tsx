@@ -46,6 +46,7 @@ export function useSettings() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     enableLocal: true,
     enableApi: false,
+    apiProvider: '',
     apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKey: '',
     apiModel: '',
@@ -112,6 +113,7 @@ export function useSettings() {
         setModelConfig({
           enableLocal: config.model?.enableLocal ?? true,
           enableApi: config.model?.enableApi ?? false,
+          apiProvider: config.model?.api?.provider || '',
           apiBaseUrl: config.model?.api?.baseUrl || 'https://api.openai.com/v1/chat/completions',
           apiKey: config.model?.api?.key || '',
           apiModel: config.model?.api?.model || '',
@@ -209,6 +211,7 @@ export function useSettings() {
           enableApi: modelConfig.enableApi,
           api: {
             ...currentConfig.model?.api, // Preserve existing API fields
+            provider: modelConfig.apiProvider,
             baseUrl: modelConfig.apiBaseUrl,
             key: modelConfig.apiKey,
             model: modelConfig.apiModel,
