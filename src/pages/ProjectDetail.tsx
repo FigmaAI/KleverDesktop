@@ -107,11 +107,6 @@ export function ProjectDetail() {
     }
   }
 
-  const handleViewLogs = (task: Task) => {
-    setSelectedTask(task)
-    setDetailDialogOpen(true)
-  }
-
   const handleViewMarkdown = (task: Task) => {
     setSelectedTask(task)
     setMarkdownDialogOpen(true)
@@ -241,7 +236,6 @@ export function ProjectDetail() {
                         onStart={handleStartTask}
                         onStop={handleStopTask}
                         onDelete={handleDeleteTask}
-                        onViewLogs={handleViewLogs}
                         onViewMarkdown={handleViewMarkdown}
                       />
                     </Grid>
@@ -266,7 +260,6 @@ export function ProjectDetail() {
                         onStart={handleStartTask}
                         onStop={handleStopTask}
                         onDelete={handleDeleteTask}
-                        onViewLogs={handleViewLogs}
                         onViewMarkdown={handleViewMarkdown}
                       />
                       {index < project.tasks.length - 1 && <Divider />}
@@ -308,6 +301,8 @@ export function ProjectDetail() {
             onClose={() => setMarkdownDialogOpen(false)}
             taskName={selectedTask.name}
             workspaceDir={project.workspaceDir}
+            taskResultPath={selectedTask.resultPath}
+            taskStatus={selectedTask.status}
           />
         </>
       )}

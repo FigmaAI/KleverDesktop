@@ -17,6 +17,7 @@ interface TaskMarkdownDialogProps {
   taskName: string
   workspaceDir: string
   taskResultPath?: string  // Task-specific directory path
+  taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'  // Task status for real-time updates
 }
 
 export function TaskMarkdownDialog({
@@ -25,6 +26,7 @@ export function TaskMarkdownDialog({
   taskName,
   workspaceDir,
   taskResultPath,
+  taskStatus = 'pending',
 }: TaskMarkdownDialogProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -37,24 +39,38 @@ export function TaskMarkdownDialog({
 
     try {
       // Construct markdown file path
-      // The markdown file is typically saved as explore_{timestamp}.md or similar
-      // We'll look for the most recent markdown file in the workspace
-      const mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+      // Priority: taskResultPath/log_report.md > workspaceDir/{taskName}.md
+      let mdPath: string
+
+      if (taskResultPath) {
+        // Use the task result directory path + log_report.md
+        mdPath = `${taskResultPath}/log_report.md`
+      } else {
+        // Fallback to old pattern
+        mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+      }
+
       setMarkdownPath(mdPath)
 
       // Check if file exists
       const existsResult = await window.electronAPI.fileExists(mdPath)
 
       if (!existsResult.success || !existsResult.exists) {
-        // Try to find any markdown file in the workspace
-        setError('Markdown file not found. The task may not have generated output yet.')
-        setContent('')
+        // If task is running, show "generating" message instead of error
+        if (taskStatus === 'running') {
+          setError('Report is being generated... This view will auto-refresh.')
+          setContent('')
+        } else {
+          setError('Markdown file not found. The task may not have generated output yet.')
+          setContent('')
+        }
       } else {
         // Read file contents
         const readResult = await window.electronAPI.fileRead(mdPath)
 
         if (readResult.success && readResult.content) {
           setContent(readResult.content)
+          setError(null)
         } else {
           setError(readResult.error || 'Failed to read markdown file')
           setContent('')
@@ -67,13 +83,24 @@ export function TaskMarkdownDialog({
     } finally {
       setLoading(false)
     }
-  }, [taskName, workspaceDir])
+  }, [taskName, workspaceDir, taskResultPath, taskStatus])
 
   useEffect(() => {
     if (open) {
       loadMarkdown()
     }
   }, [open, loadMarkdown])
+
+  // Auto-refresh when task is running
+  useEffect(() => {
+    if (open && taskStatus === 'running') {
+      const interval = setInterval(() => {
+        loadMarkdown()
+      }, 2000) // Refresh every 2 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [open, taskStatus, loadMarkdown])
 
   const handleOpenFolder = async () => {
     try {

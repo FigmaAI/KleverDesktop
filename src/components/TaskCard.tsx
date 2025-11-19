@@ -16,7 +16,6 @@ import {
   PlayArrow,
   Stop,
   Delete as DeleteIcon,
-  Terminal as TerminalIcon,
   Description as DescriptionIcon,
   CheckCircle,
   Error as ErrorIcon,
@@ -32,7 +31,6 @@ interface TaskCardProps {
   onStart?: (task: Task) => void
   onStop?: (task: Task) => void
   onDelete?: (task: Task) => void
-  onViewLogs?: (task: Task) => void
   onViewMarkdown?: (task: Task) => void
 }
 
@@ -42,7 +40,6 @@ export function TaskCard({
   onStart,
   onStop,
   onDelete,
-  onViewLogs,
   onViewMarkdown,
 }: TaskCardProps) {
   const getStatusLabel = () => {
@@ -112,11 +109,6 @@ export function TaskCard({
     if (confirm(`Are you sure you want to delete "${task.name}"?`)) {
       onDelete?.(task)
     }
-  }
-
-  const handleViewLogs = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onViewLogs?.(task)
   }
 
   const handleViewMarkdown = (e: React.MouseEvent) => {
@@ -245,25 +237,13 @@ export function TaskCard({
                     </Button>
                   )}
 
-                  <Tooltip title="View Logs">
-                    <IconButton
-                      size="sm"
-                      variant="plain"
-                      color="neutral"
-                      onClick={handleViewLogs}
-                      disabled={!task.output && task.status === 'pending'}
-                    >
-                      <TerminalIcon />
-                    </IconButton>
-                  </Tooltip>
-
                   <Tooltip title="View Results">
                     <IconButton
                       size="sm"
                       variant="plain"
                       color="neutral"
                       onClick={handleViewMarkdown}
-                      disabled={task.status !== 'completed'}
+                      disabled={!task.resultPath}
                     >
                       <DescriptionIcon />
                     </IconButton>
@@ -398,25 +378,13 @@ export function TaskCard({
                   </Button>
                 )}
 
-                <Tooltip title="View Logs">
-                  <IconButton
-                    size="sm"
-                    variant="plain"
-                    color="neutral"
-                    onClick={handleViewLogs}
-                    disabled={!task.output && task.status === 'pending'}
-                  >
-                    <TerminalIcon />
-                  </IconButton>
-                </Tooltip>
-
                 <Tooltip title="View Results">
                   <IconButton
                     size="sm"
                     variant="plain"
                     color="neutral"
                     onClick={handleViewMarkdown}
-                    disabled={task.status !== 'completed'}
+                    disabled={!task.resultPath}
                   >
                     <DescriptionIcon />
                   </IconButton>
