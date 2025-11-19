@@ -76,7 +76,12 @@
       {
         "from": "appagent",
         "to": "appagent",
-        "filter": ["**/*", "!.git", "!**/*.pyc", "!**/__pycache__"]
+        "filter": [
+          "**/*",
+          "!.git",
+          "!**/*.pyc",
+          "!**/__pycache__"
+        ]
       }
     ],
     "mac": {

@@ -98,35 +98,61 @@ export function Settings() {
   // Auto-save with debounce
   const [hasChanges, setHasChanges] = useState(false)
   const isInitialLoad = useRef(true)
+  const settingsSnapshot = useRef<string>('')
 
-  // Mark initial load as complete
+  // Mark initial load as complete and save snapshot
   useEffect(() => {
     if (!loading && isInitialLoad.current) {
+      // Save initial settings snapshot
+      settingsSnapshot.current = JSON.stringify({
+        modelConfig,
+        platformSettings,
+        agentSettings,
+        imageSettings,
+      })
       isInitialLoad.current = false
     }
-  }, [loading])
+  }, [loading, modelConfig, platformSettings, agentSettings, imageSettings])
 
   // Mark as changed whenever settings update (after initial load)
   useEffect(() => {
     if (!loading && !isInitialLoad.current) {
-      // Use setTimeout to avoid synchronous setState in effect
-      const timeoutId = setTimeout(() => {
-        setHasChanges(true)
-      }, 0)
-      return () => clearTimeout(timeoutId)
+      // Compare current settings with snapshot
+      const currentSnapshot = JSON.stringify({
+        modelConfig,
+        platformSettings,
+        agentSettings,
+        imageSettings,
+      })
+
+      if (currentSnapshot !== settingsSnapshot.current) {
+        // Use setTimeout to avoid synchronous setState in effect
+        const timeoutId = setTimeout(() => {
+          setHasChanges(true)
+        }, 0)
+        return () => clearTimeout(timeoutId)
+      }
     }
   }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
 
+  // Auto-save after changes
   useEffect(() => {
     if (hasChanges && !loading) {
       const timeoutId = window.setTimeout(() => {
         saveSettings()
+        // Update snapshot after save
+        settingsSnapshot.current = JSON.stringify({
+          modelConfig,
+          platformSettings,
+          agentSettings,
+          imageSettings,
+        })
         setHasChanges(false)
       }, 1000) // Auto-save after 1 second of no changes
 
       return () => window.clearTimeout(timeoutId)
     }
-  }, [hasChanges, loading, saveSettings])
+  }, [hasChanges, loading, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings])
 
   const handleResetConfig = async () => {
     setIsResetting(true)

@@ -94,6 +94,7 @@ export function SetupWizard() {
           enableLocal: modelConfig.enableLocal,
           enableApi: modelConfig.enableApi,
           api: {
+            provider: modelConfig.apiProvider,
             baseUrl: modelConfig.apiBaseUrl,
             key: modelConfig.apiKey,
             model: modelConfig.apiModel,
