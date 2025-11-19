@@ -353,21 +353,22 @@ export function TaskMarkdownDialog({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  code({ inline, className, children, ...props }) {
+                  code(props) {
+                    const { children, className, node, ...rest } = props
                     const match = /language-(\w+)/.exec(className || '')
                     const language = match ? match[1] : ''
 
-                    return !inline && language ? (
+                    return className && language ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus}
+                        {...rest}
+                        style={vscDarkPlus as any}
                         language={language}
                         PreTag="div"
-                        {...props}
                       >
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>
                     ) : (
-                      <code className={className} {...props}>
+                      <code {...rest} className={className}>
                         {children}
                       </code>
                     )
