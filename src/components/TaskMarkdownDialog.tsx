@@ -13,8 +13,6 @@ import {
 import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface TaskMarkdownDialogProps {
   open: boolean
@@ -350,35 +348,7 @@ export function TaskMarkdownDialog({
                 },
               }}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  code(props) {
-                    const { children, className, ...rest } = props
-                    const match = /language-(\w+)/.exec(className || '')
-                    const language = match ? match[1] : ''
-
-                    if (className && language) {
-                      return (
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        <SyntaxHighlighter
-                          style={vscDarkPlus as any}
-                          language={language}
-                          PreTag="div"
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      )
-                    }
-
-                    return (
-                      <code {...rest} className={className}>
-                        {children}
-                      </code>
-                    )
-                  },
-                }}
-              >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}
               </ReactMarkdown>
             </Box>
