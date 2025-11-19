@@ -217,22 +217,36 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       console.log('[project:start] Working directory (cwd):', appagentDir);
       console.log('[project:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
+      // Create a wrapper script to add scripts directory to sys.path before importing
+      // This ensures imports work correctly on all platforms (especially Windows)
+      const wrapperScript = `import sys
+import os
+
+# Add scripts directory to sys.path for imports
+scripts_dir = os.path.join(os.path.dirname(__file__), 'scripts')
+sys.path.insert(0, scripts_dir)
+
+# Change to scripts directory and execute self_explorer
+os.chdir(scripts_dir)
+with open('self_explorer.py', 'r', encoding='utf-8') as f:
+    code = compile(f.read(), 'self_explorer.py', 'exec')
+    exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
+`;
+
+      const wrapperPath = path.join(appagentDir, '_project_wrapper.py');
+      fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
+
+      // Update args to use wrapper script instead of direct script
+      args[1] = wrapperPath;  // Replace scriptPath with wrapperPath
+
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
-
-      // Add appagent/scripts to PYTHONPATH so imports work
-      const scriptsDir = path.join(appagentDir, 'scripts');
-      const existingPythonPath = pythonEnv.PYTHONPATH || '';
-      const pythonPath = existingPythonPath
-        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
-        : scriptsDir;
 
       pythonProcess = spawnBundledPython(args, {
         cwd: appagentDir,  // ✅ Python 실행 환경 = appagent 디렉토리
         env: {
           ...pythonEnv,         // Python bundled environment variables
-          ...configEnvVars,     // 23 config settings from config.json
-          PYTHONPATH: pythonPath  // Add scripts directory to PYTHONPATH
+          ...configEnvVars      // 23 config settings from config.json
         }
       });
 
