@@ -6,8 +6,9 @@ import {
   Typography,
   Stack,
   Box,
-  Button,
+  IconButton,
   CircularProgress,
+  Tooltip,
 } from '@mui/joy'
 import { FolderOpen, Refresh, OpenInNew } from '@mui/icons-material'
 
@@ -39,12 +40,14 @@ export function TaskMarkdownDialog({
 
     try {
       // Construct markdown file path
-      // Priority: taskResultPath/log_report.md > workspaceDir/{taskName}.md
+      // Python generates: log_report_{task_name}.md where task_name is the directory basename
+      // Example: /path/to/self_explore_2025-11-19_04-24-12/log_report_self_explore_2025-11-19_04-24-12.md
       let mdPath: string
 
       if (taskResultPath) {
-        // Use the task result directory path + log_report.md
-        mdPath = `${taskResultPath}/log_report.md`
+        // Extract task name from path (last directory name)
+        const taskDirName = taskResultPath.split('/').filter(Boolean).pop() || ''
+        mdPath = `${taskResultPath}/log_report_${taskDirName}.md`
       } else {
         // Fallback to old pattern
         mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
@@ -167,43 +170,39 @@ export function TaskMarkdownDialog({
 
         {/* Header */}
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Stack spacing={0.5}>
-            <Typography level="h4" fontWeight="bold">
-              Task Results: {taskName}
-            </Typography>
-            {markdownPath && (
-              <Typography level="body-xs" textColor="text.secondary">
-                {markdownPath}
-              </Typography>
-            )}
-          </Stack>
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<Refresh />}
-              onClick={loadMarkdown}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<OpenInNew />}
-              onClick={handleOpenInEditor}
-              disabled={!content && !loading}
-            >
-              Open in Editor
-            </Button>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<FolderOpen />}
-              onClick={handleOpenFolder}
-            >
-              Open Folder
-            </Button>
+          <Typography level="h4" fontWeight="bold">
+            Task Result
+          </Typography>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Refresh">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={loadMarkdown}
+                disabled={loading}
+              >
+                <Refresh />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Open in Editor">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={handleOpenInEditor}
+                disabled={!content && !loading}
+              >
+                <OpenInNew />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Open Folder">
+              <IconButton
+                size="sm"
+                variant="outlined"
+                onClick={handleOpenFolder}
+              >
+                <FolderOpen />
+              </IconButton>
+            </Tooltip>
           </Stack>
         </Stack>
 
