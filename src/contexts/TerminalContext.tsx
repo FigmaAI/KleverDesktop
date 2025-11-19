@@ -226,6 +226,24 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       })
     }
 
+    // Python download events
+    const handlePythonProgress = (data: string) => {
+      addLine({
+        source: 'env',
+        type: 'stdout',
+        content: data,
+      })
+    }
+
+    // Installation events
+    const handleInstallProgress = (data: string) => {
+      addLine({
+        source: 'env',
+        type: 'stdout',
+        content: data,
+      })
+    }
+
     // Project events
     const handleProjectOutput = (data: string) => {
       addLine({
@@ -265,6 +283,8 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     window.electronAPI.onTaskError(handleTaskError)
     window.electronAPI.onTaskComplete(handleTaskComplete)
     window.electronAPI.onEnvProgress(handleEnvProgress)
+    window.electronAPI.onPythonProgress(handlePythonProgress)
+    window.electronAPI.onInstallProgress(handleInstallProgress)
     window.electronAPI.onProjectOutput(handleProjectOutput)
     window.electronAPI.onProjectError(handleProjectError)
     window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
@@ -277,6 +297,8 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       window.electronAPI.removeAllListeners('task:error')
       window.electronAPI.removeAllListeners('task:complete')
       window.electronAPI.removeAllListeners('env:progress')
+      window.electronAPI.removeAllListeners('python:progress')
+      window.electronAPI.removeAllListeners('install:progress')
       window.electronAPI.removeAllListeners('project:output')
       window.electronAPI.removeAllListeners('project:error')
       window.electronAPI.removeAllListeners('integration:output')

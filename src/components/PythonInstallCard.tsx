@@ -8,16 +8,11 @@ import {
   CircularProgress,
   Alert,
   LinearProgress,
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
 } from '@mui/joy'
 import {
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
-  ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material'
-import Terminal, { ColorMode, TerminalOutput } from 'react-terminal-ui'
 import { ToolStatus } from '@/types/setupWizard'
 
 interface PythonInstallCardProps {
@@ -31,27 +26,20 @@ export function PythonInstallCard({
   onInstall,
   delay,
 }: PythonInstallCardProps) {
-  const [terminalLines, setTerminalLines] = useState<React.ReactNode[]>([])
   const [progress, setProgress] = useState(0)
-  const [terminalExpanded, setTerminalExpanded] = useState(false)
 
-  // Listen for Python download progress
+  // Listen for Python download progress to estimate completion
   useEffect(() => {
     if (!status.installing) return
 
     let lineCount = 0
 
-    const handleProgress = (data: string) => {
+    const handleProgress = () => {
       lineCount++
       // Estimate progress based on output lines
       // Download: ~30%, Extract: ~30%, Dependencies: ~40%
       const estimatedProgress = Math.min(95, lineCount * 5)
       setProgress(estimatedProgress)
-
-      setTerminalLines((prev) => [
-        ...prev,
-        <TerminalOutput key={prev.length}>{data}</TerminalOutput>,
-      ])
     }
 
     window.electronAPI.onPythonProgress(handleProgress)
@@ -64,7 +52,6 @@ export function PythonInstallCard({
   // Reset state when installation starts
   useEffect(() => {
     if (status.installing) {
-      setTerminalLines([])
       setProgress(0)
     }
   }, [status.installing])
@@ -169,37 +156,9 @@ export function PythonInstallCard({
           >
             <Typography level="body-sm">
               Downloading Python 3.11.9 and dependencies. This may take a few minutes.
-              Expand the terminal below to see detailed progress.
+              Check the Universal Terminal (top right) for detailed progress.
             </Typography>
           </Alert>
-        )}
-
-        {/* Terminal output during installation - collapsible */}
-        {status.installing && terminalLines.length > 0 && (
-          <Accordion
-            expanded={terminalExpanded}
-            onChange={(_, expanded) => setTerminalExpanded(expanded)}
-          >
-            <AccordionSummary indicator={<ExpandMoreIcon />}>
-              <Typography level="body-sm">
-                {terminalExpanded ? 'Hide' : 'Show'} installation details
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{
-                '& .react-terminal-wrapper': {
-                  fontSize: '10px !important',
-                },
-                '& .react-terminal-line': {
-                  fontSize: '10px !important',
-                }
-              }}>
-                <Terminal name="Python Installation" colorMode={ColorMode.Dark}>
-                  {terminalLines}
-                </Terminal>
-              </Box>
-            </AccordionDetails>
-          </Accordion>
         )}
 
         {/* Error message with retry guidance */}

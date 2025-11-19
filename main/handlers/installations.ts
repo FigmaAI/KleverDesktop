@@ -311,14 +311,16 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
           // macOS: Extract standalone Python build (tar.gz)
           extractCmd = `mkdir -p "${targetDir}" && tar -xzf "${downloadPath}" -C "${targetDir}" --strip-components=1`;
         } else if (platform === 'win32') {
-          // Windows: Unzip embedded Python
-          extractCmd = `unzip -q "${downloadPath}" -d "${targetDir}"`;
+          // Windows: Use PowerShell to expand zip archive
+          const targetDirWin = targetDir.replace(/\//g, '\\');
+          const downloadPathWin = downloadPath.replace(/\//g, '\\');
+          extractCmd = `powershell -Command "Expand-Archive -Path '${downloadPathWin}' -DestinationPath '${targetDirWin}' -Force"`;
         } else {
           // Linux: Extract source and build
           extractCmd = `tar -xzf "${downloadPath}" -C "${tempDir}" && cd "${tempDir}/Python-${PYTHON_VERSION}" && ./configure --prefix="${targetDir}" && make && make install`;
         }
 
-        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        exec(extractCmd, { maxBuffer: 10 * 1024 * 1024, shell: platform === 'win32' ? 'powershell.exe' : undefined }, (error, stdout, stderr) => {
           if (error) {
             mainWindow?.webContents.send('python:progress', `stderr: ${stderr}\n`);
             reject(new Error(`Extraction failed: ${error.message}`));
