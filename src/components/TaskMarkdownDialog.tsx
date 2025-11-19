@@ -116,11 +116,15 @@ export function TaskMarkdownDialog({
 
       if (taskResultPath) {
         // Extract task name from path (last directory name)
-        const taskDirName = taskResultPath.split('/').filter(Boolean).pop() || ''
-        mdPath = `${taskResultPath}/log_report_${taskDirName}.md`
+        // Support both forward slash and backslash for Windows
+        const taskDirName = taskResultPath.split(/[\/\\]/).filter(Boolean).pop() || ''
+        // Always use forward slashes for internal path handling to avoid markdown escape issues
+        const normalizedPath = taskResultPath.replace(/\\/g, '/')
+        mdPath = `${normalizedPath}/log_report_${taskDirName}.md`
       } else {
         // Fallback to old pattern
-        mdPath = `${workspaceDir}/${taskName.replace(/\s+/g, '_')}.md`
+        const normalizedWorkspace = workspaceDir.replace(/\\/g, '/')
+        mdPath = `${normalizedWorkspace}/${taskName.replace(/\s+/g, '_')}.md`
       }
 
       setMarkdownPath(mdPath)
@@ -144,8 +148,11 @@ export function TaskMarkdownDialog({
         if (readResult.success && readResult.content) {
           // Convert relative image paths to absolute paths
           let processedContent = readResult.content;
-          const lastSlash = Math.max(mdPath.lastIndexOf('/'), mdPath.lastIndexOf('\\'));
-          const markdownDir = lastSlash > 0 ? mdPath.substring(0, lastSlash) : mdPath;
+
+          // Normalize markdown path to use forward slashes
+          const normalizedMdPath = mdPath.replace(/\\/g, '/');
+          const lastSlash = normalizedMdPath.lastIndexOf('/');
+          const markdownDir = lastSlash > 0 ? normalizedMdPath.substring(0, lastSlash) : normalizedMdPath;
 
           // Replace image paths: ![alt](relative/path.png) -> ![alt](absolute/path.png)
           processedContent = processedContent.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imgPath) => {
@@ -153,9 +160,11 @@ export function TaskMarkdownDialog({
             if (imgPath.startsWith('/') || imgPath.startsWith('http') || imgPath.startsWith('file://') || imgPath.startsWith('data:')) {
               return match;
             }
-            // Convert relative path to absolute
-            const normalizedPath = imgPath.replace(/^\.\//, '').replace(/\\/g, '/');
-            const absolutePath = `${markdownDir}/${normalizedPath}`;
+
+            // Normalize image path to use forward slashes and remove leading ./
+            const normalizedImgPath = imgPath.replace(/^\.\//, '').replace(/\\/g, '/');
+            const absolutePath = `${markdownDir}/${normalizedImgPath}`;
+
             // Store absolute path - MarkdownImage component will handle loading
             return `![${alt}](${absolutePath})`;
           });
@@ -275,7 +284,7 @@ export function TaskMarkdownDialog({
                 size="sm"
                 variant="outlined"
                 onClick={handleOpenInEditor}
-                disabled={!content && !loading}
+                disabled={!markdownPath || loading}
               >
                 <OpenInNew />
               </IconButton>
