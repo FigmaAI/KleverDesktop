@@ -1,6 +1,9 @@
 import { useState, useCallback, useEffect } from 'react'
 import { ModelConfig } from '@/types/setupWizard'
 
+// AppConfig type from electron.d.ts (available globally, but we reference it for type annotations)
+type AppConfig = Parameters<typeof window.electronAPI.configSave>[0]
+
 export interface PlatformSettings {
   // Android settings
   androidScreenshotDir: string
@@ -46,6 +49,7 @@ export function useSettings() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
     enableLocal: true,
     enableApi: false,
+    apiProvider: '',
     apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKey: '',
     apiModel: '',
@@ -112,6 +116,7 @@ export function useSettings() {
         setModelConfig({
           enableLocal: config.model?.enableLocal ?? true,
           enableApi: config.model?.enableApi ?? false,
+          apiProvider: config.model?.api?.provider || '',
           apiBaseUrl: config.model?.api?.baseUrl || 'https://api.openai.com/v1/chat/completions',
           apiKey: config.model?.api?.key || '',
           apiModel: config.model?.api?.model || '',
@@ -195,7 +200,7 @@ export function useSettings() {
       // IMPORTANT: Load current config first to preserve all existing fields
       // This prevents overwriting fields that aren't in our React state
       const currentResult = await window.electronAPI.configLoad()
-      const currentConfig = currentResult.success && currentResult.config
+      const currentConfig: Partial<AppConfig> = currentResult.success && currentResult.config
         ? currentResult.config
         : { version: '1.0' }
 
@@ -204,42 +209,51 @@ export function useSettings() {
         ...currentConfig, // Preserve any existing fields
         version: '1.0',
         model: {
+          ...(currentConfig.model || {}), // Preserve existing model fields (e.g., MODEL)
           enableLocal: modelConfig.enableLocal,
           enableApi: modelConfig.enableApi,
           api: {
+            ...(currentConfig.model?.api || {}), // Preserve existing API fields
+            provider: modelConfig.apiProvider,
             baseUrl: modelConfig.apiBaseUrl,
             key: modelConfig.apiKey,
             model: modelConfig.apiModel,
           },
           local: {
+            ...(currentConfig.model?.local || {}), // Preserve existing local fields
             baseUrl: modelConfig.localBaseUrl,
             model: modelConfig.localModel,
           },
         },
         execution: {
+          ...(currentConfig.execution || {}), // Preserve existing execution fields
           maxTokens: agentSettings.maxTokens,
           temperature: agentSettings.temperature,
           requestInterval: agentSettings.requestInterval,
           maxRounds: agentSettings.maxRounds,
         },
         android: {
+          ...(currentConfig.android || {}), // Preserve existing android fields
           screenshotDir: platformSettings.androidScreenshotDir,
           xmlDir: platformSettings.androidXmlDir,
           sdkPath: platformSettings.androidSdkPath,
         },
         web: {
+          ...(currentConfig.web || {}), // Preserve existing web fields
           browserType: platformSettings.webBrowserType,
           headless: platformSettings.webHeadless,
           viewportWidth: platformSettings.webViewportWidth,
           viewportHeight: platformSettings.webViewportHeight,
         },
         image: {
+          ...(currentConfig.image || {}), // Preserve existing image fields
           maxWidth: imageSettings.imageMaxWidth,
           maxHeight: imageSettings.imageMaxHeight,
           quality: imageSettings.imageQuality,
           optimize: imageSettings.optimizeImages,
         },
         preferences: {
+          ...(currentConfig.preferences || {}), // Preserve existing preferences fields
           darkMode: agentSettings.darkMode,
           minDist: agentSettings.minDist,
           docRefine: agentSettings.docRefine,

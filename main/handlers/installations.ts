@@ -4,12 +4,11 @@
  * Python is downloaded post-install to reduce app bundle size
  */
 
-import { IpcMain, BrowserWindow } from 'electron';
+import { IpcMain, BrowserWindow, app } from 'electron';
 import { spawn, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { app } from 'electron';
 import {
   checkPythonRuntime,
   checkPlaywrightBrowsers,
@@ -284,7 +283,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       mainWindow?.webContents.send('python:progress', '⬇️  Downloading...\n');
 
       await new Promise<void>((resolve, reject) => {
-        exec(`curl -L -o "${downloadPath}" "${downloadUrl}"`, (error, stdout, stderr) => {
+        exec(`curl -L -o "${downloadPath}" "${downloadUrl}"`, (error, _stdout, _stderr) => {
           if (error) {
             reject(new Error(`Download failed: ${error.message}`));
             return;
@@ -339,7 +338,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // 1. Upgrade pip
       mainWindow?.webContents.send('python:progress', 'Upgrading pip...\n');
       await new Promise<void>((resolve) => {
-        exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        exec(`"${pythonExe}" -m pip install --upgrade pip`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
           if (error) {
             mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
           }
@@ -352,7 +351,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       if (fs.existsSync(requirementsPath)) {
         mainWindow?.webContents.send('python:progress', 'Installing packages from requirements.txt...\n');
         await new Promise<void>((resolve) => {
-          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+          exec(`"${pythonExe}" -m pip install -r "${requirementsPath}"`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
             if (error) {
               mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
             }
@@ -365,7 +364,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // 3. Install Playwright browsers
       mainWindow?.webContents.send('python:progress', 'Installing Playwright browsers...\n');
       await new Promise<void>((resolve) => {
-        exec(`"${pythonExe}" -m playwright install chromium`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+        exec(`"${pythonExe}" -m playwright install chromium`, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, _stderr) => {
           if (error) {
             mainWindow?.webContents.send('python:progress', `⚠️  Warning: ${error.message}\n`);
           }

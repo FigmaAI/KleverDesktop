@@ -15,6 +15,7 @@ export interface ModelSettings {
 
   // API model configuration
   api: {
+    provider?: string;  // Provider ID (e.g., 'openai', 'anthropic', 'openrouter')
     baseUrl: string;
     key: string;
     model: string;
@@ -98,6 +99,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     enableLocal: true,
     enableApi: false,
     api: {
+      provider: 'openai',
       baseUrl: 'https://api.openai.com/v1/chat/completions',
       key: '',
       model: 'gpt-4o',
@@ -142,8 +144,9 @@ export const DEFAULT_CONFIG: AppConfig = {
  * Maps config.json paths to environment variable names
  */
 export const ENV_VAR_MAPPING = {
-  // Model configuration (6 variables)
+  // Model configuration (7 variables)
   MODEL: 'MODEL', // Computed from enableLocal/enableApi
+  API_PROVIDER: 'model.api.provider',
   API_BASE_URL: 'model.api.baseUrl',
   API_KEY: 'model.api.key',
   API_MODEL: 'model.api.model',
