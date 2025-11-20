@@ -150,7 +150,7 @@ export function ProjectDetail() {
           {/* Project Header */}
           <ProjectCard
             project={project}
-            variant="card"
+            variant="compact"
             expand={true}
             clickable={false}
             showDelete={true}

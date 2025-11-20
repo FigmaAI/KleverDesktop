@@ -2,6 +2,7 @@ import {
   Box,
   Card,
   CardContent,
+  CardOverflow,
   Chip,
   IconButton,
   ListItem,
@@ -18,11 +19,10 @@ import {
   FolderOpen,
 } from '@mui/icons-material'
 import type { Project } from '../types/project'
-import { TaskStatusSummary } from './TaskStatusSummary'
 
 interface ProjectCardProps {
   project: Project
-  variant?: 'card' | 'list'
+  variant?: 'card' | 'list' | 'compact'
   expand?: boolean
   clickable?: boolean
   showDelete?: boolean
@@ -95,6 +95,97 @@ export function ProjectCard({
     }
   }
 
+  // Compact View (App bar-like)
+  if (variant === 'compact') {
+    return (
+      <Card
+        variant="outlined"
+        sx={{
+          transition: 'all 0.2s',
+          '&:hover': {
+            boxShadow: 'sm',
+          },
+        }}
+      >
+        <CardContent>
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ width: '100%' }}
+          >
+            {/* Left Section: Icon, Name, Platform */}
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+              {project.platform === 'android' ? (
+                <PhoneAndroid color="primary" sx={{ fontSize: 28 }} />
+              ) : (
+                <Language color="primary" sx={{ fontSize: 28 }} />
+              )}
+              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                <Typography level="title-lg" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
+                  {project.name}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color={project.platform === 'android' ? 'primary' : 'success'}
+                  >
+                    {project.platform}
+                  </Chip>
+                  <Typography level="body-xs" textColor="text.secondary">
+                    {statusSummary.running > 0
+                      ? `${statusSummary.running} running / ${statusSummary.total} total`
+                      : statusSummary.total > 0
+                      ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+                      : 'No tasks'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+
+            {/* Right Section: Actions */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              {expand && (
+                <Chip
+                  size="sm"
+                  variant="outlined"
+                  startDecorator={<FolderOpen />}
+                  onClick={handleOpenWorkDir}
+                  sx={{
+                    cursor: 'pointer',
+                    maxWidth: '300px',
+                    '& > span': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }
+                  }}
+                >
+                  {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
+                </Chip>
+              )}
+              <Typography level="body-xs" textColor="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                {new Date(project.createdAt).toLocaleDateString()}
+              </Typography>
+              {showDelete && (
+                <IconButton
+                  size="sm"
+                  variant="plain"
+                  color="danger"
+                  onClick={handleDelete}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+    )
+  }
+
   // Card View
   if (variant === 'card') {
     return (
@@ -151,15 +242,8 @@ export function ProjectCard({
               </Chip>
             </Stack>
 
-            {/* Bottom Section: Task Status and Created Date */}
+            {/* Bottom Section: Created Date */}
             <Stack spacing={2}>
-              <TaskStatusSummary
-                total={statusSummary.total}
-                running={statusSummary.running}
-                completed={statusSummary.completed}
-                failed={statusSummary.failed}
-              />
-
               {expand ? (
                 <Stack 
                   direction="row" 
@@ -214,6 +298,27 @@ export function ProjectCard({
             </Stack>
           </Stack>
         </CardContent>
+        <CardOverflow
+          variant="soft"
+          sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 1.5,
+            py: 1,
+            px: 2,
+            bgcolor: 'background.level1',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography level="body-sm" textColor="text.secondary">
+            {statusSummary.running > 0
+              ? `${statusSummary.running} running / ${statusSummary.total} total`
+              : statusSummary.total > 0
+              ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+              : 'No tasks'}
+          </Typography>
+        </CardOverflow>
       </Card>
     )
   }
@@ -248,14 +353,13 @@ export function ProjectCard({
                   {project.platform}
                 </Chip>
               </Stack>
-              <Box sx={{ mt: 1.5 }}>
-                <TaskStatusSummary
-                  total={statusSummary.total}
-                  running={statusSummary.running}
-                  completed={statusSummary.completed}
-                  failed={statusSummary.failed}
-                />
-              </Box>
+              <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1.5 }}>
+                {statusSummary.running > 0
+                  ? `${statusSummary.running} running / ${statusSummary.total} total`
+                  : statusSummary.total > 0
+                  ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+                  : 'No tasks'}
+              </Typography>
               {expand && (
                 <Typography
                   level="body-sm"
