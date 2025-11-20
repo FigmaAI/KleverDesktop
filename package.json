@@ -16,8 +16,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "appagent:fetch": "node scripts/fetch-appagent.js",
     "python:build": "node scripts/build-python.js",
-    "python:verify": "node scripts/verify-bundle.js",
-    "vercel-build": "echo '\n❌ ERROR: Cannot deploy to Vercel\n\nKleverDesktop is an Electron DESKTOP application, not a web application.\nIt cannot be deployed to Vercel.\n\nTo build distribution packages, use:\n  • npm run package  (local packaging)\n  • npm run make     (create distributable packages)\n\nSee CLAUDE.md for complete build documentation.\n' && exit 1"
+    "python:verify": "node scripts/verify-bundle.js"
   },
   "keywords": [
     "electron",
