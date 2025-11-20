@@ -19,13 +19,18 @@ export function registerDialogHandlers(ipcMain: IpcMain, getMainWindow: () => Br
   })
 
   ipcMain.handle('dialog:openFolder', async (_event, folderPath: string) => {
+    console.log('[dialogs] Opening folder:', folderPath)
     try {
       const error = await shell.openPath(folderPath)
+      console.log('[dialogs] shell.openPath error:', error)
       if (error) {
+        console.error('[dialogs] Failed to open path:', error)
         return { success: false, error }
       }
+      console.log('[dialogs] Folder opened successfully')
       return { success: true }
     } catch (error: unknown) {
+      console.error('[dialogs] Exception:', error)
       return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') }
     }
   })
