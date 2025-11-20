@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- App Sandbox -->
+  <!-- App Sandbox (Required for MAS) -->
   <key>com.apple.security.app-sandbox</key>
   <true/>
 
@@ -17,15 +17,5 @@
   <true/>
   <key>com.apple.security.files.downloads.read-write</key>
   <true/>
-
-  <!-- Required for Python subprocess and AI models -->
-  <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  <true/>
-  <key>com.apple.security.cs.disable-library-validation</key>
-  <true/>
-
-  <!-- Note: unix-socket.client temporary exception is not allowed in MAS builds -->
 </dict>
 </plist>

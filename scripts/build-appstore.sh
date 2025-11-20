@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # =================================================================
-# Klever Desktop - Mac App Store Build Script (Electron)
-# Creates Mac App Store build and pkg file for submission
-# Supports automatic upload to App Store Connect
+# Klever Desktop - Mac App Store Build Script
+# Following Electron Official Guide
+# https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide
+#
+# This script ONLY builds and signs the app.
+# Use upload-appstore.sh separately to upload to App Store Connect.
 # =================================================================
 
 set -e # Exit immediately if a command exits with a non-zero status
@@ -15,7 +18,6 @@ APP_NAME="Klever Desktop"
 BUNDLE_ID="com.klever.desktop"
 BUILD_DIR="dist-electron"
 USE_ENVIRONMENT_VERSION="${USE_ENVIRONMENT_VERSION:-false}"
-AUTO_UPLOAD="${AUTO_UPLOAD:-false}"  # Set to 'true' to automatically upload to App Store Connect
 
 # --- Check Node.js and dependencies ---
 echo "🔍 Checking build environment..."
@@ -42,26 +44,9 @@ fi
 
 echo "✅ Yarn $(yarn -v) detected"
 
-# --- Environment Variables Configuration ---
+# --- Code Signing Configuration ---
 echo ""
-echo "🔍 Checking environment variables..."
-
-# Apple Developer Configuration
-if [ -z "$APPLE_ID" ]; then
-    echo "⚠️  APPLE_ID not set (required for notarization)"
-    echo "   To enable automatic notarization, set:"
-    echo "   export APPLE_ID=\"your-apple-id@email.com\""
-fi
-
-if [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
-    echo "⚠️  APPLE_APP_SPECIFIC_PASSWORD not set (required for notarization)"
-    echo "   Generate at: https://appleid.apple.com/account/manage"
-fi
-
-if [ -z "$APPLE_TEAM_ID" ]; then
-    echo "⚠️  APPLE_TEAM_ID not set"
-    echo "   Find at: https://developer.apple.com/account/#!/membership"
-fi
+echo "🔍 Checking code signing certificates..."
 
 # Code Signing Identity - Auto-detect if not set
 if [ -z "$CSC_NAME" ]; then
@@ -112,12 +97,9 @@ fi
 
 # Show configuration summary
 echo ""
-echo "📋 Environment Variables Summary:"
-echo "   - Apple ID: ${APPLE_ID:-❌ Not set}"
-echo "   - Apple Team ID: ${APPLE_TEAM_ID:-❌ Not set}"
-echo "   - App Specific Password: $([ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && echo "✅ Set" || echo "❌ Not set")"
-echo "   - Code Sign Identity: ${CSC_NAME:-❌ Not set}"
-echo "   - Installer Identity: ${CSC_INSTALLER_NAME:-❌ Not set}"
+echo "📋 Code Signing Summary:"
+echo "   - App Signing: ${CSC_NAME:-❌ Not set}"
+echo "   - PKG Signing: ${CSC_INSTALLER_NAME:-❌ Not set (will auto-detect)}"
 echo ""
 
 # --- Version Configuration ---
@@ -163,17 +145,16 @@ else
 fi
 
 echo ""
-echo "📋 Build configuration:"
+echo "📋 Build Configuration:"
 echo "   - App Name: $APP_NAME"
 echo "   - Bundle ID: $BUNDLE_ID"
 echo "   - Version: $APP_VERSION"
 echo "   - Build Number: $BUILD_NUMBER"
-echo "   - Build Dir: $BUILD_DIR"
-echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⏭️  Disabled (use AUTO_UPLOAD=true to enable)")"
+echo "   - Output: $BUILD_DIR"
 echo ""
 
 # --- Step 0: Generate macOS icons ---
-echo "🎨 [Step 0/6] Generating macOS icons..."
+echo "🎨 [Step 0/4] Generating macOS icons..."
 
 # Check if icon.icns exists and is recent
 ICON_PNG="build/icon.png"
@@ -211,12 +192,12 @@ if [ "$REGENERATE_ICON" = true ]; then
 fi
 
 # --- Step 1: Install dependencies ---
-echo "📦 [Step 1/6] Installing dependencies..."
+echo "📦 [Step 1/4] Installing dependencies..."
 yarn install --frozen-lockfile
 echo "✅ Dependencies installed"
 
 # --- Step 2: Build the application ---
-echo "🔨 [Step 2/6] Building Klever Desktop..."
+echo "🔨 [Step 2/4] Building Klever Desktop..."
 
 # Clean previous builds
 if [ -d "$BUILD_DIR" ]; then
@@ -235,7 +216,7 @@ yarn build:renderer
 echo "✅ Application built successfully"
 
 # --- Step 3: Package for Mac App Store ---
-echo "📦 [Step 3/6] Packaging for Mac App Store..."
+echo "📦 [Step 3/4] Packaging for Mac App Store..."
 
 # Set environment variables for electron-builder
 export ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
@@ -260,7 +241,7 @@ yarn run electron-builder --mac mas --config.mac.target=mas \
 echo "✅ Mac App Store package created"
 
 # --- Step 4: Verify the build ---
-echo "🔍 [Step 4/6] Verifying build..."
+echo "🔍 [Step 4/4] Verifying build..."
 
 # Find PKG file dynamically (could be in mas/ or mas-arm64/ with various naming patterns)
 PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f | head -1)
@@ -348,46 +329,6 @@ fi
 echo ""
 echo "✅ Build verification completed"
 
-# --- Step 5: Upload to App Store Connect (Optional) ---
-echo ""
-echo "📤 [Step 5/6] Upload to App Store Connect..."
-
-if [ "$AUTO_UPLOAD" = "true" ]; then
-    if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
-        echo "   🚀 Attempting automatic upload..."
-
-        # Try to upload using altool (deprecated but still works)
-        # xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-        #     --username "$APPLE_ID" \
-        #     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-        #     --verbose
-
-        # Try to upload using newer notarytool + altool
-        if command -v xcrun &> /dev/null; then
-            echo "   📤 Uploading to App Store Connect..."
-            xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-                --username "$APPLE_ID" \
-                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                --verbose
-
-            if [ $? -eq 0 ]; then
-                echo "   ✅ Upload successful!"
-            else
-                echo "   ❌ Upload failed. Please upload manually."
-            fi
-        else
-            echo "   ⚠️  xcrun not available, skipping upload"
-        fi
-    else
-        echo "   ⚠️  Automatic upload not configured"
-        echo "   Set APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD to enable automatic upload"
-    fi
-else
-    echo "   ⏭️  Automatic upload disabled (AUTO_UPLOAD=$AUTO_UPLOAD)"
-    echo "   To enable automatic upload, run with: AUTO_UPLOAD=true ./scripts/build-appstore.sh"
-    echo "   Or manually upload using Xcode Organizer or xcrun altool (see Next Steps below)"
-fi
-
 # --- Summary ---
 echo ""
 echo "═══════════════════════════════════════════════════════════════"
@@ -405,14 +346,15 @@ else
 fi
 echo ""
 echo "🚀 Next Steps:"
-echo "   1. Test the app locally if needed"
-echo "   2. Upload to App Store Connect (if not done automatically):"
-echo "      - Use Xcode → Window → Organizer"
-echo "      - Or use: xcrun altool --upload-app --type osx --file \"$PKG_PATH\" \\"
-echo "                        --username \"[APPLE_ID]\" --password \"[APP_SPECIFIC_PASSWORD]\""
-echo "   3. Submit for review in App Store Connect"
+echo "   1. Verify the PKG file: $PKG_PATH"
+echo "   2. Test locally with mas-dev build (if needed)"
+echo "   3. Upload to App Store Connect:"
+echo "      Option A: Use upload script: ./scripts/upload-appstore.sh \"$PKG_PATH\""
+echo "      Option B: Use Transporter app (download from Mac App Store)"
+echo "      Option C: Use Xcode → Window → Organizer"
+echo "   4. Submit for review at https://appstoreconnect.apple.com"
 echo ""
 echo "📚 Documentation:"
+echo "   - Electron Official Guide: https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide"
 echo "   - App Store Connect: https://appstoreconnect.apple.com"
-echo "   - Electron Builder: https://www.electron.build/configuration/mas"
 echo "═══════════════════════════════════════════════════════════════"
