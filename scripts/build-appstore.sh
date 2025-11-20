@@ -1,12 +1,24 @@
 #!/bin/bash
 
 # =================================================================
-# Klever Desktop - Mac App Store Build Script (Electron)
-# Creates Mac App Store build and pkg file for submission
-# Supports automatic upload to App Store Connect
+# Klever Desktop - Mac App Store Build Script
+# Following Electron Official Guide
+# https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide
+#
+# This script ONLY builds and signs the app.
+# Use upload-appstore.sh separately to upload to App Store Connect.
 # =================================================================
 
 set -e # Exit immediately if a command exits with a non-zero status
+
+# --- Load environment variables from .envrc if it exists ---
+if [ -f ".envrc" ]; then
+    echo "🔧 Loading environment variables from .envrc..."
+    set +e  # Temporarily disable exit on error
+    source .envrc
+    set -e  # Re-enable exit on error
+    echo "✅ Environment variables loaded"
+fi
 
 echo "🚀 Starting Klever Desktop Mac App Store build process..."
 
@@ -15,7 +27,6 @@ APP_NAME="Klever Desktop"
 BUNDLE_ID="com.klever.desktop"
 BUILD_DIR="dist-electron"
 USE_ENVIRONMENT_VERSION="${USE_ENVIRONMENT_VERSION:-false}"
-AUTO_UPLOAD="${AUTO_UPLOAD:-false}"  # Set to 'true' to automatically upload to App Store Connect
 
 # --- Check Node.js and dependencies ---
 echo "🔍 Checking build environment..."
@@ -42,52 +53,71 @@ fi
 
 echo "✅ Yarn $(yarn -v) detected"
 
-# --- Environment Variables Configuration ---
+# --- Unlock Keychain (macOS Sequoia compatibility) ---
+if [ -n "${KEYCHAIN_PASSWORD:-}" ]; then
+    echo ""
+    echo "🔓 Unlocking keychain for automated build..."
+    security unlock-keychain -p "$KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+    security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+    echo "✅ Keychain unlocked"
+fi
+
+# --- Code Signing Configuration ---
 echo ""
-echo "🔍 Checking environment variables..."
+echo "🔍 Checking code signing certificates..."
 
-# Apple Developer Configuration
-if [ -z "$APPLE_ID" ]; then
-    echo "⚠️  APPLE_ID not set (required for notarization)"
-    echo "   To enable automatic notarization, set:"
-    echo "   export APPLE_ID=\"your-apple-id@email.com\""
-fi
-
-if [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
-    echo "⚠️  APPLE_APP_SPECIFIC_PASSWORD not set (required for notarization)"
-    echo "   Generate at: https://appleid.apple.com/account/manage"
-fi
-
-if [ -z "$APPLE_TEAM_ID" ]; then
-    echo "⚠️  APPLE_TEAM_ID not set"
-    echo "   Find at: https://developer.apple.com/account/#!/membership"
-fi
-
-# Code Signing Identity
+# Code Signing Identity - Auto-detect if not set
 if [ -z "$CSC_NAME" ]; then
-    echo "⚠️  CSC_NAME not set"
-    echo "   This should be your '3rd Party Mac Developer Application' certificate name"
-    echo "   Example: export CSC_NAME=\"3rd Party Mac Developer Application: Your Name (TEAM_ID)\""
-    echo ""
-    echo "   Available signing identities:"
-    security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" || echo "   No 3rd Party Mac Developer Application certificates found"
-    echo ""
+    echo "🔍 Auto-detecting Apple Distribution certificate..."
+
+    # Try "Apple Distribution" first (current naming)
+    AUTO_CSC_NAME=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -n 1 | awk -F'"' '{print $2}')
+
+    # Fallback to old naming
+    if [ -z "$AUTO_CSC_NAME" ]; then
+        AUTO_CSC_NAME=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" | head -n 1 | awk -F'"' '{print $2}')
+    fi
+
+    if [ -n "$AUTO_CSC_NAME" ]; then
+        export CSC_NAME="$AUTO_CSC_NAME"
+        echo "✅ Auto-detected: $CSC_NAME"
+    else
+        echo "⚠️  CSC_NAME not set and auto-detection failed"
+        echo "   This should be your 'Apple Distribution' certificate"
+        echo "   Example: export CSC_NAME=\"Apple Distribution: Your Name (TEAM_ID)\""
+        echo ""
+        echo "   Available signing identities:"
+        security find-identity -v -p codesigning | grep -E "(Apple Distribution|3rd Party Mac Developer)" || echo "   No Mac App Store certificates found"
+        echo ""
+    fi
 fi
 
 if [ -z "$CSC_INSTALLER_NAME" ]; then
-    echo "⚠️  CSC_INSTALLER_NAME not set"
-    echo "   This should be your '3rd Party Mac Developer Installer' certificate name"
-    echo "   Example: export CSC_INSTALLER_NAME=\"3rd Party Mac Developer Installer: Your Name (TEAM_ID)\""
+    echo "🔍 Auto-detecting Mac Installer Distribution certificate..."
+
+    # Try "Mac Installer Distribution" first (current naming)
+    AUTO_INSTALLER=$(security find-identity -v -p codesigning | grep "Mac Installer Distribution" | head -n 1 | awk -F'"' '{print $2}')
+
+    # Fallback to old naming
+    if [ -z "$AUTO_INSTALLER" ]; then
+        AUTO_INSTALLER=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Installer" | head -n 1 | awk -F'"' '{print $2}')
+    fi
+
+    if [ -n "$AUTO_INSTALLER" ]; then
+        export CSC_INSTALLER_NAME="$AUTO_INSTALLER"
+        echo "✅ Auto-detected: $CSC_INSTALLER_NAME"
+    else
+        echo "⚠️  CSC_INSTALLER_NAME not set and auto-detection failed"
+        echo "   Note: electron-builder will try to find it automatically from Keychain"
+        echo "   If build fails, export CSC_INSTALLER_NAME=\"Mac Installer Distribution: Your Name (TEAM_ID)\""
+    fi
 fi
 
 # Show configuration summary
 echo ""
-echo "📋 Environment Variables Summary:"
-echo "   - Apple ID: ${APPLE_ID:-❌ Not set}"
-echo "   - Apple Team ID: ${APPLE_TEAM_ID:-❌ Not set}"
-echo "   - App Specific Password: $([ -n "$APPLE_APP_SPECIFIC_PASSWORD" ] && echo "✅ Set" || echo "❌ Not set")"
-echo "   - Code Sign Identity: ${CSC_NAME:-❌ Not set}"
-echo "   - Installer Identity: ${CSC_INSTALLER_NAME:-❌ Not set}"
+echo "📋 Code Signing Summary:"
+echo "   - App Signing: ${CSC_NAME:-❌ Not set}"
+echo "   - PKG Signing: ${CSC_INSTALLER_NAME:-❌ Not set (will auto-detect)}"
 echo ""
 
 # --- Version Configuration ---
@@ -133,17 +163,16 @@ else
 fi
 
 echo ""
-echo "📋 Build configuration:"
+echo "📋 Build Configuration:"
 echo "   - App Name: $APP_NAME"
 echo "   - Bundle ID: $BUNDLE_ID"
 echo "   - Version: $APP_VERSION"
 echo "   - Build Number: $BUILD_NUMBER"
-echo "   - Build Dir: $BUILD_DIR"
-echo "   - Auto Upload: $([ "$AUTO_UPLOAD" = "true" ] && echo "✅ Enabled" || echo "⏭️  Disabled (use AUTO_UPLOAD=true to enable)")"
+echo "   - Output: $BUILD_DIR"
 echo ""
 
 # --- Step 0: Generate macOS icons ---
-echo "🎨 [Step 0/6] Generating macOS icons..."
+echo "🎨 [Step 0/4] Generating macOS icons..."
 
 # Check if icon.icns exists and is recent
 ICON_PNG="build/icon.png"
@@ -181,12 +210,12 @@ if [ "$REGENERATE_ICON" = true ]; then
 fi
 
 # --- Step 1: Install dependencies ---
-echo "📦 [Step 1/6] Installing dependencies..."
+echo "📦 [Step 1/4] Installing dependencies..."
 yarn install --frozen-lockfile
 echo "✅ Dependencies installed"
 
 # --- Step 2: Build the application ---
-echo "🔨 [Step 2/6] Building Klever Desktop..."
+echo "🔨 [Step 2/4] Building Klever Desktop..."
 
 # Clean previous builds
 if [ -d "$BUILD_DIR" ]; then
@@ -205,7 +234,7 @@ yarn build:renderer
 echo "✅ Application built successfully"
 
 # --- Step 3: Package for Mac App Store ---
-echo "📦 [Step 3/6] Packaging for Mac App Store..."
+echo "📦 [Step 3/4] Packaging for Mac App Store..."
 
 # Set environment variables for electron-builder
 export ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
@@ -213,21 +242,101 @@ export ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
 # Build for Mac App Store
 echo "   🍎 Creating Mac App Store build..."
 
+# Set CFBundleVersion via environment variable (electron-builder convention)
+export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
+
 # electron-builder command for mas (Mac App Store)
+# Note: electron-builder will use:
+# - CSC_NAME for app signing (Apple Distribution)
+# - CSC_INSTALLER_NAME (or auto-detect) for pkg signing (Mac Installer Distribution)
+# - ELECTRON_BUILDER_BUILD_NUMBER for CFBundleVersion
+echo "   🍎 Running electron-builder..."
+
+# Allow electron-builder to fail (macOS Sequoia Keychain issue)
+set +e
 yarn run electron-builder --mac mas --config.mac.target=mas \
     --config.appId="$BUNDLE_ID" \
     --config.productName="$APP_NAME" \
     --config.mac.category="public.app-category.developer-tools" \
-    --config.directories.output="$BUILD_DIR" \
-    --config.buildVersion="$BUILD_NUMBER"
+    --config.directories.output="$BUILD_DIR"
+ELECTRON_BUILDER_EXIT_CODE=$?
+set -e
+
+# Check if PKG was created
+PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f 2>/dev/null | head -1)
+
+if [ $ELECTRON_BUILDER_EXIT_CODE -ne 0 ] || [ -z "$PKG_PATH" ]; then
+    echo ""
+    echo "⚠️  electron-builder PKG creation failed or no PKG found"
+    echo "   This is a known issue on macOS Sequoia due to Keychain security policies."
+    echo "   Attempting manual PKG creation with productbuild..."
+    echo ""
+
+    # Find the signed .app bundle
+    APP_PATH=$(find "$BUILD_DIR" -name "$APP_NAME.app" -type d | head -1)
+
+    if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+        echo "❌ Error: Signed app bundle not found"
+        echo "   electron-builder may have failed completely"
+        exit 1
+    fi
+
+    # Verify app signature
+    echo "   🔍 Verifying app signature..."
+    if ! codesign --verify --deep --strict "$APP_PATH" 2>/dev/null; then
+        echo "   ❌ App signature verification failed"
+        echo "   electron-builder did not sign the app properly"
+        exit 1
+    fi
+    echo "   ✅ App signature valid"
+
+    # Determine architecture directory
+    if [[ "$APP_PATH" == *"mas-arm64"* ]]; then
+        PKG_DIR="$BUILD_DIR/mas-arm64"
+    elif [[ "$APP_PATH" == *"mas-universal"* ]]; then
+        PKG_DIR="$BUILD_DIR/mas-universal"
+    else
+        PKG_DIR="$BUILD_DIR/mas"
+    fi
+
+    mkdir -p "$PKG_DIR"
+    PKG_PATH="$PKG_DIR/$APP_NAME-$APP_VERSION.pkg"
+
+    echo "   📦 Creating PKG with productbuild..."
+    echo ""
+    echo "   ⚠️  macOS will prompt for your login password"
+    echo "   This is required for Keychain access on macOS Sequoia"
+    echo ""
+
+    # Use productbuild (Apple's official tool)
+    if ! productbuild \
+        --component "$APP_PATH" /Applications \
+        --sign "$CSC_INSTALLER_NAME" \
+        "$PKG_PATH"; then
+        echo ""
+        echo "   ❌ productbuild failed"
+        echo ""
+        echo "   Troubleshooting:"
+        echo "   1. Verify certificate: security find-identity -v | grep Installer"
+        echo "   2. Check CSC_INSTALLER_NAME: echo \$CSC_INSTALLER_NAME"
+        echo "   3. Ensure certificate is in login keychain"
+        exit 1
+    fi
+
+    echo ""
+    echo "   ✅ PKG created successfully with productbuild (fallback method)"
+fi
 
 echo "✅ Mac App Store package created"
 
 # --- Step 4: Verify the build ---
-echo "🔍 [Step 4/6] Verifying build..."
+echo "🔍 [Step 4/4] Verifying build..."
 
-# Find PKG file dynamically (could be in mas/ or mas-arm64/ with various naming patterns)
-PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f | head -1)
+# PKG_PATH is already set by electron-builder or productbuild fallback
+# Re-find if somehow not set
+if [ -z "$PKG_PATH" ]; then
+    PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f 2>/dev/null | head -1)
+fi
 
 if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
     PKG_SIZE=$(du -h "$PKG_PATH" | cut -f1)
@@ -235,64 +344,82 @@ if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
 
     # Verify PKG signature
     echo "   📝 Verifying PKG signature..."
-    pkgutil --check-signature "$PKG_PATH" > /dev/null 2>&1 && echo "   ✅ PKG signature valid" || echo "   ⚠️  PKG signature verification failed"
+    PKG_CHECK_OUTPUT=$(pkgutil --check-signature "$PKG_PATH" 2>&1)
+    PKG_CHECK_STATUS=$?
+
+    if [ $PKG_CHECK_STATUS -eq 0 ]; then
+        echo "   ✅ PKG signature valid"
+        echo ""
+        echo "   📋 PKG Signature Details:"
+        echo "$PKG_CHECK_OUTPUT" | grep -E "(Status|Developer ID|Certificate)" | sed 's/^/      /'
+    else
+        echo "   ❌ PKG signature verification FAILED!"
+        echo ""
+        echo "   Error details:"
+        echo "$PKG_CHECK_OUTPUT" | sed 's/^/      /'
+        echo ""
+        echo "   ⚠️  This PKG may be rejected by App Store Connect!"
+        echo "   Common causes:"
+        echo "      - Mac Installer Distribution certificate not found"
+        echo "      - Certificate expired or revoked"
+        echo "      - electron-builder failed to sign the PKG"
+        echo ""
+        echo "   To fix:"
+        echo "      1. Verify certificates: security find-identity -v -p codesigning"
+        echo "      2. Check CSC_INSTALLER_NAME environment variable"
+        echo "      3. Re-run build with DEBUG=electron-builder for detailed logs"
+        echo ""
+        read -p "   Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
 else
     echo "❌ Error: PKG file not found in $BUILD_DIR"
     echo "   Searching for build artifacts..."
     find "$BUILD_DIR" -type f \( -name "*.pkg" -o -name "*.app" \) 2>/dev/null || echo "   No build artifacts found"
+    echo ""
+    echo "   Common causes:"
+    echo "      - electron-builder failed during packaging"
+    echo "      - Code signing failed"
+    echo "      - Missing provisioning profile"
+    echo ""
+    echo "   Check build logs above for errors"
     exit 1
 fi
 
 # Find and verify .app bundle
 APP_PATH=$(find "$BUILD_DIR" -name "$APP_NAME.app" -type d | head -1)
 if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+    echo ""
     echo "   📝 Verifying app bundle signature..."
-    codesign --verify --verbose "$APP_PATH" 2>&1 | grep -q "valid on disk" && echo "   ✅ App bundle signature valid" || echo "   ⚠️  App bundle signature verification failed"
-else
-    echo "   ⚠️  App bundle not found, skipping signature verification"
-fi
+    APP_CHECK_OUTPUT=$(codesign --verify --deep --strict --verbose=2 "$APP_PATH" 2>&1)
+    APP_CHECK_STATUS=$?
 
-echo "✅ Build verification completed"
+    if [ $APP_CHECK_STATUS -eq 0 ]; then
+        echo "   ✅ App bundle signature valid"
 
-# --- Step 5: Upload to App Store Connect (Optional) ---
-echo ""
-echo "📤 [Step 5/6] Upload to App Store Connect..."
-
-if [ "$AUTO_UPLOAD" = "true" ]; then
-    if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
-        echo "   🚀 Attempting automatic upload..."
-
-        # Try to upload using altool (deprecated but still works)
-        # xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-        #     --username "$APPLE_ID" \
-        #     --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-        #     --verbose
-
-        # Try to upload using newer notarytool + altool
-        if command -v xcrun &> /dev/null; then
-            echo "   📤 Uploading to App Store Connect..."
-            xcrun altool --upload-app --type osx --file "$PKG_PATH" \
-                --username "$APPLE_ID" \
-                --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                --verbose
-
-            if [ $? -eq 0 ]; then
-                echo "   ✅ Upload successful!"
-            else
-                echo "   ❌ Upload failed. Please upload manually."
-            fi
-        else
-            echo "   ⚠️  xcrun not available, skipping upload"
-        fi
+        # Display signature details
+        echo ""
+        echo "   📋 App Signature Details:"
+        codesign --display --verbose=4 "$APP_PATH" 2>&1 | grep -E "(Authority|TeamIdentifier|Identifier|Format)" | sed 's/^/      /'
     else
-        echo "   ⚠️  Automatic upload not configured"
-        echo "   Set APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD to enable automatic upload"
+        echo "   ❌ App bundle signature verification FAILED!"
+        echo ""
+        echo "   Error details:"
+        echo "$APP_CHECK_OUTPUT" | sed 's/^/      /'
+        echo ""
+        echo "   ⚠️  This app will be rejected by App Store Connect!"
+        exit 1
     fi
 else
-    echo "   ⏭️  Automatic upload disabled (AUTO_UPLOAD=$AUTO_UPLOAD)"
-    echo "   To enable automatic upload, run with: AUTO_UPLOAD=true ./scripts/build-appstore.sh"
-    echo "   Or manually upload using Xcode Organizer or xcrun altool (see Next Steps below)"
+    echo "   ⚠️  App bundle not found at expected location"
+    echo "   Searched for: $APP_NAME.app in $BUILD_DIR"
 fi
+
+echo ""
+echo "✅ Build verification completed"
 
 # --- Summary ---
 echo ""
@@ -311,14 +438,15 @@ else
 fi
 echo ""
 echo "🚀 Next Steps:"
-echo "   1. Test the app locally if needed"
-echo "   2. Upload to App Store Connect (if not done automatically):"
-echo "      - Use Xcode → Window → Organizer"
-echo "      - Or use: xcrun altool --upload-app --type osx --file \"$PKG_PATH\" \\"
-echo "                        --username \"[APPLE_ID]\" --password \"[APP_SPECIFIC_PASSWORD]\""
-echo "   3. Submit for review in App Store Connect"
+echo "   1. Verify the PKG file: $PKG_PATH"
+echo "   2. Test locally with mas-dev build (if needed)"
+echo "   3. Upload to App Store Connect:"
+echo "      Option A: Use upload script: ./scripts/upload-appstore.sh \"$PKG_PATH\""
+echo "      Option B: Use Transporter app (download from Mac App Store)"
+echo "      Option C: Use Xcode → Window → Organizer"
+echo "   4. Submit for review at https://appstoreconnect.apple.com"
 echo ""
 echo "📚 Documentation:"
+echo "   - Electron Official Guide: https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide"
 echo "   - App Store Connect: https://appstoreconnect.apple.com"
-echo "   - Electron Builder: https://www.electron.build/configuration/mas"
 echo "═══════════════════════════════════════════════════════════════"
