@@ -1,5 +1,19 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const packageJson = require('./package.json');
+
+// Convert package.json version (x.x.x) to Windows Store format (x.x.x.x)
+const convertToWinStoreVersion = (version) => {
+  const parts = version.split('.');
+  // Ensure we have exactly 4 parts, padding with 0 if needed
+  while (parts.length < 4) {
+    parts.push('0');
+  }
+  return parts.slice(0, 4).join('.');
+};
+
+const appVersion = convertToWinStoreVersion(packageJson.version);
 
 module.exports = {
   packagerConfig: {
@@ -29,33 +43,34 @@ module.exports = {
   rebuildConfig: {},
 
   makers: [
-    // Windows Store (AppX) - Unsigned for Partner Center signing
+    // Windows Store (MSIX) - Unsigned for Partner Center signing
     {
       name: '@electron-forge/maker-appx',
       config: {
         // Do NOT include devCert or certPass - this creates unsigned package
         // Microsoft Partner Center will sign the package after upload
         assets: path.join(__dirname, 'build'),
-        manifest: path.join(__dirname, 'build/appxmanifest.xml'), // Optional: custom manifest
+        // Let Forge auto-generate manifest with proper version substitution
         makeVersionWinStoreCompatible: true,
 
-        // Package identity (update these with your actual values)
-        publisher: 'CN=YourPublisherName', // TODO: Replace with Partner Center publisher
-        publisherDisplayName: 'Your Company Name', // TODO: Replace
-        packageName: 'KleverDesktop', // Package name in Partner Center
-        packageDisplayName: 'Klever Desktop',
+        // Package identity (must match Partner Center reservation)
+        // Use environment variables for security and flexibility
+        publisher: process.env.WIN_PUBLISHER_ID || 'CN=151CE182-E4E4-44BC-B167-68C3C482DE94',
+        publisherDisplayName: process.env.WIN_PUBLISHER_NAME || 'JooHyung Park',
+        packageName: process.env.WIN_PACKAGE_NAME || 'JooHyungPark.KleverDesktop',
+        packageDisplayName: process.env.WIN_PACKAGE_DISPLAY_NAME || 'Klever Desktop',
         packageDescription: 'AI-powered UI automation and testing tool',
-        packageVersion: '2.0.0.0', // Must be x.x.x.x format for AppX
+        packageVersion: appVersion, // Auto-synced from package.json (converted to x.x.x.x format)
 
         // Store listing details
-        identityName: 'YourCompany.KleverDesktop', // TODO: Reserved in Partner Center
+        identityName: process.env.WIN_IDENTITY_NAME || 'JooHyungPark.KleverDesktop', // Reserved in Partner Center
         backgroundColor: '#FFFFFF',
 
         // Architecture support
         arch: 'x64', // or 'arm64', 'neutral'
 
-        // Windows SDK requirements
-        windowsKit: process.env.WINDOWS_KIT_PATH || 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.22621.0\\x64',
+        // Windows SDK requirements (makeappx.exe creates MSIX format by default in SDK 10.0.19041+)
+        windowsKit: process.env.WINDOWS_KIT_PATH || 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64',
       },
       platforms: ['win32'],
     },

@@ -4,19 +4,21 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
 
+  <!-- Identity values below are template defaults, overridden by forge.config.js during build -->
   <Identity
-    Name="YourCompany.KleverDesktop"
-    Publisher="CN=YourPublisherName"
-    Version="2.0.0.0" />
+    Name="JooHyungPark.KleverDesktop"
+    Publisher="CN=151CE182-E4E4-44BC-B167-68C3C482DE94"
+    Version="${version}" />
 
   <Properties>
     <DisplayName>Klever Desktop</DisplayName>
-    <PublisherDisplayName>Your Company Name</PublisherDisplayName>
+    <PublisherDisplayName>JooHyung Park</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    <!-- Windows.Universal for MSIX, supports Windows 10 version 2004+ -->
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
   </Dependencies>
 
   <Resources>
