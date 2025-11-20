@@ -47,8 +47,8 @@ const platformKey = `${options.platform}-${options.arch}`;
 // Define required files
 const REQUIRED_FILES = {
   'Electron Build': [
-    'dist-electron/index.js',
-    'dist/index.html',
+    '.vite/build/main.js',  // Electron Forge Vite plugin output
+    'dist/index.html',       // Renderer build output
   ],
   'appagent': [
     'appagent/scripts/self_explorer.py',
@@ -195,9 +195,10 @@ function verify() {
     console.log();
 
     // Provide helpful suggestions based on what's missing
-    if (failedFiles.some(f => f.startsWith('dist-electron') || f.startsWith('dist/'))) {
-      console.log('   Build the app first:');
-      console.log('   $ yarn build');
+    if (failedFiles.some(f => f.startsWith('.vite/build') || f.startsWith('dist/'))) {
+      console.log('   Build the app with Electron Forge:');
+      console.log('   $ npm run start    # Development mode (auto-builds)');
+      console.log('   $ npm run package  # Production build');
       console.log();
     }
 

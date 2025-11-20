@@ -3,9 +3,14 @@
 
 # Ignore Gradle build output directory
 build
-# But keep electron-builder icon assets
+# But keep icon assets and build configs
 !build/
-!build/icon.png
+!build/*.png
+!build/*.icns
+!build/*.ico
+!build/*.plist
+!build/*.xml
+!build/*.provisionprofile
 
 # Ignore IDEA project-specific cache directory
 .idea
@@ -16,13 +21,13 @@ build
 # Ignore macOS file system metadata
 .DS_Store
 
-# Ignore IDEA build output directory
+# Ignore build output directory (IDEA and Electron Forge)
 out/
 
 # Electron app (root-level)
 node_modules/
 dist/
-dist-electron/
+.vite/
 
 # Yarn (ignore cache and build artifacts, but keep releases/plugins/sdks)
 .yarn/cache
@@ -48,6 +53,7 @@ gcp-service-account.json
 *-service-account.json
 .env
 .env.backup.*
+.env.mas*
 
 # Vercel
 .vercel

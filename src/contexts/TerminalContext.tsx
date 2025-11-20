@@ -3,6 +3,7 @@
  * Global state management for the Universal Terminal
  */
 
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, ReactNode, useState, useEffect, useMemo, useCallback } from 'react'
 import type {
   TerminalLine,

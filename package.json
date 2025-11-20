@@ -2,17 +2,16 @@
   "name": "klever-desktop",
   "version": "2.0.0",
   "description": "GUI Wrapper for AppAgent - Electron-based desktop application that makes Python-based UI automation accessible to non-developers. Wraps the external AppAgent open-source project with a user-friendly interface for Android (ADB) and Web (Playwright) automation.",
-  "main": "dist-electron/index.js",
+  "main": ".vite/build/index.js",
   "scripts": {
     "dev": "vite",
-    "build:renderer": "tsc && vite build",
-    "build:main": "tsc -p tsconfig.main.json",
-    "build": "yarn build:main && yarn build:renderer",
-    "prebuild": "node scripts/verify-bundle.js --skip-python",
+    "typecheck": "tsc && tsc -p tsconfig.main.json",
     "preview": "vite preview",
     "electron": "electron .",
-    "electron:dev": "yarn build:main && concurrently \"yarn dev\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
-    "package": "yarn build && electron-builder",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "appagent:fetch": "node scripts/fetch-appagent.js",
@@ -44,6 +43,11 @@
     "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.10.2",
+    "@electron-forge/maker-appx": "^7.10.2",
+    "@electron-forge/maker-pkg": "^7.10.2",
+    "@electron-forge/maker-zip": "^7.10.2",
+    "@electron-forge/plugin-vite": "^7.10.2",
     "@eslint/js": "^9.39.1",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.5.5",
@@ -55,7 +59,6 @@
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "electron": "^31.0.0",
-    "electron-builder": "^24.13.3",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -63,79 +66,5 @@
     "typescript": "^5.5.4",
     "vite": "^5.4.5",
     "wait-on": "^7.2.0"
-  },
-  "build": {
-    "appId": "com.klever.desktop",
-    "productName": "Klever Desktop",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist-electron/**/*",
-      "dist/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "appagent",
-        "to": "appagent",
-        "filter": [
-          "**/*",
-          "!.git",
-          "!**/*.pyc",
-          "!**/__pycache__"
-        ]
-      }
-    ],
-    "mac": {
-      "icon": "build/icon.icns",
-      "category": "public.app-category.developer-tools",
-      "target": [
-        "mas"
-      ],
-      "hardenedRuntime": false,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mas.plist",
-      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
-      "provisioningProfile": "build/embedded.provisionprofile",
-      "preAutoEntitlements": false,
-      "notarize": false,
-      "minimumSystemVersion": "12.0"
-    },
-    "mas": {
-      "type": "distribution",
-      "hardenedRuntime": false,
-      "entitlements": "build/entitlements.mas.plist",
-      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
-      "provisioningProfile": "build/embedded.provisionprofile",
-      "notarize": false,
-      "minimumSystemVersion": "12.0"
-    },
-    "win": {
-      "icon": "build/icon.png",
-      "target": [
-        {
-          "target": "appx",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "appx": {
-      "applicationId": "KleverDesktop",
-      "backgroundColor": "#FFFFFF",
-      "displayName": "Klever Desktop",
-      "identityName": "YourCompany.KleverDesktop",
-      "publisher": "CN=YourPublisherName",
-      "publisherDisplayName": "Your Company Name"
-    },
-    "linux": {
-      "icon": "build/icon.png",
-      "target": [
-        "AppImage",
-        "deb"
-      ]
-    }
   }
 }

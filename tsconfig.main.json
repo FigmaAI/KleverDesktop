@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "moduleResolution": "node",
-    "outDir": "./dist-electron",
+    "noEmit": true,
     "rootDir": "./main",
     "resolveJsonModule": true,
     "skipLibCheck": true,
@@ -22,15 +22,10 @@
     "noFallthroughCasesInSwitch": false,
     "noImplicitReturns": false,
 
-    /* Emit */
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-
     /* Experimental */
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
   "include": ["main/**/*"],
-  "exclude": ["node_modules", "dist", "dist-electron", "appagent"]
+  "exclude": ["node_modules", "dist", ".vite", "out", "appagent"]
 }
