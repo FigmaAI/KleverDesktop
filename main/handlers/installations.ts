@@ -332,9 +332,11 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
       mainWindow?.webContents.send('python:progress', '✓ Extraction complete\n');
 
-      // Get Python executable path
+      // Get Python executable path and appagent directory
       const pythonExe = getPythonPath();
-      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
+      const { getAppagentPath } = await import('../utils/python-runtime');
+      const appagentPath = getAppagentPath();
+      const requirementsPath = path.join(appagentPath, 'requirements.txt');
 
       // Windows embeddable Python: Enable pip and site-packages
       if (platform === 'win32') {

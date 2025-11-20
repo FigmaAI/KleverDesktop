@@ -171,9 +171,9 @@ export function Settings() {
       console.log('[Settings] configReset result:', result)
 
       if (result.success) {
-        console.log('[Settings] Configuration reset successful, reloading app...')
-        // Reload the entire app to re-check setup status
-        window.location.reload()
+        console.log('[Settings] Configuration reset successful, restarting app...')
+        // Restart the entire app to re-check setup status
+        await window.electronAPI.appRestart()
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to reset configuration:', errorMsg)
@@ -198,9 +198,10 @@ export function Settings() {
       console.log('[Settings] configHardReset result:', result)
 
       if (result.success) {
-        console.log('[Settings] Hard reset successful, reloading app...')
-        // Reload the entire app to re-check setup status
-        window.location.reload()
+        console.log('[Settings] Hard reset successful, restarting app...')
+        // Restart the entire app to re-check setup status
+        await window.electronAPI.appRestart()
+        // Note: App will quit and relaunch, so no code after this will execute
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to perform hard reset:', errorMsg)

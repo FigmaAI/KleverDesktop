@@ -71,8 +71,9 @@ export function getAppagentPath(): string {
   if (isDev) {
     return path.join(__dirname, '..', '..', 'appagent');
   } else {
-    // Production: appagent is in app.asar or unpacked
-    return path.join(__dirname, '..', 'appagent');
+    // Production: appagent is an extraResource in Resources/
+    // process.resourcesPath points to app/Contents/Resources/
+    return path.join(process.resourcesPath, 'appagent');
   }
 }
 
@@ -110,6 +111,12 @@ export function executePythonScript(
  */
 export async function checkPlaywrightBrowsers(): Promise<boolean> {
   try {
+    // Check if Python is installed first
+    if (!isPythonInstalled()) {
+      console.log('[Playwright Check] Python not installed yet');
+      return false;
+    }
+
     const pythonExe = getPythonPath();
     console.log('[Playwright Check] Using Python:', pythonExe);
 

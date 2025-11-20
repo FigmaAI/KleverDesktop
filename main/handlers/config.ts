@@ -6,7 +6,7 @@
  * All user settings are stored in ~/.klever-desktop/config.json
  */
 
-import { IpcMain } from 'electron';
+import { IpcMain, app } from 'electron';
 import { loadAppConfig, saveAppConfig, resetAppConfig, configExists, hardResetUserData } from '../utils/config-storage';
 import { checkPythonRuntime } from '../utils/python-runtime';
 import { AppConfig } from '../types/config';
@@ -141,6 +141,20 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[config:hardReset] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // App restart: Relaunch the entire application
+  ipcMain.handle('app:restart', async () => {
+    try {
+      console.log('[app:restart] Restarting application...');
+      app.relaunch();
+      app.quit();
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[app:restart] Error:', message);
       return { success: false, error: message };
     }
   });

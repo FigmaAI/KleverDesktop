@@ -54,6 +54,9 @@ export default [
         HTMLDivElement: 'readonly',
         Function: 'readonly',
         URL: 'readonly',
+        // Electron Forge Vite plugin globals
+        MAIN_WINDOW_VITE_DEV_SERVER_URL: 'readonly',
+        MAIN_WINDOW_VITE_NAME: 'readonly',
       },
     },
     plugins: {

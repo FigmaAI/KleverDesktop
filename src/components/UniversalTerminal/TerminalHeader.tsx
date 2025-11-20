@@ -28,15 +28,26 @@ export function TerminalHeader() {
     const lines = getFilteredLines()
     const text = lines.map((line) => line.content).join('\n')
 
-    window.navigator.clipboard.writeText(text).then(
-      () => {
-        // Success feedback could be added here
+    // Use textarea method for better Electron compatibility
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+
+    try {
+      const successful = document.execCommand('copy')
+      if (successful) {
         console.log('[Terminal] Output copied to clipboard')
-      },
-      (err) => {
-        console.error('[Terminal] Failed to copy:', err)
+      } else {
+        console.error('[Terminal] Failed to copy')
       }
-    )
+    } catch (err) {
+      console.error('[Terminal] Failed to copy:', err)
+    } finally {
+      document.body.removeChild(textarea)
+    }
   }
 
   return (

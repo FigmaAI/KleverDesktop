@@ -20,11 +20,12 @@ module.exports = {
     appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
-    buildVersion: '10', // Build number for App Store (increment for each submission)
-    asar: true,
+    buildVersion: '11', // Build number for App Store (increment for each submission)
+    asar: false, // Disable asar temporarily to debug renderer packaging
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
-      'appagent' // Python scripts only, not Python runtime
+      'appagent', // Python scripts only, not Python runtime
+      'dist' // Renderer build output (Vite builds to dist/)
     ],
 
     // Mac App Store signing configuration

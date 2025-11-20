@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
-import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
 import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
@@ -28,10 +28,11 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
   ipcMain.handle('integration:test', async (_event, config: ModelConfig) => {
     try {
       const mainWindow = getMainWindow();
-      const selfExplorerScript = path.join(process.cwd(), 'appagent', 'scripts', 'self_explorer.py');
+      const appagentPath = getAppagentPath();
+      const selfExplorerScript = path.join(appagentPath, 'scripts', 'self_explorer.py');
 
       if (!fs.existsSync(selfExplorerScript)) {
-        mainWindow?.webContents.send('integration:output', 'Error: self_explorer.py not found\n');
+        mainWindow?.webContents.send('integration:output', `Error: self_explorer.py not found at ${selfExplorerScript}\n`);
         mainWindow?.webContents.send('integration:complete', false);
         return { success: false };
       }
@@ -59,7 +60,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       const venvEnv = getPythonEnv();
 
       // Add appagent/scripts to PYTHONPATH so imports work
-      const scriptsDir = path.join(process.cwd(), 'appagent', 'scripts');
+      const scriptsDir = path.join(appagentPath, 'scripts');
       const existingPythonPath = venvEnv.PYTHONPATH || '';
       const pythonPath = existingPythonPath
         ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
@@ -76,7 +77,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       console.log('[Integration Test] Python executable:', getPythonEnv().PYTHON_EXECUTABLE || 'bundled');
       console.log('[Integration Test] Scripts directory:', scriptsDir);
       console.log('[Integration Test] PYTHONPATH:', pythonPath);
-      console.log('[Integration Test] Working directory:', path.join(process.cwd(), 'appagent'));
+      console.log('[Integration Test] Working directory:', appagentPath);
 
       mainWindow?.webContents.send('integration:output', '============================================================\n');
       mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
@@ -182,8 +183,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
     exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
 `;
 
-      const appagentDir = path.join(process.cwd(), 'appagent');
-      const wrapperPath = path.join(appagentDir, '_integration_wrapper.py');
+      const wrapperPath = path.join(appagentPath, '_integration_wrapper.py');
       fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
 
       console.log('[Integration Test] Created wrapper script:', wrapperPath);
@@ -207,7 +207,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
           'https://www.google.com',
         ],
         {
-          cwd: appagentDir,
+          cwd: appagentPath,
           env: env,
         }
       );

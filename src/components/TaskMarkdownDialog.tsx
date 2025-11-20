@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   Modal,
   ModalDialog,
@@ -104,6 +104,7 @@ export function TaskMarkdownDialog({
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
   const [markdownDir, setMarkdownDir] = useState<string>('')
+  const contentBoxRef = useRef<HTMLDivElement>(null)
 
   const loadMarkdown = useCallback(async () => {
     setLoading(true)
@@ -188,6 +189,13 @@ export function TaskMarkdownDialog({
       return () => clearInterval(interval)
     }
   }, [open, taskStatus, loadMarkdown])
+
+  // Auto-scroll to bottom when content updates
+  useEffect(() => {
+    if (content && contentBoxRef.current) {
+      contentBoxRef.current.scrollTop = contentBoxRef.current.scrollHeight
+    }
+  }, [content])
 
   const handleOpenFolder = async () => {
     try {
@@ -299,6 +307,7 @@ export function TaskMarkdownDialog({
 
         {/* Content */}
         <Box
+          ref={contentBoxRef}
           sx={{
             flex: 1,
             overflow: 'auto',

@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -36,7 +36,7 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
     
     try {
       // Call Python script to stop emulator
-      const appagentDir = path.join(process.cwd(), 'appagent');
+      const appagentDir = getAppagentPath();
       const pythonEnv = getPythonEnv();
 
       // Run cleanup script using Python -c with inline code
@@ -237,7 +237,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const configEnvVars = buildEnvFromConfig(appConfig);
 
       // Start Python process
-      const appagentDir = path.join(process.cwd(), 'appagent');
+      const appagentDir = getAppagentPath();
       const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
 
       // Build CLI parameters
@@ -441,7 +441,7 @@ export async function cleanupTaskProcesses(): Promise<void> {
   // Always cleanup emulators on app exit
   try {
     console.log('[app-exit] Cleaning up emulators...');
-    const appagentDir = path.join(process.cwd(), 'appagent');
+    const appagentDir = getAppagentPath();
     const pythonEnv = getPythonEnv();
     
     const cleanupCode = `

@@ -18,7 +18,7 @@ import {
 } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -191,7 +191,7 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       const configEnvVars = buildEnvFromConfig(appConfig);
 
       // Python 실행 위치 = appagent 디렉토리
-      const appagentDir = path.join(process.cwd(), 'appagent');
+      const appagentDir = getAppagentPath();
       const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
 
       // Sanitize app name (remove spaces) to match learn.py behavior

@@ -9,5 +9,21 @@
   <!-- Inherit parent entitlements -->
   <key>com.apple.security.inherit</key>
   <true/>
+
+  <!-- JIT Compilation (inherited by child processes) -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+
+  <!-- Unsigned Executable Memory (inherited by child processes) -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+
+  <!-- DYLD Environment Variables (inherited by child processes) -->
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+
+  <!-- Disable Library Validation (inherited by child processes) -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
 </dict>
 </plist>

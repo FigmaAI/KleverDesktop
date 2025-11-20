@@ -70,6 +70,14 @@ export function SetupWizard() {
 
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
+      // If moving from Step 0 (Platform Tools), validate Python is installed
+      if (currentStep === 0) {
+        if (!toolsStatus.python.installed) {
+          alert('Please install Python before continuing. Click the "Download Python" button in Step 0.')
+          return
+        }
+      }
+
       // If moving from Step 2 (Model Config) to Step 3 (Integration Test), save config first
       if (currentStep === 2) {
         try {
@@ -84,8 +92,9 @@ export function SetupWizard() {
         setCurrentStep(currentStep + 1)
       }
     } else if (integrationTestSuccess) {
-      // Already saved config in step 2, just navigate to projects
-      window.location.href = '/projects'
+      // Already saved config in step 2, restart app to reload setup status
+      console.log('[SetupWizard] Setup complete, restarting app...')
+      await window.electronAPI.appRestart()
     }
   }
 

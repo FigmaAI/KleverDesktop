@@ -7,6 +7,7 @@ import { IpcMain } from 'electron';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getAppagentPath } from '../utils/python-runtime';
 
 /**
  * Register all system check handlers
@@ -40,7 +41,8 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
   // Check Python packages
   ipcMain.handle('check:packages', async () => {
     return new Promise((resolve) => {
-      const requirementsPath = path.join(process.cwd(), 'appagent', 'requirements.txt');
+      const appagentPath = getAppagentPath();
+      const requirementsPath = path.join(appagentPath, 'requirements.txt');
       console.log('[Check Packages] Checking packages from:', requirementsPath);
 
       // Try to install with --dry-run to see if all packages can be installed

@@ -3,6 +3,9 @@
  * Handles application lifecycle and window management
  */
 
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+/// <reference path="./vite-env.d.ts" />
+
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
@@ -26,11 +29,17 @@ function createWindow(): void {
   });
 
   // Load the app
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
+  // Electron Forge provides these environment variables
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    // Development mode - load from Vite dev server
+    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+    // Production mode - load from extraResource dist/
+    // Use process.resourcesPath which points to app/Contents/Resources/
+    const distPath = path.join(process.resourcesPath, 'dist', 'index.html');
+    console.log('Loading renderer from:', distPath);
+    mainWindow.loadFile(distPath);
   }
 
   mainWindow.on('closed', () => {

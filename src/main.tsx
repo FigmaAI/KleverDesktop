@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom'
 import { CssVarsProvider } from '@mui/joy/styles'
 import CssBaseline from '@mui/joy/CssBaseline'
 import App from './App'
@@ -86,6 +86,11 @@ if (!window.electronAPI) {
     configSave: async () => ({ success: true }),
     configReset: async () => ({ success: true }),
     configHardReset: async () => ({ success: true }),
+    appRestart: async () => {
+      console.log('[Mock] App restart requested - reloading page...');
+      window.location.reload();
+      return { success: true };
+    },
     checkSetup: async () => ({ success: true, setupComplete: true }),
     projectStart: async () => ({ success: true }),
     projectStop: async () => ({ success: true }),
@@ -340,12 +345,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <CssVarsProvider>
       <CssBaseline />
-      <BrowserRouter>
+      <HashRouter>
         <TerminalProvider>
           <App />
           <UniversalTerminal />
         </TerminalProvider>
-      </BrowserRouter>
+      </HashRouter>
     </CssVarsProvider>
   </React.StrictMode>,
 )
