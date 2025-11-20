@@ -26,6 +26,7 @@ interface ProjectCardProps {
   expand?: boolean
   clickable?: boolean
   showDelete?: boolean
+  hideTaskSummary?: boolean
   onDeleted?: () => void
   onClick?: (projectId: string) => void
 }
@@ -36,6 +37,7 @@ export function ProjectCard({
   expand = false,
   clickable = true,
   showDelete = true,
+  hideTaskSummary = false,
   onDeleted,
   onClick,
 }: ProjectCardProps) {
@@ -262,13 +264,15 @@ export function ProjectCard({
                   {project.platform}
                 </Chip>
               </Stack>
-              <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1.5 }}>
-                {statusSummary.running > 0
-                  ? `${statusSummary.running} running / ${statusSummary.total} total`
-                  : statusSummary.total > 0
-                  ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
-                  : 'No tasks'}
-              </Typography>
+              {!hideTaskSummary && (
+                <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1.5 }}>
+                  {statusSummary.running > 0
+                    ? `${statusSummary.running} running / ${statusSummary.total} total`
+                    : statusSummary.total > 0
+                    ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+                    : 'No tasks'}
+                </Typography>
+              )}
             </Box>
             <Stack direction="row" alignItems="center" spacing={1}>
               <Typography level="body-xs" textColor="text.secondary">

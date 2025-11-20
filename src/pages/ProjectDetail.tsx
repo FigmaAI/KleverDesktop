@@ -161,6 +161,7 @@ export function ProjectDetail() {
               expand={true}
               clickable={false}
               showDelete={true}
+              hideTaskSummary={true}
               onDeleted={() => navigate('/projects')}
             />
           </List>
