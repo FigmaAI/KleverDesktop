@@ -10,7 +10,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - **Frontend**: React 18 + TypeScript + MUI Joy UI + Framer Motion
 - **Desktop**: Electron 31
 - **Backend**: Python 3.11+ automation scripts (monorepo)
-- **Build**: Vite 5 + TypeScript 5
+- **Build**: Electron Forge 7 + Vite 5 + TypeScript 5
 - **AI**: Ollama (local) or OpenAI-compatible APIs
 
 ---
@@ -26,17 +26,19 @@ python3 -m playwright install chromium         # Install Playwright browser
 
 ### Development
 ```bash
-npm run electron:dev    # Full dev environment (Vite + Electron with hot reload)
+npm run start          # Electron Forge dev mode (Vite + Electron with hot reload)
 npm run dev            # Vite dev server only (http://localhost:5173)
 npm run electron       # Electron only (requires Vite running separately)
 ```
 
-### Build & Package
+### Build & Package (Electron Forge)
 ```bash
 npm run build:main      # Compile TypeScript main process → dist-electron/
 npm run build:renderer  # Build React app → dist/
 npm run build          # Build both main and renderer
-npm run package        # Package Electron app for distribution
+npm run package        # Package app (unsigned) → out/
+npm run make           # Create distributable packages (AppX, PKG, ZIP)
+npm run publish        # Publish to configured publishers
 ```
 
 ### Python Bundling (New)
@@ -652,6 +654,143 @@ interface Task {
 
 ---
 
+## Electron Forge Build System
+
+**Migration**: The project migrated from electron-builder to Electron Forge (v7.10.2) for official Electron tooling and better Windows/Mac App Store support.
+
+### Configuration Files
+
+#### forge.config.js
+**Location**: `/forge.config.js` (~170 lines)
+
+Main Electron Forge configuration with:
+- **packagerConfig**: App metadata, icons, extraResources (appagent), macOS signing
+- **makers**: Windows Store (AppX), Mac App Store (PKG), ZIP
+- **plugins**: Vite plugin for main/preload/renderer processes
+- **hooks**: Pre-package and post-make build hooks
+
+#### Vite Configs for Electron Forge
+- **vite.main.config.js**: Main process build (main/index.ts → dist-electron/index.js)
+- **vite.preload.config.js**: Preload script build (main/preload.ts → dist-electron/preload.js)
+- **vite.config.ts**: Renderer process build (src/ → dist/)
+
+### Makers (Distribution Packages)
+
+#### Windows Store (AppX) - Unsigned for Partner Center
+```javascript
+{
+  name: '@electron-forge/maker-appx',
+  config: {
+    // NO devCert or certPass - creates unsigned package
+    // Microsoft Partner Center will sign after upload
+    packageName: 'KleverDesktop',
+    publisher: 'CN=YourPublisherName', // From Partner Center
+    identityName: 'YourCompany.KleverDesktop', // Reserved in Partner Center
+    backgroundColor: '#FFFFFF',
+    arch: 'x64', // or 'arm64'
+  },
+  platforms: ['win32'],
+}
+```
+
+**Windows Store Build Strategy**:
+1. Build unsigned AppX package: `npm run make`
+2. Upload to Microsoft Partner Center
+3. Partner Center applies **store-managed signing**
+4. Package is signed and published to Windows Store
+
+**Requirements**:
+- Windows 10/11 with Windows SDK installed
+- Partner Center account with reserved app name
+- Publisher identity configured in Partner Center
+
+#### Mac App Store (PKG)
+```javascript
+{
+  name: '@electron-forge/maker-pkg',
+  config: {
+    identity: '3rd Party Mac Developer Installer: Your Name (TEAM_ID)',
+    install: '/Applications',
+  },
+  platforms: ['mas'], // Mac App Store platform
+}
+```
+
+**Requirements**:
+- Apple Developer account
+- Distribution certificates and provisioning profiles
+- Entitlements configured (build/entitlements.mas.plist)
+
+#### ZIP Maker (Development/Testing)
+```javascript
+{
+  name: '@electron-forge/maker-zip',
+  platforms: ['darwin', 'linux', 'win32'],
+}
+```
+
+### Build Commands
+
+**Development**:
+```bash
+npm run start           # Electron Forge dev mode with hot reload
+```
+
+**Packaging**:
+```bash
+npm run package         # Package app → out/klever-desktop-{platform}-{arch}/
+npm run make            # Create distributable packages → out/make/
+npm run publish         # Publish to configured publishers (GitHub, S3, etc.)
+```
+
+**Output Structure**:
+```
+out/
+├── klever-desktop-win32-x64/          # Packaged app (Windows)
+├── klever-desktop-darwin-arm64/       # Packaged app (macOS)
+└── make/
+    ├── appx/
+    │   └── klever-desktop-2.0.0.appx  # Windows Store package (unsigned)
+    ├── pkg/
+    │   └── klever-desktop-2.0.0.pkg   # Mac App Store package
+    └── zip/
+        └── klever-desktop-*.zip       # Compressed archive
+```
+
+### Platform-Specific Notes
+
+**Windows**:
+- AppX builds require Windows 10/11 + Windows SDK
+- Unsigned packages for Partner Center store-managed signing
+- Custom manifest template: `build/appxmanifest.xml`
+
+**macOS**:
+- MAS builds require signing certificates
+- Entitlements: `build/entitlements.mas.plist`, `build/entitlements.mas.inherit.plist`
+- Sandbox enabled for App Store compliance
+
+**Linux**:
+- ZIP archives for manual distribution
+- No official app store support in current config
+
+### Migration from electron-builder
+
+**Removed**:
+- `electron-builder` package
+- `build` section in package.json
+
+**Added**:
+- `@electron-forge/cli` and plugins
+- `forge.config.js` configuration
+- Vite config files for main/preload processes
+
+**Maintained**:
+- Existing Vite build process (via `@electron-forge/plugin-vite`)
+- Python scripts bundling (appagent as extraResource)
+- Development workflow (npm scripts)
+
+---
+
 ## Build Scripts & Tools
 
 The project includes several utility scripts for Python runtime management and build verification:
@@ -772,6 +911,22 @@ When contributing to this project:
 ---
 
 ## Update History
+
+**2025-11-20**: Migration to Electron Forge build system
+- **Build System**: Migrated from electron-builder to Electron Forge v7.10.2
+  - Official Electron tooling for long-term stability
+  - Native Windows Store (AppX) and Mac App Store (PKG) support
+  - Vite integration via `@electron-forge/plugin-vite`
+- **New Configuration Files**:
+  - `forge.config.js` - Main Electron Forge configuration
+  - `vite.main.config.js` - Main process Vite config
+  - `vite.preload.config.js` - Preload script Vite config
+  - `build/appxmanifest.xml` - Windows AppX manifest template
+- **Windows Store Strategy**: Unsigned AppX builds for Microsoft Partner Center store-managed signing
+- **Mac App Store**: PKG builds with MAS entitlements and signing certificates
+- **Removed**: electron-builder dependency and package.json build section
+- **Updated Scripts**: `start`, `package`, `make`, `publish` for Electron Forge workflow
+- **Documentation**: Added comprehensive Electron Forge Build System section
 
 **2025-11-19**: Documentation cleanup and improvements
 - **Removed Unnecessary Files**: Deleted `PLANNING.md` and `REFACTORING_PROPOSAL.md` (outdated planning documents)
