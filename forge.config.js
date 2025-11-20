@@ -11,20 +11,20 @@ module.exports = {
       'appagent' // Python scripts only, not Python runtime
     ],
 
-    // macOS specific settings
-    osxSign: {
-      identity: 'Developer ID Application: Your Name (TEAM_ID)', // TODO: Replace with actual identity
-      'hardened-runtime': false,
+    // macOS App Store specific settings - using environment variables for signing
+    // For Mac App Store, we need to specify platform and type
+    osxSign: process.env.CSC_NAME ? {
+      identity: process.env.CSC_NAME,
+      platform: 'mas',
+      type: 'distribution',
+      'hardened-runtime': false, // Not needed for Mac App Store
       'gatekeeper-assess': false,
       entitlements: 'build/entitlements.mas.plist',
       'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
-    },
-    osxNotarize: {
-      tool: 'notarytool',
-      appleId: process.env.APPLE_ID,
-      appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
-      teamId: process.env.APPLE_TEAM_ID,
-    },
+    } : undefined,
+
+    // Do NOT use osxNotarize for Mac App Store builds
+    // Apple handles notarization automatically when you submit to App Store Connect
   },
 
   rebuildConfig: {},

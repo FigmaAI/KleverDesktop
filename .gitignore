@@ -10,6 +10,7 @@ build
 !build/*.ico
 !build/*.plist
 !build/*.xml
+!build/*.provisionprofile
 
 # Ignore IDEA project-specific cache directory
 .idea
