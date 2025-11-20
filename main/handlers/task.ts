@@ -38,11 +38,13 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
       // Call Python script to stop emulator
       const appagentDir = path.join(process.cwd(), 'appagent');
       const pythonEnv = getPythonEnv();
-      
+
       // Run cleanup script using Python -c with inline code
+      const scriptsDir = path.join(appagentDir, 'scripts');
       const cleanupCode = `
 import sys
 sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
+sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
 from scripts.and_controller import stop_emulator
 stop_emulator()
 `;
