@@ -2,6 +2,7 @@ import {
   Box,
   Card,
   CardContent,
+  CardOverflow,
   Chip,
   IconButton,
   ListItem,
@@ -18,7 +19,6 @@ import {
   FolderOpen,
 } from '@mui/icons-material'
 import type { Project } from '../types/project'
-import { TaskStatusSummary } from './TaskStatusSummary'
 
 interface ProjectCardProps {
   project: Project
@@ -151,15 +151,8 @@ export function ProjectCard({
               </Chip>
             </Stack>
 
-            {/* Bottom Section: Task Status and Created Date */}
+            {/* Bottom Section: Created Date */}
             <Stack spacing={2}>
-              <TaskStatusSummary
-                total={statusSummary.total}
-                running={statusSummary.running}
-                completed={statusSummary.completed}
-                failed={statusSummary.failed}
-              />
-
               {expand ? (
                 <Stack 
                   direction="row" 
@@ -214,6 +207,27 @@ export function ProjectCard({
             </Stack>
           </Stack>
         </CardContent>
+        <CardOverflow
+          variant="soft"
+          sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 1.5,
+            py: 1,
+            px: 2,
+            bgcolor: 'background.level1',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Typography level="body-sm" textColor="text.secondary">
+            {statusSummary.running > 0
+              ? `${statusSummary.running} running / ${statusSummary.total} total`
+              : statusSummary.total > 0
+              ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+              : 'No tasks'}
+          </Typography>
+        </CardOverflow>
       </Card>
     )
   }
@@ -248,14 +262,13 @@ export function ProjectCard({
                   {project.platform}
                 </Chip>
               </Stack>
-              <Box sx={{ mt: 1.5 }}>
-                <TaskStatusSummary
-                  total={statusSummary.total}
-                  running={statusSummary.running}
-                  completed={statusSummary.completed}
-                  failed={statusSummary.failed}
-                />
-              </Box>
+              <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1.5 }}>
+                {statusSummary.running > 0
+                  ? `${statusSummary.running} running / ${statusSummary.total} total`
+                  : statusSummary.total > 0
+                  ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+                  : 'No tasks'}
+              </Typography>
               {expand && (
                 <Typography
                   level="body-sm"

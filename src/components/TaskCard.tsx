@@ -2,6 +2,7 @@ import {
   Button,
   Card,
   CardContent,
+  CardOverflow,
   Chip,
   IconButton,
   ListItem,
@@ -23,7 +24,6 @@ import {
   Cancel,
 } from '@mui/icons-material'
 import type { Task } from '../types/project'
-import { TaskMetricsSummary } from './TaskMetricsSummary'
 
 interface TaskCardProps {
   task: Task
@@ -93,6 +93,49 @@ export function TaskCard({
     }
   }
 
+  const getMetricsText = () => {
+    if (!task.metrics) return null
+
+    const parts: string[] = []
+
+    // Rounds
+    if (task.metrics.rounds !== undefined) {
+      const roundsText = task.metrics.maxRounds
+        ? `Round ${task.metrics.rounds}/${task.metrics.maxRounds}`
+        : `Round ${task.metrics.rounds}`
+      parts.push(roundsText)
+    }
+
+    // API model metrics
+    if (task.modelProvider === 'api') {
+      if (task.metrics.tokens !== undefined && task.metrics.tokens > 0) {
+        const tokensText = task.metrics.tokens >= 1000
+          ? `${(task.metrics.tokens / 1000).toFixed(1)}K tokens`
+          : `${task.metrics.tokens} tokens`
+        parts.push(tokensText)
+      }
+
+      if (task.metrics.estimatedCost !== undefined && task.metrics.estimatedCost > 0) {
+        parts.push(`$${task.metrics.estimatedCost.toFixed(4)}`)
+      }
+    }
+
+    // Local model metrics
+    if (task.modelProvider === 'local') {
+      if (task.metrics.cpuUsage !== undefined && task.metrics.cpuUsage > 0) {
+        parts.push(`CPU ${task.metrics.cpuUsage.toFixed(1)}%`)
+      }
+
+      if (task.metrics.memoryUsage !== undefined && task.metrics.memoryUsage > 0) {
+        const memoryText = task.metrics.memoryUsage >= 1024
+          ? `${(task.metrics.memoryUsage / 1024).toFixed(1)}GB`
+          : `${task.metrics.memoryUsage.toFixed(0)}MB`
+        parts.push(`Memory ${memoryText}`)
+      }
+    }
+
+    return parts.length > 0 ? parts.join(' • ') : null
+  }
 
   const handleStart = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -171,19 +214,6 @@ export function TaskCard({
                   </Chip>
                 )}
               </Stack>
-
-              {/* Task Metrics */}
-              {task.metrics && (
-                <TaskMetricsSummary
-                  rounds={task.metrics.rounds}
-                  maxRounds={task.metrics.maxRounds}
-                  tokens={task.metrics.tokens}
-                  estimatedCost={task.metrics.estimatedCost}
-                  cpuUsage={task.metrics.cpuUsage}
-                  memoryUsage={task.metrics.memoryUsage}
-                  modelProvider={task.modelProvider}
-                />
-              )}
 
               {/* Bottom Row: Timestamp and Actions */}
               <Stack 
@@ -265,6 +295,25 @@ export function TaskCard({
             </Stack>
           </Stack>
         </CardContent>
+        {getMetricsText() && (
+          <CardOverflow
+            variant="soft"
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              gap: 1.5,
+              py: 1,
+              px: 2,
+              bgcolor: 'background.level1',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Typography level="body-sm" textColor="text.secondary">
+              {getMetricsText()}
+            </Typography>
+          </CardOverflow>
+        )}
       </Card>
     )
   }
@@ -314,16 +363,10 @@ export function TaskCard({
             </Stack>
 
             {/* Task Metrics */}
-            {task.metrics && (
-              <TaskMetricsSummary
-                rounds={task.metrics.rounds}
-                maxRounds={task.metrics.maxRounds}
-                tokens={task.metrics.tokens}
-                estimatedCost={task.metrics.estimatedCost}
-                cpuUsage={task.metrics.cpuUsage}
-                memoryUsage={task.metrics.memoryUsage}
-                modelProvider={task.modelProvider}
-              />
+            {getMetricsText() && (
+              <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1 }}>
+                {getMetricsText()}
+              </Typography>
             )}
 
             {/* Bottom Row: Timestamp and Actions */}
