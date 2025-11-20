@@ -1,7 +1,8 @@
 # Icon Generation for Klever Desktop
 
-## Quick Start (macOS only)
+## Quick Start
 
+### macOS
 Generate `icon.icns` from `icon.png`:
 
 ```bash
@@ -9,6 +10,15 @@ Generate `icon.icns` from `icon.png`:
 ```
 
 This will create `build/icon.icns` required for macOS builds.
+
+### Windows
+Generate `icon.ico` from `icon.png`:
+
+```powershell
+.\scripts\generate-icons.ps1
+```
+
+This will create `build/icon.ico` required for Windows builds.
 
 ---
 
@@ -25,18 +35,20 @@ icon: './build/icon'  // → icon.icns (macOS), icon.ico (Windows), icon.png (Li
 
 ---
 
-## Alternative Methods (if not on macOS)
+## Alternative Methods
 
-### Option 1: Online Converter
-1. Visit https://cloudconvert.com/png-to-icns
-2. Upload `build/icon.png`
-3. Download and save as `build/icon.icns`
+### Online Converters
+- **macOS (.icns)**: https://cloudconvert.com/png-to-icns
+- **Windows (.ico)**: https://cloudconvert.com/png-to-ico
 
-### Option 2: Using npm package
+Upload `build/icon.png` and download the converted file.
+
+### Using npm package
 ```bash
 npm install -g png2icons
 png2icons build/icon.png build/
 ```
+Generates both .icns and .ico files.
 
 ---
 
@@ -70,10 +82,46 @@ build/
 
 ---
 
+## Icon Generation Methods
+
+### macOS (.icns)
+**Method 1: Built-in script (Recommended)**
+```bash
+./scripts/generate-icons.sh
+```
+Uses macOS-native `iconutil` and `sips`.
+
+**Method 2: ImageMagick**
+```bash
+brew install imagemagick
+magick convert build/icon.png -define icon:auto-resize=1024,512,256,128,32,16 build/icon.icns
+```
+
+### Windows (.ico)
+**Method 1: PowerShell script (Recommended)**
+```powershell
+.\scripts\generate-icons.ps1
+```
+Tries ImageMagick first, falls back to .NET System.Drawing.
+
+**Method 2: ImageMagick**
+```powershell
+# Install via winget
+winget install ImageMagick.ImageMagick
+
+# Generate icon
+magick convert build/icon.png -define icon:auto-resize=256,128,64,48,32,16 build/icon.ico
+```
+
+**Method 3: .NET only (no external dependencies)**
+The PowerShell script automatically falls back to .NET if ImageMagick is not available.
+
+---
+
 ## Next Steps
 
-1. Generate icon.icns on macOS: `./scripts/generate-icons.sh`
-2. Commit the generated icon.icns to git
+1. **macOS users**: Run `./scripts/generate-icons.sh` → commit `icon.icns`
+2. **Windows users**: Run `.\scripts\generate-icons.ps1` → commit `icon.ico`
 3. Icons will be automatically used during builds
 
-**Note**: Once icon.icns is committed, you won't need to regenerate it unless you update the source icon.png.
+**Note**: Once icons are committed, you won't need to regenerate them unless you update the source `icon.png`.
