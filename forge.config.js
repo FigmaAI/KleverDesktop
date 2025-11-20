@@ -3,8 +3,10 @@ const path = require('path');
 
 module.exports = {
   packagerConfig: {
+    appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
+    buildVersion: '10', // Build number for App Store (increment for each submission)
     asar: true,
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
@@ -19,6 +21,8 @@ module.exports = {
       appBundleId: 'com.klever.desktop', // MUST match App Store Connect
       entitlements: 'build/entitlements.mas.plist',
       'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
+      // Optional: Add provisioning profile if you have one
+      provisioningProfile: 'build/klever.provisionprofile',
     }
   },
 
@@ -56,7 +60,7 @@ module.exports = {
       platforms: ['win32'],
     },
 
-    // Mac App Store (PKG)
+    // Mac App Store (PKG) - Universal binary
     {
       name: '@electron-forge/maker-pkg',
       config: {
@@ -64,6 +68,8 @@ module.exports = {
         install: '/Applications',
       },
       platforms: ['mas'],
+      // Universal binary includes both x64 and arm64
+      arch: ['universal'],
     },
 
     // ZIP maker for development and testing
@@ -119,13 +125,13 @@ module.exports = {
   // Build hooks
   hooks: {
     // Pre-package hook - verify bundle before packaging
-    prePackage: async (config, platform, arch) => {
+    prePackage: async (_config, platform, arch) => {
       console.log(`Pre-package hook: ${platform}-${arch}`);
       // Optional: Run scripts/verify-bundle.js here
     },
 
     // Post-make hook - display build artifacts
-    postMake: async (config, makeResults) => {
+    postMake: async (_config, makeResults) => {
       console.log('Build artifacts created:');
       makeResults.forEach((result) => {
         console.log(`Platform: ${result.platform}/${result.arch}`);

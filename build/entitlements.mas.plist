@@ -17,5 +17,9 @@
   <true/>
   <key>com.apple.security.files.downloads.read-write</key>
   <true/>
+
+  <!-- USB Device Access (for ADB/Android debugging) -->
+  <key>com.apple.security.device.usb</key>
+  <true/>
 </dict>
 </plist>

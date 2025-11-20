@@ -88,7 +88,7 @@ function MarkdownImage({ src, alt, baseDir }: { src?: string; alt?: string; base
     );
   }
 
-  return <img src={imageSrc || undefined} alt={alt} style={{ maxWidth: '100%', height: 'auto' }} />;
+  return <img src={imageSrc || undefined} alt={alt} style={{ maxWidth: '100%', maxHeight: '512px', height: 'auto', objectFit: 'contain' }} />;
 }
 
 export function TaskMarkdownDialog({
