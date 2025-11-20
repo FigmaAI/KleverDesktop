@@ -162,7 +162,7 @@ export function ProjectList() {
                     <ProjectCard
                       project={project}
                       variant="card"
-                      expand={false}
+                      expand={true}
                       clickable={true}
                       showDelete={true}
                       onDeleted={loadProjects}
@@ -187,7 +187,7 @@ export function ProjectList() {
                     <ProjectCard
                       project={project}
                       variant="list"
-                      expand={false}
+                      expand={true}
                       clickable={true}
                       showDelete={true}
                       onDeleted={loadProjects}
