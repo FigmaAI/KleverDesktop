@@ -92,10 +92,11 @@
       "target": [
         "mas"
       ],
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "provisioningProfile": "build/embedded.provisionprofile",
       "preAutoEntitlements": false,
       "notarize": false,
       "minimumSystemVersion": "12.0"

@@ -11,6 +11,15 @@
 
 set -e # Exit immediately if a command exits with a non-zero status
 
+# --- Load environment variables from .envrc if it exists ---
+if [ -f ".envrc" ]; then
+    echo "🔧 Loading environment variables from .envrc..."
+    set +e  # Temporarily disable exit on error
+    source .envrc
+    set -e  # Re-enable exit on error
+    echo "✅ Environment variables loaded"
+fi
+
 echo "🚀 Starting Klever Desktop Mac App Store build process..."
 
 # --- Configuration ---
@@ -43,6 +52,15 @@ if ! command -v yarn &> /dev/null; then
 fi
 
 echo "✅ Yarn $(yarn -v) detected"
+
+# --- Unlock Keychain (macOS Sequoia compatibility) ---
+if [ -n "${KEYCHAIN_PASSWORD:-}" ]; then
+    echo ""
+    echo "🔓 Unlocking keychain for automated build..."
+    security unlock-keychain -p "$KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+    security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+    echo "✅ Keychain unlocked"
+fi
 
 # --- Code Signing Configuration ---
 echo ""
@@ -232,19 +250,93 @@ export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
 # - CSC_NAME for app signing (Apple Distribution)
 # - CSC_INSTALLER_NAME (or auto-detect) for pkg signing (Mac Installer Distribution)
 # - ELECTRON_BUILDER_BUILD_NUMBER for CFBundleVersion
+echo "   🍎 Running electron-builder..."
+
+# Allow electron-builder to fail (macOS Sequoia Keychain issue)
+set +e
 yarn run electron-builder --mac mas --config.mac.target=mas \
     --config.appId="$BUNDLE_ID" \
     --config.productName="$APP_NAME" \
     --config.mac.category="public.app-category.developer-tools" \
     --config.directories.output="$BUILD_DIR"
+ELECTRON_BUILDER_EXIT_CODE=$?
+set -e
+
+# Check if PKG was created
+PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f 2>/dev/null | head -1)
+
+if [ $ELECTRON_BUILDER_EXIT_CODE -ne 0 ] || [ -z "$PKG_PATH" ]; then
+    echo ""
+    echo "⚠️  electron-builder PKG creation failed or no PKG found"
+    echo "   This is a known issue on macOS Sequoia due to Keychain security policies."
+    echo "   Attempting manual PKG creation with productbuild..."
+    echo ""
+
+    # Find the signed .app bundle
+    APP_PATH=$(find "$BUILD_DIR" -name "$APP_NAME.app" -type d | head -1)
+
+    if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+        echo "❌ Error: Signed app bundle not found"
+        echo "   electron-builder may have failed completely"
+        exit 1
+    fi
+
+    # Verify app signature
+    echo "   🔍 Verifying app signature..."
+    if ! codesign --verify --deep --strict "$APP_PATH" 2>/dev/null; then
+        echo "   ❌ App signature verification failed"
+        echo "   electron-builder did not sign the app properly"
+        exit 1
+    fi
+    echo "   ✅ App signature valid"
+
+    # Determine architecture directory
+    if [[ "$APP_PATH" == *"mas-arm64"* ]]; then
+        PKG_DIR="$BUILD_DIR/mas-arm64"
+    elif [[ "$APP_PATH" == *"mas-universal"* ]]; then
+        PKG_DIR="$BUILD_DIR/mas-universal"
+    else
+        PKG_DIR="$BUILD_DIR/mas"
+    fi
+
+    mkdir -p "$PKG_DIR"
+    PKG_PATH="$PKG_DIR/$APP_NAME-$APP_VERSION.pkg"
+
+    echo "   📦 Creating PKG with productbuild..."
+    echo ""
+    echo "   ⚠️  macOS will prompt for your login password"
+    echo "   This is required for Keychain access on macOS Sequoia"
+    echo ""
+
+    # Use productbuild (Apple's official tool)
+    if ! productbuild \
+        --component "$APP_PATH" /Applications \
+        --sign "$CSC_INSTALLER_NAME" \
+        "$PKG_PATH"; then
+        echo ""
+        echo "   ❌ productbuild failed"
+        echo ""
+        echo "   Troubleshooting:"
+        echo "   1. Verify certificate: security find-identity -v | grep Installer"
+        echo "   2. Check CSC_INSTALLER_NAME: echo \$CSC_INSTALLER_NAME"
+        echo "   3. Ensure certificate is in login keychain"
+        exit 1
+    fi
+
+    echo ""
+    echo "   ✅ PKG created successfully with productbuild (fallback method)"
+fi
 
 echo "✅ Mac App Store package created"
 
 # --- Step 4: Verify the build ---
 echo "🔍 [Step 4/4] Verifying build..."
 
-# Find PKG file dynamically (could be in mas/ or mas-arm64/ with various naming patterns)
-PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f | head -1)
+# PKG_PATH is already set by electron-builder or productbuild fallback
+# Re-find if somehow not set
+if [ -z "$PKG_PATH" ]; then
+    PKG_PATH=$(find "$BUILD_DIR" -name "*.pkg" -type f 2>/dev/null | head -1)
+fi
 
 if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
     PKG_SIZE=$(du -h "$PKG_PATH" | cut -f1)
