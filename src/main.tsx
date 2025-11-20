@@ -21,19 +21,17 @@ if (!window.electronAPI) {
   window.electronAPI = {
     // NEW: Unified Environment Setup
     envCheck: async () => ({
-      success: true,
+      success: false,
+      error: 'Python runtime not available',
       bundledPython: {
-        path: '/usr/bin/python3',
-        exists: true,
-        version: '3.11.0',
-        isBundled: false,
-      },
-      venv: {
+        path: '/mock/.klever-desktop/python/darwin-arm64/python/bin/python3',
         exists: false,
-        valid: false,
-        path: '/mock/venv',
-        pythonExecutable: '/mock/venv/bin/python',
+        version: undefined,
+        isBundled: true,
       },
+      playwright: {
+        installed: false,
+      }
     }),
     envSetup: async () => {
       await new Promise((resolve) => setTimeout(resolve, 2000))
@@ -43,7 +41,7 @@ if (!window.electronAPI) {
     // Python Runtime Management (Post-Install Download)
     pythonCheckInstalled: async () => ({
       success: true,
-      installed: true,
+      installed: false,
       path: '/mock/.klever-desktop/python/darwin-arm64/python',
     }),
     pythonGetInstallPath: async () => ({
