@@ -42,6 +42,10 @@
     "react-terminal-ui": "^1.4.0",
     "remark-gfm": "^4.0.0"
   },
+  "resolutions": {
+    "esbuild": ">=0.25.0",
+    "tmp": ">=0.2.4"
+  },
   "devDependencies": {
     "@electron-forge/cli": "^7.10.2",
     "@electron-forge/maker-appx": "^7.10.2",
