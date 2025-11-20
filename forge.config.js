@@ -65,7 +65,7 @@ module.exports = {
     {
       name: '@electron-forge/maker-pkg',
       config: {
-        identity: '3rd Party Mac Developer Installer: Your Name (TEAM_ID)', // TODO: Replace
+        identity: process.env.CSC_INSTALLER_NAME || '3rd Party Mac Developer Installer: Your Name (TEAM_ID)',
         install: '/Applications',
         keychain: process.env.KEYCHAIN_PATH, // Path to keychain with signing certificate
       },
