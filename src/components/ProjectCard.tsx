@@ -11,6 +11,7 @@ import {
   ListItemDecorator,
   Stack,
   Typography,
+  Tooltip,
 } from '@mui/joy'
 import {
   PhoneAndroid,
@@ -119,29 +120,17 @@ export function ProjectCard({
       >
         <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Stack spacing={2} sx={{ flex: 1, justifyContent: 'space-between' }}>
-            {/* Top Section: Name and Platform grouped together */}
+            {/* Top Section: Name and Platform */}
             <Stack spacing={1.5}>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                <Stack direction="row" spacing={1} alignItems="center">
-                  {project.platform === 'android' ? (
-                    <PhoneAndroid color="primary" />
-                  ) : (
-                    <Language color="primary" />
-                  )}
-                  <Typography level="title-lg" fontWeight="bold">
-                    {project.name}
-                  </Typography>
-                </Stack>
-                {showDelete && (
-                  <IconButton
-                    size="sm"
-                    variant="plain"
-                    color="danger"
-                    onClick={handleDelete}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+              <Stack direction="row" spacing={1} alignItems="center">
+                {project.platform === 'android' ? (
+                  <PhoneAndroid color="primary" />
+                ) : (
+                  <Language color="primary" />
                 )}
+                <Typography level="title-lg" fontWeight="bold">
+                  {project.name}
+                </Typography>
               </Stack>
 
               <Chip
@@ -153,59 +142,56 @@ export function ProjectCard({
               </Chip>
             </Stack>
 
-            {/* Bottom Section: Created Date */}
-            <Stack spacing={2}>
-              {expand ? (
-                <Stack 
-                  direction="row" 
-                  spacing={1.5} 
-                  alignItems="center"
-                  justifyContent="space-between"
-                  sx={{ width: '100%' }}
-                >
-                  <Typography 
-                    level="body-xs" 
-                    textColor="text.secondary"
-                    sx={{ 
-                      flex: 1,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      minWidth: 0,
-                    }}
-                  >
-                    Created {new Date(project.createdAt).toLocaleDateString()}
-                  </Typography>
-                  <Chip
-                    startDecorator={<FolderOpen />}
-                    onClick={handleOpenWorkDir}
-                    sx={{
-                      cursor: 'pointer',
-                      flex: 1,
-                      minWidth: 0,
-                      '& > span': {
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }
-                    }}
-                  >
-                    {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
-                  </Chip>
-                </Stack>
-              ) : (
-                <Typography 
-                  level="body-xs" 
-                  textColor="text.secondary"
-                  sx={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  Created {new Date(project.createdAt).toLocaleDateString()}
-                </Typography>
-              )}
+            {/* Bottom Section: Timestamp and Actions */}
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ width: '100%' }}
+            >
+              {/* Left: Timestamp */}
+              <Typography
+                level="body-xs"
+                textColor="text.secondary"
+                sx={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                Created {new Date(project.createdAt).toLocaleDateString()}
+              </Typography>
+
+              {/* Right: Action Buttons */}
+              <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                {expand && (
+                  <Tooltip title={`${project.workspaceDir}/apps/${getSanitizedAppName(project.name)}`}>
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="neutral"
+                      onClick={handleOpenWorkDir}
+                    >
+                      <FolderOpen />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {showDelete && (
+                  <Tooltip title="Delete Project">
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="danger"
+                      onClick={handleDelete}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Stack>
             </Stack>
           </Stack>
         </CardContent>
@@ -274,31 +260,36 @@ export function ProjectCard({
                 </Typography>
               )}
             </Box>
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" alignItems="center" spacing={1.5}>
               <Typography level="body-xs" textColor="text.secondary">
                 {new Date(project.createdAt).toLocaleDateString()}
               </Typography>
-              {expand && (
-                <IconButton
-                  size="sm"
-                  variant="outlined"
-                  color="neutral"
-                  onClick={handleOpenWorkDir}
-                  title={`${project.workspaceDir}/apps/${getSanitizedAppName(project.name)}`}
-                >
-                  <FolderOpen />
-                </IconButton>
-              )}
-              {showDelete && (
-                <IconButton
-                  size="sm"
-                  variant="plain"
-                  color="danger"
-                  onClick={handleDelete}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              )}
+              <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                {expand && (
+                  <Tooltip title={`${project.workspaceDir}/apps/${getSanitizedAppName(project.name)}`}>
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="neutral"
+                      onClick={handleOpenWorkDir}
+                    >
+                      <FolderOpen />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {showDelete && (
+                  <Tooltip title="Delete Project">
+                    <IconButton
+                      size="sm"
+                      variant="plain"
+                      color="danger"
+                      onClick={handleDelete}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Stack>
             </Stack>
           </Stack>
         </ListItemContent>
