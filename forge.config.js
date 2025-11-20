@@ -16,6 +16,7 @@ module.exports = {
       identity: process.env.CSC_NAME, // Apple Distribution
       platform: 'mas',
       type: 'distribution',
+      appBundleId: 'com.klever.desktop', // MUST match App Store Connect
       entitlements: 'build/entitlements.mas.plist',
       'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
     }
