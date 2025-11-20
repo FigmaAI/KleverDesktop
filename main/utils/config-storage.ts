@@ -110,6 +110,35 @@ export function configExists(): boolean {
 }
 
 /**
+ * Hard reset: Delete entire ~/.klever-desktop/ directory
+ * WARNING: This will remove ALL user data including:
+ * - config.json (settings)
+ * - projects.json (all projects and tasks)
+ * - python/ (bundled Python runtime)
+ * - Any other data stored in user directory
+ *
+ * This action cannot be undone!
+ */
+export function hardResetUserData(): void {
+  const userDataPath = app.getPath('userData');
+
+  console.log('[config-storage] Attempting HARD RESET of user data directory:', userDataPath);
+
+  if (fs.existsSync(userDataPath)) {
+    try {
+      // Recursively delete the entire directory
+      fs.rmSync(userDataPath, { recursive: true, force: true });
+      console.log('[config-storage] User data directory successfully deleted:', userDataPath);
+    } catch (error) {
+      console.error('[config-storage] Failed to delete user data directory:', error);
+      throw error;
+    }
+  } else {
+    console.log('[config-storage] User data directory does not exist:', userDataPath);
+  }
+}
+
+/**
  * Deep merge two objects (for nested config updates)
  */
 function deepMerge<T>(target: T, source: Partial<T>): T {

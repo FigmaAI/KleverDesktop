@@ -121,6 +121,7 @@ declare global {
       configLoad: () => Promise<{ success: boolean; config?: AppConfig; error?: string }>;
       configSave: (config: AppConfig) => Promise<{ success: boolean; error?: string }>;
       configReset: () => Promise<{ success: boolean; error?: string }>;
+      configHardReset: () => Promise<{ success: boolean; error?: string }>;
       checkSetup: () => Promise<{ success: boolean; setupComplete: boolean }>;
 
       // Project operations
