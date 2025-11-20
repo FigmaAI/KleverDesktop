@@ -3,7 +3,7 @@
 
 # Ignore Gradle build output directory
 build
-# But keep electron-builder icon assets
+# But keep icon assets
 !build/
 !build/icon.png
 
@@ -23,6 +23,7 @@ out/
 node_modules/
 dist/
 dist-electron/
+.vite/
 
 # Yarn (ignore cache and build artifacts, but keep releases/plugins/sdks)
 .yarn/cache
@@ -48,6 +49,7 @@ gcp-service-account.json
 *-service-account.json
 .env
 .env.backup.*
+.env.mas*
 
 # Vercel
 .vercel

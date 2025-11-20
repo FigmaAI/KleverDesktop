@@ -67,11 +67,11 @@ Examples:
   export APPLE_TEAM_ID="ZQC7QNZ4J8"
 
   # Upload
-  $0 dist-electron/mas/Klever\\ Desktop-2.0.0.pkg
+  $0 out/make/pkg/Klever\\ Desktop-2.0.0.pkg
 
   # Or use .env file
-  source .env.mas
-  $0 dist-electron/mas/Klever\\ Desktop-2.0.0.pkg
+  # source .env.mas  # No longer needed with electron-forge
+  $0 out/make/pkg/Klever\\ Desktop-2.0.0.pkg
 
 Alternative:
   Use Transporter app (download from Mac App Store)
@@ -156,7 +156,7 @@ if [ ${#MISSING_VARS[@]} -ne 0 ]; then
   log_info "Or use .env.mas file:"
   echo "   cp .env.mas.example .env.mas"
   echo "   nano .env.mas  # Edit with your values"
-  echo "   source .env.mas"
+  echo "   # source .env.mas  # No longer needed with electron-forge"
   echo ""
   log_info "Generate app-specific password:"
   echo "   https://appleid.apple.com/account/manage"
