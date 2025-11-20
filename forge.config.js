@@ -11,20 +11,14 @@ module.exports = {
       'appagent' // Python scripts only, not Python runtime
     ],
 
-    // macOS App Store specific settings - using environment variables for signing
-    // For Mac App Store, we need to specify platform and type
-    osxSign: process.env.CSC_NAME ? {
-      identity: process.env.CSC_NAME,
+    // Mac App Store signing configuration
+    osxSign: {
+      identity: process.env.CSC_NAME, // Apple Distribution
       platform: 'mas',
       type: 'distribution',
-      'hardened-runtime': false, // Not needed for Mac App Store
-      'gatekeeper-assess': false,
       entitlements: 'build/entitlements.mas.plist',
       'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
-    } : undefined,
-
-    // Do NOT use osxNotarize for Mac App Store builds
-    // Apple handles notarization automatically when you submit to App Store Connect
+    }
   },
 
   rebuildConfig: {},
@@ -65,11 +59,10 @@ module.exports = {
     {
       name: '@electron-forge/maker-pkg',
       config: {
-        identity: process.env.CSC_INSTALLER_NAME || '3rd Party Mac Developer Installer: Your Name (TEAM_ID)',
+        identity: process.env.CSC_INSTALLER_NAME, // 3rd Party Mac Developer Installer
         install: '/Applications',
-        keychain: process.env.KEYCHAIN_PATH, // Path to keychain with signing certificate
       },
-      platforms: ['mas'], // Mac App Store platform
+      platforms: ['mas'],
     },
 
     // ZIP maker for development and testing
