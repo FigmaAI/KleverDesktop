@@ -148,14 +148,22 @@ export function ProjectDetail() {
           </Button>
 
           {/* Project Header */}
-          <ProjectCard
-            project={project}
-            variant="compact"
-            expand={true}
-            clickable={false}
-            showDelete={true}
-            onDeleted={() => navigate('/projects')}
-          />
+          <List
+            variant="outlined"
+            sx={{
+              borderRadius: 'md',
+              bgcolor: 'background.surface',
+            }}
+          >
+            <ProjectCard
+              project={project}
+              variant="list"
+              expand={true}
+              clickable={false}
+              showDelete={true}
+              onDeleted={() => navigate('/projects')}
+            />
+          </List>
 
           {/* Tasks Section Header */}
           <Stack
