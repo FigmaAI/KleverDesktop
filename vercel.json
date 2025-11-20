@@ -1,13 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "public"
-      }
-    }
-  ],
-  "buildCommand": "echo '❌ ERROR: KleverDesktop is an Electron DESKTOP application and cannot be deployed to Vercel. Please use: npm run package (for local builds) or npm run make (for distribution packages). See CLAUDE.md for details.' && exit 1"
+  "github": {
+    "enabled": false
+  }
 }
