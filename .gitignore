@@ -24,6 +24,13 @@ node_modules/
 dist/
 dist-electron/
 
+# Yarn (ignore cache and build artifacts, but keep releases/plugins/sdks)
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
 # Ignore environment variables
 .envrc
 
