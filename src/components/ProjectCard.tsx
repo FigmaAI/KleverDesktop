@@ -22,7 +22,7 @@ import type { Project } from '../types/project'
 
 interface ProjectCardProps {
   project: Project
-  variant?: 'card' | 'list'
+  variant?: 'card' | 'list' | 'compact'
   expand?: boolean
   clickable?: boolean
   showDelete?: boolean
@@ -93,6 +93,97 @@ export function ProjectCard({
       console.error('Error opening folder:', error)
       alert('Failed to open folder')
     }
+  }
+
+  // Compact View (App bar-like)
+  if (variant === 'compact') {
+    return (
+      <Card
+        variant="outlined"
+        sx={{
+          transition: 'all 0.2s',
+          '&:hover': {
+            boxShadow: 'sm',
+          },
+        }}
+      >
+        <CardContent>
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ width: '100%' }}
+          >
+            {/* Left Section: Icon, Name, Platform */}
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ flex: 1, minWidth: 0 }}>
+              {project.platform === 'android' ? (
+                <PhoneAndroid color="primary" sx={{ fontSize: 28 }} />
+              ) : (
+                <Language color="primary" sx={{ fontSize: 28 }} />
+              )}
+              <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                <Typography level="title-lg" fontWeight="bold" sx={{ lineHeight: 1.2 }}>
+                  {project.name}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    color={project.platform === 'android' ? 'primary' : 'success'}
+                  >
+                    {project.platform}
+                  </Chip>
+                  <Typography level="body-xs" textColor="text.secondary">
+                    {statusSummary.running > 0
+                      ? `${statusSummary.running} running / ${statusSummary.total} total`
+                      : statusSummary.total > 0
+                      ? `${statusSummary.total} ${statusSummary.total === 1 ? 'task' : 'tasks'}`
+                      : 'No tasks'}
+                  </Typography>
+                </Stack>
+              </Stack>
+            </Stack>
+
+            {/* Right Section: Actions */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+              {expand && (
+                <Chip
+                  size="sm"
+                  variant="outlined"
+                  startDecorator={<FolderOpen />}
+                  onClick={handleOpenWorkDir}
+                  sx={{
+                    cursor: 'pointer',
+                    maxWidth: '300px',
+                    '& > span': {
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }
+                  }}
+                >
+                  {project.workspaceDir}/apps/{getSanitizedAppName(project.name)}
+                </Chip>
+              )}
+              <Typography level="body-xs" textColor="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                {new Date(project.createdAt).toLocaleDateString()}
+              </Typography>
+              {showDelete && (
+                <IconButton
+                  size="sm"
+                  variant="plain"
+                  color="danger"
+                  onClick={handleDelete}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              )}
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+    )
   }
 
   // Card View
