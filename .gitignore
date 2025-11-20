@@ -3,9 +3,13 @@
 
 # Ignore Gradle build output directory
 build
-# But keep icon assets
+# But keep icon assets and build configs
 !build/
-!build/icon.png
+!build/*.png
+!build/*.icns
+!build/*.ico
+!build/*.plist
+!build/*.xml
 
 # Ignore IDEA project-specific cache directory
 .idea
