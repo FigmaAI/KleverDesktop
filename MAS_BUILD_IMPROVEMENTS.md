@@ -94,30 +94,29 @@ export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
    ↓
 2. CSC_NAME으로 모든 바이너리 서명
    - Electron 프레임워크
-   - Helper 프로세스
-   - .dylib, .so 파일
+   - Helper 프로세스 (GPU, Renderer, Plugin)
+   - 모든 .dylib, .node 파일
    ↓
-3. afterSign.js 실행 (scripts/afterSign.js)
-   - Python 런타임 재서명
-   - Python 패키지 .so 파일 서명
+3. .pkg 생성
    ↓
-4. .pkg 생성
+4. CSC_INSTALLER_NAME (또는 자동 탐지)로 .pkg 서명
    ↓
-5. CSC_INSTALLER_NAME (또는 자동 탐지)로 .pkg 서명
-   ↓
-6. 검증 완료
+5. 검증 완료
 ```
 
-### afterSign.js의 중요성
+**Note**: `afterSign` 훅을 제거하여 electron-builder의 자동 서명에만 의존합니다.
 
-**문제**: electron-builder는 Electron 관련 바이너리만 서명하고, 번들된 Python 런타임은 서명하지 않음
+### Python 번들링 제거
 
-**해결**: `scripts/afterSign.js`가 빌드 후 자동으로 실행되어 Python 바이너리 재서명
-- `python3` 실행 파일
-- `_ssl.cpython-311-darwin.so` 등 표준 라이브러리
-- Playwright, Ollama 등 third-party 패키지
+**변경**: Python 런타임을 앱에 번들링하지 **않음**
+- 시스템 Python 사용 (사용자가 직접 설치)
+- `extraResources`에 `appagent` Python 스크립트만 포함
+- 번들 크기 감소 및 업데이트 용이성
 
-**검증**: 개선된 스크립트가 Python 서명 여부를 자동 확인
+**afterSign.js 제거**: Python 재서명이 불필요하므로 afterSign 훅 제거
+- electron-builder가 모든 앱 바이너리를 자동 서명
+- 충돌 가능성 제거
+- 빌드 프로세스 단순화
 
 ---
 
@@ -125,6 +124,12 @@ export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
 
 ### 변경 전:
 ```json
+"build": {
+  "appId": "com.klever.desktop",
+  "productName": "Klever Desktop",
+  "afterSign": "scripts/afterSign.js",  // ❌ Python 번들링 안 하므로 불필요
+  ...
+},
 "mas": {
   "type": "distribution",
   "hardenedRuntime": false,
@@ -139,6 +144,12 @@ export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
 
 ### 변경 후:
 ```json
+"build": {
+  "appId": "com.klever.desktop",
+  "productName": "Klever Desktop",
+  // afterSign 제거 - electron-builder가 자동으로 모든 바이너리 서명
+  ...
+},
 "mas": {
   "type": "distribution",
   "hardenedRuntime": false,
@@ -152,8 +163,9 @@ export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
 ```
 
 **주요 변경:**
-1. ✅ `provisioningProfile` 경로 명확화: `build/embedded.provisionprofile`
-2. ✅ `identity` 설정 제거: 환경 변수 `CSC_NAME`으로 관리 (유연성 향상)
+1. ✅ `afterSign` 훅 제거: Python 번들링하지 않으므로 불필요, electron-builder에 맡김
+2. ✅ `provisioningProfile` 경로 명확화: `build/embedded.provisionprofile`
+3. ✅ `identity` 설정 제거: 환경 변수 `CSC_NAME`으로 관리 (유연성 향상)
 
 ---
 
@@ -228,9 +240,6 @@ BUILD_NUMBER=5 ./scripts/build-appstore.sh
       TeamIdentifier=YOUR_TEAM_ID
       Identifier=com.klever.desktop
 
-   🔍 Checking Python runtime signature...
-   ✅ Python runtime signed: darwin-arm64
-
 ✅ Build verification completed
 ```
 
@@ -261,30 +270,6 @@ security find-identity -v -p codesigning
 # 3. 명시적으로 인증서 지정
 export CSC_INSTALLER_NAME="Mac Installer Distribution: Your Name (TEAM_ID)"
 ./scripts/build-appstore.sh
-```
-
-### Python 런타임이 서명되지 않음
-
-**증상:**
-```
-⚠️  Python runtime NOT signed: darwin-arm64
-   This may cause App Store rejection!
-```
-
-**원인:**
-- `scripts/afterSign.js`가 실행되지 않았거나 실패함
-- `CSC_NAME` 환경 변수가 설정되지 않음
-
-**해결:**
-```bash
-# 1. afterSign.js 직접 확인
-cat scripts/afterSign.js
-
-# 2. CSC_NAME 확인
-echo $CSC_NAME
-
-# 3. 디버그 모드로 재빌드
-DEBUG=electron-builder ./scripts/build-appstore.sh
 ```
 
 ### .app은 생성되지만 .pkg가 생성되지 않음

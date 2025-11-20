@@ -67,7 +67,6 @@
   "build": {
     "appId": "com.klever.desktop",
     "productName": "Klever Desktop",
-    "afterSign": "scripts/afterSign.js",
     "directories": {
       "output": "dist-electron"
     },

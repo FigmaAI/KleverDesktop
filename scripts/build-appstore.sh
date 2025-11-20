@@ -331,39 +331,6 @@ if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
         echo ""
         echo "   📋 App Signature Details:"
         codesign --display --verbose=4 "$APP_PATH" 2>&1 | grep -E "(Authority|TeamIdentifier|Identifier|Format)" | sed 's/^/      /'
-
-        # Check if Python runtime was signed (via afterSign.js)
-        echo ""
-        echo "   🔍 Checking Python runtime signature..."
-        PYTHON_PATHS=(
-            "$APP_PATH/Contents/Resources/python/darwin-arm64/python/bin/python3"
-            "$APP_PATH/Contents/Resources/python/darwin-x64/python/bin/python3"
-            "$APP_PATH/Contents/Resources/extraResources/python/darwin-arm64/python/bin/python3"
-            "$APP_PATH/Contents/Resources/extraResources/python/darwin-x64/python/bin/python3"
-        )
-
-        PYTHON_FOUND=false
-        for PYTHON_BIN in "${PYTHON_PATHS[@]}"; do
-            if [ -f "$PYTHON_BIN" ]; then
-                PYTHON_FOUND=true
-                PYTHON_SIG_OUTPUT=$(codesign --verify --verbose "$PYTHON_BIN" 2>&1)
-                PYTHON_SIG_STATUS=$?
-
-                if [ $PYTHON_SIG_STATUS -eq 0 ]; then
-                    echo "   ✅ Python runtime signed: $(basename $(dirname $(dirname $(dirname "$PYTHON_BIN"))))"
-                else
-                    echo "   ⚠️  Python runtime NOT signed: $(basename $(dirname $(dirname $(dirname "$PYTHON_BIN"))))"
-                    echo "      This may cause App Store rejection!"
-                    echo "      Check that scripts/afterSign.js ran successfully"
-                fi
-                break
-            fi
-        done
-
-        if [ "$PYTHON_FOUND" = false ]; then
-            echo "   ⚠️  Python runtime not found in app bundle"
-            echo "      If Python is required, check extraResources packaging"
-        fi
     else
         echo "   ❌ App bundle signature verification FAILED!"
         echo ""
