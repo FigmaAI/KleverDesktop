@@ -63,21 +63,51 @@ if [ -z "$APPLE_TEAM_ID" ]; then
     echo "   Find at: https://developer.apple.com/account/#!/membership"
 fi
 
-# Code Signing Identity
+# Code Signing Identity - Auto-detect if not set
 if [ -z "$CSC_NAME" ]; then
-    echo "⚠️  CSC_NAME not set"
-    echo "   This should be your '3rd Party Mac Developer Application' certificate name"
-    echo "   Example: export CSC_NAME=\"3rd Party Mac Developer Application: Your Name (TEAM_ID)\""
-    echo ""
-    echo "   Available signing identities:"
-    security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" || echo "   No 3rd Party Mac Developer Application certificates found"
-    echo ""
+    echo "🔍 Auto-detecting Apple Distribution certificate..."
+
+    # Try "Apple Distribution" first (current naming)
+    AUTO_CSC_NAME=$(security find-identity -v -p codesigning | grep "Apple Distribution" | head -n 1 | awk -F'"' '{print $2}')
+
+    # Fallback to old naming
+    if [ -z "$AUTO_CSC_NAME" ]; then
+        AUTO_CSC_NAME=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Application" | head -n 1 | awk -F'"' '{print $2}')
+    fi
+
+    if [ -n "$AUTO_CSC_NAME" ]; then
+        export CSC_NAME="$AUTO_CSC_NAME"
+        echo "✅ Auto-detected: $CSC_NAME"
+    else
+        echo "⚠️  CSC_NAME not set and auto-detection failed"
+        echo "   This should be your 'Apple Distribution' certificate"
+        echo "   Example: export CSC_NAME=\"Apple Distribution: Your Name (TEAM_ID)\""
+        echo ""
+        echo "   Available signing identities:"
+        security find-identity -v -p codesigning | grep -E "(Apple Distribution|3rd Party Mac Developer)" || echo "   No Mac App Store certificates found"
+        echo ""
+    fi
 fi
 
 if [ -z "$CSC_INSTALLER_NAME" ]; then
-    echo "⚠️  CSC_INSTALLER_NAME not set"
-    echo "   This should be your '3rd Party Mac Developer Installer' certificate name"
-    echo "   Example: export CSC_INSTALLER_NAME=\"3rd Party Mac Developer Installer: Your Name (TEAM_ID)\""
+    echo "🔍 Auto-detecting Mac Installer Distribution certificate..."
+
+    # Try "Mac Installer Distribution" first (current naming)
+    AUTO_INSTALLER=$(security find-identity -v -p codesigning | grep "Mac Installer Distribution" | head -n 1 | awk -F'"' '{print $2}')
+
+    # Fallback to old naming
+    if [ -z "$AUTO_INSTALLER" ]; then
+        AUTO_INSTALLER=$(security find-identity -v -p codesigning | grep "3rd Party Mac Developer Installer" | head -n 1 | awk -F'"' '{print $2}')
+    fi
+
+    if [ -n "$AUTO_INSTALLER" ]; then
+        export CSC_INSTALLER_NAME="$AUTO_INSTALLER"
+        echo "✅ Auto-detected: $CSC_INSTALLER_NAME"
+    else
+        echo "⚠️  CSC_INSTALLER_NAME not set and auto-detection failed"
+        echo "   Note: electron-builder will try to find it automatically from Keychain"
+        echo "   If build fails, export CSC_INSTALLER_NAME=\"Mac Installer Distribution: Your Name (TEAM_ID)\""
+    fi
 fi
 
 # Show configuration summary
@@ -213,13 +243,19 @@ export ELECTRON_BUILDER_ALLOW_UNRESOLVED_DEPENDENCIES=true
 # Build for Mac App Store
 echo "   🍎 Creating Mac App Store build..."
 
+# Set CFBundleVersion via environment variable (electron-builder convention)
+export ELECTRON_BUILDER_BUILD_NUMBER="$BUILD_NUMBER"
+
 # electron-builder command for mas (Mac App Store)
+# Note: electron-builder will use:
+# - CSC_NAME for app signing (Apple Distribution)
+# - CSC_INSTALLER_NAME (or auto-detect) for pkg signing (Mac Installer Distribution)
+# - ELECTRON_BUILDER_BUILD_NUMBER for CFBundleVersion
 yarn run electron-builder --mac mas --config.mac.target=mas \
     --config.appId="$BUNDLE_ID" \
     --config.productName="$APP_NAME" \
     --config.mac.category="public.app-category.developer-tools" \
-    --config.directories.output="$BUILD_DIR" \
-    --config.buildVersion="$BUILD_NUMBER"
+    --config.directories.output="$BUILD_DIR"
 
 echo "✅ Mac App Store package created"
 
@@ -235,23 +271,114 @@ if [ -n "$PKG_PATH" ] && [ -f "$PKG_PATH" ]; then
 
     # Verify PKG signature
     echo "   📝 Verifying PKG signature..."
-    pkgutil --check-signature "$PKG_PATH" > /dev/null 2>&1 && echo "   ✅ PKG signature valid" || echo "   ⚠️  PKG signature verification failed"
+    PKG_CHECK_OUTPUT=$(pkgutil --check-signature "$PKG_PATH" 2>&1)
+    PKG_CHECK_STATUS=$?
+
+    if [ $PKG_CHECK_STATUS -eq 0 ]; then
+        echo "   ✅ PKG signature valid"
+        echo ""
+        echo "   📋 PKG Signature Details:"
+        echo "$PKG_CHECK_OUTPUT" | grep -E "(Status|Developer ID|Certificate)" | sed 's/^/      /'
+    else
+        echo "   ❌ PKG signature verification FAILED!"
+        echo ""
+        echo "   Error details:"
+        echo "$PKG_CHECK_OUTPUT" | sed 's/^/      /'
+        echo ""
+        echo "   ⚠️  This PKG may be rejected by App Store Connect!"
+        echo "   Common causes:"
+        echo "      - Mac Installer Distribution certificate not found"
+        echo "      - Certificate expired or revoked"
+        echo "      - electron-builder failed to sign the PKG"
+        echo ""
+        echo "   To fix:"
+        echo "      1. Verify certificates: security find-identity -v -p codesigning"
+        echo "      2. Check CSC_INSTALLER_NAME environment variable"
+        echo "      3. Re-run build with DEBUG=electron-builder for detailed logs"
+        echo ""
+        read -p "   Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    fi
 else
     echo "❌ Error: PKG file not found in $BUILD_DIR"
     echo "   Searching for build artifacts..."
     find "$BUILD_DIR" -type f \( -name "*.pkg" -o -name "*.app" \) 2>/dev/null || echo "   No build artifacts found"
+    echo ""
+    echo "   Common causes:"
+    echo "      - electron-builder failed during packaging"
+    echo "      - Code signing failed"
+    echo "      - Missing provisioning profile"
+    echo ""
+    echo "   Check build logs above for errors"
     exit 1
 fi
 
 # Find and verify .app bundle
 APP_PATH=$(find "$BUILD_DIR" -name "$APP_NAME.app" -type d | head -1)
 if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
+    echo ""
     echo "   📝 Verifying app bundle signature..."
-    codesign --verify --verbose "$APP_PATH" 2>&1 | grep -q "valid on disk" && echo "   ✅ App bundle signature valid" || echo "   ⚠️  App bundle signature verification failed"
+    APP_CHECK_OUTPUT=$(codesign --verify --deep --strict --verbose=2 "$APP_PATH" 2>&1)
+    APP_CHECK_STATUS=$?
+
+    if [ $APP_CHECK_STATUS -eq 0 ]; then
+        echo "   ✅ App bundle signature valid"
+
+        # Display signature details
+        echo ""
+        echo "   📋 App Signature Details:"
+        codesign --display --verbose=4 "$APP_PATH" 2>&1 | grep -E "(Authority|TeamIdentifier|Identifier|Format)" | sed 's/^/      /'
+
+        # Check if Python runtime was signed (via afterSign.js)
+        echo ""
+        echo "   🔍 Checking Python runtime signature..."
+        PYTHON_PATHS=(
+            "$APP_PATH/Contents/Resources/python/darwin-arm64/python/bin/python3"
+            "$APP_PATH/Contents/Resources/python/darwin-x64/python/bin/python3"
+            "$APP_PATH/Contents/Resources/extraResources/python/darwin-arm64/python/bin/python3"
+            "$APP_PATH/Contents/Resources/extraResources/python/darwin-x64/python/bin/python3"
+        )
+
+        PYTHON_FOUND=false
+        for PYTHON_BIN in "${PYTHON_PATHS[@]}"; do
+            if [ -f "$PYTHON_BIN" ]; then
+                PYTHON_FOUND=true
+                PYTHON_SIG_OUTPUT=$(codesign --verify --verbose "$PYTHON_BIN" 2>&1)
+                PYTHON_SIG_STATUS=$?
+
+                if [ $PYTHON_SIG_STATUS -eq 0 ]; then
+                    echo "   ✅ Python runtime signed: $(basename $(dirname $(dirname $(dirname "$PYTHON_BIN"))))"
+                else
+                    echo "   ⚠️  Python runtime NOT signed: $(basename $(dirname $(dirname $(dirname "$PYTHON_BIN"))))"
+                    echo "      This may cause App Store rejection!"
+                    echo "      Check that scripts/afterSign.js ran successfully"
+                fi
+                break
+            fi
+        done
+
+        if [ "$PYTHON_FOUND" = false ]; then
+            echo "   ⚠️  Python runtime not found in app bundle"
+            echo "      If Python is required, check extraResources packaging"
+        fi
+    else
+        echo "   ❌ App bundle signature verification FAILED!"
+        echo ""
+        echo "   Error details:"
+        echo "$APP_CHECK_OUTPUT" | sed 's/^/      /'
+        echo ""
+        echo "   ⚠️  This app will be rejected by App Store Connect!"
+        exit 1
+    fi
 else
-    echo "   ⚠️  App bundle not found, skipping signature verification"
+    echo "   ⚠️  App bundle not found at expected location"
+    echo "   Searched for: $APP_NAME.app in $BUILD_DIR"
 fi
 
+echo ""
 echo "✅ Build verification completed"
 
 # --- Step 5: Upload to App Store Connect (Optional) ---

@@ -106,9 +106,8 @@
       "hardenedRuntime": false,
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist",
-      "provisioningProfile": "klever.provisionprofile",
+      "provisioningProfile": "build/embedded.provisionprofile",
       "notarize": false,
-      "identity": "JooHyung Park (ZQC7QNZ4J8)",
       "minimumSystemVersion": "12.0"
     },
     "win": {
