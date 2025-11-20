@@ -33,11 +33,9 @@ npm run electron       # Electron only (requires Vite running separately)
 
 ### Build & Package (Electron Forge)
 ```bash
-npm run build:main      # Compile TypeScript main process → dist-electron/
-npm run build:renderer  # Build React app → dist/
-npm run build          # Build both main and renderer
-npm run package        # Package app (unsigned) → out/
-npm run make           # Create distributable packages (AppX, PKG, ZIP)
+npm run typecheck      # Type-check TypeScript without building
+npm run package        # Package app (unsigned) → out/klever-desktop-{platform}/
+npm run make           # Create distributable packages (AppX, PKG, ZIP) → out/make/
 npm run publish        # Publish to configured publishers
 ```
 
@@ -646,7 +644,7 @@ interface Task {
 
 **TypeScript errors after refactoring**:
 - **Cause**: Import paths changed or types not updated
-- **Fix**: Run `npm run build:main` to check main process types, and ensure all imports use the new structure
+- **Fix**: Run `npm run typecheck` to check TypeScript errors, and ensure all imports use the new structure
 
 **Import errors after refactor**:
 - **Cause**: Components moved to standard src/components/, src/hooks/, src/types/ structure
@@ -670,8 +668,8 @@ Main Electron Forge configuration with:
 - **hooks**: Pre-package and post-make build hooks
 
 #### Vite Configs for Electron Forge
-- **vite.main.config.js**: Main process build (main/index.ts → dist-electron/index.js)
-- **vite.preload.config.js**: Preload script build (main/preload.ts → dist-electron/preload.js)
+- **vite.main.config.js**: Main process build configuration (Forge outputs to .vite/build/main.js)
+- **vite.preload.config.js**: Preload script build configuration (Forge outputs to .vite/build/preload.js)
 - **vite.config.ts**: Renderer process build (src/ → dist/)
 
 ### Makers (Distribution Packages)
@@ -830,7 +828,7 @@ Options:
 ```
 
 **Checks**:
-- ✅ Electron build artifacts (dist-electron/, dist/)
+- ✅ Electron build artifacts (.vite/build/, dist/)
 - ✅ appagent Python scripts
 - ✅ Python runtime (optional with --skip-python)
 - ✅ Python dependencies (ollama, playwright)

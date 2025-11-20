@@ -476,18 +476,18 @@ For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
 #### Development Commands
 
 ```bash
-npm run electron:dev    # Full dev environment (Vite + Electron with hot reload)
+npm run start          # Electron Forge dev mode (Vite + Electron with hot reload)
 npm run dev            # Vite dev server only (http://localhost:5173)
 npm run electron       # Electron only (requires Vite running separately)
 ```
 
-#### Build Commands
+#### Build & Package Commands
 
 ```bash
-npm run build          # Build both main and renderer processes
-npm run build:main     # Build Electron main process → dist-electron/
-npm run build:renderer # Build React app → dist/
-npm run package        # Package Electron app for distribution
+npm run typecheck      # Type-check TypeScript without building
+npm run package        # Package Electron app → out/klever-desktop-{platform}/
+npm run make           # Create distributable packages → out/make/
+npm run publish        # Publish to configured publishers
 ```
 
 #### Python Bundling Commands
@@ -520,7 +520,7 @@ node scripts/verify-bundle.js
 ```
 
 This checks:
-- ✅ Electron build artifacts (`dist-electron/`, `dist/`)
+- ✅ Electron build artifacts (`.vite/build/`, `dist/`)
 - ✅ appagent Python scripts
 - ✅ Python runtime (optional with `--skip-python`)
 - ✅ Python dependencies (ollama, playwright)
@@ -528,34 +528,47 @@ This checks:
 #### Package for Distribution
 
 ```bash
-# 1. Build the app
-npm run build
-
-# 2. Verify bundle (optional but recommended)
+# 1. Verify bundle (optional but recommended)
 node scripts/verify-bundle.js
 
-# 3. Package for your platform
+# 2. Package for your platform
 npm run package
+
+# 3. Create distributable packages
+npm run make
 ```
 
-Packaged apps will be in the `dist/` directory:
-- **macOS**: `.dmg` file
-- **Windows**: `.exe` installer
-- **Linux**: `.AppImage`, `.deb`, `.rpm`
+Output structure:
+- **Packaged apps**: `out/klever-desktop-{platform}-{arch}/` (unsigned, development)
+- **Distributable packages**: `out/make/`
+  - **macOS**: `.pkg` (Mac App Store), `.zip`
+  - **Windows**: `.appx` (Windows Store - unsigned), `.zip`
+  - **Linux**: `.zip`
 
 #### Platform-Specific Packaging
 
-To package for a specific platform:
+Electron Forge automatically packages for your current platform. To target specific platforms, configure `makers` in `forge.config.js`:
 
+```javascript
+makers: [
+  {
+    name: '@electron-forge/maker-appx',
+    platforms: ['win32'],  // Windows Store
+  },
+  {
+    name: '@electron-forge/maker-pkg',
+    platforms: ['mas'],    // Mac App Store
+  },
+  {
+    name: '@electron-forge/maker-zip',
+    platforms: ['darwin', 'linux', 'win32'],
+  },
+]
+```
+
+Then run:
 ```bash
-# macOS (requires macOS)
-npm run package -- --mac
-
-# Windows (requires Windows or Wine)
-npm run package -- --win
-
-# Linux
-npm run package -- --linux
+npm run make  # Creates packages for configured makers
 ```
 
 ---
@@ -571,7 +584,7 @@ npm run package -- --linux
 | **Backend** | Python 3.11+ • AppAgent (monorepo) |
 | **Automation** | ADB (Android) • Playwright (Web) |
 | **AI** | Ollama (local) • OpenAI API • OpenRouter |
-| **Build** | Vite • TypeScript • ESLint • Electron Builder |
+| **Build** | Electron Forge 7 • Vite • TypeScript • ESLint |
 
 </div>
 

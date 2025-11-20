@@ -5,10 +5,7 @@
   "main": ".vite/build/main.js",
   "scripts": {
     "dev": "vite",
-    "build:renderer": "tsc && vite build",
-    "build:main": "tsc -p tsconfig.main.json",
-    "build": "yarn build:main && yarn build:renderer",
-    "prebuild": "node scripts/verify-bundle.js --skip-python",
+    "typecheck": "tsc && tsc -p tsconfig.main.json",
     "preview": "vite preview",
     "electron": "electron .",
     "start": "electron-forge start",

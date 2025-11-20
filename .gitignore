@@ -20,13 +20,12 @@ build
 # Ignore macOS file system metadata
 .DS_Store
 
-# Ignore IDEA build output directory
+# Ignore build output directory (IDEA and Electron Forge)
 out/
 
 # Electron app (root-level)
 node_modules/
 dist/
-dist-electron/
 .vite/
 
 # Yarn (ignore cache and build artifacts, but keep releases/plugins/sdks)
