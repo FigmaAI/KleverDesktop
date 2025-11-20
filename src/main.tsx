@@ -85,6 +85,7 @@ if (!window.electronAPI) {
     }),
     configSave: async () => ({ success: true }),
     configReset: async () => ({ success: true }),
+    configHardReset: async () => ({ success: true }),
     checkSetup: async () => ({ success: true, setupComplete: true }),
     projectStart: async () => ({ success: true }),
     projectStop: async () => ({ success: true }),

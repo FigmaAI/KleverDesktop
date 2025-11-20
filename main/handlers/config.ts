@@ -7,7 +7,7 @@
  */
 
 import { IpcMain } from 'electron';
-import { loadAppConfig, saveAppConfig, resetAppConfig, configExists } from '../utils/config-storage';
+import { loadAppConfig, saveAppConfig, resetAppConfig, configExists, hardResetUserData } from '../utils/config-storage';
 import { checkPythonRuntime } from '../utils/python-runtime';
 import { AppConfig } from '../types/config';
 
@@ -127,6 +127,20 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[config:reset] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Hard reset: Delete entire ~/.klever-desktop/ directory
+  ipcMain.handle('config:hardReset', async () => {
+    try {
+      console.log('[config:hardReset] Performing HARD RESET...');
+      hardResetUserData();
+      console.log('[config:hardReset] Hard reset successful - all user data deleted');
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[config:hardReset] Error:', message);
       return { success: false, error: message };
     }
   });

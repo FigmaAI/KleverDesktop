@@ -53,8 +53,11 @@ interface MenuItem {
 
 export function Settings() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [hardResetDialogOpen, setHardResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [isHardResetting, setIsHardResetting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [hardResetErrorMessage, setHardResetErrorMessage] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>('appearance')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { mode, setMode } = useColorScheme()
@@ -182,6 +185,33 @@ export function Settings() {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
       setErrorMessage(`An error occurred while resetting configuration: ${errorMsg}`)
       setIsResetting(false)
+    }
+  }
+
+  const handleHardReset = async () => {
+    setIsHardResetting(true)
+    setHardResetErrorMessage(null)
+
+    try {
+      console.log('[Settings] Calling configHardReset...')
+      const result = await window.electronAPI.configHardReset()
+      console.log('[Settings] configHardReset result:', result)
+
+      if (result.success) {
+        console.log('[Settings] Hard reset successful, reloading app...')
+        // Reload the entire app to re-check setup status
+        window.location.reload()
+      } else {
+        const errorMsg = result.error || 'Unknown error occurred'
+        console.error('[Settings] Failed to perform hard reset:', errorMsg)
+        setHardResetErrorMessage(`Failed to perform hard reset: ${errorMsg}`)
+        setIsHardResetting(false)
+      }
+    } catch (error) {
+      console.error('[Settings] Error performing hard reset:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+      setHardResetErrorMessage(`An error occurred while performing hard reset: ${errorMsg}`)
+      setIsHardResetting(false)
     }
   }
 
@@ -422,17 +452,44 @@ export function Settings() {
               <Typography level="title-lg" sx={{ mb: 1 }} textColor="danger.plainColor">
                 Danger Zone
               </Typography>
-              <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-                Reset all settings and return to setup wizard
-              </Typography>
-              <Button
-                color="danger"
-                variant="outlined"
-                startDecorator={<WarningIcon />}
-                onClick={() => setResetDialogOpen(true)}
-              >
-                Reset Configuration
-              </Button>
+
+              {/* Reset Configuration */}
+              <Box sx={{ mb: 3 }}>
+                <Typography level="title-md" sx={{ mb: 1 }}>
+                  Reset Configuration
+                </Typography>
+                <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
+                  Delete configuration file and return to setup wizard
+                </Typography>
+                <Button
+                  color="danger"
+                  variant="outlined"
+                  startDecorator={<WarningIcon />}
+                  onClick={() => setResetDialogOpen(true)}
+                >
+                  Reset Configuration
+                </Button>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              {/* Hard Reset */}
+              <Box>
+                <Typography level="title-md" sx={{ mb: 1 }} textColor="danger.plainColor">
+                  Hard Reset (Delete All Data)
+                </Typography>
+                <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
+                  Delete entire user data directory including all projects, settings, and Python runtime
+                </Typography>
+                <Button
+                  color="danger"
+                  variant="solid"
+                  startDecorator={<ErrorIcon />}
+                  onClick={() => setHardResetDialogOpen(true)}
+                >
+                  Hard Reset All Data
+                </Button>
+              </Box>
             </Sheet>
           </Stack>
         </Box>
@@ -498,6 +555,87 @@ export function Settings() {
               disabled={isResetting}
             >
               Yes, Reset Configuration
+            </Button>
+          </Box>
+        </ModalDialog>
+      </Modal>
+
+      {/* Hard Reset Confirmation Dialog */}
+      <Modal open={hardResetDialogOpen} onClose={() => !isHardResetting && setHardResetDialogOpen(false)}>
+        <ModalDialog variant="outlined" role="alertdialog" sx={{ maxWidth: 500 }}>
+          {!isHardResetting && <ModalClose />}
+          <Typography level="h4" startDecorator={<ErrorIcon color="error" />}>
+            Hard Reset All Data?
+          </Typography>
+          <Divider />
+
+          {hardResetErrorMessage && (
+            <Alert color="danger" variant="soft" startDecorator={<ErrorIcon />} sx={{ mt: 2 }}>
+              <Box>
+                <Typography level="title-sm" fontWeight="bold">
+                  Error
+                </Typography>
+                <Typography level="body-sm">{hardResetErrorMessage}</Typography>
+              </Box>
+            </Alert>
+          )}
+
+          <Alert color="danger" variant="soft" sx={{ mt: hardResetErrorMessage ? 2 : 1 }}>
+            <Box>
+              <Typography level="title-sm" fontWeight="bold" textColor="danger.plainColor">
+                ⚠️ WARNING: This will delete EVERYTHING!
+              </Typography>
+              <Typography level="body-sm" sx={{ mt: 1 }}>
+                This operation will permanently delete the entire <code>~/.klever-desktop/</code> directory.
+              </Typography>
+            </Box>
+          </Alert>
+
+          <Typography level="body-md" sx={{ mt: 2 }}>
+            This will permanently delete:
+          </Typography>
+          <Box component="ul" sx={{ pl: 3, mt: 1 }}>
+            <Typography component="li" level="body-sm" fontWeight="bold">
+              All projects and tasks
+            </Typography>
+            <Typography component="li" level="body-sm" fontWeight="bold">
+              All configuration and settings
+            </Typography>
+            <Typography component="li" level="body-sm" fontWeight="bold">
+              Python runtime and installed packages
+            </Typography>
+            <Typography component="li" level="body-sm" fontWeight="bold">
+              All other application data
+            </Typography>
+          </Box>
+
+          <Typography level="body-md" sx={{ mt: 2, fontWeight: 'bold', color: 'danger.plainColor' }}>
+            This action is IRREVERSIBLE and cannot be undone!
+          </Typography>
+          <Typography level="body-md" sx={{ mt: 1 }}>
+            You will need to go through the complete setup process again from scratch.
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 2 }}>
+            <Button
+              variant="plain"
+              color="neutral"
+              onClick={() => {
+                setHardResetDialogOpen(false)
+                setHardResetErrorMessage(null)
+              }}
+              disabled={isHardResetting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="solid"
+              color="danger"
+              loading={isHardResetting}
+              onClick={handleHardReset}
+              disabled={isHardResetting}
+            >
+              Yes, Delete Everything
             </Button>
           </Box>
         </ModalDialog>
