@@ -178,10 +178,10 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
           # Find PKG file
-          PKG_FILE=$(find out/make/pkg -name "*.pkg" -type f | head -n 1)
+          PKG_FILE=$(find out/make -name "*.pkg" -type f | head -n 1)
 
           if [ -z "$PKG_FILE" ]; then
-            echo "❌ Error: PKG file not found in out/make/pkg/"
+            echo "❌ Error: PKG file not found in out/make/"
             exit 1
           fi
 
@@ -227,7 +227,7 @@ jobs:
         with:
           name: klever-desktop-mas-v${{ steps.version.outputs.app_version }}-build${{ steps.version.outputs.build_number }}
           path: |
-            out/make/pkg/*.pkg
+            out/make/*.pkg
           retention-days: 30
 
       # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
