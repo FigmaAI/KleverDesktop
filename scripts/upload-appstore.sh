@@ -208,41 +208,69 @@ upload_with_retry() {
     log_info "Upload attempt $attempt of $max_attempts..."
     echo ""
 
-    # Try upload with altool
-    if xcrun altool --upload-app \
+    # Capture output to check for specific error patterns
+    UPLOAD_OUTPUT=$(xcrun altool --upload-app \
       --type osx \
       --file "$PKG_FILE" \
       --username "$APPLE_ID" \
       --password "$APPLE_APP_SPECIFIC_PASSWORD" \
       --asc-provider "$APPLE_TEAM_ID" \
-      --verbose 2>&1 | tee /tmp/altool_output.log; then
-
-      # Check if output contains success indicators
-      if grep -q -i "upload successful\|no errors uploading" /tmp/altool_output.log; then
-        echo ""
-        log_success "Upload successful!"
-        return 0
-      fi
-    fi
-
+      --verbose 2>&1 | tee /tmp/altool_output.log)
     EXIT_CODE=$?
 
-    # Check for retryable errors
-    if [ $attempt -lt $max_attempts ]; then
+    # Check for success
+    if [ $EXIT_CODE -eq 0 ]; then
+      echo ""
+      log_success "Upload successful!"
+      return 0
+    fi
+
+    # Check for duplicate build (treat as success)
+    if echo "$UPLOAD_OUTPUT" | grep -q -i "This bundle Identical to\|already been uploaded\|This bundle is invalid.*The bundle uses the same version"; then
+      echo ""
+      log_warning "Build number already exists in App Store Connect (duplicate build)"
+      log_success "Treating as success - you can proceed with the existing build"
+      log_info "To upload a new build, increment the build number in forge.config.js"
+      return 0
+    fi
+
+    # Check for other success patterns
+    if echo "$UPLOAD_OUTPUT" | grep -q -i "upload successful\|no errors uploading"; then
+      echo ""
+      log_success "Upload successful!"
+      return 0
+    fi
+
+    # Check if error is retryable (not authentication/config issues)
+    IS_RETRYABLE=true
+    if echo "$UPLOAD_OUTPUT" | grep -q -i "Invalid credentials\|authentication failed\|invalid username or password"; then
+      IS_RETRYABLE=false
+      log_error "Authentication failed - credentials are invalid"
+    elif echo "$UPLOAD_OUTPUT" | grep -q -i "No valid bundle id\|bundle identifier is invalid"; then
+      IS_RETRYABLE=false
+      log_error "Bundle ID configuration issue"
+    fi
+
+    # Retry if appropriate
+    if [ "$IS_RETRYABLE" = true ] && [ $attempt -lt $max_attempts ]; then
       log_warning "Upload attempt $attempt failed (exit code: $EXIT_CODE)"
-      log_info "Waiting ${wait_time}s before retry..."
+      log_info "This may be a transient error. Waiting ${wait_time}s before retry..."
       sleep $wait_time
       attempt=$((attempt + 1))
       wait_time=$((wait_time * 2)) # Exponential backoff
     else
-      # Final attempt failed
+      # Final attempt failed or non-retryable error
       echo ""
-      log_error "Upload failed after $max_attempts attempts (exit code: $EXIT_CODE)"
+      if [ "$IS_RETRYABLE" = true ]; then
+        log_error "Upload failed after $max_attempts attempts (exit code: $EXIT_CODE)"
+      else
+        log_error "Upload failed with non-retryable error (exit code: $EXIT_CODE)"
+      fi
       echo ""
 
       # Show last output
       log_info "Last upload output:"
-      tail -20 /tmp/altool_output.log | sed 's/^/   /'
+      tail -30 /tmp/altool_output.log | sed 's/^/   /'
       echo ""
 
       log_info "Common issues:"
@@ -258,7 +286,10 @@ upload_with_retry() {
       echo "   4. Bundle ID mismatch"
       echo "      → Ensure Bundle ID in PKG matches App Store Connect"
       echo ""
-      echo "   5. altool is deprecated (Apple's tool, not ours)"
+      echo "   5. Duplicate build number"
+      echo "      → Increment buildVersion in forge.config.js if build already exists"
+      echo ""
+      echo "   6. altool is deprecated (Apple's tool, not ours)"
       echo "      → Consider migrating to App Store Connect API"
       echo "      → See: https://developer.apple.com/documentation/appstoreconnectapi"
       echo ""
