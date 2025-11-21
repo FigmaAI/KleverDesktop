@@ -143,7 +143,7 @@ export function ProjectCreate() {
                 <Input
                   readOnly
                   value={workspaceDir}
-                  placeholder="Default: ~/Documents"
+                  placeholder="Default: App container (MAS-safe)"
                   endDecorator={
                     <Button
                       variant="soft"
@@ -156,7 +156,7 @@ export function ProjectCreate() {
                   }
                 />
                 <FormHelperText>
-                  The directory where project data and outputs will be stored.
+                  Choose a custom folder for project files, or leave empty for default container location.
                 </FormHelperText>
               </FormControl>
             </Stack>

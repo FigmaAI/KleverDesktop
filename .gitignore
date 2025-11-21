@@ -63,3 +63,4 @@ gcp-service-account.json
 
 # Resource 
 resources
+*.p8

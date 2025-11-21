@@ -5,10 +5,9 @@
  * IMPORTANT: Integration test now uses config.json and CLI parameters
  */
 
-import { IpcMain, BrowserWindow } from 'electron';
+import { IpcMain, BrowserWindow, app } from 'electron';
 import { ChildProcess } from 'child_process';
 import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
 import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
@@ -110,8 +109,9 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       }
 
       // Setup workspace directory for integration test
-      const homeDir = os.homedir();
-      const workspaceDir = path.join(homeDir, 'Documents');
+      // Use sandboxed container for MAS compatibility
+      const userDataPath = app.getPath('userData');
+      const workspaceDir = path.join(userDataPath, 'integration-tests');
       ensureDirectoryExists(workspaceDir);
 
       // Create or get project

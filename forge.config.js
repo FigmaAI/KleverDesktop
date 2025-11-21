@@ -15,21 +15,32 @@ const convertToWinStoreVersion = (version) => {
 
 const appVersion = convertToWinStoreVersion(packageJson.version);
 
+// Check if this is a MAS build (Mac App Store)
+// MAS builds need special signing with sandbox entitlements
+// Darwin builds should NOT be signed with MAS certificates
+const isMASBuild = process.env.PLATFORM === 'mas' || process.argv.includes('--platform=mas');
+
 module.exports = {
   packagerConfig: {
     appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
-    buildVersion: '13', // Build number for App Store (increment for each submission) - Fixed DNS crash in Build 12
+    buildVersion: '15', // Build number for App Store (increment for each submission) - Fixed signing configuration
     asar: false, // Disable asar temporarily to debug renderer packaging
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
       'appagent', // Python scripts only, not Python runtime
       'dist' // Renderer build output (Vite builds to dist/)
     ],
+    // Export compliance: Skip encryption dialog in App Store Connect
+    // We only use standard HTTPS/TLS which is exempt from export regulations
+    extendInfo: {
+      ITSAppUsesNonExemptEncryption: false
+    },
 
-    // Mac App Store signing configuration
-    osxSign: {
+    // Mac App Store signing configuration (ONLY for MAS builds)
+    // Darwin builds will use ad-hoc or no signing
+    osxSign: isMASBuild ? {
       identity: process.env.CSC_NAME, // Apple Distribution
       platform: 'mas',
       type: 'distribution',
@@ -38,38 +49,38 @@ module.exports = {
       'entitlements-inherit': path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
       // Optional: Add provisioning profile if you have one
       provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
-      // Explicitly list all binaries that need signing
-      binaries: [
-        'Contents/MacOS/Klever Desktop',
-        'Contents/Frameworks/Klever Desktop Helper.app',
-        'Contents/Frameworks/Klever Desktop Helper (GPU).app',
-        'Contents/Frameworks/Klever Desktop Helper (Plugin).app',
-        'Contents/Frameworks/Klever Desktop Helper (Renderer).app',
-        'Contents/Library/LoginItems/Klever Desktop Login Helper.app',
-      ],
       // CRITICAL: Sign all Electron helper processes with inherit entitlements
       optionsForFile: (filePath) => {
+        // IMPORTANT: Only sign executables and .app bundles, not resource files
+        const isExecutable = filePath.endsWith('.app') ||
+                            filePath.endsWith('.dylib') ||
+                            filePath.endsWith('.framework') ||
+                            (!filePath.includes('.') && !filePath.includes('Resources'));
+
+        if (!isExecutable) {
+          // Skip resource files (locale.pak, images, etc.)
+          return undefined;
+        }
+
         // All helper apps and Login Items must use inherit entitlements
         const isHelper = filePath.includes('Helper') ||
                         filePath.includes('LoginItems') ||
                         filePath.includes('Login Helper');
 
         if (isHelper) {
-          console.log(`[Signing Helper] ${filePath}`);
           return {
             entitlements: path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
           };
         }
 
         // Main app uses main entitlements
-        console.log(`[Signing Main App] ${filePath}`);
         return {
           entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
         };
       },
       hardenedRuntime: false, // MAS doesn't need hardened runtime (notarization is not required)
       gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
-    }
+    } : undefined, // No signing for darwin builds
   },
 
   rebuildConfig: {},

@@ -54,7 +54,9 @@ Arguments:
   pkg-file          Path to the signed .pkg file
 
 Environment Variables (Option 1 - API Key, Recommended):
-  APPSTORE_API_KEY_BASE64    App Store Connect API Key (Base64 encoded .p8 file)
+  APPSTORE_API_KEY_BASE64    App Store Connect API Key (Base64 encoded .p8 file) - for CI/CD
+  OR
+  APPSTORE_API_KEY           App Store Connect API Key (.p8 file path) - for local development
   APPSTORE_API_KEY_ID        API Key ID (10 characters)
   APPSTORE_API_ISSUER_ID     Issuer ID (UUID format)
 
@@ -64,8 +66,14 @@ Environment Variables (Option 2 - Apple ID, Legacy):
   APPLE_TEAM_ID              Your Team ID
 
 Examples:
-  # Using API Key (recommended)
+  # Using API Key with Base64 (recommended for CI/CD)
   export APPSTORE_API_KEY_BASE64="LS0tLS1CRUdJTi..."
+  export APPSTORE_API_KEY_ID="AB12CD34EF"
+  export APPSTORE_API_ISSUER_ID="12345678-1234-1234-1234-123456789abc"
+  $0 out/make/klever-desktop-2.0.0-universal.pkg
+
+  # Using API Key with file path (recommended for local development)
+  export APPSTORE_API_KEY="build/AuthKey_AB12CD34EF.p8"
   export APPSTORE_API_KEY_ID="AB12CD34EF"
   export APPSTORE_API_ISSUER_ID="12345678-1234-1234-1234-123456789abc"
   $0 out/make/klever-desktop-2.0.0-universal.pkg
@@ -129,25 +137,55 @@ USE_API_KEY=false
 USE_APPLE_ID=false
 
 # Check for API Key credentials (preferred)
-if [ -n "${APPSTORE_API_KEY_BASE64:-}" ] && [ -n "${APPSTORE_API_KEY_ID:-}" ] && [ -n "${APPSTORE_API_ISSUER_ID:-}" ]; then
-  log_success "API Key credentials found (modern method)"
-  USE_API_KEY=true
+# Support both Base64 encoded key and direct file path
+if [ -n "${APPSTORE_API_KEY_ID:-}" ] && [ -n "${APPSTORE_API_ISSUER_ID:-}" ]; then
+  if [ -n "${APPSTORE_API_KEY_BASE64:-}" ]; then
+    # Base64 encoded key (CI/CD environments)
+    log_success "API Key credentials found (Base64 encoded, modern method)"
+    USE_API_KEY=true
 
-  # Decode and save API Key to standard location (altool expects it here)
-  API_KEY_DIR="$HOME/.private_keys"
-  mkdir -p "$API_KEY_DIR"
-  API_KEY_FILE="$API_KEY_DIR/AuthKey_${APPSTORE_API_KEY_ID}.p8"
-  echo "$APPSTORE_API_KEY_BASE64" | base64 --decode > "$API_KEY_FILE"
+    # Decode and save API Key to standard location (altool expects it here)
+    API_KEY_DIR="$HOME/.private_keys"
+    mkdir -p "$API_KEY_DIR"
+    API_KEY_FILE="$API_KEY_DIR/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+    echo "$APPSTORE_API_KEY_BASE64" | base64 --decode > "$API_KEY_FILE"
 
-  if [ -f "$API_KEY_FILE" ]; then
-    log_success "API Key decoded successfully"
-    log_info "Key ID: $APPSTORE_API_KEY_ID"
-    log_info "Issuer ID: ${APPSTORE_API_ISSUER_ID:0:8}...${APPSTORE_API_ISSUER_ID: -4}"
-    log_info "Saved to: ~/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
-  else
-    log_error "Failed to decode API Key"
-    rm -f "$API_KEY_FILE"
-    exit 1
+    if [ -f "$API_KEY_FILE" ]; then
+      log_success "API Key decoded successfully"
+      log_info "Key ID: $APPSTORE_API_KEY_ID"
+      log_info "Issuer ID: ${APPSTORE_API_ISSUER_ID:0:8}...${APPSTORE_API_ISSUER_ID: -4}"
+      log_info "Saved to: ~/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+    else
+      log_error "Failed to decode API Key"
+      rm -f "$API_KEY_FILE"
+      exit 1
+    fi
+  elif [ -n "${APPSTORE_API_KEY:-}" ]; then
+    # Direct file path (local development)
+    log_success "API Key file path found (local development method)"
+    USE_API_KEY=true
+
+    # Resolve relative path to absolute
+    if [[ "$APPSTORE_API_KEY" != /* ]]; then
+      APPSTORE_API_KEY="$(pwd)/$APPSTORE_API_KEY"
+    fi
+
+    # Copy to standard location for altool
+    API_KEY_DIR="$HOME/.private_keys"
+    mkdir -p "$API_KEY_DIR"
+    API_KEY_FILE="$API_KEY_DIR/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+
+    if [ -f "$APPSTORE_API_KEY" ]; then
+      cp "$APPSTORE_API_KEY" "$API_KEY_FILE"
+      log_success "API Key copied successfully"
+      log_info "Key ID: $APPSTORE_API_KEY_ID"
+      log_info "Issuer ID: ${APPSTORE_API_ISSUER_ID:0:8}...${APPSTORE_API_ISSUER_ID: -4}"
+      log_info "Source: $APPSTORE_API_KEY"
+      log_info "Copied to: ~/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+    else
+      log_error "API Key file not found: $APPSTORE_API_KEY"
+      exit 1
+    fi
   fi
 fi
 

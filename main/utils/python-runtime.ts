@@ -40,13 +40,17 @@ export function getPythonPath(): string {
   }
 
   if (!fs.existsSync(pythonExe)) {
+    console.error('[Python Runtime] ERROR: Python not found at:', pythonExe);
+    console.error('[Python Runtime] Install dir:', pythonDir);
+    console.error('[Python Runtime] User data:', app.getPath('userData'));
+
     throw new Error(
       `Python runtime not found at ${pythonExe}. ` +
       `Please install Python from the Setup Wizard.`
     );
   }
 
-  console.log('[Python Runtime] Using Python:', pythonExe);
+  console.log('[Python Runtime] ✅ Using Python:', pythonExe);
   return pythonExe;
 }
 
@@ -68,12 +72,33 @@ export function isPythonInstalled(): boolean {
 export function getAppagentPath(): string {
   const isDev = process.env.NODE_ENV === 'development';
 
+  // Debug logging for MAS builds
+  console.log('[Python Runtime] Environment:', {
+    isDev,
+    NODE_ENV: process.env.NODE_ENV,
+    resourcesPath: process.resourcesPath,
+    platform: os.platform(),
+    arch: os.arch(),
+  });
+
   if (isDev) {
     return path.join(__dirname, '..', '..', 'appagent');
   } else {
     // Production: appagent is an extraResource in Resources/
     // process.resourcesPath points to app/Contents/Resources/
-    return path.join(process.resourcesPath, 'appagent');
+    const appagentPath = path.join(process.resourcesPath, 'appagent');
+    console.log('[Python Runtime] Appagent path:', appagentPath);
+    console.log('[Python Runtime] Appagent exists:', fs.existsSync(appagentPath));
+
+    if (!fs.existsSync(appagentPath)) {
+      console.error('[Python Runtime] ERROR: Appagent directory not found!');
+      console.error('[Python Runtime] Searched at:', appagentPath);
+      console.error('[Python Runtime] Resources contents:',
+        fs.readdirSync(process.resourcesPath).slice(0, 20)
+      );
+    }
+
+    return appagentPath;
   }
 }
 
