@@ -19,14 +19,27 @@ function App() {
       console.log('[App.tsx] window.electronAPI:', window.electronAPI)
       console.log('[App.tsx] window.electronAPI.checkSetup:', window.electronAPI?.checkSetup)
 
+      // Add timeout protection to prevent hanging on IPC calls (Build 13+)
+      // Prevents crash if IPC call triggers DNS resolution that fails
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Setup check timeout after 5 seconds')), 5000)
+      );
+
       try {
         console.log('[App.tsx] Calling window.electronAPI.checkSetup()')
-        const result = await window.electronAPI.checkSetup()
+
+        // Race between actual IPC call and timeout
+        const result = await Promise.race([
+          window.electronAPI.checkSetup(),
+          timeoutPromise
+        ]) as { setupComplete: boolean };
+
         console.log('[App.tsx] checkSetup result:', result)
         setSetupComplete(result.setupComplete)
         console.log('[App.tsx] Setup complete:', result.setupComplete)
       } catch (error) {
         console.error('[App.tsx] Failed to check setup status:', error)
+        // Default to showing setup wizard on error - safer than blocking
         setSetupComplete(false)
       } finally {
         setIsChecking(false)
@@ -34,7 +47,11 @@ function App() {
       }
     }
 
-    checkSetup()
+    // Add 500ms delay to let Electron fully initialize before making IPC calls (Build 13+)
+    // Prevents race conditions during app startup that can trigger crashes
+    const timeoutId = setTimeout(checkSetup, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [])
 
   // Show loading state while checking
