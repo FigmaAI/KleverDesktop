@@ -35,8 +35,8 @@ app.commandLine.appendSwitch('disable-http-cache');
 
 // Enable verbose logging in development
 if (!app.isPackaged) {
-  app.commandLine.appendSwitch('enable-logging');
-  app.commandLine.appendSwitch('v', '1');
+  // app.commandLine.appendSwitch('enable-logging');
+  // app.commandLine.appendSwitch('v', '1');
 }
 
 let mainWindow: BrowserWindow | null = null;

@@ -81,6 +81,11 @@ module.exports = {
       hardenedRuntime: false, // MAS doesn't need hardened runtime (notarization is not required)
       gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
     } : undefined, // No signing for darwin builds
+
+    // Universal build configuration
+    osxUniversal: {
+      // Required to ensure universal binary is created when --arch=universal is used
+    },
   },
 
   rebuildConfig: {},
