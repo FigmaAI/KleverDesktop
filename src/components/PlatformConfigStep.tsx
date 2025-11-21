@@ -78,7 +78,7 @@ export function PlatformConfigStep({
             </Alert>
 
             {/* Note about other settings */}
-            <Alert variant="secondary">
+            <Alert variant="default">
               <AlertDescription>
                 <p className="text-sm text-muted-foreground">
                   <strong>Note:</strong> Other platform settings (screenshot directory, web

@@ -24,7 +24,6 @@ interface ModelSelectorProps {
 export function ModelSelector({
   value,
   onChange,
-  size = 'sm',
   disabled = false,
 }: ModelSelectorProps) {
   const [modelType, setModelType] = useState<'local' | 'api'>(value?.type || 'local')
