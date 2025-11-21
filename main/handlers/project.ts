@@ -42,7 +42,6 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     try {
       const data = loadProjects();
       const project = data.projects.find((p) => p.id === projectId);
-      console.log('Fetched project:', project);
       if (!project) {
         return { success: false, error: 'Project not found' };
       }
@@ -155,7 +154,6 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
         if (fs.existsSync(workDir)) {
           fs.rmSync(workDir, { recursive: true, force: true });
-          console.log(`Deleted work directory: ${workDir}`);
         }
       } catch (fsError) {
         console.error('Error deleting work directory:', fsError);
@@ -212,10 +210,6 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       if (projectConfig.device) {
         args.push('--device', projectConfig.device);
       }
-
-      console.log('[project:start] Executing project with args:', args);
-      console.log('[project:start] Working directory (cwd):', appagentDir);
-      console.log('[project:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
       // Create a wrapper script to add scripts directory to sys.path before importing
       // This ensures imports work correctly on all platforms (especially Windows)

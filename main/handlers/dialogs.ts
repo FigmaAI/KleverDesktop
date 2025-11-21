@@ -24,8 +24,6 @@ export function registerDialogHandlers(ipcMain: IpcMain, getMainWindow: () => Br
   })
 
   ipcMain.handle('dialog:openFolder', async (_event, folderPath: string) => {
-    console.log('[dialogs] Opening folder:', folderPath)
-
     // Check if folder exists
     if (!existsSync(folderPath)) {
       const error = `Folder does not exist: ${folderPath}`
@@ -35,25 +33,19 @@ export function registerDialogHandlers(ipcMain: IpcMain, getMainWindow: () => Br
 
     try {
       const platform = process.platform
-      console.log('[dialogs] Platform:', platform)
 
       // Use platform-specific commands for better reliability
       if (platform === 'linux') {
         // Linux: use xdg-open
-        console.log('[dialogs] Using xdg-open for Linux')
         await execAsync(`xdg-open "${folderPath}"`)
-        console.log('[dialogs] Folder opened successfully with xdg-open')
         return { success: true }
       } else {
         // macOS and Windows: shell.openPath works well
-        console.log('[dialogs] Using shell.openPath')
         const error = await shell.openPath(folderPath)
-        console.log('[dialogs] shell.openPath result:', error)
         if (error) {
           console.error('[dialogs] Failed to open path:', error)
           return { success: false, error }
         }
-        console.log('[dialogs] Folder opened successfully')
         return { success: true }
       }
     } catch (error: unknown) {

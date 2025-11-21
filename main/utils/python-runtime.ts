@@ -46,7 +46,6 @@ export function getPythonPath(): string {
     );
   }
 
-  console.log('[Python Runtime] Using Python:', pythonExe);
   return pythonExe;
 }
 
@@ -73,7 +72,13 @@ export function getAppagentPath(): string {
   } else {
     // Production: appagent is an extraResource in Resources/
     // process.resourcesPath points to app/Contents/Resources/
-    return path.join(process.resourcesPath, 'appagent');
+    const appagentPath = path.join(process.resourcesPath, 'appagent');
+
+    if (!fs.existsSync(appagentPath)) {
+      console.error('[Python Runtime] Appagent directory not found at:', appagentPath);
+    }
+
+    return appagentPath;
   }
 }
 
@@ -88,10 +93,6 @@ export function executePythonScript(
   const pythonExe = getPythonPath();
   const appagentDir = getAppagentPath();
   const fullScriptPath = path.join(appagentDir, scriptPath);
-
-  console.log('[Python Runtime] Executing:', fullScriptPath);
-  console.log('[Python Runtime] Python:', pythonExe);
-  console.log('[Python Runtime] Args:', args);
 
   const env = {
     ...process.env,
@@ -113,12 +114,10 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
   try {
     // Check if Python is installed first
     if (!isPythonInstalled()) {
-      console.log('[Playwright Check] Python not installed yet');
       return false;
     }
 
     const pythonExe = getPythonPath();
-    console.log('[Playwright Check] Using Python:', pythonExe);
 
     return new Promise((resolve) => {
       const proc = spawn(pythonExe, ['-m', 'playwright', '--version']);
@@ -135,10 +134,6 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
       });
 
       proc.on('close', (code) => {
-        console.log('[Playwright Check] Exit code:', code);
-        console.log('[Playwright Check] stdout:', stdout.trim());
-        if (stderr) console.log('[Playwright Check] stderr:', stderr.trim());
-
         // If playwright module is installed, check browsers
         if (code === 0) {
           // Now check if chromium is installed
@@ -156,7 +151,6 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
           });
 
           checkBrowsers.on('close', (checkCode) => {
-            console.log('[Playwright Check] Browser check output:', output.trim());
             resolve(checkCode === 0 && output.includes('installed'));
           });
 
@@ -189,8 +183,6 @@ export async function installPlaywrightBrowsers(
   try {
     const pythonExe = getPythonPath();
 
-    console.log('[Python Runtime] Installing Playwright browsers...');
-
     return new Promise((resolve) => {
       onProgress?.('Installing Playwright browsers (this may take a few minutes)...\n');
 
@@ -198,19 +190,16 @@ export async function installPlaywrightBrowsers(
 
       proc.stdout?.on('data', (data) => {
         const text = data.toString();
-        console.log('[Playwright]', text);
         onProgress?.(text);
       });
 
       proc.stderr?.on('data', (data) => {
         const text = data.toString();
-        console.log('[Playwright]', text);
         onProgress?.(text);
       });
 
       proc.on('close', (code) => {
         if (code === 0) {
-          console.log('[Python Runtime] ✓ Playwright browsers installed');
           resolve({ success: true });
         } else {
           resolve({

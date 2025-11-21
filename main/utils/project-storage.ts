@@ -45,10 +45,6 @@ function migrateProjectsIfNeeded(): void {
   // If legacy location has projects.json, migrate it
   if (fs.existsSync(legacyPath)) {
     try {
-      console.log('[project-storage] Migrating projects.json from legacy location');
-      console.log('[project-storage] From:', legacyPath);
-      console.log('[project-storage] To:', newPath);
-
       // Ensure userData directory exists
       const userDataPath = app.getPath('userData');
       if (!fs.existsSync(userDataPath)) {
@@ -58,9 +54,6 @@ function migrateProjectsIfNeeded(): void {
       // Copy the file
       const data = fs.readFileSync(legacyPath, 'utf8');
       fs.writeFileSync(newPath, data, 'utf8');
-
-      console.log('[project-storage] Migration successful');
-      console.log('[project-storage] Legacy file will be kept for backup');
     } catch (error) {
       console.error('[project-storage] Migration failed:', error);
     }
@@ -102,16 +95,25 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to ~/Documents/apps/{projectName}
+ * @returns Path to sandboxed container workspaces/{projectName}
+ *
+ * For MAS (Mac App Store) builds, this uses the app's sandbox container.
+ * For darwin builds, this uses ~/Library/Application Support/klever-desktop/
+ *
+ * Users can override this by selecting a custom folder via file picker,
+ * which grants security-scoped access even in MAS sandbox.
  */
 export function getProjectWorkspaceDir(projectName: string): string {
-  const homeDir = os.homedir();
-  const documentsDir = path.join(homeDir, 'Documents', 'apps');
+  // Use app's sandboxed user data directory
+  // MAS: ~/Library/Containers/com.klever.desktop/Data/Library/Application Support/klever-desktop/
+  // Darwin: ~/Library/Application Support/klever-desktop/
+  const userDataPath = app.getPath('userData');
+  const workspacesDir = path.join(userDataPath, 'workspaces');
 
-  // Ensure apps directory exists
-  ensureDirectoryExists(documentsDir);
+  // Ensure workspaces directory exists
+  ensureDirectoryExists(workspacesDir);
 
-  return path.join(documentsDir, projectName);
+  return path.join(workspacesDir, projectName);
 }
 
 /**

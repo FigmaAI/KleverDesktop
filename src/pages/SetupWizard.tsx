@@ -93,7 +93,6 @@ export function SetupWizard() {
       }
     } else if (integrationTestSuccess) {
       // Already saved config in step 2, restart app to reload setup status
-      console.log('[SetupWizard] Setup complete, restarting app...')
       await window.electronAPI.appRestart()
     }
   }
@@ -153,11 +152,9 @@ export function SetupWizard() {
         },
       }
 
-      console.log('[SetupWizard] Saving config.json:', config)
       const result = await window.electronAPI.configSave(config)
 
       if (result.success) {
-        console.log('[SetupWizard] config.json saved successfully')
         // Note: Navigation is handled by caller (either step progression or final navigation)
       } else {
         console.error('[SetupWizard] Failed to save config:', result.error)

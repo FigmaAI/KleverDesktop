@@ -15,10 +15,6 @@ function App() {
 
   useEffect(() => {
     const checkSetup = async () => {
-      console.log('[App.tsx] ========== Checking setup status ==========')
-      console.log('[App.tsx] window.electronAPI:', window.electronAPI)
-      console.log('[App.tsx] window.electronAPI.checkSetup:', window.electronAPI?.checkSetup)
-
       // Add timeout protection to prevent hanging on IPC calls (Build 13+)
       // Prevents crash if IPC call triggers DNS resolution that fails
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -26,24 +22,19 @@ function App() {
       );
 
       try {
-        console.log('[App.tsx] Calling window.electronAPI.checkSetup()')
-
         // Race between actual IPC call and timeout
         const result = await Promise.race([
           window.electronAPI.checkSetup(),
           timeoutPromise
         ]) as { setupComplete: boolean };
 
-        console.log('[App.tsx] checkSetup result:', result)
         setSetupComplete(result.setupComplete)
-        console.log('[App.tsx] Setup complete:', result.setupComplete)
       } catch (error) {
         console.error('[App.tsx] Failed to check setup status:', error)
         // Default to showing setup wizard on error - safer than blocking
         setSetupComplete(false)
       } finally {
         setIsChecking(false)
-        console.log('[App.tsx] ========== Setup check complete ==========')
       }
     }
 

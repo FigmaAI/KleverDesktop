@@ -966,6 +966,7 @@ When contributing to this project:
 3. **Document IPC**: Add comments to new IPC handlers explaining their purpose
 4. **Follow Patterns**: Maintain consistency with existing code patterns
 5. **Update CLAUDE.md**: If adding major features, update this file
+6. **Documentation Location**: **IMPORTANT** - All documentation files (guides, troubleshooting, technical docs) MUST be created in the `docs/` folder, NOT in the project root. Only CLAUDE.md, README.md, and PRIVACY.md should remain in the root directory
 
 ---
 
@@ -1001,6 +1002,11 @@ The project includes comprehensive documentation in the `docs/` folder:
   - Platform-specific icon formats
   - Size requirements
   - Asset generation tools
+
+- **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - Export compliance automation for App Store Connect
+  - Automatic encryption declaration
+  - ITSAppUsesNonExemptEncryption configuration
+  - TestFlight upload workflow
 
 ### Technical Documentation
 
