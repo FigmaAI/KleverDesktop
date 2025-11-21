@@ -1,0 +1,294 @@
+name: Build & Upload Mac App Store
+
+# Trigger on push to main branch when version/build files change
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'           # App version
+      - 'forge.config.js'        # Build number
+      - '.github/workflows/build-mas.yml'  # Workflow changes
+
+  # Allow manual trigger from Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    name: Build MAS Universal & Upload
+    runs-on: macos-latest
+
+    steps:
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 1. Checkout Repository
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 2. Extract Version & Build Number
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📋 Extract version info
+        id: version
+        run: |
+          # Extract version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "app_version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Extract build number from forge.config.js
+          BUILD_NUMBER=$(grep -o "buildVersion: '[0-9]*'" forge.config.js | grep -o "[0-9]*")
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  App Version: $VERSION"
+          echo "  Build Number: $BUILD_NUMBER"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 3. Setup Node.js Environment
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 4. Install Dependencies
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📥 Install Node dependencies
+        run: npm ci
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 5. Setup Code Signing Certificates
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🔐 Install Apple certificates
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+          INSTALLER_CERTIFICATE_P12_BASE64: ${{ secrets.INSTALLER_CERTIFICATE_P12_BASE64 }}
+          INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.INSTALLER_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Installing Code Signing Certificates"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Create temporary directory for certificates
+          CERT_DIR=$(mktemp -d)
+
+          # Decode Apple Distribution certificate
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_DIR/certificate.p12"
+
+          # Decode Installer certificate
+          echo "$INSTALLER_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_DIR/installer.p12"
+
+          # Create temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificates
+          security import "$CERT_DIR/certificate.p12" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          security import "$CERT_DIR/installer.p12" \
+            -P "$INSTALLER_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Set keychain in search list
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Set partition list (allow codesign to access)
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Verify certificates are installed
+          echo ""
+          echo "✅ Installed certificates:"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          # Clean up certificate files
+          rm -rf "$CERT_DIR"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 6. Install Provisioning Profile
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📱 Install provisioning profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Installing Provisioning Profile"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Create provisioning profile directory
+          PP_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PP_DIR"
+
+          # Decode and save provisioning profile
+          PP_PATH="$PP_DIR/embedded.provisionprofile"
+          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PP_PATH"
+
+          # Extract UUID from provisioning profile
+          PP_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< $(security cms -D -i "$PP_PATH"))
+
+          # Rename to UUID.provisionprofile (required format)
+          mv "$PP_PATH" "$PP_DIR/$PP_UUID.provisionprofile"
+
+          echo "✅ Provisioning profile installed: $PP_UUID"
+
+          # Export UUID for later use
+          echo "PROVISIONING_PROFILE_UUID=$PP_UUID" >> $GITHUB_ENV
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 7. Build Mac App Store Package
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🏗️ Build MAS Universal
+        env:
+          CSC_NAME: ${{ secrets.CSC_NAME }}
+          CSC_INSTALLER_NAME: ${{ secrets.CSC_INSTALLER_NAME }}
+          MAS_PROVISIONING_PROFILE: ${{ env.PROVISIONING_PROFILE_UUID }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Building Mac App Store Universal Package"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Environment:"
+          echo "  CSC_NAME: $CSC_NAME"
+          echo "  CSC_INSTALLER_NAME: $CSC_INSTALLER_NAME"
+          echo "  MAS_PROVISIONING_PROFILE: $MAS_PROVISIONING_PROFILE"
+          echo ""
+
+          # Run Electron Forge build for MAS
+          npm run make -- --platform=mas --arch=universal
+
+          echo ""
+          echo "✅ Build completed!"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 8. Verify Build Output
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🔍 Verify build artifacts
+        id: verify
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Verifying Build Artifacts"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Find PKG file
+          PKG_FILE=$(find out/make/pkg -name "*.pkg" -type f | head -n 1)
+
+          if [ -z "$PKG_FILE" ]; then
+            echo "❌ Error: PKG file not found in out/make/pkg/"
+            exit 1
+          fi
+
+          echo "✅ PKG file found: $PKG_FILE"
+
+          # Get file size
+          PKG_SIZE=$(du -h "$PKG_FILE" | cut -f1)
+          echo "   Size: $PKG_SIZE"
+
+          # Verify PKG signature
+          echo ""
+          echo "Verifying PKG signature..."
+          pkgutil --check-signature "$PKG_FILE"
+
+          # Export PKG path for upload step
+          echo "pkg_path=$PKG_FILE" >> $GITHUB_OUTPUT
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 9. Upload to App Store Connect
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📤 Upload to App Store Connect
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Uploading to App Store Connect"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Make upload script executable
+          chmod +x scripts/upload-appstore.sh
+
+          # Run upload script with PKG file
+          ./scripts/upload-appstore.sh "${{ steps.verify.outputs.pkg_path }}"
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 10. Upload Build Artifacts (for debugging)
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 📦 Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: klever-desktop-mas-v${{ steps.version.outputs.app_version }}-build${{ steps.version.outputs.build_number }}
+          path: |
+            out/make/pkg/*.pkg
+          retention-days: 30
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 11. Cleanup
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Cleaning Up"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+          # Remove keychain
+          if [ -f "$RUNNER_TEMP/app-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+            echo "✅ Keychain removed"
+          fi
+
+          # Remove provisioning profile
+          PP_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          if [ -d "$PP_DIR" ]; then
+            rm -rf "$PP_DIR"
+            echo "✅ Provisioning profiles removed"
+          fi
+
+          # Only remove build artifacts if upload was successful
+          if [ "${{ job.status }}" == "success" ]; then
+            echo ""
+            echo "Upload successful! Removing local build artifacts..."
+            rm -rf out/
+            echo "✅ Build artifacts removed"
+          else
+            echo ""
+            echo "⚠️  Upload failed. Keeping build artifacts for debugging."
+          fi
+
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      # 12. Summary
+      # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      - name: 🎉 Build Summary
+        if: success()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  🎉 Build & Upload Successful!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "App Version: ${{ steps.version.outputs.app_version }}"
+          echo "Build Number: ${{ steps.version.outputs.build_number }}"
+          echo ""
+          echo "Next Steps:"
+          echo "  1. Wait 5-30 minutes for App Store Connect processing"
+          echo "  2. Check status at: https://appstoreconnect.apple.com"
+          echo "  3. Select your build and submit for review"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
