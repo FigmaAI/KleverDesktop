@@ -1,16 +1,10 @@
-import { motion } from 'framer-motion'
-import {
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  Input,
-  FormHelperText,
-  Button,
-  Box,
-} from '@mui/joy'
-import { Folder, FolderOpen } from '@mui/icons-material'
+import { FolderOpen } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface PlatformConfigStepProps {
   androidSdkPath: string
@@ -29,98 +23,73 @@ export function PlatformConfigStep({
   }
 
   return (
-    <motion.div
-      key="step-1"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 'md',
-          bgcolor: 'background.surface',
-        }}
-      >
-        <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
-          Platform Configuration
-        </Typography>
-        <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-          Configure platform-specific settings for automation
-        </Typography>
+    <BlurFade key="step-1" delay={0.1}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Platform Configuration</CardTitle>
+          <CardDescription>Configure platform-specific settings for automation</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Android SDK Path */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Android SDK Path
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={androidSdkPath}
+                  onChange={(e) => setAndroidSdkPath(e.target.value)}
+                  placeholder="/Volumes/Backup/Android-SDK"
+                  className="flex-1"
+                />
+                <Button variant="outline" onClick={handleBrowse}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Browse
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Path to your Android SDK directory (contains platform-tools and emulator
+                folders).
+                <br />
+                This is required for Android device automation via ADB.
+              </p>
+            </div>
 
-        <Stack spacing={3}>
-          {/* Android SDK Path */}
-          <FormControl>
-            <FormLabel>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Folder fontSize="small" />
-                <span>Android SDK Path</span>
-              </Stack>
-            </FormLabel>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Input
-                value={androidSdkPath}
-                onChange={(e) => setAndroidSdkPath(e.target.value)}
-                placeholder="/Volumes/Backup/Android-SDK"
-                size="lg"
-                sx={{ flex: 1 }}
-              />
-              <Button
-                variant="outlined"
-                color="neutral"
-                startDecorator={<FolderOpen />}
-                onClick={handleBrowse}
-                size="lg"
-              >
-                Browse
-              </Button>
-            </Box>
-            <FormHelperText>
-              Path to your Android SDK directory (contains platform-tools and emulator folders).
-              <br />
-              This is required for Android device automation via ADB.
-            </FormHelperText>
-          </FormControl>
+            {/* Info Box */}
+            <Alert>
+              <AlertDescription>
+                <p className="font-semibold text-sm mb-2">How to find your Android SDK path</p>
+                <div className="text-sm space-y-1">
+                  <p>
+                    • Open Android Studio → Preferences → Appearance & Behavior → System
+                    Settings → Android SDK
+                  </p>
+                  <p>
+                    • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
+                  </p>
+                  <p>
+                    • You can also use <code className="px-1 py-0.5 bg-muted rounded">which adb</code> in
+                    terminal and remove &quot;/platform-tools/adb&quot;
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
 
-          {/* Info Box */}
-          <Sheet
-            variant="soft"
-            color="primary"
-            sx={{
-              p: 2,
-              borderRadius: 'sm',
-            }}
-          >
-            <Typography level="title-sm" sx={{ mb: 1 }}>
-              How to find your Android SDK path
-            </Typography>
-            <Typography level="body-sm">
-              • Open Android Studio → Preferences → Appearance & Behavior → System Settings → Android SDK
-              <br />
-              • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
-              <br />• You can also use <code>which adb</code> in terminal and remove &quot;/platform-tools/adb&quot;
-            </Typography>
-          </Sheet>
-
-          {/* Note about other settings */}
-          <Sheet
-            variant="soft"
-            color="neutral"
-            sx={{
-              p: 2,
-              borderRadius: 'sm',
-            }}
-          >
-            <Typography level="body-sm" textColor="text.secondary">
-              <strong>Note:</strong> Other platform settings (screenshot directory, web browser settings, etc.)
-              use default values and can be customized later in the Settings page.
-            </Typography>
-          </Sheet>
-        </Stack>
-      </Sheet>
-    </motion.div>
+            {/* Note about other settings */}
+            <Alert variant="secondary">
+              <AlertDescription>
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> Other platform settings (screenshot directory, web
+                  browser settings, etc.) use default values and can be customized later in the
+                  Settings page.
+                </p>
+              </AlertDescription>
+            </Alert>
+          </div>
+        </CardContent>
+      </Card>
+    </BlurFade>
   )
 }

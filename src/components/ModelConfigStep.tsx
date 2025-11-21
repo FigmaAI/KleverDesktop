@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion'
-import { Typography, Sheet, Stack, Alert } from '@mui/joy'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LocalModelCard } from './LocalModelCard'
 import { ApiModelCard } from './ApiModelCard'
 import { ModelConfig } from '@/types/setupWizard'
@@ -32,58 +33,44 @@ export function ModelConfigStep({
   fetchApiModels,
 }: ModelConfigStepProps) {
   return (
-    <motion.div
-      key="step-1"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 'md',
-          bgcolor: 'background.surface',
-        }}
-      >
-        <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
-          Model Configuration
-        </Typography>
-        <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-          Choose and configure your AI model provider
-        </Typography>
+    <BlurFade key="step-1" delay={0.1}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Model Configuration</CardTitle>
+          <CardDescription>Choose and configure your AI model provider</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Helper text */}
+            {!modelConfig.enableLocal && !modelConfig.enableApi && (
+              <Alert variant="warning">
+                <AlertDescription>Please select at least one model provider</AlertDescription>
+              </Alert>
+            )}
 
-        <Stack spacing={3}>
-          {/* Helper text */}
-          {!modelConfig.enableLocal && !modelConfig.enableApi && (
-            <Alert color="warning" variant="soft">
-              Please select at least one model provider
-            </Alert>
-          )}
+            {/* Local Model Card */}
+            <LocalModelCard
+              modelConfig={modelConfig}
+              setModelConfig={setModelConfig}
+              ollamaModels={ollamaModels}
+              ollamaLoading={ollamaLoading}
+              ollamaError={ollamaError}
+              fetchOllamaModels={fetchOllamaModels}
+            />
 
-          {/* Local Model Card */}
-          <LocalModelCard
-            modelConfig={modelConfig}
-            setModelConfig={setModelConfig}
-            ollamaModels={ollamaModels}
-            ollamaLoading={ollamaLoading}
-            ollamaError={ollamaError}
-            fetchOllamaModels={fetchOllamaModels}
-          />
-
-          {/* API Model Card */}
-          <ApiModelCard
-            modelConfig={modelConfig}
-            setModelConfig={setModelConfig}
-            apiModels={apiModels}
-            apiModelsLoading={apiModelsLoading}
-            apiModelsError={apiModelsError}
-            detectedProvider={detectedProvider}
-            fetchApiModels={fetchApiModels}
-          />
-        </Stack>
-      </Sheet>
-    </motion.div>
+            {/* API Model Card */}
+            <ApiModelCard
+              modelConfig={modelConfig}
+              setModelConfig={setModelConfig}
+              apiModels={apiModels}
+              apiModelsLoading={apiModelsLoading}
+              apiModelsError={apiModelsError}
+              detectedProvider={detectedProvider}
+              fetchApiModels={fetchApiModels}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </BlurFade>
   )
 }
