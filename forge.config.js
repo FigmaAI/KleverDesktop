@@ -25,7 +25,7 @@ module.exports = {
     appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
-    buildVersion: '15', // Build number for App Store (increment for each submission) - Fixed signing configuration
+    buildVersion: '16', // Build number for App Store (increment for each submission) - Fixed signing configuration
     asar: false, // Disable asar temporarily to debug renderer packaging
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
@@ -48,7 +48,7 @@ module.exports = {
       entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
       'entitlements-inherit': path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
       // Optional: Add provisioning profile if you have one
-      provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
+      provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || path.resolve(__dirname, 'build/klever.provisionprofile'),
       // CRITICAL: Sign all Electron helper processes with inherit entitlements
       optionsForFile: (filePath) => {
         // IMPORTANT: Only sign executables and .app bundles, not resource files
@@ -78,7 +78,7 @@ module.exports = {
           entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
         };
       },
-      hardenedRuntime: false, // MAS doesn't need hardened runtime (notarization is not required)
+      hardenedRuntime: true, // MAS builds MUST use hardened runtime for entitlements to work (JIT, etc.)
       gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
     } : undefined, // No signing for darwin builds
 
