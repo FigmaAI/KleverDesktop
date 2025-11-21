@@ -171,7 +171,7 @@ log_success "Apple ID: $APPLE_ID"
 log_success "Team ID: $APPLE_TEAM_ID"
 log_success "App-Specific Password: Set"
 
-# --- Check altool availability ---
+# --- Check Upload Tool ---
 echo ""
 log_section "🔧 Checking Upload Tool"
 
@@ -180,16 +180,44 @@ if ! command -v xcrun &> /dev/null; then
   exit 1
 fi
 
+# Try altool first (deprecated but may still work)
+USE_ALTOOL=false
+USE_TRANSPORTER=false
+
 log_info "Checking xcrun altool availability..."
-if ! xcrun altool --help &> /dev/null; then
-  log_error "xcrun altool not available"
-  log_warning "This tool has been deprecated by Apple"
-  log_info "You may need to use Transporter or App Store Connect API instead"
+if xcrun altool --help &> /dev/null 2>&1; then
+  log_success "xcrun altool is available"
+  log_warning "Note: altool is deprecated by Apple"
+  USE_ALTOOL=true
+else
+  log_warning "xcrun altool not available (deprecated by Apple)"
+fi
+
+# Check for iTMSTransporter (modern alternative)
+log_info "Checking iTMSTransporter availability..."
+if xcrun iTMSTransporter -h &> /dev/null 2>&1; then
+  log_success "iTMSTransporter is available (modern tool)"
+  USE_TRANSPORTER=true
+else
+  log_warning "iTMSTransporter not found"
+fi
+
+# Ensure at least one tool is available
+if [ "$USE_ALTOOL" = false ] && [ "$USE_TRANSPORTER" = false ]; then
+  log_error "No upload tool available"
+  log_info "Please use Transporter app from Mac App Store:"
+  log_info "https://apps.apple.com/app/transporter/id1450874784"
   exit 1
 fi
 
-log_success "xcrun altool is available"
-log_warning "Note: altool is deprecated by Apple, consider migrating to App Store Connect API"
+# Prefer Transporter over altool
+if [ "$USE_TRANSPORTER" = true ]; then
+  log_success "Will use iTMSTransporter"
+  UPLOAD_TOOL="transporter"
+else
+  log_success "Will use altool (fallback)"
+  UPLOAD_TOOL="altool"
+fi
 
 # --- Upload to App Store Connect ---
 echo ""
@@ -205,18 +233,33 @@ upload_with_retry() {
   local wait_time=30
 
   while [ $attempt -le $max_attempts ]; do
-    log_info "Upload attempt $attempt of $max_attempts..."
+    log_info "Upload attempt $attempt of $max_attempts (using $UPLOAD_TOOL)..."
     echo ""
 
     # Capture output to check for specific error patterns
-    UPLOAD_OUTPUT=$(xcrun altool --upload-app \
-      --type osx \
-      --file "$PKG_FILE" \
-      --username "$APPLE_ID" \
-      --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-      --asc-provider "$APPLE_TEAM_ID" \
-      --verbose 2>&1 | tee /tmp/altool_output.log)
-    EXIT_CODE=$?
+    if [ "$UPLOAD_TOOL" = "transporter" ]; then
+      # Use iTMSTransporter (modern tool)
+      log_info "Using iTMSTransporter..."
+      UPLOAD_OUTPUT=$(xcrun iTMSTransporter \
+        -m upload \
+        -f "$PKG_FILE" \
+        -u "$APPLE_ID" \
+        -p "$APPLE_APP_SPECIFIC_PASSWORD" \
+        -t Signiant \
+        -v eXtreme 2>&1 | tee /tmp/transporter_output.log)
+      EXIT_CODE=$?
+    else
+      # Use altool (deprecated)
+      log_info "Using altool..."
+      UPLOAD_OUTPUT=$(xcrun altool --upload-app \
+        --type osx \
+        --file "$PKG_FILE" \
+        --username "$APPLE_ID" \
+        --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+        --asc-provider "$APPLE_TEAM_ID" \
+        --verbose 2>&1 | tee /tmp/altool_output.log)
+      EXIT_CODE=$?
+    fi
 
     # Check for success
     if [ $EXIT_CODE -eq 0 ]; then
@@ -270,7 +313,11 @@ upload_with_retry() {
 
       # Show last output
       log_info "Last upload output:"
-      tail -30 /tmp/altool_output.log | sed 's/^/   /'
+      if [ "$UPLOAD_TOOL" = "transporter" ]; then
+        tail -30 /tmp/transporter_output.log | sed 's/^/   /'
+      else
+        tail -30 /tmp/altool_output.log | sed 's/^/   /'
+      fi
       echo ""
 
       log_info "Common issues:"
