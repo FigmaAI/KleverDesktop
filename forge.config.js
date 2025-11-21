@@ -20,7 +20,7 @@ module.exports = {
     appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
-    buildVersion: '11', // Build number for App Store (increment for each submission)
+    buildVersion: '12', // Build number for App Store (increment for each submission)
     asar: false, // Disable asar temporarily to debug renderer packaging
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
