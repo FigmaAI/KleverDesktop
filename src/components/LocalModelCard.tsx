@@ -1,21 +1,17 @@
+import { RefreshCw } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
 import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Alert,
   Select,
-  Option,
-  IconButton,
-  CircularProgress,
-} from '@mui/joy'
-import Checkbox from '@mui/joy/Checkbox'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { cn } from '@/lib/utils'
 import { ModelConfig } from '@/types/setupWizard'
 
 interface LocalModelCardProps {
@@ -36,82 +32,85 @@ export function LocalModelCard({
   fetchOllamaModels,
 }: LocalModelCardProps) {
   return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 3,
-        borderRadius: 'md',
-        border: modelConfig.enableLocal ? '2px solid' : '1px solid',
-        borderColor: modelConfig.enableLocal ? 'primary.500' : 'neutral.outlinedBorder',
-        bgcolor: modelConfig.enableLocal ? 'primary.softBg' : 'background.surface',
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          borderColor: modelConfig.enableLocal ? 'primary.600' : 'neutral.outlinedHoverBorder',
-        },
-      }}
+    <Card
+      className={cn(
+        'transition-all',
+        modelConfig.enableLocal
+          ? 'border-2 border-primary bg-primary/5'
+          : 'border hover:border-primary/50'
+      )}
     >
-      <Box sx={{ mb: 2 }}>
-        <Checkbox
-          label={
-            <Typography level="title-md" fontWeight="bold">
+      <CardContent className="pt-6">
+        <div className="mb-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="enable-local-model"
+              checked={modelConfig.enableLocal}
+              onCheckedChange={(checked) =>
+                setModelConfig({ ...modelConfig, enableLocal: checked as boolean })
+              }
+            />
+            <Label htmlFor="enable-local-model" className="text-base font-semibold">
               Local Model (Ollama)
-            </Typography>
-          }
-          checked={modelConfig.enableLocal}
-          onChange={(e) =>
-            setModelConfig({ ...modelConfig, enableLocal: e.target.checked })
-          }
-          sx={{ mb: 0.5 }}
-        />
-        <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
-          Use locally hosted Ollama models for privacy and offline access
-        </Typography>
-      </Box>
+            </Label>
+          </div>
+          <p className="ml-6 mt-1 text-sm text-muted-foreground">
+            Use locally hosted Ollama models for privacy and offline access
+          </p>
+        </div>
 
-      <Stack spacing={2}>
-        <FormControl>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-            <FormLabel>Select Model</FormLabel>
-            <IconButton
-              size="sm"
-              variant="plain"
-              color="primary"
-              onClick={fetchOllamaModels}
-              disabled={!modelConfig.enableLocal || ollamaLoading}
-            >
-              <RefreshIcon />
-            </IconButton>
-          </Box>
-          {ollamaLoading ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5 }}>
-              <CircularProgress size="sm" />
-              <Typography level="body-sm">Loading models...</Typography>
-            </Box>
-          ) : ollamaError ? (
-            <Alert color="warning" variant="soft" size="sm">
-              {ollamaError}
-            </Alert>
-          ) : (
-            <Select
-              value={modelConfig.localModel}
-              onChange={(_, value) => setModelConfig({ ...modelConfig, localModel: value || '' })}
-              disabled={!modelConfig.enableLocal || ollamaModels.length === 0}
-              placeholder={ollamaModels.length === 0 ? 'No models found' : 'Select a model'}
-            >
-              {ollamaModels.map((model) => (
-                <Option key={model} value={model}>
-                  {model}
-                </Option>
-              ))}
-            </Select>
-          )}
-          <FormHelperText>
-            {ollamaModels.length > 0
-              ? `${ollamaModels.length} model(s) available`
-              : 'Install models using: ollama pull <model-name>'}
-          </FormHelperText>
-        </FormControl>
-      </Stack>
-    </Sheet>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Select Model</Label>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={fetchOllamaModels}
+                disabled={!modelConfig.enableLocal || ollamaLoading}
+              >
+                <RefreshCw className={cn('h-4 w-4', ollamaLoading && 'animate-spin')} />
+              </Button>
+            </div>
+
+            {ollamaLoading ? (
+              <div className="flex items-center gap-2 rounded-md bg-muted p-3">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="text-sm">Loading models...</span>
+              </div>
+            ) : ollamaError ? (
+              <Alert variant="warning">
+                <AlertDescription>{ollamaError}</AlertDescription>
+              </Alert>
+            ) : (
+              <Select
+                value={modelConfig.localModel}
+                onValueChange={(value) => setModelConfig({ ...modelConfig, localModel: value })}
+                disabled={!modelConfig.enableLocal || ollamaModels.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={ollamaModels.length === 0 ? 'No models found' : 'Select a model'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {ollamaModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              {ollamaModels.length > 0
+                ? `${ollamaModels.length} model(s) available`
+                : 'Install models using: ollama pull <model-name>'}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
