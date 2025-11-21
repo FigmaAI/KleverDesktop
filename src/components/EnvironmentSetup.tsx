@@ -1,18 +1,10 @@
 import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Box,
-  Typography,
-  Sheet,
-  Button,
-  CircularProgress,
-  Alert,
-  LinearProgress,
-} from '@mui/joy'
-import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material'
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 import { ToolStatus } from '@/types/setupWizard'
 
 interface PlatformToolsState {
@@ -66,86 +58,76 @@ export function EnvironmentSetup({
     }
   }
 
+  const getColorClass = () => {
+    if (status.checking) return 'bg-muted'
+    return status.installed
+      ? 'bg-green-50 dark:bg-green-950'
+      : 'bg-yellow-50 dark:bg-yellow-950'
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.3 }}
-    >
-      <Sheet
-        variant="soft"
-        color={status.checking ? 'neutral' : status.installed ? 'success' : 'warning'}
-        sx={{
-          p: 2,
-          borderRadius: 'sm',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+    <BlurFade delay={0.3}>
+      <div className={cn('rounded-md p-3 flex flex-col gap-3', getColorClass())}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {status.checking ? (
-              <CircularProgress size="sm" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : status.installed ? (
-              <CheckCircleIcon color="success" />
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
             ) : (
-              <WarningIcon color="warning" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
             )}
-            <Box sx={{ flex: 1 }}>
-              <Typography
-                level="body-sm"
-                fontWeight={status.installed ? 'md' : 'normal'}
-                textColor={status.installed ? 'text.primary' : 'text.secondary'}
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  'text-sm',
+                  status.installed ? 'font-medium text-foreground' : 'text-muted-foreground'
+                )}
               >
                 Playwright Browsers
-              </Typography>
-              <Typography level="body-xs" textColor="text.tertiary">
+              </p>
+              <p className="text-xs text-muted-foreground">
                 Required for web automation (Chromium browser)
-              </Typography>
-            </Box>
-          </Box>
+              </p>
+            </div>
+          </div>
           {!status.installed && !status.checking && (
             <Button
               size="sm"
-              variant="solid"
-              color="primary"
-              loading={status.installing}
               onClick={handleSetupEnvironment}
-              sx={{ minWidth: '100px' }}
+              disabled={status.installing}
+              className="min-w-[100px]"
             >
-              Setup
+              {status.installing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Setting up...
+                </>
+              ) : (
+                'Setup'
+              )}
             </Button>
           )}
-        </Box>
+        </div>
 
         {/* Progress bar during installation */}
         {status.installing && (
-          <Box sx={{ width: '100%' }}>
-            <LinearProgress
-              determinate
-              value={envSetupProgress}
-              sx={{ mb: 1 }}
-            />
-            <Typography level="body-xs" textAlign="center" textColor="text.tertiary">
-              {envSetupProgress}%
-            </Typography>
-          </Box>
+          <div className="space-y-2">
+            <Progress value={envSetupProgress} className="h-2" />
+            <p className="text-xs text-center text-muted-foreground">{envSetupProgress}%</p>
+          </div>
         )}
 
         {/* Guide message during installation */}
         {status.installing && (
-          <Alert
-            color="primary"
-            variant="soft"
-            sx={{ mt: 1, mb: 1 }}
-          >
-            <Typography level="body-sm">
-              Installation in progress. Check the Universal Terminal (top right) for detailed progress.
-            </Typography>
+          <Alert>
+            <AlertDescription className="text-sm">
+              Installation in progress. Check the Universal Terminal (top right) for detailed
+              progress.
+            </AlertDescription>
           </Alert>
         )}
-      </Sheet>
-    </motion.div>
+      </div>
+    </BlurFade>
   )
 }
