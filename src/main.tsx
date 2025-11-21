@@ -1,11 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
-import { CssVarsProvider } from '@mui/joy/styles'
-import CssBaseline from '@mui/joy/CssBaseline'
 import App from './App'
-import { TerminalProvider } from '@/contexts/TerminalContext'
-import { UniversalTerminal } from '@/components/UniversalTerminal'
 import './index.css'
 
 import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/project'
@@ -343,14 +339,8 @@ if (!window.electronAPI) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <CssVarsProvider>
-      <CssBaseline />
-      <HashRouter>
-        <TerminalProvider>
-          <App />
-          <UniversalTerminal />
-        </TerminalProvider>
-      </HashRouter>
-    </CssVarsProvider>
+    <HashRouter>
+      <App />
+    </HashRouter>
   </React.StrictMode>,
 )
