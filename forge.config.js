@@ -38,6 +38,15 @@ module.exports = {
       'entitlements-inherit': path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
       // Optional: Add provisioning profile if you have one
       provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
+      // Explicitly list all binaries that need signing
+      binaries: [
+        'Contents/MacOS/Klever Desktop',
+        'Contents/Frameworks/Klever Desktop Helper.app',
+        'Contents/Frameworks/Klever Desktop Helper (GPU).app',
+        'Contents/Frameworks/Klever Desktop Helper (Plugin).app',
+        'Contents/Frameworks/Klever Desktop Helper (Renderer).app',
+        'Contents/Library/LoginItems/Klever Desktop Login Helper.app',
+      ],
       // CRITICAL: Sign all Electron helper processes with inherit entitlements
       optionsForFile: (filePath) => {
         // All helper apps and Login Items must use inherit entitlements
@@ -58,9 +67,8 @@ module.exports = {
           entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
         };
       },
-      hardenedRuntime: true, // Enable Hardened Runtime for MAS
+      hardenedRuntime: false, // MAS doesn't need hardened runtime (notarization is not required)
       gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
-      signatureFlags: ['runtime'], // Add runtime signature flag
     }
   },
 
