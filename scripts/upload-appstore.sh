@@ -133,8 +133,9 @@ if [ -n "${APPSTORE_API_KEY_BASE64:-}" ] && [ -n "${APPSTORE_API_KEY_ID:-}" ] &&
   log_success "API Key credentials found (modern method)"
   USE_API_KEY=true
 
-  # Decode and save API Key
-  API_KEY_DIR=$(mktemp -d)
+  # Decode and save API Key to standard location (altool expects it here)
+  API_KEY_DIR="$HOME/.private_keys"
+  mkdir -p "$API_KEY_DIR"
   API_KEY_FILE="$API_KEY_DIR/AuthKey_${APPSTORE_API_KEY_ID}.p8"
   echo "$APPSTORE_API_KEY_BASE64" | base64 --decode > "$API_KEY_FILE"
 
@@ -142,9 +143,10 @@ if [ -n "${APPSTORE_API_KEY_BASE64:-}" ] && [ -n "${APPSTORE_API_KEY_ID:-}" ] &&
     log_success "API Key decoded successfully"
     log_info "Key ID: $APPSTORE_API_KEY_ID"
     log_info "Issuer ID: ${APPSTORE_API_ISSUER_ID:0:8}...${APPSTORE_API_ISSUER_ID: -4}"
+    log_info "Saved to: ~/.private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
   else
     log_error "Failed to decode API Key"
-    rm -rf "$API_KEY_DIR"
+    rm -f "$API_KEY_FILE"
     exit 1
   fi
 fi
@@ -250,8 +252,9 @@ upload_with_retry() {
       log_success "Upload successful!"
 
       # Cleanup API Key file if used
-      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
-        rm -rf "$API_KEY_DIR"
+      if [ "$USE_API_KEY" = true ] && [ -f "$API_KEY_FILE" ]; then
+        rm -f "$API_KEY_FILE"
+        log_info "Cleaned up API Key file"
       fi
 
       return 0
@@ -265,8 +268,9 @@ upload_with_retry() {
       log_info "To upload a new build, increment the build number in forge.config.js"
 
       # Cleanup API Key file if used
-      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
-        rm -rf "$API_KEY_DIR"
+      if [ "$USE_API_KEY" = true ] && [ -f "$API_KEY_FILE" ]; then
+        rm -f "$API_KEY_FILE"
+        log_info "Cleaned up API Key file"
       fi
 
       return 0
@@ -278,8 +282,9 @@ upload_with_retry() {
       log_success "Upload successful!"
 
       # Cleanup API Key file if used
-      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
-        rm -rf "$API_KEY_DIR"
+      if [ "$USE_API_KEY" = true ] && [ -f "$API_KEY_FILE" ]; then
+        rm -f "$API_KEY_FILE"
+        log_info "Cleaned up API Key file"
       fi
 
       return 0
@@ -333,8 +338,9 @@ upload_with_retry() {
       echo ""
 
       # Cleanup API Key file if used
-      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
-        rm -rf "$API_KEY_DIR"
+      if [ "$USE_API_KEY" = true ] && [ -f "$API_KEY_FILE" ]; then
+        rm -f "$API_KEY_FILE"
+        log_info "Cleaned up API Key file"
       fi
 
       return $EXIT_CODE
