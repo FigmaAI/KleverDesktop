@@ -100,8 +100,6 @@ module.exports = {
         install: '/Applications',
       },
       platforms: ['mas'],
-      // Universal binary includes both x64 and arm64
-      arch: ['universal'],
     },
 
     // ZIP maker for development and testing
