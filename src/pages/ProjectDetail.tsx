@@ -1,30 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Grid,
-  Sheet,
-  Stack,
-  Typography,
-  List,
-  Divider,
-  ToggleButtonGroup,
-} from '@mui/joy'
-import {
-  Add as AddIcon,
-  ArrowBack,
-  ViewModule,
-  ViewList,
-} from '@mui/icons-material'
+import { ArrowLeft, Plus, LayoutGrid, List as ListIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ProjectCard } from '@/components/ProjectCard'
+import { TaskCard } from '@/components/TaskCard'
+// import { TaskCreateDialog, TaskDetailDialog, TaskMarkdownDialog } from '@/components'
 import type { Project, Task } from '../types/project'
-import {
-  ProjectCard,
-  TaskCard,
-  TaskCreateDialog,
-  TaskDetailDialog,
-  TaskMarkdownDialog,
-} from '../components'
 
 export function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
@@ -33,9 +14,8 @@ export function ProjectDetail() {
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
 
-  // Dialog states
+  // Dialog states (TODO: implement dialogs)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
@@ -110,211 +90,142 @@ export function ProjectDetail() {
   const handleViewMarkdown = (task: Task) => {
     setSelectedTask(task)
     setMarkdownDialogOpen(true)
+    // TODO: Implement markdown dialog
+    alert('Markdown dialog not yet implemented')
   }
 
   if (loading) {
     return (
-      <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Typography>Loading project...</Typography>
-      </Box>
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">Loading project...</p>
+      </div>
     )
   }
 
   if (!project) {
     return (
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-        <Box sx={{ p: 4, flex: 1 }}>
-          <Typography>Project not found</Typography>
-          <Button onClick={() => navigate('/projects')} sx={{ mt: 2 }}>
-            Back to Projects
-          </Button>
-        </Box>
-      </Box>
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <p className="text-lg text-muted-foreground">Project not found</p>
+        <Button onClick={() => navigate('/projects')}>Back to Projects</Button>
+      </div>
     )
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      <Box sx={{ p: 4, flex: 1, overflow: 'auto' }}>
-        <Stack spacing={3}>
-          <Button
-            variant="plain"
-            color="neutral"
-            startDecorator={<ArrowBack />}
-            onClick={() => navigate('/projects')}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            Back to Projects
-          </Button>
+    <div className="flex h-full flex-col">
+      <div className="container mx-auto flex-1 space-y-6 overflow-auto p-8">
+        {/* Back Button */}
+        <Button variant="ghost" onClick={() => navigate('/projects')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Projects
+        </Button>
 
-          {/* Project Header */}
-          <List
-            variant="outlined"
-            sx={{
-              borderRadius: 'md',
-              bgcolor: 'background.surface',
-            }}
-          >
-            <ProjectCard
-              project={project}
-              variant="list"
-              expand={true}
-              clickable={false}
-              showDelete={true}
-              hideTaskSummary={true}
-              onDeleted={() => navigate('/projects')}
-            />
-          </List>
-
-          {/* Tasks Section Header */}
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            justifyContent="space-between"
-            alignItems={{ xs: 'flex-start', sm: 'center' }}
-            spacing={2}
-          >
-            <Box>
-              <Typography level="h3" fontWeight="bold">
-                Tasks
-              </Typography>
-              <Typography level="body-sm" textColor="text.secondary">
-                {project.tasks.length} {project.tasks.length === 1 ? 'task' : 'tasks'}
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <ToggleButtonGroup
-                value={viewMode}
-                onChange={(_event, newValue) => {
-                  if (newValue !== null) {
-                    setViewMode(newValue as 'card' | 'list')
-                  }
-                }}
-              >
-                <Button value="card" startDecorator={<ViewModule />}>
-                  Card
-                </Button>
-                <Button value="list" startDecorator={<ViewList />}>
-                  List
-                </Button>
-              </ToggleButtonGroup>
-              <Button
-                startDecorator={<AddIcon />}
-                onClick={() => setCreateDialogOpen(true)}
-              >
-                Add Task
-              </Button>
-            </Stack>
-          </Stack>
-
-          {/* Tasks Content */}
-          {project.tasks.length === 0 ? (
-            <Sheet
-              variant="outlined"
-              sx={{
-                p: 4,
-                borderRadius: 'md',
-                bgcolor: 'background.surface',
-                textAlign: 'center',
-              }}
-            >
-              <Typography level="title-lg" sx={{ mb: 1 }}>
-                No tasks yet
-              </Typography>
-              <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-                Add your first task to start automating
-              </Typography>
-              <Button
-                variant="solid"
-                color="primary"
-                startDecorator={<AddIcon />}
-                onClick={() => setCreateDialogOpen(true)}
-              >
-                Add Task
-              </Button>
-            </Sheet>
-          ) : (
-            <>
-              {/* Card View */}
-              {viewMode === 'card' && (
-                <Grid container spacing={2}>
-                  {project.tasks.map((task) => (
-                    <Grid key={task.id} xs={12} sm={6} md={4}>
-                      <TaskCard
-                        task={task}
-                        variant="card"
-                        onStart={handleStartTask}
-                        onStop={handleStopTask}
-                        onDelete={handleDeleteTask}
-                        onViewMarkdown={handleViewMarkdown}
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-
-              {/* List View */}
-              {viewMode === 'list' && (
-                <List
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 'md',
-                    bgcolor: 'background.surface',
-                  }}
-                >
-                  {project.tasks.map((task, index) => (
-                    <Box key={task.id}>
-                      <TaskCard
-                        task={task}
-                        variant="list"
-                        onStart={handleStartTask}
-                        onStop={handleStopTask}
-                        onDelete={handleDeleteTask}
-                        onViewMarkdown={handleViewMarkdown}
-                      />
-                      {index < project.tasks.length - 1 && <Divider />}
-                    </Box>
-                  ))}
-                </List>
-              )}
-            </>
-          )}
-        </Stack>
-      </Box>
-
-      {/* Dialogs */}
-      <TaskCreateDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        projectId={id!}
-        projectName={project.name}
-        platform={project.platform}
-        onTaskCreated={() => {
-          loadProject()
-          setCreateDialogOpen(false)
-        }}
-      />
-
-      {selectedTask && (
-        <>
-          <TaskDetailDialog
-            open={detailDialogOpen}
-            onClose={() => setDetailDialogOpen(false)}
-            task={selectedTask}
-            projectId={id!}
-            workspaceDir={project.workspaceDir}
-            onTaskUpdated={loadProject}
+        {/* Project Header */}
+        <div className="rounded-lg border bg-card">
+          <ProjectCard
+            project={project}
+            variant="list"
+            expand={true}
+            clickable={false}
+            showDelete={true}
+            hideTaskSummary={true}
+            onDeleted={() => navigate('/projects')}
           />
+        </div>
 
-          <TaskMarkdownDialog
-            open={markdownDialogOpen}
-            onClose={() => setMarkdownDialogOpen(false)}
-            taskName={selectedTask.name}
-            workspaceDir={project.workspaceDir}
-            taskResultPath={selectedTask.resultPath}
-            taskStatus={selectedTask.status}
-          />
-        </>
-      )}
-    </Box>
+        {/* Tasks Section Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Tasks</h2>
+            <p className="text-sm text-muted-foreground">
+              {project.tasks.length} {project.tasks.length === 1 ? 'task' : 'tasks'}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg border">
+              <Button
+                variant={viewMode === 'card' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('card')}
+                className="rounded-r-none"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="rounded-l-none"
+              >
+                <ListIcon className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Add Task Button */}
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          </div>
+        </div>
+
+        {/* Tasks Content */}
+        {project.tasks.length === 0 ? (
+          <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border bg-card p-8 text-center">
+            <h3 className="mb-2 text-lg font-semibold">No tasks yet</h3>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Add your first task to start automating
+            </p>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          </div>
+        ) : (
+          <>
+            {/* Card View - 3 columns for tasks */}
+            {viewMode === 'card' && (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {project.tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    variant="card"
+                    onStart={handleStartTask}
+                    onStop={handleStopTask}
+                    onDelete={handleDeleteTask}
+                    onViewMarkdown={handleViewMarkdown}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* List View */}
+            {viewMode === 'list' && (
+              <div className="space-y-3">
+                {project.tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    variant="list"
+                    onStart={handleStartTask}
+                    onStop={handleStopTask}
+                    onDelete={handleDeleteTask}
+                    onViewMarkdown={handleViewMarkdown}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* TODO: Implement Dialogs */}
+      {/* <TaskCreateDialog ... /> */}
+      {/* <TaskDetailDialog ... /> */}
+      {/* <TaskMarkdownDialog ... /> */}
+    </div>
   )
 }
