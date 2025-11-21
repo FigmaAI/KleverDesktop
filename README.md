@@ -40,37 +40,27 @@ This section is for users who want to **use** Klever Desktop for UI automation.
 
 ### Step 1: Download & Install
 
-#### Option A: Download Pre-built Application (Recommended)
+#### Option A: Download from App Stores (Recommended)
 
-Download the latest release for your platform:
+Download Klever Desktop directly from your platform's official app store:
 
-- **macOS**: Download `.dmg` file from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
-- **Windows**: Download `.exe` installer from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
-- **Linux**: Download `.AppImage` or `.deb` from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
+<div align="center">
 
-**Installation Steps:**
+**macOS (App Store)**
 
-**macOS:**
-1. Open the downloaded `.dmg` file
-2. Drag Klever Desktop to your Applications folder
-3. Open Klever Desktop from Applications (you may need to allow it in System Preferences → Security & Privacy)
+<a href="https://apps.apple.com/us/app/klever-instance-ut/id6754501208">
+  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="200"/>
+</a>
 
-**Windows:**
-1. Run the downloaded `.exe` installer
-2. Follow the installation wizard
-3. Launch Klever Desktop from Start Menu or Desktop shortcut
+**Windows (Microsoft Store)**
 
-**Linux (AppImage):**
-```bash
-chmod +x KleverDesktop-*.AppImage
-./KleverDesktop-*.AppImage
-```
+<a href="https://apps.microsoft.com/detail/xp8brb9spkfrsw?referrer=appbadge&mode=direct">
+  <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from Microsoft" width="200"/>
+</a>
 
-**Linux (Debian/Ubuntu):**
-```bash
-sudo dpkg -i klever-desktop_*_amd64.deb
-klever-desktop
-```
+</div>
+
+**Installation is automatic** - just click the badge above for your platform and follow the store's installation process.
 
 #### Option B: Build from Source
 

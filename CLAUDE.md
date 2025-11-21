@@ -2,6 +2,32 @@
 
 This file provides comprehensive guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Quick Start Commands](#quick-start-commands)
+- [Architecture](#architecture)
+  - [Three-Layer Electron Architecture](#three-layer-electron-architecture)
+  - [Component Catalog](#component-catalog)
+  - [SetupWizard Architecture](#setupwizard-architecture-refactored)
+- [IPC Communication Pattern](#ipc-communication-pattern)
+- [Model Configuration](#model-configuration)
+- [Python Backend](#python-backend-monorepo)
+- [Common Development Patterns](#common-development-patterns)
+- [Key Files Reference](#key-files-reference)
+- [Development Notes](#development-notes)
+- [Prerequisites](#prerequisites)
+- [Troubleshooting](#troubleshooting)
+- [Electron Forge Build System](#electron-forge-build-system)
+- [Build Scripts & Tools](#build-scripts--tools)
+- [Best Practices](#best-practices)
+- [Contributing](#contributing)
+- [Additional Resources](#additional-resources)
+- [Documentation](#documentation)
+- [Update History](#update-history)
+
+---
+
 ## Project Overview
 
 **Klever Desktop** is an Electron-based desktop application that enables automated UI exploration and testing using local AI models (via Ollama) or remote APIs. It provides a user-friendly interface for managing automation projects on Android (via ADB) and Web (via Playwright).
@@ -761,7 +787,7 @@ codesign -d --entitlements - "out/.../Electron Helper (Renderer).app"
 # Should show com.apple.security.cs.allow-jit = true
 ```
 
-**Full troubleshooting guide**: See `MAS_BUILD_TROUBLESHOOTING.md`
+**Full troubleshooting guide**: See [docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)
 
 #### ZIP Maker (Development/Testing)
 ```javascript
@@ -952,7 +978,64 @@ When contributing to this project:
 
 ---
 
+## Documentation
+
+The project includes comprehensive documentation in the `docs/` folder:
+
+### Build & Deployment Guides
+
+- **[docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)** - Comprehensive Mac App Store build troubleshooting guide
+  - V8 initialization crash solutions
+  - Code signing requirements
+  - Entitlements configuration
+  - Step-by-step verification procedures
+
+- **[docs/MAS_BUILD_TROUBLESHOOTING_KR.md](docs/MAS_BUILD_TROUBLESHOOTING_KR.md)** - 한국어 Mac App Store 빌드 문제 해결 가이드
+
+- **[docs/BUILD_WINDOWS_STORE.md](docs/BUILD_WINDOWS_STORE.md)** - Windows Store deployment guide
+  - Partner Center setup
+  - AppX package creation
+  - Store-managed signing workflow
+
+- **[docs/BUILD_ICONS.md](docs/BUILD_ICONS.md)** - Icon requirements and generation guide
+  - Platform-specific icon formats
+  - Size requirements
+  - Asset generation tools
+
+### Technical Documentation
+
+- **[docs/BUILD_13_FIX_SUMMARY.md](docs/BUILD_13_FIX_SUMMARY.md)** - Summary of Build 13 fixes
+  - DNS crash resolution
+  - Critical bug fixes
+  - Performance improvements
+
+- **[docs/CRASH_ANALYSIS.md](docs/CRASH_ANALYSIS.md)** - Detailed crash analysis and debugging
+  - Common crash patterns
+  - Debugging techniques
+  - Solutions and workarounds
+
+### Main Documentation Files
+
+- **[CLAUDE.md](CLAUDE.md)** - This file; comprehensive AI assistant guide for development
+- **[README.md](README.md)** - User-facing documentation and getting started guide
+- **[PRIVACY.md](PRIVACY.md)** - Privacy policy and data handling information
+
+---
+
 ## Update History
+
+**2025-11-21**: Documentation organization and improvements
+- **Documentation Structure**: Organized all guide documents into `docs/` folder
+  - Moved BUILD_13_FIX_SUMMARY.md, CRASH_ANALYSIS.md, MAS_BUILD_TROUBLESHOOTING.md, MAS_BUILD_TROUBLESHOOTING_KR.md to docs/
+  - Kept CLAUDE.md, README.md, and PRIVACY.md in project root for visibility
+- **CLAUDE.md Enhancements**:
+  - Added comprehensive table of contents for easy navigation
+  - Added Documentation section with links to all guide documents
+  - Improved overall structure and scanability
+- **README.md Updates**:
+  - Added App Store and Windows Store download badges
+  - Updated download section with official store links
+  - Improved user-facing documentation
 
 **2025-11-20 (Evening)**: Fixed Mac App Store V8 initialization crash
 - **Critical Bug Fix**: Resolved EXC_BREAKPOINT crash during Electron/V8 startup
