@@ -15,9 +15,9 @@ export function ProjectDetail() {
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
 
   // Dialog states (TODO: implement dialogs)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [_createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [_markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
+  const [_selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const loadProject = useCallback(async () => {
     if (!id) return
