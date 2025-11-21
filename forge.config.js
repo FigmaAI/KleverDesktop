@@ -34,8 +34,8 @@ module.exports = {
       platform: 'mas',
       type: 'distribution',
       appBundleId: 'com.klever.desktop', // MUST match App Store Connect
-      entitlements: 'build/entitlements.mas.plist',
-      'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
+      entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
+      'entitlements-inherit': path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
       // Optional: Add provisioning profile if you have one
       provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
       // CRITICAL: Sign all Electron helper processes with inherit entitlements
@@ -43,12 +43,12 @@ module.exports = {
         // Check if this is a helper process
         if (filePath.includes('Helper')) {
           return {
-            entitlements: 'build/entitlements.mas.inherit.plist',
+            entitlements: path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
           };
         }
         // Main app uses main entitlements
         return {
-          entitlements: 'build/entitlements.mas.plist',
+          entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
         };
       },
       hardenedRuntime: true, // Enable Hardened Runtime for MAS
