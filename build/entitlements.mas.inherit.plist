@@ -10,19 +10,25 @@
   <key>com.apple.security.inherit</key>
   <true/>
 
-  <!-- JIT Compilation (inherited by child processes) -->
+  <!-- Network Access (inherited by helper processes that need it) -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+
+  <!-- JIT Compilation (CRITICAL - inherited by child processes) -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
 
-  <!-- Unsigned Executable Memory (inherited by child processes) -->
+  <!-- Unsigned Executable Memory (CRITICAL - inherited by child processes) -->
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
 
-  <!-- DYLD Environment Variables (inherited by child processes) -->
+  <!-- DYLD Environment Variables (CRITICAL - inherited by child processes) -->
   <key>com.apple.security.cs.allow-dyld-environment-variables</key>
   <true/>
 
-  <!-- Disable Library Validation (inherited by child processes) -->
+  <!-- Disable Library Validation (CRITICAL - inherited by child processes) -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 </dict>

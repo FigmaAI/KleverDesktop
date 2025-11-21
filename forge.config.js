@@ -20,7 +20,7 @@ module.exports = {
     appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
     appId: 'com.klever.desktop',
     productName: 'Klever Desktop',
-    buildVersion: '11', // Build number for App Store (increment for each submission)
+    buildVersion: '12', // Build number for App Store (increment for each submission)
     asar: false, // Disable asar temporarily to debug renderer packaging
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     extraResource: [
@@ -37,7 +37,23 @@ module.exports = {
       entitlements: 'build/entitlements.mas.plist',
       'entitlements-inherit': 'build/entitlements.mas.inherit.plist',
       // Optional: Add provisioning profile if you have one
-      provisioningProfile: 'build/klever.provisionprofile',
+      provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
+      // CRITICAL: Sign all Electron helper processes with inherit entitlements
+      optionsForFile: (filePath) => {
+        // Check if this is a helper process
+        if (filePath.includes('Helper')) {
+          return {
+            entitlements: 'build/entitlements.mas.inherit.plist',
+          };
+        }
+        // Main app uses main entitlements
+        return {
+          entitlements: 'build/entitlements.mas.plist',
+        };
+      },
+      hardenedRuntime: true, // Enable Hardened Runtime for MAS
+      gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
+      signatureFlags: ['runtime'], // Add runtime signature flag
     }
   },
 

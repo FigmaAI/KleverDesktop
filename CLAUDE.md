@@ -717,7 +717,51 @@ Main Electron Forge configuration with:
 **Requirements**:
 - Apple Developer account
 - Distribution certificates and provisioning profiles
-- Entitlements configured (build/entitlements.mas.plist)
+- Entitlements configured (build/entitlements.mas.plist, build/entitlements.mas.inherit.plist)
+
+**CRITICAL: Mac App Store Code Signing**
+
+Electron apps consist of multiple processes that ALL must be properly signed:
+- Main App: Uses `build/entitlements.mas.plist`
+- Helper (GPU, Renderer, Plugin): MUST use `build/entitlements.mas.inherit.plist`
+
+**Common Issue: V8 Initialization Crash (EXC_BREAKPOINT)**
+
+**Symptoms**: App crashes immediately (~120ms after launch) with `SIGTRAP` in V8 initialization
+
+**Root Cause**: Helper processes not signed with correct entitlements, causing JIT compilation failure
+
+**Solution** (implemented in forge.config.js:42-53):
+```javascript
+osxSign: {
+  // ... other config
+  optionsForFile: (filePath) => {
+    // CRITICAL: Helper processes MUST use inherit entitlements
+    if (filePath.includes('Helper')) {
+      return { entitlements: 'build/entitlements.mas.inherit.plist' };
+    }
+    return { entitlements: 'build/entitlements.mas.plist' };
+  },
+  hardenedRuntime: true,
+  gatekeeperAssess: false,
+  signatureFlags: ['runtime'],
+}
+```
+
+**Key Entitlements** (required for V8/Electron):
+- `com.apple.security.cs.allow-jit` - JIT compilation
+- `com.apple.security.cs.allow-unsigned-executable-memory` - V8 memory
+- `com.apple.security.cs.allow-dyld-environment-variables` - Dynamic linking
+- `com.apple.security.cs.disable-library-validation` - Native modules
+
+**Verification**:
+```bash
+# Check helper process signatures
+codesign -d --entitlements - "out/.../Electron Helper (Renderer).app"
+# Should show com.apple.security.cs.allow-jit = true
+```
+
+**Full troubleshooting guide**: See `MAS_BUILD_TROUBLESHOOTING.md`
 
 #### ZIP Maker (Development/Testing)
 ```javascript
@@ -910,7 +954,25 @@ When contributing to this project:
 
 ## Update History
 
-**2025-11-20**: Migration to Electron Forge build system
+**2025-11-20 (Evening)**: Fixed Mac App Store V8 initialization crash
+- **Critical Bug Fix**: Resolved EXC_BREAKPOINT crash during Electron/V8 startup
+  - Issue: Helper processes not properly signed with inherit entitlements
+  - Symptom: App crashed within ~120ms of launch with SIGTRAP in V8 initialization
+- **forge.config.js Updates**:
+  - Added `optionsForFile` callback to ensure ALL Electron helper processes use inherit entitlements
+  - Fixed provisioning profile reference to use environment variable (`MAS_PROVISIONING_PROFILE`)
+  - Added hardened runtime flags (`hardenedRuntime: true`, `signatureFlags: ['runtime']`)
+  - Added `gatekeeperAssess: false` for MAS builds
+- **Entitlements Updates**:
+  - Enhanced `build/entitlements.mas.inherit.plist` with network access for helper processes
+  - Ensured critical JIT and memory entitlements are inherited by all child processes
+- **New Documentation**:
+  - Created `MAS_BUILD_TROUBLESHOOTING.md` - Comprehensive Mac App Store build troubleshooting guide
+  - Added detailed Mac App Store code signing section in CLAUDE.md
+  - Documented helper process signing requirements and verification steps
+- **Impact**: MAS builds now properly sign all Electron processes, preventing V8 crash on launch
+
+**2025-11-20 (Morning)**: Migration to Electron Forge build system
 - **Build System**: Migrated from electron-builder to Electron Forge v7.10.2
   - Official Electron tooling for long-term stability
   - Native Windows Store (AppX) and Mac App Store (PKG) support
