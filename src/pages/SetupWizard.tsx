@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Box, Typography, Stack, Button } from '@mui/joy'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Button } from '@/components/ui/button'
 import { SetupStepper } from '@/components/SetupStepper'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
@@ -200,158 +200,127 @@ export function SetupWizard() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        bgcolor: 'background.body',
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, p: { xs: 2, sm: 3, md: 4 }, flex: 1 }}>
+    <div className="min-h-screen flex flex-col bg-background">
+      <BlurFade delay={0.1} className="w-full h-full flex flex-col">
+        <div className="flex flex-col gap-2 md:gap-3 p-2 sm:p-3 md:p-4 flex-1">
           {/* Header Section */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Box sx={{ mb: { xs: 1, md: 2 }, display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-              <Box>
-                <Typography level="h2" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2rem' } }}>
+          <BlurFade delay={0.2}>
+            <div className="mb-1 md:mb-2 flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold mb-1">
                   Welcome to Klever Desktop
-                </Typography>
-                <Typography level="body-md" textColor="text.secondary" sx={{ fontSize: { xs: '0.875rem', md: '1rem' } }}>
+                </h2>
+                <p className="text-sm md:text-base text-muted-foreground">
                   Let&apos;s set up your environment for AI-powered UI automation
-                </Typography>
-              </Box>
+                </p>
+              </div>
               <TerminalButton animateAttention={animateTerminalButton} />
-            </Box>
-          </motion.div>
+            </div>
+          </BlurFade>
 
           {/* Stepper and Content Layout */}
-          <Box sx={{ display: 'flex', gap: { xs: 1, sm: 2, md: 4 }, flex: 1 }}>
+          <div className="flex gap-1 sm:gap-2 md:gap-4 flex-1">
             {/* Vertical Stepper on the left */}
             <SetupStepper steps={steps} currentStep={currentStep} />
 
             {/* Step Content on the right */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <AnimatePresence mode="wait">
-                {/* Step 0: Platform Tools Check */}
-                {currentStep === 0 && (
-                  <PlatformToolsStep
-                    toolsStatus={toolsStatus}
-                    setToolsStatus={setToolsStatus}
-                    checkPlatformTools={checkPlatformTools}
-                    downloadPython={downloadPython}
-                  />
-                )}
+            <div className="flex-1 min-w-0">
+              {/* Step 0: Platform Tools Check */}
+              {currentStep === 0 && (
+                <PlatformToolsStep
+                  toolsStatus={toolsStatus}
+                  setToolsStatus={setToolsStatus}
+                  checkPlatformTools={checkPlatformTools}
+                  downloadPython={downloadPython}
+                />
+              )}
 
-                {/* Step 1: Platform Configuration */}
-                {currentStep === 1 && (
-                  <PlatformConfigStep
-                    androidSdkPath={androidSdkPath}
-                    setAndroidSdkPath={setAndroidSdkPath}
-                  />
-                )}
+              {/* Step 1: Platform Configuration */}
+              {currentStep === 1 && (
+                <PlatformConfigStep
+                  androidSdkPath={androidSdkPath}
+                  setAndroidSdkPath={setAndroidSdkPath}
+                />
+              )}
 
-                {/* Step 2: Model Configuration */}
-                {currentStep === 2 && (
-                  <ModelConfigStep
-                    modelConfig={modelConfig}
-                    setModelConfig={setModelConfig}
-                    ollamaModels={ollamaModels}
-                    ollamaLoading={ollamaLoading}
-                    ollamaError={ollamaError}
-                    fetchOllamaModels={fetchOllamaModels}
-                    apiModels={apiModels}
-                    apiModelsLoading={apiModelsLoading}
-                    apiModelsError={apiModelsError}
-                    detectedProvider={detectedProvider}
-                    fetchApiModels={fetchApiModels}
-                  />
-                )}
+              {/* Step 2: Model Configuration */}
+              {currentStep === 2 && (
+                <ModelConfigStep
+                  modelConfig={modelConfig}
+                  setModelConfig={setModelConfig}
+                  ollamaModels={ollamaModels}
+                  ollamaLoading={ollamaLoading}
+                  ollamaError={ollamaError}
+                  fetchOllamaModels={fetchOllamaModels}
+                  apiModels={apiModels}
+                  apiModelsLoading={apiModelsLoading}
+                  apiModelsError={apiModelsError}
+                  detectedProvider={detectedProvider}
+                  fetchApiModels={fetchApiModels}
+                />
+              )}
 
-                {/* Step 3: Integration Test */}
-                {currentStep === 3 && (
-                  <IntegrationTestStep
-                    integrationTestRunning={integrationTestRunning}
-                    integrationTestComplete={integrationTestComplete}
-                    integrationTestSuccess={integrationTestSuccess}
-                    onRunTest={() => handleRunIntegrationTest(modelConfig)}
-                    onStopTest={handleStopIntegrationTest}
-                  />
-                )}
-              </AnimatePresence>
-            </Box>
-          </Box>
+              {/* Step 3: Integration Test */}
+              {currentStep === 3 && (
+                <IntegrationTestStep
+                  integrationTestRunning={integrationTestRunning}
+                  integrationTestComplete={integrationTestComplete}
+                  integrationTestSuccess={integrationTestSuccess}
+                  onRunTest={() => handleRunIntegrationTest(modelConfig)}
+                  onStopTest={handleStopIntegrationTest}
+                />
+              )}
+            </div>
+          </div>
 
           {/* Navigation Buttons */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Stack direction="row" justifyContent="flex-end" spacing={2} sx={{ pt: 2 }}>
+          <BlurFade delay={0.4}>
+            <div className="flex justify-end gap-2 pt-2">
               <Button
-                variant="outlined"
-                color="neutral"
+                variant="outline"
                 onClick={handleBack}
                 disabled={currentStep === 0}
-                sx={{ minWidth: 100 }}
+                className="min-w-[100px]"
               >
                 Back
               </Button>
               {currentStep === 0 ? (
                 <Button
-                  variant="solid"
-                  color="primary"
                   onClick={handleNext}
                   disabled={!canProceedFromStep0()}
-                  sx={{ minWidth: 100 }}
+                  className="min-w-[100px]"
                 >
                   Next
                 </Button>
               ) : currentStep === 1 ? (
                 <Button
-                  variant="solid"
-                  color="primary"
                   onClick={handleNext}
                   disabled={!canProceedFromStep1()}
-                  sx={{ minWidth: 100 }}
+                  className="min-w-[100px]"
                 >
                   Next
                 </Button>
               ) : currentStep === 2 ? (
                 <Button
-                  variant="solid"
-                  color="primary"
                   onClick={handleNext}
                   disabled={!canProceedFromStep2()}
-                  sx={{ minWidth: 100 }}
+                  className="min-w-[100px]"
                 >
                   Next
                 </Button>
               ) : (
                 <Button
-                  variant="solid"
-                  color="primary"
                   onClick={handleNext}
                   disabled={!integrationTestSuccess}
-                  sx={{ minWidth: 100 }}
+                  className="min-w-[100px]"
                 >
                   Get Started
                 </Button>
               )}
-            </Stack>
-          </motion.div>
-        </Box>
-      </motion.div>
-    </Box>
+            </div>
+          </BlurFade>
+        </div>
+      </BlurFade>
+    </div>
   )
 }
