@@ -1,20 +1,10 @@
-import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  Chip,
-  LinearProgress,
-} from '@mui/joy'
-import {
-  Computer as ComputerIcon,
-  Memory as MemoryIcon,
-  Code as CodeIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-} from '@mui/icons-material'
+import { Computer, MemoryStick, Code, CheckCircle, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { SystemInfo } from '@/hooks/useSettings'
+import { cn } from '@/lib/utils'
 
 interface SystemInfoCardProps {
   systemInfo: SystemInfo
@@ -23,39 +13,40 @@ interface SystemInfoCardProps {
 export function SystemInfoCard({ systemInfo }: SystemInfoCardProps) {
   const formatMemory = (bytes: number) => {
     if (bytes === 0) return '0.00 GB'
-    const gb = bytes / (1024 ** 3)
+    const gb = bytes / 1024 ** 3
     return `${gb.toFixed(2)} GB`
   }
 
-  const memoryUsagePercent = systemInfo.totalMemory > 0
-    ? ((systemInfo.totalMemory - systemInfo.freeMemory) / systemInfo.totalMemory) * 100
-    : 0
+  const memoryUsagePercent =
+    systemInfo.totalMemory > 0
+      ? ((systemInfo.totalMemory - systemInfo.freeMemory) / systemInfo.totalMemory) * 100
+      : 0
 
   const isDataLoaded = systemInfo.platform && systemInfo.platform !== ''
 
-  const getEnvStatusColor = (status?: string) => {
+  const getEnvStatusVariant = (status?: string): 'default' | 'destructive' | 'secondary' => {
     switch (status) {
       case 'ready':
-        return 'success'
+        return 'default'
       case 'not_ready':
-        return 'danger'
+        return 'destructive'
       case 'checking':
-        return 'neutral'
+        return 'secondary'
       default:
-        return 'neutral'
+        return 'secondary'
     }
   }
 
   const getEnvStatusIcon = (status?: string) => {
     switch (status) {
       case 'ready':
-        return <CheckCircleIcon />
+        return <CheckCircle className="h-3 w-3" />
       case 'not_ready':
-        return <ErrorIcon />
+        return <AlertCircle className="h-3 w-3" />
       case 'checking':
-        return <WarningIcon />
+        return <AlertTriangle className="h-3 w-3" />
       default:
-        return <WarningIcon />
+        return <AlertTriangle className="h-3 w-3" />
     }
   }
 
@@ -72,167 +63,118 @@ export function SystemInfoCard({ systemInfo }: SystemInfoCardProps) {
     }
   }
 
-  return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 3,
-        borderRadius: 'md',
-        bgcolor: 'background.surface',
-      }}
-    >
-      <Typography level="title-lg" sx={{ mb: 1 }}>
-        System Information
-      </Typography>
-      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-        Current system status and environment details
-      </Typography>
+  const getProgressColor = (percent: number) => {
+    if (percent > 90) return 'bg-destructive'
+    if (percent > 70) return 'bg-yellow-500'
+    return 'bg-primary'
+  }
 
-      <Stack spacing={2.5}>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>System Information</CardTitle>
+        <CardDescription>Current system status and environment details</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {!isDataLoaded && (
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 'sm',
-              bgcolor: 'neutral.softBg',
-              border: '1px solid',
-              borderColor: 'neutral.outlinedBorder',
-              textAlign: 'center',
-            }}
-          >
-            <Typography level="body-sm" textColor="text.secondary">
-              Loading system information...
-            </Typography>
-          </Box>
+          <div className="rounded-md border border-muted bg-muted/50 p-4 text-center">
+            <p className="text-sm text-muted-foreground">Loading system information...</p>
+          </div>
         )}
 
         {isDataLoaded && (
           <>
             {/* Platform Info */}
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <ComputerIcon fontSize="small" color="action" />
-                <Typography level="title-sm" fontWeight="bold">
-                  Platform
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={1} sx={{ ml: 3 }} flexWrap="wrap">
-                <Chip size="sm" variant="soft" color="primary">
-                  {systemInfo.platform || 'Unknown'}
-                </Chip>
-                <Chip size="sm" variant="soft" color="primary">
-                  {systemInfo.arch || 'Unknown'}
-                </Chip>
-                <Chip size="sm" variant="soft" color="primary">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Computer className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Platform</h3>
+              </div>
+              <div className="ml-6 flex flex-wrap gap-2">
+                <Badge variant="secondary">{systemInfo.platform || 'Unknown'}</Badge>
+                <Badge variant="secondary">{systemInfo.arch || 'Unknown'}</Badge>
+                <Badge variant="secondary">
                   {systemInfo.cpus || 0} CPU{systemInfo.cpus !== 1 ? 's' : ''}
-                </Chip>
-              </Stack>
-            </Box>
+                </Badge>
+              </div>
+            </div>
 
             {/* Memory Info */}
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <MemoryIcon fontSize="small" color="action" />
-                <Typography level="title-sm" fontWeight="bold">
-                  Memory
-                </Typography>
-              </Box>
-              <Box sx={{ ml: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                  <Typography level="body-sm">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <MemoryStick className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Memory</h3>
+              </div>
+              <div className="ml-6 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
                     Used: {formatMemory(systemInfo.totalMemory - systemInfo.freeMemory)}
-                  </Typography>
-                  <Typography level="body-sm">
+                  </span>
+                  <span className="text-muted-foreground">
                     Total: {formatMemory(systemInfo.totalMemory)}
-                  </Typography>
-                </Box>
-                <LinearProgress
-                  determinate
-                  value={memoryUsagePercent}
-                  color={
-                    memoryUsagePercent > 90
-                      ? 'danger'
-                      : memoryUsagePercent > 70
-                        ? 'warning'
-                        : 'primary'
-                  }
-                  sx={{ height: 6, borderRadius: 'sm' }}
-                />
-                <Typography level="body-xs" textColor="text.tertiary" sx={{ mt: 0.5 }}>
+                  </span>
+                </div>
+                <div className="relative">
+                  <Progress value={memoryUsagePercent} className="h-2" />
+                  <div
+                    className={cn(
+                      'absolute inset-0 h-full rounded-full transition-all',
+                      getProgressColor(memoryUsagePercent)
+                    )}
+                    style={{ width: `${memoryUsagePercent}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
                   {memoryUsagePercent.toFixed(1)}% used • {formatMemory(systemInfo.freeMemory)} free
-                </Typography>
-              </Box>
-            </Box>
+                </p>
+              </div>
+            </div>
 
             {/* Python Environment */}
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <CodeIcon fontSize="small" color="action" />
-                <Typography level="title-sm" fontWeight="bold">
-                  Python Environment
-                </Typography>
-              </Box>
-              <Stack spacing={1} sx={{ ml: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography level="body-sm">Version</Typography>
-                  <Typography level="body-sm" fontFamily="monospace">
-                    {systemInfo.pythonVersion || 'Not detected'}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography level="body-sm">Status</Typography>
-                  <Chip
-                    size="sm"
-                    variant="soft"
-                    color={getEnvStatusColor(systemInfo.envStatus)}
-                    startDecorator={getEnvStatusIcon(systemInfo.envStatus)}
-                  >
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Code className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Python Environment</h3>
+              </div>
+              <div className="ml-6 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Version</span>
+                  <span className="font-mono">{systemInfo.pythonVersion || 'Not detected'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge variant={getEnvStatusVariant(systemInfo.envStatus)} className="gap-1">
+                    {getEnvStatusIcon(systemInfo.envStatus)}
                     {getEnvStatusText(systemInfo.envStatus)}
-                  </Chip>
-                </Box>
-              </Stack>
-            </Box>
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
             {/* Status Summary */}
             {systemInfo.envStatus === 'not_ready' && (
-              <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 'sm',
-                  bgcolor: 'warning.softBg',
-                  border: '1px solid',
-                  borderColor: 'warning.outlinedBorder',
-                }}
-              >
-                <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                  Action Required
-                </Typography>
-                <Typography level="body-xs" textColor="text.secondary">
-                  Python environment is not properly configured. Please run the setup wizard to configure your environment.
-                </Typography>
-              </Box>
+              <Alert variant="warning">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Action Required</AlertTitle>
+                <AlertDescription>
+                  Python environment is not properly configured. Please run the setup wizard to
+                  configure your environment.
+                </AlertDescription>
+              </Alert>
             )}
 
             {systemInfo.envStatus === 'ready' && (
-              <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 'sm',
-                  bgcolor: 'success.softBg',
-                  border: '1px solid',
-                  borderColor: 'success.outlinedBorder',
-                }}
-              >
-                <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                  All Systems Ready
-                </Typography>
-                <Typography level="body-xs" textColor="text.secondary">
+              <Alert variant="success">
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>All Systems Ready</AlertTitle>
+                <AlertDescription>
                   Your environment is properly configured and ready for automation tasks.
-                </Typography>
-              </Box>
+                </AlertDescription>
+              </Alert>
             )}
           </>
         )}
-      </Stack>
-    </Sheet>
+      </CardContent>
+    </Card>
   )
 }
