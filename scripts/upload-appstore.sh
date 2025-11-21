@@ -195,11 +195,39 @@ fi
 
 # Check for iTMSTransporter (modern alternative)
 log_info "Checking iTMSTransporter availability..."
-if xcrun iTMSTransporter -h &> /dev/null 2>&1; then
-  log_success "iTMSTransporter is available (modern tool)"
-  USE_TRANSPORTER=true
-else
+
+# Try multiple paths where iTMSTransporter might be located
+ITMS_PATHS=(
+  "/Applications/Xcode.app/Contents/Applications/Transporter.app/Contents/itms/bin/iTMSTransporter"
+  "/usr/local/itms/bin/iTMSTransporter"
+  "xcrun iTMSTransporter"
+)
+
+ITMS_COMMAND=""
+for path in "${ITMS_PATHS[@]}"; do
+  if [[ "$path" == "xcrun iTMSTransporter" ]]; then
+    # Try xcrun method
+    if xcrun iTMSTransporter -h &> /dev/null 2>&1; then
+      ITMS_COMMAND="xcrun iTMSTransporter"
+      log_success "iTMSTransporter found via xcrun"
+      USE_TRANSPORTER=true
+      break
+    fi
+  else
+    # Try direct path
+    if [ -f "$path" ] && "$path" -h &> /dev/null 2>&1; then
+      ITMS_COMMAND="$path"
+      log_success "iTMSTransporter found at: $path"
+      USE_TRANSPORTER=true
+      break
+    fi
+  fi
+done
+
+if [ -z "$ITMS_COMMAND" ]; then
   log_warning "iTMSTransporter not found"
+else
+  log_info "Using iTMSTransporter (modern tool, recommended by Apple)"
 fi
 
 # Ensure at least one tool is available
@@ -212,10 +240,11 @@ fi
 
 # Prefer Transporter over altool
 if [ "$USE_TRANSPORTER" = true ]; then
-  log_success "Will use iTMSTransporter"
+  log_success "Will use iTMSTransporter (Apple's modern tool)"
   UPLOAD_TOOL="transporter"
 else
-  log_success "Will use altool (fallback)"
+  log_success "Will use altool (deprecated fallback)"
+  log_warning "Consider updating Xcode to get iTMSTransporter"
   UPLOAD_TOOL="altool"
 fi
 
@@ -240,17 +269,19 @@ upload_with_retry() {
     if [ "$UPLOAD_TOOL" = "transporter" ]; then
       # Use iTMSTransporter (modern tool)
       log_info "Using iTMSTransporter..."
-      UPLOAD_OUTPUT=$(xcrun iTMSTransporter \
+      UPLOAD_OUTPUT=$($ITMS_COMMAND \
         -m upload \
-        -f "$PKG_FILE" \
+        -assetFile "$PKG_FILE" \
         -u "$APPLE_ID" \
         -p "$APPLE_APP_SPECIFIC_PASSWORD" \
+        -asc_provider "$APPLE_TEAM_ID" \
         -t Signiant \
         -v eXtreme 2>&1 | tee /tmp/transporter_output.log)
       EXIT_CODE=$?
     else
       # Use altool (deprecated)
-      log_info "Using altool..."
+      log_info "Using altool (deprecated by Apple)..."
+      log_warning "This tool may stop working at any time"
       UPLOAD_OUTPUT=$(xcrun altool --upload-app \
         --type osx \
         --file "$PKG_FILE" \
