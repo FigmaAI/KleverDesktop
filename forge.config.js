@@ -40,13 +40,20 @@ module.exports = {
       provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || undefined,
       // CRITICAL: Sign all Electron helper processes with inherit entitlements
       optionsForFile: (filePath) => {
-        // Check if this is a helper process
-        if (filePath.includes('Helper')) {
+        // All helper apps and Login Items must use inherit entitlements
+        const isHelper = filePath.includes('Helper') ||
+                        filePath.includes('LoginItems') ||
+                        filePath.includes('Login Helper');
+
+        if (isHelper) {
+          console.log(`[Signing Helper] ${filePath}`);
           return {
             entitlements: path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
           };
         }
+
         // Main app uses main entitlements
+        console.log(`[Signing Main App] ${filePath}`);
         return {
           entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
         };
