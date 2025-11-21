@@ -1,24 +1,17 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  Modal,
-  ModalDialog,
-  ModalClose,
-  Typography,
-  Stack,
-  Box,
-  Chip,
-  Button,
-  ColorPaletteProp,
-} from '@mui/joy'
-import {
   FolderOpen,
-  Stop,
+  StopCircle,
   CheckCircle,
-  Error as ErrorIcon,
-  PlayArrow,
-  Schedule,
-  Cancel,
-} from '@mui/icons-material'
+  AlertCircle,
+  Play,
+  Clock,
+  XCircle,
+} from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { Task } from '../types/project'
 
 interface TaskDetailDialogProps {
@@ -44,7 +37,6 @@ export function TaskDetailDialog({
 
   // Reset state when task changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOutput(task.output || '')
     setIsRunning(task.status === 'running')
   }, [task.output, task.status])
@@ -129,153 +121,92 @@ export function TaskDetailDialog({
     }
   }
 
-  const getStatusIcon = () => {
+  const getStatusConfig = () => {
     switch (task.status) {
       case 'pending':
-        return <Schedule color="action" />
+        return { icon: Clock, label: 'Pending', variant: 'secondary' as const }
       case 'running':
-        return <PlayArrow color="primary" />
+        return { icon: Play, label: 'Running', variant: 'default' as const }
       case 'completed':
-        return <CheckCircle color="success" />
+        return { icon: CheckCircle, label: 'Completed', variant: 'default' as const }
       case 'failed':
-        return <ErrorIcon color="error" />
+        return { icon: AlertCircle, label: 'Failed', variant: 'destructive' as const }
       case 'cancelled':
-        return <Cancel color="action" />
+        return { icon: XCircle, label: 'Cancelled', variant: 'secondary' as const }
       default:
-        return <Schedule color="action" />
+        return { icon: Clock, label: 'Unknown', variant: 'secondary' as const }
     }
   }
 
-  const getStatusColor = (): ColorPaletteProp => {
-    switch (task.status) {
-      case 'pending':
-        return 'neutral'
-      case 'running':
-        return 'primary'
-      case 'completed':
-        return 'success'
-      case 'failed':
-        return 'danger'
-      case 'cancelled':
-        return 'neutral'
-      default:
-        return 'neutral'
-    }
-  }
+  const statusConfig = getStatusConfig()
+  const StatusIcon = statusConfig.icon
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog
-        sx={{
-          maxWidth: 1000,
-          width: '90%',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <ModalClose />
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          {/* Task Info Header */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <StatusIcon className="h-6 w-6 flex-shrink-0" />
+                <DialogTitle className="text-xl font-bold truncate">{task.name}</DialogTitle>
+              </div>
+              <Badge variant={statusConfig.variant} className="text-base py-1 px-3">
+                {statusConfig.label}
+              </Badge>
+            </div>
 
-        {/* Task Info Header */}
-        <Stack spacing={2} mb={2}>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            {getStatusIcon()}
-            <Typography level="h4" fontWeight="bold" sx={{ flex: 1 }}>
-              {task.name}
-            </Typography>
-            <Chip
-              size="lg"
-              variant="soft"
-              color={getStatusColor()}
-            >
-              {task.status}
-            </Chip>
-          </Stack>
-
-          {task.goal && (
-            <Box>
-              <Typography level="body-sm" textColor="text.secondary" mb={0.5}>
-                Goal:
-              </Typography>
-              <Typography level="body-md">{task.goal}</Typography>
-            </Box>
-          )}
-
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            {task.startedAt && (
-              <Typography level="body-sm" textColor="text.secondary">
-                Started: {new Date(task.startedAt).toLocaleString()}
-              </Typography>
+            {task.goal && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Goal:</p>
+                <p className="text-sm">{task.goal}</p>
+              </div>
             )}
-            {task.completedAt && (
-              <Typography level="body-sm" textColor="text.secondary">
-                Completed: {new Date(task.completedAt).toLocaleString()}
-              </Typography>
-            )}
-          </Stack>
 
-          {/* Action buttons */}
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="sm"
-              variant="outlined"
-              startDecorator={<FolderOpen />}
-              onClick={handleOpenFolder}
-            >
-              Open Folder
-            </Button>
-            {isRunning && (
-              <Button
-                size="sm"
-                variant="solid"
-                color="danger"
-                startDecorator={<Stop />}
-                onClick={handleStop}
-              >
-                Stop Task
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              {task.startedAt && <p>Started: {new Date(task.startedAt).toLocaleString()}</p>}
+              {task.completedAt && (
+                <p>Completed: {new Date(task.completedAt).toLocaleString()}</p>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleOpenFolder}>
+                <FolderOpen className="mr-2 h-4 w-4" />
+                Open Folder
               </Button>
-            )}
-          </Stack>
-        </Stack>
+              {isRunning && (
+                <Button size="sm" variant="destructive" onClick={handleStop}>
+                  <StopCircle className="mr-2 h-4 w-4" />
+                  Stop Task
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogHeader>
 
         {/* Terminal Output */}
-        <Box sx={{ flex: 1, minHeight: 0 }}>
-          <Typography level="title-md" fontWeight="bold" mb={1}>
-            Terminal Output
-          </Typography>
-          <Box
+        <div className="flex-1 min-h-0 flex flex-col mt-4">
+          <h3 className="text-sm font-semibold mb-2">Terminal Output</h3>
+          <div
             ref={terminalRef}
-            sx={{
-              bgcolor: '#1e1e1e',
-              color: '#d4d4d4',
-              p: 2,
-              borderRadius: 'sm',
-              fontFamily: 'monospace',
-              fontSize: '0.875rem',
-              height: '400px',
-              overflowY: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                bgcolor: '#2d2d2d',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                bgcolor: '#555',
-                borderRadius: '4px',
-              },
-            }}
+            className={cn(
+              'flex-1 bg-[#1e1e1e] text-[#d4d4d4] p-4 rounded-md',
+              'font-mono text-sm h-[400px] overflow-y-auto',
+              'whitespace-pre-wrap break-words',
+              'scrollbar-thin scrollbar-track-[#2d2d2d] scrollbar-thumb-[#555]'
+            )}
           >
             {output || (
-              <Typography level="body-sm" sx={{ color: '#888' }}>
+              <p className="text-gray-500">
                 {isRunning ? 'Waiting for output...' : 'No output available'}
-              </Typography>
+              </p>
             )}
-          </Box>
-        </Box>
-      </ModalDialog>
-    </Modal>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

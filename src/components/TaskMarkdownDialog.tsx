@@ -1,15 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import {
-  Modal,
-  ModalDialog,
-  Typography,
-  Stack,
-  Box,
-  IconButton,
-  CircularProgress,
-  Tooltip,
-} from '@mui/joy'
-import { FolderOpen, Refresh, OpenInNew, Close } from '@mui/icons-material'
+import { FolderOpen, RefreshCw, ExternalLink, X, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -18,77 +11,77 @@ interface TaskMarkdownDialogProps {
   onClose: () => void
   taskName: string
   workspaceDir: string
-  taskResultPath?: string  // Task-specific directory path
-  taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'  // Task status for real-time updates
+  taskResultPath?: string // Task-specific directory path
+  taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' // Task status for real-time updates
 }
 
 // Component to load and display images from file system
 function MarkdownImage({ src, alt, baseDir }: { src?: string; alt?: string; baseDir?: string }) {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!src) {
-      setLoading(false);
-      return;
+      setLoading(false)
+      return
     }
 
     // Skip if already a data URL or HTTP URL
     if (src.startsWith('data:') || src.startsWith('http')) {
-      setImageSrc(src);
-      setLoading(false);
-      return;
+      setImageSrc(src)
+      setLoading(false)
+      return
     }
 
     // Load image from file system
     const loadImage = async () => {
       try {
-        const result = await window.electronAPI.fileReadImage(src, baseDir);
+        const result = await window.electronAPI.fileReadImage(src, baseDir)
         if (result?.success && result.dataUrl) {
-          setImageSrc(result.dataUrl);
-          setError(null);
+          setImageSrc(result.dataUrl)
+          setError(null)
         } else {
-          setError(result?.error || 'Failed to load image');
-          setImageSrc(null);
+          setError(result?.error || 'Failed to load image')
+          setImageSrc(null)
         }
       } catch (err) {
-        console.error('Failed to load image:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        setImageSrc(null);
+        console.error('Failed to load image:', err)
+        setError(err instanceof Error ? err.message : 'Unknown error')
+        setImageSrc(null)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    loadImage();
-  }, [src, baseDir]);
+    loadImage()
+  }, [src, baseDir])
 
   if (loading) {
     return (
-      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, my: 2 }}>
-        <CircularProgress size="sm" />
-        <Typography component="span" level="body-sm" textColor="text.secondary">
-          Loading image...
-        </Typography>
-      </Box>
-    );
+      <div className="inline-flex items-center gap-2 my-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm text-muted-foreground">Loading image...</span>
+      </div>
+    )
   }
 
   if (error && !imageSrc) {
     return (
-      <Box sx={{ p: 2, border: '1px solid', borderColor: 'danger.300', borderRadius: 'sm', my: 2 }}>
-        <Typography component="div" level="body-sm" textColor="danger.500">
-          {error}
-        </Typography>
-        <Typography component="div" level="body-xs" textColor="text.secondary" mt={0.5}>
-          {src}
-        </Typography>
-      </Box>
-    );
+      <div className="p-4 border border-destructive rounded-md my-4">
+        <p className="text-sm text-destructive">{error}</p>
+        <p className="text-xs text-muted-foreground mt-1">{src}</p>
+      </div>
+    )
   }
 
-  return <img src={imageSrc || undefined} alt={alt} style={{ maxWidth: '100%', maxHeight: '512px', height: 'auto', objectFit: 'contain' }} />;
+  return (
+    <img
+      src={imageSrc || undefined}
+      alt={alt}
+      className="max-w-full max-h-[512px] h-auto object-contain"
+    />
+  )
 }
 
 export function TaskMarkdownDialog({
@@ -112,37 +105,27 @@ export function TaskMarkdownDialog({
 
     try {
       // Construct markdown file path
-      // Python generates: log_report_{task_name}.md where task_name is the directory basename
-      // Example: /path/to/self_explore_2025-11-19_04-24-12/log_report_self_explore_2025-11-19_04-24-12.md
       let mdPath: string
 
       if (taskResultPath) {
-        // Extract task name from path (last directory name)
-        // Support both forward slash and backslash for Windows
         const taskDirName = taskResultPath.split(/[/\\]/).filter(Boolean).pop() || ''
-        // Always use forward slashes for internal path handling to avoid markdown escape issues
         const normalizedPath = taskResultPath.replace(/\\/g, '/')
         mdPath = `${normalizedPath}/log_report_${taskDirName}.md`
       } else {
-        // Fallback to old pattern
         const normalizedWorkspace = workspaceDir.replace(/\\/g, '/')
         mdPath = `${normalizedWorkspace}/${taskName.replace(/\s+/g, '_')}.md`
       }
 
       setMarkdownPath(mdPath)
 
-      // Extract markdown directory for resolving relative image paths
-      // Use Node.js path separator handling via main process (cross-platform)
-      const normalizedMdPath = mdPath.replace(/\\/g, '/');
-      const lastSlash = normalizedMdPath.lastIndexOf('/');
-      const baseDir = lastSlash > 0 ? normalizedMdPath.substring(0, lastSlash) : normalizedMdPath;
+      const normalizedMdPath = mdPath.replace(/\\/g, '/')
+      const lastSlash = normalizedMdPath.lastIndexOf('/')
+      const baseDir = lastSlash > 0 ? normalizedMdPath.substring(0, lastSlash) : normalizedMdPath
       setMarkdownDir(baseDir)
 
-      // Check if file exists
       const existsResult = await window.electronAPI.fileExists(mdPath)
 
       if (!existsResult.success || !existsResult.exists) {
-        // If task is running, show "generating" message instead of error
         if (taskStatus === 'running') {
           setError('Report is being generated... This view will auto-refresh.')
           setContent('')
@@ -151,12 +134,9 @@ export function TaskMarkdownDialog({
           setContent('')
         }
       } else {
-        // Read file contents
         const readResult = await window.electronAPI.fileRead(mdPath)
 
         if (readResult.success && readResult.content) {
-          // Keep relative image paths as-is - they will be resolved by main process
-          // using Node.js path module for cross-platform compatibility
           setContent(readResult.content)
           setError(null)
         } else {
@@ -184,7 +164,7 @@ export function TaskMarkdownDialog({
     if (open && taskStatus === 'running') {
       const interval = setInterval(() => {
         loadMarkdown()
-      }, 2000) // Refresh every 2 seconds
+      }, 2000)
 
       return () => clearInterval(interval)
     }
@@ -199,7 +179,6 @@ export function TaskMarkdownDialog({
 
   const handleOpenFolder = async () => {
     try {
-      // Try to open task result path first if it exists
       if (taskResultPath) {
         const existsResult = await window.electronAPI.fileExists(taskResultPath)
         if (existsResult.success && existsResult.exists) {
@@ -210,7 +189,6 @@ export function TaskMarkdownDialog({
         }
       }
 
-      // Fallback to workspace directory
       const result = await window.electronAPI.openPath(workspaceDir)
       if (!result.success) {
         alert(`Failed to open folder: ${result.error}`)
@@ -228,14 +206,12 @@ export function TaskMarkdownDialog({
         return
       }
 
-      // Check if file exists
       const existsResult = await window.electronAPI.fileExists(markdownPath)
       if (!existsResult.success || !existsResult.exists) {
         alert('Markdown file does not exist yet')
         return
       }
 
-      // Open the markdown file with system default editor
       const result = await window.electronAPI.openPath(markdownPath)
       if (!result.success) {
         alert(`Failed to open file: ${result.error}`)
@@ -247,228 +223,107 @@ export function TaskMarkdownDialog({
   }
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <ModalDialog
-        sx={{
-          width: '95vw',
-          height: '95vh',
-          maxWidth: 'none',
-          maxHeight: 'none',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
+    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
         {/* Header */}
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Typography level="h4" fontWeight="bold">
-            Task Result
-          </Typography>
-          <Stack direction="row" spacing={0.5}>
-            <Tooltip title="Refresh">
-              <IconButton
-                size="sm"
-                variant="outlined"
-                onClick={loadMarkdown}
-                disabled={loading}
-              >
-                <Refresh />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Open in Editor">
-              <IconButton
-                size="sm"
-                variant="outlined"
-                onClick={handleOpenInEditor}
-                disabled={!markdownPath || loading}
-              >
-                <OpenInNew />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Open Folder">
-              <IconButton
-                size="sm"
-                variant="outlined"
-                onClick={handleOpenFolder}
-              >
-                <FolderOpen />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Close">
-              <IconButton
-                size="sm"
-                variant="outlined"
-                onClick={onClose}
-              >
-                <Close />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </Stack>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Task Result</h2>
+          <TooltipProvider>
+            <div className="flex gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={loadMarkdown}
+                    disabled={loading}
+                  >
+                    <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleOpenInEditor}
+                    disabled={!markdownPath || loading}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open in Editor</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={handleOpenFolder}>
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Open Folder</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={onClose}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Close</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+        </div>
 
         {/* Content */}
-        <Box
+        <div
           ref={contentBoxRef}
-          sx={{
-            flex: 1,
-            overflow: 'auto',
-            bgcolor: 'background.surface',
-            borderRadius: 'sm',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
+          className="flex-1 overflow-auto bg-background rounded-md border"
         >
           {loading ? (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-              }}
-            >
-              <CircularProgress />
-            </Box>
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
           ) : error ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography level="body-lg" textColor="danger.500" mb={2}>
-                {error}
-              </Typography>
-              <Typography level="body-sm" textColor="text.secondary">
+            <div className="p-8 text-center">
+              <p className="text-lg text-destructive mb-4">{error}</p>
+              <p className="text-sm text-muted-foreground">
                 Make sure the task has completed and generated output files.
-              </Typography>
-            </Box>
+              </p>
+            </div>
           ) : content ? (
-            <Box
-              className="markdown-body"
-              sx={{
-                p: 3,
-                '& h1': {
-                  fontSize: '2rem',
-                  fontWeight: 'bold',
-                  mt: 3,
-                  mb: 2,
-                  pb: 1,
-                  borderBottom: '2px solid',
-                  borderColor: 'divider',
-                },
-                '& h2': {
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  mt: 2.5,
-                  mb: 1.5,
-                },
-                '& h3': {
-                  fontSize: '1.25rem',
-                  fontWeight: 'bold',
-                  mt: 2,
-                  mb: 1,
-                },
-                '& h4': {
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  mt: 1.5,
-                  mb: 1,
-                },
-                '& h5': {
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  mt: 1.5,
-                  mb: 0.75,
-                },
-                '& h6': {
-                  fontSize: '0.95rem',
-                  fontWeight: 'bold',
-                  mt: 1.5,
-                  mb: 0.75,
-                },
-                '& > div': {
-                  mb: 1.5,
-                  lineHeight: 1.6,
-                },
-                '& ul, & ol': {
-                  pl: 3,
-                  mb: 1.5,
-                },
-                '& li': {
-                  mb: 0.5,
-                },
-                '& code': {
-                  bgcolor: 'background.level1',
-                  px: 0.5,
-                  py: 0.25,
-                  borderRadius: 'xs',
-                  fontFamily: 'monospace',
-                  fontSize: '0.875em',
-                },
-                '& pre': {
-                  mb: 2,
-                  borderRadius: 'sm',
-                  overflow: 'hidden',
-                },
-                '& pre code': {
-                  bgcolor: 'transparent',
-                  px: 0,
-                  py: 0,
-                },
-                '& blockquote': {
-                  borderLeft: '4px solid',
-                  borderColor: 'primary.500',
-                  pl: 2,
-                  ml: 0,
-                  my: 2,
-                  fontStyle: 'italic',
-                  color: 'text.secondary',
-                },
-                '& img': {
-                  maxWidth: '100%',
-                  maxHeight: '512px',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  borderRadius: 'sm',
-                  my: 2,
-                },
-                '& table': {
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  mb: 2,
-                },
-                '& th, & td': {
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  p: 1,
-                  textAlign: 'left',
-                },
-                '& th': {
-                  bgcolor: 'background.level1',
-                  fontWeight: 'bold',
-                },
-                '& hr': {
-                  my: 2,
-                  borderColor: 'divider',
-                },
-              }}
-            >
+            <div className="markdown-body p-6 prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
                   img({ src, alt }) {
-                    return <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />;
+                    return <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />
                   },
-                  p: ({ children }) => <div style={{ marginBottom: '1rem' }}>{children}</div>,
+                  p: ({ children }) => <div className="mb-4 leading-relaxed">{children}</div>,
                 }}
               >
                 {content}
               </ReactMarkdown>
-            </Box>
+            </div>
           ) : (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Typography level="body-lg" textColor="text.secondary">
-                No content available
-              </Typography>
-            </Box>
+            <div className="p-8 text-center">
+              <p className="text-lg text-muted-foreground">No content available</p>
+            </div>
           )}
-        </Box>
-      </ModalDialog>
-    </Modal>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
