@@ -72,12 +72,6 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
         PYTHONIOENCODING: 'utf-8'  // Fix Unicode encoding issues on Windows
       };
 
-      console.log('[Integration Test] ========== Starting Integration Test ==========');
-      console.log('[Integration Test] Python executable:', getPythonEnv().PYTHON_EXECUTABLE || 'bundled');
-      console.log('[Integration Test] Scripts directory:', scriptsDir);
-      console.log('[Integration Test] PYTHONPATH:', pythonPath);
-      console.log('[Integration Test] Working directory:', appagentPath);
-
       mainWindow?.webContents.send('integration:output', '============================================================\n');
       mainWindow?.webContents.send('integration:output', 'Klever Desktop Integration Test\n');
       mainWindow?.webContents.send('integration:output', '============================================================\n\n');
@@ -186,8 +180,6 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
       const wrapperPath = path.join(appagentPath, '_integration_wrapper.py');
       fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
 
-      console.log('[Integration Test] Created wrapper script:', wrapperPath);
-
       // Use bundled Python to run the integration test via wrapper
       integrationTestProcess = spawnBundledPython(
         [
@@ -217,8 +209,6 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
         mainWindow?.webContents.send('integration:complete', false);
         return { success: false };
       }
-
-      console.log('[Integration Test] Process started with PID:', integrationTestProcess.pid);
 
       integrationTestProcess.stdout?.on('data', (data) => {
         mainWindow?.webContents.send('integration:output', data.toString());
@@ -251,17 +241,15 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
                 const output = fs.readFileSync(reportPath, 'utf8');
                 taskToUpdate.output = output.substring(0, 1000); // Store first 1000 chars
               }
-              
+
               project.updatedAt = new Date().toISOString();
               saveProjects(data);
-              
-              console.log(`[Integration Test] Updated task status: ${taskToUpdate.status}`);
             }
           }
         } catch (error) {
           console.error('[Integration Test] Failed to update task status:', error);
         }
-        
+
         if (code === 0) {
           mainWindow?.webContents.send('integration:output', '✅ Integration test PASSED - All 2 rounds completed successfully!\n');
           mainWindow?.webContents.send('integration:output', '============================================================\n');
@@ -269,11 +257,9 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
           if (currentTaskDir) {
             mainWindow?.webContents.send('integration:output', `   View results in: ${currentTaskDir}\n`);
           }
-          console.log('[Integration Test] ✅ Test completed successfully');
         } else {
           mainWindow?.webContents.send('integration:output', `❌ Integration test FAILED (exit code: ${code})\n`);
           mainWindow?.webContents.send('integration:output', '============================================================\n');
-          console.log(`[Integration Test] ❌ Test failed with code: ${code}`);
         }
         
         mainWindow?.webContents.send('integration:complete', code === 0);

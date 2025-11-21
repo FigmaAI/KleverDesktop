@@ -86,17 +86,11 @@ export function ProjectCard({
     e.stopPropagation()
     const workDir = `${project.workspaceDir}/apps/${getSanitizedAppName(project.name)}`
 
-    console.log('[ProjectCard] Opening work directory:', workDir)
-    console.log('[ProjectCard] Project:', { name: project.name, workspaceDir: project.workspaceDir })
-
     try {
       const result = await window.electronAPI.openFolder(workDir)
-      console.log('[ProjectCard] openFolder result:', result)
       if (!result.success) {
         console.error('[ProjectCard] Failed to open folder:', result.error)
         alert(`Failed to open folder: ${result.error}`)
-      } else {
-        console.log('[ProjectCard] Folder opened successfully')
       }
     } catch (error) {
       console.error('[ProjectCard] Exception opening folder:', error)

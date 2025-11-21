@@ -29,7 +29,6 @@ export function loadAppConfig(): AppConfig {
   const configPath = getConfigJsonPath();
 
   if (!fs.existsSync(configPath)) {
-    console.log('[config-storage] config.json not found, using defaults');
     return { ...DEFAULT_CONFIG };
   }
 
@@ -61,7 +60,6 @@ export function saveAppConfig(config: AppConfig): void {
   try {
     const jsonStr = JSON.stringify(config, null, 2);
     fs.writeFileSync(configPath, jsonStr, 'utf8');
-    console.log('[config-storage] Configuration saved to:', configPath);
   } catch (error) {
     console.error('[config-storage] Error saving config.json:', error);
     throw error;
@@ -85,18 +83,13 @@ export function updateAppConfig(updates: Partial<AppConfig>): void {
 export function resetAppConfig(): void {
   const configPath = getConfigJsonPath();
 
-  console.log('[config-storage] Attempting to reset configuration at:', configPath);
-
   if (fs.existsSync(configPath)) {
     try {
       fs.unlinkSync(configPath);
-      console.log('[config-storage] Configuration file successfully deleted:', configPath);
     } catch (error) {
       console.error('[config-storage] Failed to delete configuration file:', error);
       throw error;
     }
-  } else {
-    console.log('[config-storage] Configuration file does not exist (already reset):', configPath);
   }
 }
 
@@ -133,8 +126,6 @@ export function hardResetUserData(): void {
       console.error('[config-storage] Failed to delete user data directory:', error);
       throw error;
     }
-  } else {
-    console.log('[config-storage] User data directory does not exist:', userDataPath);
   }
 }
 

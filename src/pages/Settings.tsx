@@ -166,12 +166,9 @@ export function Settings() {
     setErrorMessage(null)
 
     try {
-      console.log('[Settings] Calling configReset...')
       const result = await window.electronAPI.configReset()
-      console.log('[Settings] configReset result:', result)
 
       if (result.success) {
-        console.log('[Settings] Configuration reset successful, restarting app...')
         // Restart the entire app to re-check setup status
         await window.electronAPI.appRestart()
       } else {
@@ -193,12 +190,9 @@ export function Settings() {
     setHardResetErrorMessage(null)
 
     try {
-      console.log('[Settings] Calling configHardReset...')
       const result = await window.electronAPI.configHardReset()
-      console.log('[Settings] configHardReset result:', result)
 
       if (result.success) {
-        console.log('[Settings] Hard reset successful, restarting app...')
         // Restart the entire app to re-check setup status
         await window.electronAPI.appRestart()
         // Note: App will quit and relaunch, so no code after this will execute

@@ -40,17 +40,12 @@ export function getPythonPath(): string {
   }
 
   if (!fs.existsSync(pythonExe)) {
-    console.error('[Python Runtime] ERROR: Python not found at:', pythonExe);
-    console.error('[Python Runtime] Install dir:', pythonDir);
-    console.error('[Python Runtime] User data:', app.getPath('userData'));
-
     throw new Error(
       `Python runtime not found at ${pythonExe}. ` +
       `Please install Python from the Setup Wizard.`
     );
   }
 
-  console.log('[Python Runtime] ✅ Using Python:', pythonExe);
   return pythonExe;
 }
 
@@ -72,30 +67,15 @@ export function isPythonInstalled(): boolean {
 export function getAppagentPath(): string {
   const isDev = process.env.NODE_ENV === 'development';
 
-  // Debug logging for MAS builds
-  console.log('[Python Runtime] Environment:', {
-    isDev,
-    NODE_ENV: process.env.NODE_ENV,
-    resourcesPath: process.resourcesPath,
-    platform: os.platform(),
-    arch: os.arch(),
-  });
-
   if (isDev) {
     return path.join(__dirname, '..', '..', 'appagent');
   } else {
     // Production: appagent is an extraResource in Resources/
     // process.resourcesPath points to app/Contents/Resources/
     const appagentPath = path.join(process.resourcesPath, 'appagent');
-    console.log('[Python Runtime] Appagent path:', appagentPath);
-    console.log('[Python Runtime] Appagent exists:', fs.existsSync(appagentPath));
 
     if (!fs.existsSync(appagentPath)) {
-      console.error('[Python Runtime] ERROR: Appagent directory not found!');
-      console.error('[Python Runtime] Searched at:', appagentPath);
-      console.error('[Python Runtime] Resources contents:',
-        fs.readdirSync(process.resourcesPath).slice(0, 20)
-      );
+      console.error('[Python Runtime] Appagent directory not found at:', appagentPath);
     }
 
     return appagentPath;
@@ -113,10 +93,6 @@ export function executePythonScript(
   const pythonExe = getPythonPath();
   const appagentDir = getAppagentPath();
   const fullScriptPath = path.join(appagentDir, scriptPath);
-
-  console.log('[Python Runtime] Executing:', fullScriptPath);
-  console.log('[Python Runtime] Python:', pythonExe);
-  console.log('[Python Runtime] Args:', args);
 
   const env = {
     ...process.env,
@@ -138,12 +114,10 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
   try {
     // Check if Python is installed first
     if (!isPythonInstalled()) {
-      console.log('[Playwright Check] Python not installed yet');
       return false;
     }
 
     const pythonExe = getPythonPath();
-    console.log('[Playwright Check] Using Python:', pythonExe);
 
     return new Promise((resolve) => {
       const proc = spawn(pythonExe, ['-m', 'playwright', '--version']);
@@ -160,10 +134,6 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
       });
 
       proc.on('close', (code) => {
-        console.log('[Playwright Check] Exit code:', code);
-        console.log('[Playwright Check] stdout:', stdout.trim());
-        if (stderr) console.log('[Playwright Check] stderr:', stderr.trim());
-
         // If playwright module is installed, check browsers
         if (code === 0) {
           // Now check if chromium is installed
@@ -181,7 +151,6 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
           });
 
           checkBrowsers.on('close', (checkCode) => {
-            console.log('[Playwright Check] Browser check output:', output.trim());
             resolve(checkCode === 0 && output.includes('installed'));
           });
 
@@ -214,8 +183,6 @@ export async function installPlaywrightBrowsers(
   try {
     const pythonExe = getPythonPath();
 
-    console.log('[Python Runtime] Installing Playwright browsers...');
-
     return new Promise((resolve) => {
       onProgress?.('Installing Playwright browsers (this may take a few minutes)...\n');
 
@@ -223,19 +190,16 @@ export async function installPlaywrightBrowsers(
 
       proc.stdout?.on('data', (data) => {
         const text = data.toString();
-        console.log('[Playwright]', text);
         onProgress?.(text);
       });
 
       proc.stderr?.on('data', (data) => {
         const text = data.toString();
-        console.log('[Playwright]', text);
         onProgress?.(text);
       });
 
       proc.on('close', (code) => {
         if (code === 0) {
-          console.log('[Python Runtime] ✓ Playwright browsers installed');
           resolve({ success: true });
         } else {
           resolve({

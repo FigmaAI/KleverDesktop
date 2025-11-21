@@ -43,24 +43,20 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
     return new Promise((resolve) => {
       const appagentPath = getAppagentPath();
       const requirementsPath = path.join(appagentPath, 'requirements.txt');
-      console.log('[Check Packages] Checking packages from:', requirementsPath);
 
       // Try to install with --dry-run to see if all packages can be installed
       exec(`python -m pip install --dry-run -r "${requirementsPath}"`, { timeout: 10000 }, (error, stdout, stderr) => {
         if (error) {
-          console.log('[Check Packages] Error:', stderr || error.message);
           resolve({ success: false, error: 'Some packages are missing or cannot be installed' });
           return;
         }
 
         // Check if it says "would install" (meaning packages are missing)
         if (stdout.includes('would install') || stderr.includes('would install')) {
-          console.log('[Check Packages] Packages need to be installed');
           resolve({ success: false, error: 'Some packages are not installed' });
           return;
         }
 
-        console.log('[Check Packages] All packages are satisfied');
         resolve({ success: true, output: stdout });
       });
     });
@@ -87,8 +83,6 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
   // Check ADB/Android SDK
   ipcMain.handle('check:androidStudio', async () => {
     return new Promise((resolve) => {
-      console.log('[Android SDK Check] Starting check...');
-
       // Method 1: Check if adb command is available (most reliable)
       exec('adb --version', { timeout: 5000 }, (error, stdout, stderr) => {
         if (!error) {
@@ -96,7 +90,6 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const output = stdout || stderr;
           const versionMatch = output.match(/Android Debug Bridge version ([\d.]+)/);
           const version = versionMatch ? versionMatch[1] : 'unknown';
-          console.log('[Android SDK Check] adb found via PATH:', version);
 
           // Try to find SDK path from adb location
           exec('which adb', { timeout: 2000 }, (whichError, whichStdout) => {
@@ -114,8 +107,6 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           return;
         }
 
-        console.log('[Android SDK Check] adb command not found in PATH');
-
         // Method 2: Check environment variables
         const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
         if (androidHome) {
@@ -123,13 +114,10 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            console.log('[Android SDK Check] Found via ANDROID_HOME/ANDROID_SDK_ROOT:', androidHome);
             resolve({ success: true, version: 'installed', method: 'env_variable', path: androidHome });
             return;
           }
         }
-
-        console.log('[Android SDK Check] Environment variables not set or invalid');
 
         // Method 3: Check common SDK locations
         const commonPaths = [
@@ -140,12 +128,10 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
         ];
 
         for (const sdkPath of commonPaths) {
-          console.log('[Android SDK Check] Checking path:', sdkPath);
           const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            console.log('[Android SDK Check] Found at:', sdkPath);
             resolve({ success: true, version: 'installed', method: 'common_path', path: sdkPath });
             return;
           }
@@ -165,19 +151,16 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
               for (const sdkPath of possiblePaths) {
                 const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
                 if (fs.existsSync(adbPath)) {
-                  console.log('[Android SDK Check] Found on external volume:', sdkPath);
                   resolve({ success: true, version: 'installed', method: 'external_volume', path: sdkPath });
                   return;
                 }
               }
             }
           } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : 'Unknown error';
-            console.log('[Android SDK Check] Could not search volumes:', message);
+            // Silently continue
           }
         }
 
-        console.log('[Android SDK Check] Result: NOT FOUND');
         resolve({
           success: false,
           error: 'Android SDK not found. Please install Android Studio or set ANDROID_HOME environment variable.',

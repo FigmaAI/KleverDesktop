@@ -16,14 +16,12 @@ export function useIntegrationTest() {
   useEffect(() => {
     if (listenersRegistered.current) return
 
-    console.log('[useIntegrationTest] Registering event listeners')
     listenersRegistered.current = true
 
     const processId = 'integration-test'
 
     // Listen for stdout
     window.electronAPI.onIntegrationTestOutput((data: string) => {
-      console.log('[useIntegrationTest] Received output')
       addLine({
         source: 'integration',
         sourceId: processId,
@@ -34,7 +32,6 @@ export function useIntegrationTest() {
 
     // Listen for completion
     window.electronAPI.onIntegrationTestComplete((success: boolean) => {
-      console.log('[useIntegrationTest] Test complete, success:', success)
       setIntegrationTestRunning(false)
       setIntegrationTestComplete(true)
       setIntegrationTestSuccess(success)
@@ -64,7 +61,6 @@ export function useIntegrationTest() {
 
     // Cleanup on unmount
     return () => {
-      console.log('[useIntegrationTest] Cleaning up event listeners')
       window.electronAPI.removeAllListeners('integration:output')
       window.electronAPI.removeAllListeners('integration:complete')
       listenersRegistered.current = false
@@ -72,7 +68,6 @@ export function useIntegrationTest() {
   }, [addLine, addProcess, updateProcess])
 
   const handleRunIntegrationTest = useCallback(async (modelConfig: ModelConfig) => {
-    console.log('[useIntegrationTest] Starting integration test')
     setIntegrationTestRunning(true)
     setIntegrationTestComplete(false)
     setIntegrationTestSuccess(false)
@@ -92,7 +87,6 @@ export function useIntegrationTest() {
       // Start the integration test with model config
       // Event listeners are already registered in useEffect
       const result = await window.electronAPI.runIntegrationTest(modelConfig)
-      console.log('[useIntegrationTest] runIntegrationTest returned:', result)
 
       if (!result.success) {
         throw new Error('Failed to start integration test')
@@ -117,7 +111,6 @@ export function useIntegrationTest() {
   }, [addLine, addProcess, updateProcess, clearLines, setIsOpen, setActiveTab])
 
   const handleStopIntegrationTest = useCallback(async () => {
-    console.log('[useIntegrationTest] Stopping integration test')
     await window.electronAPI.stopIntegrationTest()
     setIntegrationTestRunning(false)
     updateProcess('integration-test', {

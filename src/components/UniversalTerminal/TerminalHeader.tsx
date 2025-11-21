@@ -37,12 +37,7 @@ export function TerminalHeader() {
     textarea.select()
 
     try {
-      const successful = document.execCommand('copy')
-      if (successful) {
-        console.log('[Terminal] Output copied to clipboard')
-      } else {
-        console.error('[Terminal] Failed to copy')
-      }
+      document.execCommand('copy')
     } catch (err) {
       console.error('[Terminal] Failed to copy:', err)
     } finally {

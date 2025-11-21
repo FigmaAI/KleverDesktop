@@ -61,18 +61,13 @@ export function updateConfig(updates: Record<string, unknown>): void {
  */
 export function resetConfig(): void {
   const configPath = getConfigPath();
-  
-  console.log('[config-manager] Attempting to reset configuration at:', configPath);
-  
+
   if (fs.existsSync(configPath)) {
     try {
       fs.unlinkSync(configPath);
-      console.log('[config-manager] Configuration file successfully deleted:', configPath);
     } catch (error) {
       console.error('[config-manager] Failed to delete configuration file:', error);
       throw error;
     }
-  } else {
-    console.log('[config-manager] Configuration file does not exist (already reset):', configPath);
   }
 }

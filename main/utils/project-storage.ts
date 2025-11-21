@@ -45,10 +45,6 @@ function migrateProjectsIfNeeded(): void {
   // If legacy location has projects.json, migrate it
   if (fs.existsSync(legacyPath)) {
     try {
-      console.log('[project-storage] Migrating projects.json from legacy location');
-      console.log('[project-storage] From:', legacyPath);
-      console.log('[project-storage] To:', newPath);
-
       // Ensure userData directory exists
       const userDataPath = app.getPath('userData');
       if (!fs.existsSync(userDataPath)) {
@@ -58,9 +54,6 @@ function migrateProjectsIfNeeded(): void {
       // Copy the file
       const data = fs.readFileSync(legacyPath, 'utf8');
       fs.writeFileSync(newPath, data, 'utf8');
-
-      console.log('[project-storage] Migration successful');
-      console.log('[project-storage] Legacy file will be kept for backup');
     } catch (error) {
       console.error('[project-storage] Migration failed:', error);
     }
