@@ -2,10 +2,7 @@
 
 # =================================================================
 # Klever Desktop - App Store Connect Upload Script
-# Following Electron Official Guide
-# https://www.electronjs.org/docs/latest/tutorial/mac-app-store-submission-guide
-#
-# Use Apple Transporter to upload signed PKG to App Store Connect
+# Using App Store Connect API Key (Modern Method)
 # =================================================================
 
 set -e # Exit immediately if a command exits with a non-zero status
@@ -51,41 +48,40 @@ show_usage() {
   cat << EOF
 Usage: $0 <pkg-file>
 
-Upload a signed PKG file to App Store Connect using altool or Transporter.
+Upload a signed PKG file to App Store Connect using API Key.
 
 Arguments:
   pkg-file          Path to the signed .pkg file
 
-Environment Variables (Required):
-  APPLE_ID                    Your Apple ID email
-  APPLE_APP_SPECIFIC_PASSWORD App-specific password from appleid.apple.com
-  APPLE_TEAM_ID              Your Team ID (e.g., ZQC7QNZ4J8)
+Environment Variables (Option 1 - API Key, Recommended):
+  APPSTORE_API_KEY_BASE64    App Store Connect API Key (Base64 encoded .p8 file)
+  APPSTORE_API_KEY_ID        API Key ID (10 characters)
+  APPSTORE_API_ISSUER_ID     Issuer ID (UUID format)
+
+Environment Variables (Option 2 - Apple ID, Legacy):
+  APPLE_ID                   Your Apple ID email
+  APPLE_APP_SPECIFIC_PASSWORD App-specific password
+  APPLE_TEAM_ID              Your Team ID
 
 Examples:
-  # Set environment variables
+  # Using API Key (recommended)
+  export APPSTORE_API_KEY_BASE64="LS0tLS1CRUdJTi..."
+  export APPSTORE_API_KEY_ID="AB12CD34EF"
+  export APPSTORE_API_ISSUER_ID="12345678-1234-1234-1234-123456789abc"
+  $0 out/make/klever-desktop-2.0.0-universal.pkg
+
+  # Using Apple ID (legacy, not recommended)
   export APPLE_ID="your@email.com"
   export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
   export APPLE_TEAM_ID="ZQC7QNZ4J8"
-
-  # Upload
-  $0 out/make/pkg/Klever\\ Desktop-2.0.0.pkg
-
-  # Or use .env file
-  # source .env.mas  # No longer needed with electron-forge
-  $0 out/make/pkg/Klever\\ Desktop-2.0.0.pkg
-
-Alternative:
-  Use Transporter app (download from Mac App Store)
-  - Simpler UI
-  - Better error messages
-  - No command line needed
+  $0 out/make/klever-desktop-2.0.0-universal.pkg
 
 EOF
   exit 1
 }
 
 # --- Main Script ---
-log_section "📤 Klever Desktop - App Store Connect Upload"
+log_section "📤 Klever Desktop - App Store Connect Upload (API Key Method)"
 
 # Check if PKG file provided
 if [ -z "$PKG_FILE" ]; then
@@ -125,51 +121,63 @@ else
   fi
 fi
 
-# --- Check Environment Variables ---
+# --- Check Authentication Method ---
 echo ""
-log_section "🔐 Checking App Store Connect Credentials"
+log_section "🔐 Checking Authentication Method"
 
-MISSING_VARS=()
+USE_API_KEY=false
+USE_APPLE_ID=false
 
-if [ -z "${APPLE_ID:-}" ]; then
-  MISSING_VARS+=("APPLE_ID")
+# Check for API Key credentials (preferred)
+if [ -n "${APPSTORE_API_KEY_BASE64:-}" ] && [ -n "${APPSTORE_API_KEY_ID:-}" ] && [ -n "${APPSTORE_API_ISSUER_ID:-}" ]; then
+  log_success "API Key credentials found (modern method)"
+  USE_API_KEY=true
+
+  # Decode and save API Key
+  API_KEY_DIR=$(mktemp -d)
+  API_KEY_FILE="$API_KEY_DIR/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+  echo "$APPSTORE_API_KEY_BASE64" | base64 --decode > "$API_KEY_FILE"
+
+  if [ -f "$API_KEY_FILE" ]; then
+    log_success "API Key decoded successfully"
+    log_info "Key ID: $APPSTORE_API_KEY_ID"
+    log_info "Issuer ID: ${APPSTORE_API_ISSUER_ID:0:8}...${APPSTORE_API_ISSUER_ID: -4}"
+  else
+    log_error "Failed to decode API Key"
+    rm -rf "$API_KEY_DIR"
+    exit 1
+  fi
 fi
 
-if [ -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]; then
-  MISSING_VARS+=("APPLE_APP_SPECIFIC_PASSWORD")
+# Check for Apple ID credentials (fallback)
+if [ "$USE_API_KEY" = false ]; then
+  if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+    log_warning "Using Apple ID credentials (legacy method)"
+    log_warning "Consider migrating to API Key for better reliability"
+    USE_APPLE_ID=true
+    log_success "Apple ID: $APPLE_ID"
+    log_success "Team ID: $APPLE_TEAM_ID"
+  fi
 fi
 
-if [ -z "${APPLE_TEAM_ID:-}" ]; then
-  MISSING_VARS+=("APPLE_TEAM_ID")
-fi
-
-if [ ${#MISSING_VARS[@]} -ne 0 ]; then
-  log_error "Missing required environment variables:"
-  for var in "${MISSING_VARS[@]}"; do
-    echo "   - $var"
-  done
+# Ensure at least one method is available
+if [ "$USE_API_KEY" = false ] && [ "$USE_APPLE_ID" = false ]; then
+  log_error "No authentication credentials found"
   echo ""
-  log_info "Set these variables:"
+  log_info "Please set one of the following:"
+  echo ""
+  echo "Option 1 (Recommended): API Key"
+  echo "   export APPSTORE_API_KEY_BASE64=\"...\""
+  echo "   export APPSTORE_API_KEY_ID=\"AB12CD34EF\""
+  echo "   export APPSTORE_API_ISSUER_ID=\"12345678-1234-...\""
+  echo ""
+  echo "Option 2 (Legacy): Apple ID"
   echo "   export APPLE_ID=\"your@email.com\""
   echo "   export APPLE_APP_SPECIFIC_PASSWORD=\"xxxx-xxxx-xxxx-xxxx\""
   echo "   export APPLE_TEAM_ID=\"YOUR_TEAM_ID\""
   echo ""
-  log_info "Or use .env.mas file:"
-  echo "   cp .env.mas.example .env.mas"
-  echo "   nano .env.mas  # Edit with your values"
-  echo "   # source .env.mas  # No longer needed with electron-forge"
-  echo ""
-  log_info "Generate app-specific password:"
-  echo "   https://appleid.apple.com/account/manage"
-  echo ""
-  log_warning "Alternative: Use Transporter app (no credentials needed in terminal)"
-  echo "   Download from Mac App Store: https://apps.apple.com/app/transporter/id1450874784"
   exit 1
 fi
-
-log_success "Apple ID: $APPLE_ID"
-log_success "Team ID: $APPLE_TEAM_ID"
-log_success "App-Specific Password: Set"
 
 # --- Check Upload Tool ---
 echo ""
@@ -180,72 +188,18 @@ if ! command -v xcrun &> /dev/null; then
   exit 1
 fi
 
-# Try altool first (deprecated but may still work)
-USE_ALTOOL=false
-USE_TRANSPORTER=false
+# Check for notarytool (modern, but mainly for notarization)
+if xcrun notarytool --help &> /dev/null 2>&1; then
+  log_success "notarytool is available"
+fi
 
-log_info "Checking xcrun altool availability..."
+# Check for altool (will use with --apiKey option)
 if xcrun altool --help &> /dev/null 2>&1; then
-  log_success "xcrun altool is available"
-  log_warning "Note: altool is deprecated by Apple"
-  USE_ALTOOL=true
+  log_success "altool is available (will use with API Key)"
 else
-  log_warning "xcrun altool not available (deprecated by Apple)"
-fi
-
-# Check for iTMSTransporter (modern alternative)
-log_info "Checking iTMSTransporter availability..."
-
-# Try multiple paths where iTMSTransporter might be located
-ITMS_PATHS=(
-  "/Applications/Xcode.app/Contents/Applications/Transporter.app/Contents/itms/bin/iTMSTransporter"
-  "/usr/local/itms/bin/iTMSTransporter"
-  "xcrun iTMSTransporter"
-)
-
-ITMS_COMMAND=""
-for path in "${ITMS_PATHS[@]}"; do
-  if [[ "$path" == "xcrun iTMSTransporter" ]]; then
-    # Try xcrun method
-    if xcrun iTMSTransporter -h &> /dev/null 2>&1; then
-      ITMS_COMMAND="xcrun iTMSTransporter"
-      log_success "iTMSTransporter found via xcrun"
-      USE_TRANSPORTER=true
-      break
-    fi
-  else
-    # Try direct path
-    if [ -f "$path" ] && "$path" -h &> /dev/null 2>&1; then
-      ITMS_COMMAND="$path"
-      log_success "iTMSTransporter found at: $path"
-      USE_TRANSPORTER=true
-      break
-    fi
-  fi
-done
-
-if [ -z "$ITMS_COMMAND" ]; then
-  log_warning "iTMSTransporter not found"
-else
-  log_info "Using iTMSTransporter (modern tool, recommended by Apple)"
-fi
-
-# Ensure at least one tool is available
-if [ "$USE_ALTOOL" = false ] && [ "$USE_TRANSPORTER" = false ]; then
-  log_error "No upload tool available"
-  log_info "Please use Transporter app from Mac App Store:"
-  log_info "https://apps.apple.com/app/transporter/id1450874784"
+  log_error "altool not found"
+  log_info "Please ensure Xcode Command Line Tools are properly installed"
   exit 1
-fi
-
-# Prefer Transporter over altool
-if [ "$USE_TRANSPORTER" = true ]; then
-  log_success "Will use iTMSTransporter (Apple's modern tool)"
-  UPLOAD_TOOL="transporter"
-else
-  log_success "Will use altool (deprecated fallback)"
-  log_warning "Consider updating Xcode to get iTMSTransporter"
-  UPLOAD_TOOL="altool"
 fi
 
 # --- Upload to App Store Connect ---
@@ -262,33 +216,31 @@ upload_with_retry() {
   local wait_time=30
 
   while [ $attempt -le $max_attempts ]; do
-    log_info "Upload attempt $attempt of $max_attempts (using $UPLOAD_TOOL)..."
+    log_info "Upload attempt $attempt of $max_attempts..."
     echo ""
 
-    # Capture output to check for specific error patterns
-    if [ "$UPLOAD_TOOL" = "transporter" ]; then
-      # Use iTMSTransporter (modern tool)
-      log_info "Using iTMSTransporter..."
-      UPLOAD_OUTPUT=$($ITMS_COMMAND \
-        -m upload \
-        -assetFile "$PKG_FILE" \
-        -u "$APPLE_ID" \
-        -p "$APPLE_APP_SPECIFIC_PASSWORD" \
-        -asc_provider "$APPLE_TEAM_ID" \
-        -t Signiant \
-        -v eXtreme 2>&1 | tee /tmp/transporter_output.log)
+    # Build upload command based on authentication method
+    if [ "$USE_API_KEY" = true ]; then
+      # Use API Key method (modern, stable)
+      log_info "Using API Key authentication..."
+      UPLOAD_OUTPUT=$(xcrun altool --upload-app \
+        --type osx \
+        --file "$PKG_FILE" \
+        --apiKey "$APPSTORE_API_KEY_ID" \
+        --apiIssuer "$APPSTORE_API_ISSUER_ID" \
+        --verbose 2>&1 | tee /tmp/upload_output.log)
       EXIT_CODE=$?
     else
-      # Use altool (deprecated)
-      log_info "Using altool (deprecated by Apple)..."
-      log_warning "This tool may stop working at any time"
+      # Use Apple ID method (legacy)
+      log_info "Using Apple ID authentication (legacy)..."
+      log_warning "This method is less reliable - consider migrating to API Key"
       UPLOAD_OUTPUT=$(xcrun altool --upload-app \
         --type osx \
         --file "$PKG_FILE" \
         --username "$APPLE_ID" \
         --password "$APPLE_APP_SPECIFIC_PASSWORD" \
         --asc-provider "$APPLE_TEAM_ID" \
-        --verbose 2>&1 | tee /tmp/altool_output.log)
+        --verbose 2>&1 | tee /tmp/upload_output.log)
       EXIT_CODE=$?
     fi
 
@@ -296,6 +248,12 @@ upload_with_retry() {
     if [ $EXIT_CODE -eq 0 ]; then
       echo ""
       log_success "Upload successful!"
+
+      # Cleanup API Key file if used
+      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
+        rm -rf "$API_KEY_DIR"
+      fi
+
       return 0
     fi
 
@@ -305,6 +263,12 @@ upload_with_retry() {
       log_warning "Build number already exists in App Store Connect (duplicate build)"
       log_success "Treating as success - you can proceed with the existing build"
       log_info "To upload a new build, increment the build number in forge.config.js"
+
+      # Cleanup API Key file if used
+      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
+        rm -rf "$API_KEY_DIR"
+      fi
+
       return 0
     fi
 
@@ -312,12 +276,18 @@ upload_with_retry() {
     if echo "$UPLOAD_OUTPUT" | grep -q -i "upload successful\|no errors uploading"; then
       echo ""
       log_success "Upload successful!"
+
+      # Cleanup API Key file if used
+      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
+        rm -rf "$API_KEY_DIR"
+      fi
+
       return 0
     fi
 
-    # Check if error is retryable (not authentication/config issues)
+    # Check if error is retryable
     IS_RETRYABLE=true
-    if echo "$UPLOAD_OUTPUT" | grep -q -i "Invalid credentials\|authentication failed\|invalid username or password"; then
+    if echo "$UPLOAD_OUTPUT" | grep -q -i "Invalid credentials\|authentication failed\|invalid api key\|invalid issuer"; then
       IS_RETRYABLE=false
       log_error "Authentication failed - credentials are invalid"
     elif echo "$UPLOAD_OUTPUT" | grep -q -i "No valid bundle id\|bundle identifier is invalid"; then
@@ -344,38 +314,28 @@ upload_with_retry() {
 
       # Show last output
       log_info "Last upload output:"
-      if [ "$UPLOAD_TOOL" = "transporter" ]; then
-        tail -30 /tmp/transporter_output.log | sed 's/^/   /'
-      else
-        tail -30 /tmp/altool_output.log | sed 's/^/   /'
-      fi
+      tail -30 /tmp/upload_output.log | sed 's/^/   /'
       echo ""
 
       log_info "Common issues:"
-      echo "   1. Invalid app-specific password"
-      echo "      → Generate new at https://appleid.apple.com/account/manage"
+      echo "   1. Invalid API Key credentials"
+      echo "      → Verify Key ID and Issuer ID in GitHub Secrets"
+      echo "      → Ensure API Key file is correctly Base64 encoded"
       echo ""
-      echo "   2. Incorrect Team ID"
-      echo "      → Find at https://developer.apple.com/account/#!/membership"
-      echo ""
-      echo "   3. App not created in App Store Connect"
-      echo "      → Create app first at https://appstoreconnect.apple.com"
-      echo ""
-      echo "   4. Bundle ID mismatch"
+      echo "   2. Bundle ID mismatch"
       echo "      → Ensure Bundle ID in PKG matches App Store Connect"
       echo ""
-      echo "   5. Duplicate build number"
-      echo "      → Increment buildVersion in forge.config.js if build already exists"
+      echo "   3. Duplicate build number"
+      echo "      → Increment buildVersion in forge.config.js"
       echo ""
-      echo "   6. altool is deprecated (Apple's tool, not ours)"
-      echo "      → Consider migrating to App Store Connect API"
-      echo "      → See: https://developer.apple.com/documentation/appstoreconnectapi"
+      echo "   4. Network/timeout issues"
+      echo "      → Retry the upload"
       echo ""
-      log_warning "Alternative: Use Transporter app (easier troubleshooting)"
-      echo "   1. Download Transporter from Mac App Store"
-      echo "   2. Drag '$PKG_FILE' into Transporter"
-      echo "   3. Click 'Deliver'"
-      echo ""
+
+      # Cleanup API Key file if used
+      if [ "$USE_API_KEY" = true ] && [ -d "$API_KEY_DIR" ]; then
+        rm -rf "$API_KEY_DIR"
+      fi
 
       return $EXIT_CODE
     fi
