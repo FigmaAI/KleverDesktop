@@ -1,22 +1,8 @@
-import { IconButton, Badge, Tooltip } from '@mui/joy'
-import { Terminal as TerminalIcon } from '@mui/icons-material'
+import { Terminal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTerminal } from '@/hooks/useTerminal'
-import { keyframes } from '@emotion/react'
-
-const pulseAnimation = keyframes`
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
-  }
-`
+import { cn } from '@/lib/utils'
 
 interface TerminalButtonProps {
   animateAttention?: boolean
@@ -35,11 +21,11 @@ export function TerminalButton({ animateAttention = false }: TerminalButtonProps
     return null
   }
 
-  // Determine badge color
-  const getBadgeColor = () => {
-    if (errorCount > 0) return 'danger'
-    if (warningCount > 0) return 'warning'
-    return 'neutral'
+  // Determine badge styles
+  const getBadgeStyles = () => {
+    if (errorCount > 0) return 'bg-destructive text-destructive-foreground'
+    if (warningCount > 0) return 'bg-yellow-500 text-white'
+    return 'bg-primary text-primary-foreground'
   }
 
   // Tooltip message
@@ -58,21 +44,33 @@ export function TerminalButton({ animateAttention = false }: TerminalButtonProps
     setIsOpen(!isOpen)
   }
 
+  const badgeContent = getBadgeContent()
+
   return (
-    <Tooltip title={getTooltipMessage()}>
-      <IconButton
-        variant="plain"
-        color="neutral"
-        onClick={handleClick}
-        sx={{
-          position: 'relative',
-          animation: animateAttention ? `${pulseAnimation} 1s ease-out forwards` : 'none',
-        }}
-      >
-        <Badge badgeContent={getBadgeContent()} color={getBadgeColor()} size="sm">
-          <TerminalIcon />
-        </Badge>
-      </IconButton>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClick}
+            className={cn('relative', animateAttention && 'animate-pulse-attention')}
+          >
+            <Terminal className="h-5 w-5" />
+            {badgeContent && (
+              <span
+                className={cn(
+                  'absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs font-semibold',
+                  getBadgeStyles()
+                )}
+              >
+                {badgeContent}
+              </span>
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{getTooltipMessage()}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

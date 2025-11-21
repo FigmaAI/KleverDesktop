@@ -3,9 +3,9 @@
  * Renders a single terminal output line with timestamp and formatting
  */
 
-import { Box, Typography } from '@mui/joy'
 import type { TerminalLine as TerminalLineType } from '@/types/terminal'
 import { renderAnsi } from '@/utils/ansiParser'
+import { cn } from '@/lib/utils'
 
 interface TerminalLineProps {
   line: TerminalLineType
@@ -17,22 +17,22 @@ export function TerminalLine({ line, showTimestamp = true }: TerminalLineProps) 
   const getColor = () => {
     switch (line.level) {
       case 'error':
-        return '#f44336' // Red
+        return 'text-red-500' // Red
       case 'warning':
-        return '#ff9800' // Orange
+        return 'text-orange-500' // Orange
       case 'info':
       default:
-        return '#d4d4d4' // Light gray (VS Code default)
+        return 'text-[#d4d4d4]' // Light gray (VS Code default)
     }
   }
 
   // Get source label and color
   const getSourceBadge = () => {
     const badges = {
-      task: { label: 'TASK', color: '#4caf50' },
-      project: { label: 'PROJ', color: '#2196f3' },
-      env: { label: 'SETUP', color: '#9c27b0' },
-      integration: { label: 'TEST', color: '#ff9800' },
+      task: { label: 'TASK', color: 'text-green-500' },
+      project: { label: 'PROJ', color: 'text-blue-500' },
+      env: { label: 'SETUP', color: 'text-purple-500' },
+      integration: { label: 'TEST', color: 'text-orange-500' },
     }
 
     return badges[line.source]
@@ -50,59 +50,29 @@ export function TerminalLine({ line, showTimestamp = true }: TerminalLineProps) 
   const sourceBadge = getSourceBadge()
 
   return (
-    <Box
-      sx={{
-        fontFamily: 'monospace',
-        fontSize: '0.875rem',
-        color: getColor(),
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        lineHeight: 1.5,
-        py: 0.25,
-        display: 'flex',
-        gap: 1,
-        '&:hover': {
-          bgcolor: 'rgba(255, 255, 255, 0.05)',
-        },
-      }}
+    <div
+      className={cn(
+        'font-mono text-sm whitespace-pre-wrap break-words leading-relaxed',
+        'py-0.5 flex gap-2 hover:bg-white/5',
+        getColor()
+      )}
     >
       {showTimestamp && (
-        <Typography
-          component="span"
-          sx={{
-            color: '#858585',
-            fontSize: '0.75rem',
-            flexShrink: 0,
-            userSelect: 'none',
-          }}
-        >
+        <span className="text-gray-500 text-xs flex-shrink-0 select-none">
           {formatTimestamp(line.timestamp)}
-        </Typography>
+        </span>
       )}
 
-      <Typography
-        component="span"
-        sx={{
-          color: sourceBadge.color,
-          fontSize: '0.75rem',
-          fontWeight: 'bold',
-          flexShrink: 0,
-          userSelect: 'none',
-          minWidth: '45px',
-        }}
+      <span
+        className={cn(
+          'text-xs font-bold flex-shrink-0 select-none min-w-[45px]',
+          sourceBadge.color
+        )}
       >
         [{sourceBadge.label}]
-      </Typography>
+      </span>
 
-      <Typography
-        component="span"
-        sx={{
-          flex: 1,
-          color: getColor(),
-        }}
-      >
-        {renderAnsi(line.content)}
-      </Typography>
-    </Box>
+      <span className={cn('flex-1', getColor())}>{renderAnsi(line.content)}</span>
+    </div>
   )
 }
