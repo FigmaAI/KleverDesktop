@@ -9,6 +9,7 @@
 # =================================================================
 
 set -e # Exit immediately if a command exits with a non-zero status
+set -o pipefail # Ensure pipeline failures are caught
 
 # Colors for output
 RED='\033[0;31m'
@@ -170,6 +171,26 @@ log_success "Apple ID: $APPLE_ID"
 log_success "Team ID: $APPLE_TEAM_ID"
 log_success "App-Specific Password: Set"
 
+# --- Check altool availability ---
+echo ""
+log_section "🔧 Checking Upload Tool"
+
+if ! command -v xcrun &> /dev/null; then
+  log_error "xcrun not found - Xcode Command Line Tools not installed"
+  exit 1
+fi
+
+log_info "Checking xcrun altool availability..."
+if ! xcrun altool --help &> /dev/null; then
+  log_error "xcrun altool not available"
+  log_warning "This tool has been deprecated by Apple"
+  log_info "You may need to use Transporter or App Store Connect API instead"
+  exit 1
+fi
+
+log_success "xcrun altool is available"
+log_warning "Note: altool is deprecated by Apple, consider migrating to App Store Connect API"
+
 # --- Upload to App Store Connect ---
 echo ""
 log_section "📤 Uploading to App Store Connect"
@@ -177,21 +198,83 @@ log_section "📤 Uploading to App Store Connect"
 log_info "This may take several minutes depending on file size..."
 echo ""
 
-# Use altool (works with app-specific password)
-log_info "Using xcrun altool..."
+# Function to upload with retries
+upload_with_retry() {
+  local max_attempts=3
+  local attempt=1
+  local wait_time=30
 
-# Try upload
-if xcrun altool --upload-app \
-  --type osx \
-  --file "$PKG_FILE" \
-  --username "$APPLE_ID" \
-  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-  --asc-provider "$APPLE_TEAM_ID" \
-  --verbose; then
+  while [ $attempt -le $max_attempts ]; do
+    log_info "Upload attempt $attempt of $max_attempts..."
+    echo ""
 
-  echo ""
-  log_success "Upload successful!"
+    # Try upload with altool
+    if xcrun altool --upload-app \
+      --type osx \
+      --file "$PKG_FILE" \
+      --username "$APPLE_ID" \
+      --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+      --asc-provider "$APPLE_TEAM_ID" \
+      --verbose 2>&1 | tee /tmp/altool_output.log; then
 
+      # Check if output contains success indicators
+      if grep -q -i "upload successful\|no errors uploading" /tmp/altool_output.log; then
+        echo ""
+        log_success "Upload successful!"
+        return 0
+      fi
+    fi
+
+    EXIT_CODE=$?
+
+    # Check for retryable errors
+    if [ $attempt -lt $max_attempts ]; then
+      log_warning "Upload attempt $attempt failed (exit code: $EXIT_CODE)"
+      log_info "Waiting ${wait_time}s before retry..."
+      sleep $wait_time
+      attempt=$((attempt + 1))
+      wait_time=$((wait_time * 2)) # Exponential backoff
+    else
+      # Final attempt failed
+      echo ""
+      log_error "Upload failed after $max_attempts attempts (exit code: $EXIT_CODE)"
+      echo ""
+
+      # Show last output
+      log_info "Last upload output:"
+      tail -20 /tmp/altool_output.log | sed 's/^/   /'
+      echo ""
+
+      log_info "Common issues:"
+      echo "   1. Invalid app-specific password"
+      echo "      → Generate new at https://appleid.apple.com/account/manage"
+      echo ""
+      echo "   2. Incorrect Team ID"
+      echo "      → Find at https://developer.apple.com/account/#!/membership"
+      echo ""
+      echo "   3. App not created in App Store Connect"
+      echo "      → Create app first at https://appstoreconnect.apple.com"
+      echo ""
+      echo "   4. Bundle ID mismatch"
+      echo "      → Ensure Bundle ID in PKG matches App Store Connect"
+      echo ""
+      echo "   5. altool is deprecated (Apple's tool, not ours)"
+      echo "      → Consider migrating to App Store Connect API"
+      echo "      → See: https://developer.apple.com/documentation/appstoreconnectapi"
+      echo ""
+      log_warning "Alternative: Use Transporter app (easier troubleshooting)"
+      echo "   1. Download Transporter from Mac App Store"
+      echo "   2. Drag '$PKG_FILE' into Transporter"
+      echo "   3. Click 'Deliver'"
+      echo ""
+
+      return $EXIT_CODE
+    fi
+  done
+}
+
+# Execute upload with retry logic
+if upload_with_retry; then
   echo ""
   log_section "🎉 Next Steps"
 
@@ -212,29 +295,6 @@ if xcrun altool --upload-app \
   echo ""
   echo "4. Monitor status via email or App Store Connect"
   echo ""
-
 else
-  EXIT_CODE=$?
-  echo ""
-  log_error "Upload failed (exit code: $EXIT_CODE)"
-  echo ""
-  log_info "Common issues:"
-  echo "   1. Invalid app-specific password"
-  echo "      → Generate new at https://appleid.apple.com/account/manage"
-  echo ""
-  echo "   2. Incorrect Team ID"
-  echo "      → Find at https://developer.apple.com/account/#!/membership"
-  echo ""
-  echo "   3. App not created in App Store Connect"
-  echo "      → Create app first at https://appstoreconnect.apple.com"
-  echo ""
-  echo "   4. Bundle ID mismatch"
-  echo "      → Ensure Bundle ID in PKG matches App Store Connect"
-  echo ""
-  log_warning "Alternative: Use Transporter app (easier troubleshooting)"
-  echo "   1. Download Transporter from Mac App Store"
-  echo "   2. Drag '$PKG_FILE' into Transporter"
-  echo "   3. Click 'Deliver'"
-  echo ""
-  exit $EXIT_CODE
+  exit 1
 fi
