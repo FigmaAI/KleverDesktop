@@ -103,7 +103,6 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
       // Save updated config to config.json
       saveAppConfig(appConfig);
 
-      console.log('[model:saveConfig] Model configuration saved to config.json');
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -115,15 +114,12 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
   // Fetch all LiteLLM providers and models from GitHub
   ipcMain.handle('model:fetchLiteLLMModels', async () => {
     try {
-      console.log('[model:fetchLiteLLMModels] Fetching model data from LiteLLM GitHub...');
       const result = await fetchLiteLLMModels();
-      
-      if (result.success) {
-        console.log(`[model:fetchLiteLLMModels] Success: ${result.providers?.length} providers, ${result.providers?.reduce((acc, p) => acc + p.models.length, 0)} models`);
-      } else {
+
+      if (!result.success && result.error) {
         console.error(`[model:fetchLiteLLMModels] Failed: ${result.error}`);
       }
-      
+
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

@@ -56,7 +56,6 @@ export function getBundledPythonPath(): string {
   if (fs.existsSync(pythonPath)) {
     return pythonPath;
   } else {
-    console.warn('[Python Manager] Bundled Python not found, falling back to system Python');
     return 'python'; // Fallback to system Python
   }
 }
@@ -131,13 +130,8 @@ export async function createVirtualEnvironment(
   const bundledPython = getBundledPythonPath();
   const venvPath = getVenvPath();
 
-  console.log('[Python Manager] Creating virtual environment...');
-  console.log('[Python Manager] Bundled Python:', bundledPython);
-  console.log('[Python Manager] Venv Path:', venvPath);
-
   // Remove existing venv if invalid
   if (fs.existsSync(venvPath)) {
-    console.log('[Python Manager] Removing existing virtual environment...');
     fs.rmSync(venvPath, { recursive: true, force: true });
   }
 
@@ -156,35 +150,30 @@ export async function createVirtualEnvironment(
 
     venvProcess.stdout?.on('data', (data) => {
       const text = data.toString();
-      console.log('[Python Manager] stdout:', text);
       onOutput?.(text);
     });
 
     venvProcess.stderr?.on('data', (data) => {
       const text = data.toString();
       errorOutput += text;
-      console.log('[Python Manager] stderr:', text);
       onError?.(text);
     });
 
     venvProcess.on('close', (code) => {
-      console.log('[Python Manager] venv creation finished with code:', code);
-
       if (code === 0) {
         // Verify venv was created successfully
         const status = checkVenvStatus();
         if (status.valid) {
-          console.log('[Python Manager] ✅ Virtual environment created successfully!');
           resolve({ success: true });
         } else {
-          console.error('[Python Manager] ❌ Virtual environment created but is invalid');
+          console.error('[Python Manager] Virtual environment created but is invalid');
           resolve({
             success: false,
             error: 'Virtual environment created but validation failed',
           });
         }
       } else {
-        console.error('[Python Manager] ❌ Failed to create virtual environment');
+        console.error('[Python Manager] Failed to create virtual environment');
         resolve({
           success: false,
           error: errorOutput || `venv creation failed with code ${code}`,
@@ -209,10 +198,6 @@ export async function installRequirements(
 ): Promise<{ success: boolean; error?: string }> {
   const venvPip = getVenvPipPath();
 
-  console.log('[Python Manager] Installing requirements...');
-  console.log('[Python Manager] Pip:', venvPip);
-  console.log('[Python Manager] Requirements:', requirementsPath);
-
   // Verify requirements.txt exists
   if (!fs.existsSync(requirementsPath)) {
     return { success: false, error: `requirements.txt not found at ${requirementsPath}` };
@@ -226,7 +211,6 @@ export async function installRequirements(
 
   return new Promise((resolve) => {
     // First upgrade pip
-    console.log('[Python Manager] Upgrading pip...');
     onOutput?.('Upgrading pip...\n');
 
     const upgradePip = spawn(venvPip, ['install', '--upgrade', 'pip'], {
@@ -237,24 +221,17 @@ export async function installRequirements(
 
     upgradePip.stdout?.on('data', (data) => {
       const text = data.toString();
-      console.log('[Python Manager] pip upgrade stdout:', text);
       onOutput?.(text);
     });
 
     upgradePip.stderr?.on('data', (data) => {
       const text = data.toString();
       errorOutput += text;
-      console.log('[Python Manager] pip upgrade stderr:', text);
       onOutput?.(text); // pip outputs progress to stderr
     });
 
     upgradePip.on('close', (code) => {
-      if (code !== 0) {
-        console.warn('[Python Manager] ⚠️  pip upgrade had non-zero exit code, continuing anyway...');
-      }
-
       // Install requirements
-      console.log('[Python Manager] Installing from requirements.txt...');
       onOutput?.('\nInstalling packages from requirements.txt...\n');
 
       const installProcess = spawn(venvPip, ['install', '-r', requirementsPath], {
@@ -263,25 +240,20 @@ export async function installRequirements(
 
       installProcess.stdout?.on('data', (data) => {
         const text = data.toString();
-        console.log('[Python Manager] install stdout:', text);
         onOutput?.(text);
       });
 
       installProcess.stderr?.on('data', (data) => {
         const text = data.toString();
         errorOutput += text;
-        console.log('[Python Manager] install stderr:', text);
         onOutput?.(text); // pip outputs progress to stderr
       });
 
       installProcess.on('close', (code) => {
-        console.log('[Python Manager] Package installation finished with code:', code);
-
         if (code === 0) {
-          console.log('[Python Manager] ✅ Packages installed successfully!');
           resolve({ success: true });
         } else {
-          console.error('[Python Manager] ❌ Package installation failed');
+          console.error('[Python Manager] Package installation failed');
           resolve({
             success: false,
             error: errorOutput || `Package installation failed with code ${code}`,
@@ -311,9 +283,6 @@ export async function installPlaywrightBrowsers(
 ): Promise<{ success: boolean; error?: string }> {
   const venvPython = getVenvPythonPath();
 
-  console.log('[Python Manager] Installing Playwright browsers...');
-  console.log('[Python Manager] Python:', venvPython);
-
   // Verify venv is valid
   const status = checkVenvStatus();
   if (!status.valid) {
@@ -331,25 +300,20 @@ export async function installPlaywrightBrowsers(
 
     playwrightInstall.stdout?.on('data', (data) => {
       const text = data.toString();
-      console.log('[Python Manager] playwright install stdout:', text);
       onOutput?.(text);
     });
 
     playwrightInstall.stderr?.on('data', (data) => {
       const text = data.toString();
       errorOutput += text;
-      console.log('[Python Manager] playwright install stderr:', text);
       onOutput?.(text);
     });
 
     playwrightInstall.on('close', (code) => {
-      console.log('[Python Manager] Playwright browser installation finished with code:', code);
-
       if (code === 0) {
-        console.log('[Python Manager] ✅ Playwright browsers installed successfully!');
         resolve({ success: true });
       } else {
-        console.error('[Python Manager] ❌ Playwright browser installation failed');
+        console.error('[Python Manager] Playwright browser installation failed');
         resolve({
           success: false,
           error: errorOutput || `Playwright installation failed with code ${code}`,
@@ -369,8 +333,6 @@ export async function installPlaywrightBrowsers(
  */
 export function spawnVenvPython(args: string[], options?: SpawnOptions) {
   const venvPython = getVenvPythonPath();
-
-  console.log('[Python Manager] Spawning Python process:', venvPython, args);
 
   // Create a new process group for easier cleanup
   // This allows us to kill the entire process tree with -PID

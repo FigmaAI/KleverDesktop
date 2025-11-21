@@ -25,11 +25,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   // Environment check (simplified - Python is bundled)
   ipcMain.handle('env:check', async () => {
     try {
-      console.log('[env:check] ========== Starting environment check ==========');
-
       // Check bundled Python runtime
       const pythonStatus = checkPythonRuntime();
-      console.log('[env:check] Python status:', pythonStatus);
 
       if (!pythonStatus.available) {
         console.error('[env:check] Python runtime not available:', pythonStatus.error);
@@ -50,7 +47,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
       // Check Playwright browsers
       const playwrightInstalled = await checkPlaywrightBrowsers();
-      console.log('[env:check] Playwright installed:', playwrightInstalled);
 
       const result = {
         success: true,
@@ -69,9 +65,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         }
       };
 
-      console.log('[env:check] Final result:', JSON.stringify(result, null, 2));
-      console.log('[env:check] ========== Environment check complete ==========');
-
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -83,7 +76,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   // Environment setup (simplified - only Playwright)
   ipcMain.handle('env:setup', async () => {
     try {
-      console.log('[Environment Setup] Starting Playwright installation...');
       const mainWindow = getMainWindow();
 
       // Verify Python runtime is available
@@ -95,7 +87,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       mainWindow?.webContents.send('env:progress', '✓ Python runtime verified\n');
 
       // Install Playwright browsers
-      console.log('[Environment Setup] Installing Playwright browsers...');
       mainWindow?.webContents.send('env:progress', '\n🎭 Installing Playwright browsers...\n');
 
       const onProgress = (data: string) => mainWindow?.webContents.send('env:progress', data);
@@ -106,7 +97,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       }
 
       // Success!
-      console.log('[Environment Setup] ✅ Setup complete!');
       mainWindow?.webContents.send('env:progress', '\n✅ Environment setup complete!\n');
 
       return { success: true };
@@ -121,20 +111,16 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   // Install Playwright browsers only
   ipcMain.handle('install:playwright', async () => {
     try {
-      console.log('[Playwright] Starting installation...');
       const mainWindow = getMainWindow();
 
       const onProgress = (data: string) => {
-        console.log('[Playwright]', data);
         mainWindow?.webContents.send('install:progress', data);
       };
 
       const result = await installPlaywrightBrowsers(onProgress);
 
-      if (result.success) {
-        console.log('[Playwright] ✓ Installation complete');
-      } else {
-        console.error('[Playwright] ✗ Installation failed:', result.error);
+      if (!result.success) {
+        console.error('[Playwright] Installation failed:', result.error);
       }
 
       return result;
@@ -153,24 +139,20 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         return;
       }
 
-      console.log('[Android Studio] Starting installation via Homebrew...');
       const install = spawn('brew', ['install', '--cask', 'android-studio']);
 
       let output = '';
       install.stdout?.on('data', (data) => {
         output += data.toString();
-        console.log('[Android Studio] stdout:', data.toString());
         getMainWindow()?.webContents.send('install:progress', data.toString());
       });
 
       install.stderr?.on('data', (data) => {
         output += data.toString();
-        console.log('[Android Studio] stderr:', data.toString());
         getMainWindow()?.webContents.send('install:progress', data.toString());
       });
 
       install.on('close', (code) => {
-        console.log('[Android Studio] Installation finished with code:', code);
         resolve({ success: code === 0, output });
       });
 
@@ -233,7 +215,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   ipcMain.handle('python:download', async () => {
     try {
       const mainWindow = getMainWindow();
-      console.log('[Python Download] Starting Python installation...');
 
       // Check if already installed
       if (isPythonInstalled()) {
@@ -469,7 +450,6 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       }
 
       mainWindow?.webContents.send('python:progress', '✅ Python installation complete!\n');
-      console.log('[Python Download] ✓ Installation complete');
 
       return { success: true };
     } catch (error: unknown) {

@@ -38,12 +38,9 @@ export function usePlatformTools() {
     }
 
     // Check Python (post-install download to user data directory)
-    console.log('[usePlatformTools] ========== Checking Python installation ==========')
     setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, checking: true } }))
     try {
-      console.log('[usePlatformTools] Calling window.electronAPI.pythonCheckInstalled()')
       const pythonCheck = await window.electronAPI.pythonCheckInstalled()
-      console.log('[usePlatformTools] pythonCheck result:', JSON.stringify(pythonCheck, null, 2))
 
       setToolsStatus((prev) => ({
         ...prev,
@@ -55,8 +52,6 @@ export function usePlatformTools() {
           installing: false,
         },
       }))
-
-      console.log('[usePlatformTools] Python check complete')
     } catch (error) {
       console.error('[usePlatformTools] Error checking Python:', error)
       setToolsStatus((prev) => ({
@@ -66,14 +61,11 @@ export function usePlatformTools() {
     }
 
     // Check Playwright browsers (only if Python is installed)
-    console.log('[usePlatformTools] ========== Checking Playwright browsers ==========')
     setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, checking: true } }))
     try {
       const envCheck = await window.electronAPI.envCheck()
-      console.log('[usePlatformTools] envCheck result:', JSON.stringify(envCheck, null, 2))
 
       const playwrightInstalled = envCheck.success && envCheck.playwright?.installed
-      console.log('[usePlatformTools] Playwright installed:', playwrightInstalled)
 
       setToolsStatus((prev) => ({
         ...prev,
@@ -84,8 +76,6 @@ export function usePlatformTools() {
           installing: false,
         },
       }))
-
-      console.log('[usePlatformTools] ========== Playwright check complete ==========')
     } catch (error) {
       console.error('[usePlatformTools] Error checking Playwright:', error)
       setToolsStatus((prev) => ({
@@ -98,7 +88,6 @@ export function usePlatformTools() {
     setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, checking: true } }))
     try {
       const result = await window.electronAPI.checkAndroidStudio()
-      console.log('[usePlatformTools] Android Studio Check Result:', result)
       setToolsStatus((prev) => ({
         ...prev,
         androidStudio: { checking: false, installed: result.success, error: result.error, installing: false },
@@ -106,7 +95,6 @@ export function usePlatformTools() {
 
       // Save Android SDK path if detected
       if (result.success && result.path) {
-        console.log('[usePlatformTools] Android SDK path detected:', result.path)
         setAndroidSdkPath(result.path)
       }
     } catch {
@@ -115,18 +103,16 @@ export function usePlatformTools() {
   }, [])
 
   const downloadPython = useCallback(async () => {
-    console.log('[usePlatformTools] ========== Starting Python download ==========')
     setToolsStatus((prev) => ({ ...prev, python: { ...prev.python, installing: true } }))
 
     try {
       const result = await window.electronAPI.pythonDownload()
 
       if (result.success) {
-        console.log('[usePlatformTools] ✓ Python download complete')
         // Recheck Python status
         await checkPlatformTools()
       } else {
-        console.error('[usePlatformTools] ✗ Python download failed:', result.error)
+        console.error('[usePlatformTools] Python download failed:', result.error)
         setToolsStatus((prev) => ({
           ...prev,
           python: {
@@ -147,8 +133,6 @@ export function usePlatformTools() {
         },
       }))
     }
-
-    console.log('[usePlatformTools] ========== Python download complete ==========')
   }, [checkPlatformTools])
 
   return {

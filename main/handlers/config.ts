@@ -40,14 +40,10 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   // Check if initial setup is complete (checks Python venv AND config file)
   ipcMain.handle('check:setup', async () => {
     try {
-      console.log('[check:setup] Checking if setup is complete...');
-
       // FIRST: Check if config.json file actually exists
       const configFileExists = configExists();
-      console.log('[check:setup] Config file exists:', configFileExists);
 
       if (!configFileExists) {
-        console.log('[check:setup] Config file does not exist, setup not complete');
         return { success: true, setupComplete: false };
       }
 
@@ -63,19 +59,15 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
         if (config.model.enableApi && config.model.api.baseUrl && config.model.api.key && config.model.api.model) {
           hasValidConfig = true;
         }
-        console.log('[check:setup] Config valid:', hasValidConfig);
       } catch {
-        console.log('[check:setup] Config is invalid');
         hasValidConfig = false;
       }
 
       // Check if Python runtime is available
       const pythonStatus = checkPythonRuntime();
-      console.log('[check:setup] Python runtime status:', pythonStatus);
 
       // Setup is complete if BOTH Python runtime is available AND config is valid
       const setupComplete = pythonStatus.available && hasValidConfig;
-      console.log('[check:setup] Setup complete:', setupComplete);
 
       return { success: true, setupComplete };
     } catch (error: unknown) {
@@ -120,9 +112,7 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
   // Reset configuration and return to setup wizard
   ipcMain.handle('config:reset', async () => {
     try {
-      console.log('[config:reset] Resetting configuration...');
       resetAppConfig();
-      console.log('[config:reset] Configuration reset successful');
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

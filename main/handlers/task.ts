@@ -32,8 +32,6 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
   });
 
   if (!hasActiveAndroidTasks) {
-    console.log('[emulator-cleanup] No active Android tasks found. Stopping emulator...');
-    
     try {
       // Call Python script to stop emulator
       const appagentDir = getAppagentPath();
@@ -54,26 +52,14 @@ stop_emulator()
         env: pythonEnv,
       });
 
-      cleanupProcess.stdout?.on('data', (data) => {
-        console.log('[emulator-cleanup]', data.toString().trim());
-      });
-
-      cleanupProcess.stderr?.on('data', (data) => {
-        console.error('[emulator-cleanup]', data.toString().trim());
-      });
-
       cleanupProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log('[emulator-cleanup] ✓ Emulator stopped successfully');
-        } else {
+        if (code !== 0) {
           console.error('[emulator-cleanup] Failed to stop emulator (exit code:', code, ')');
         }
       });
     } catch (error) {
       console.error('[emulator-cleanup] Error stopping emulator:', error);
     }
-  } else {
-    console.log('[emulator-cleanup] Active Android tasks found. Keeping emulator running.');
   }
 }
 
@@ -166,9 +152,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       if (task.resultPath) {
         try {
           if (fs.existsSync(task.resultPath)) {
-            console.log(`[task:delete] Deleting task result folder: ${task.resultPath}`);
             fs.rmSync(task.resultPath, { recursive: true, force: true });
-            console.log(`[task:delete] ✓ Task result folder deleted`);
           }
         } catch (fsError) {
           console.warn(`[task:delete] Failed to delete result folder: ${fsError}`);
@@ -212,23 +196,13 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const taskDirName = `self_explore_${timestamp}`;
       const taskDir = path.join(appsDir, taskDirName);
 
-      console.log('[task:start] Calculated task directory:', taskDir);
-
       // Update task status
       task.status = 'running';
       task.startedAt = new Date().toISOString();
       task.output = '';
       task.resultPath = taskDir;  // Store task directory path
 
-      console.log('[task:start] Task before save:', JSON.stringify({
-        id: task.id,
-        resultPath: task.resultPath,
-        status: task.status
-      }, null, 2));
-
       saveProjects(data);
-
-      console.log('[task:start] Projects saved successfully');
 
       // Load global config from config.json
       const appConfig = loadAppConfig();
@@ -269,10 +243,6 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       if (task.modelName) {
         args.push('--model_name', task.modelName);
       }
-
-      console.log('[task:start] Executing task with args:', args);
-      console.log('[task:start] Working directory:', appagentDir);
-      console.log('[task:start] Environment variables:', Object.keys(configEnvVars).length, 'vars');
 
       // Create a wrapper script to add scripts directory to sys.path before importing
       // This ensures imports work correctly on all platforms (especially Windows)
@@ -317,11 +287,8 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
 
       taskProcesses.set(taskId, taskProcess);
 
-      console.log(`[task:start] Task process started with PID: ${taskProcess.pid}`);
-
       taskProcess.stdout?.on('data', (data) => {
         const output = data.toString();
-        console.log(`[task:${taskId}] stdout:`, output.substring(0, 100));
         mainWindow?.webContents.send('task:output', { projectId, taskId, output });
 
         // Append to task output
@@ -336,7 +303,6 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
 
       taskProcess.stderr?.on('data', (data) => {
         const error = data.toString();
-        console.log(`[task:${taskId}] stderr:`, error.substring(0, 100));
         mainWindow?.webContents.send('task:error', { projectId, taskId, error });
 
         // Append to task output (stderr also goes to output)
@@ -350,22 +316,16 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
       });
 
       taskProcess.on('close', async (code) => {
-        console.log(`[task:${taskId}] Process closed with code: ${code}`);
-        
         const currentData = loadProjects();
         const currentProject = currentData.projects.find((p) => p.id === projectId);
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
 
         if (currentTask) {
           const newStatus = code === 0 ? 'completed' : 'failed';
-          console.log(`[task:${taskId}] Updating status: ${currentTask.status} -> ${newStatus}`);
-          
           currentTask.status = newStatus;
           currentTask.completedAt = new Date().toISOString();
           currentTask.updatedAt = new Date().toISOString();
           saveProjects(currentData);
-          
-          console.log(`[task:${taskId}] Status updated and saved`);
         }
 
         mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
@@ -440,17 +400,16 @@ export async function cleanupTaskProcesses(): Promise<void> {
 
   // Always cleanup emulators on app exit
   try {
-    console.log('[app-exit] Cleaning up emulators...');
     const appagentDir = getAppagentPath();
     const pythonEnv = getPythonEnv();
-    
+
     const cleanupCode = `
 import sys
 sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
 from scripts.and_controller import cleanup_emulators
 cleanup_emulators()
 `;
-    
+
     const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
       cwd: appagentDir,
       env: pythonEnv,
@@ -458,11 +417,8 @@ cleanup_emulators()
 
     // Wait for cleanup to complete
     await new Promise<void>((resolve) => {
-      cleanupProcess.on('close', () => {
-        console.log('[app-exit] ✓ Emulator cleanup completed');
-        resolve();
-      });
-      
+      cleanupProcess.on('close', () => resolve());
+
       // Timeout after 5 seconds
       setTimeout(() => {
         if (!cleanupProcess.killed) {

@@ -189,8 +189,6 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
 
   // Setup IPC event listeners
   useEffect(() => {
-    console.log('[TerminalContext] Setting up IPC event listeners')
-
     // Task events
     const handleTaskOutput = (data: { projectId: string; taskId: string; output: string }) => {
       addLine({
@@ -279,7 +277,6 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
 
     // Cleanup
     return () => {
-      console.log('[TerminalContext] Cleaning up IPC event listeners')
       window.electronAPI.removeAllListeners('task:output')
       window.electronAPI.removeAllListeners('task:error')
       window.electronAPI.removeAllListeners('task:complete')

@@ -31,13 +31,11 @@ export function useModelConfig(currentStep: number) {
 
     try {
       const result = await window.electronAPI.checkOllama()
-      console.log('Ollama API result:', result)
 
       if (result.success && result.running && result.models) {
         const modelNames = result.models.map((model: { name?: string } | string) =>
           typeof model === 'string' ? model : (model.name || '')
         )
-        console.log('Parsed model names:', modelNames)
         setOllamaModels(modelNames)
 
         // Auto-select first model if none selected
@@ -45,7 +43,6 @@ export function useModelConfig(currentStep: number) {
           setModelConfig((prev) => ({ ...prev, localModel: modelNames[0] }))
         }
       } else {
-        console.log('Ollama check failed:', result)
         setOllamaError('Ollama is not running or no models found')
         setOllamaModels([])
       }
