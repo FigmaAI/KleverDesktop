@@ -1,117 +1,94 @@
-import { useEffect, useState, useRef } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
-import { Box, Sheet, Typography, Button, Stack } from '@mui/joy'
-import { SettingsOutlined, FolderOutlined } from '@mui/icons-material'
-import logo from '../assets/logo.png'
-import { TerminalButton } from '@/components/UniversalTerminal'
-import { useTerminal } from '@/hooks/useTerminal'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Home, Settings, Terminal, Plus } from 'lucide-react'
+import { InteractiveGridPattern } from '@/components/magicui/interactive-grid-pattern'
+import { Dock, DockIcon } from '@/components/magicui/dock'
+import { cn } from '@/lib/utils'
 
 export function Layout() {
+  const navigate = useNavigate()
   const location = useLocation()
-  const { processes } = useTerminal()
-  const [animateTerminalButton, setAnimateTerminalButton] = useState(false)
-  const prevRunningCountRef = useRef(0)
 
-  // Track running processes count
-  const runningCount = processes.filter((p) => p.status === 'running').length
-
-  // Animate terminal button when a new task starts running
-  useEffect(() => {
-    // Only animate when runningCount increases (new task started)
-    if (runningCount > prevRunningCountRef.current && runningCount > 0) {
-      // Use setTimeout to defer state update and avoid cascading renders
-      const timer = setTimeout(() => {
-        setAnimateTerminalButton(true)
-        setTimeout(() => {
-          setAnimateTerminalButton(false)
-        }, 3000) // Animate for 3 seconds
-      }, 0)
-
-      prevRunningCountRef.current = runningCount
-      return () => clearTimeout(timer)
-    } else {
-      prevRunningCountRef.current = runningCount
-    }
-  }, [runningCount])
+  const dockItems = [
+    {
+      icon: Home,
+      label: 'Projects',
+      path: '/projects',
+      isActive: location.pathname.startsWith('/projects'),
+    },
+    {
+      icon: Settings,
+      label: 'Settings',
+      path: '/settings',
+      isActive: location.pathname === '/settings',
+    },
+    {
+      icon: Terminal,
+      label: 'Terminal',
+      onClick: () => {
+        // TODO: Open terminal panel
+        console.log('Terminal clicked')
+      },
+      isActive: false,
+    },
+    {
+      icon: Plus,
+      label: 'New Project',
+      path: '/projects/new',
+      isActive: location.pathname === '/projects/new',
+    },
+  ]
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-      }}
-    >
-      {/* Header */}
-      <Sheet
-        component="header"
-        variant="outlined"
-        sx={{
-          borderLeft: 'none',
-          borderRight: 'none',
-          borderTop: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          height: 64,
-          px: 3,
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box
-            component="img"
-            src={logo}
-            alt="Klever Logo"
-            sx={{
-              height: 40,
-              width: 40,
-            }}
-          />
-          <Typography
-            level="h3"
-            fontWeight="bold"
-            sx={{
-              display: { xs: 'none', sm: 'block' },
-            }}
-          >
-            Klever
-          </Typography>
-        </Stack>
-
-        <Box component="nav" sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Button
-            component={Link}
-            to="/projects"
-            variant={location.pathname.startsWith('/projects') ? 'solid' : 'plain'}
-            size="sm"
-            startDecorator={<FolderOutlined fontSize="small" />}
-          >
-            Projects
-          </Button>
-          <Button
-            component={Link}
-            to="/settings"
-            variant={location.pathname === '/settings' ? 'solid' : 'plain'}
-            size="sm"
-            startDecorator={<SettingsOutlined fontSize="small" />}
-          >
-            Settings
-          </Button>
-
-          {/* Terminal Button */}
-          <TerminalButton animateAttention={animateTerminalButton} />
-        </Box>
-      </Sheet>
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background">
+      {/* Animated Grid Background */}
+      <InteractiveGridPattern
+        className="absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_center,white,transparent_85%)]"
+        width={60}
+        height={60}
+        numSquares={50}
+        maxOpacity={0.3}
+        duration={3}
+        repeatDelay={1}
+      />
 
       {/* Main Content */}
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          overflow: 'auto',
-        }}
-      >
+      <main className="relative z-10 flex-1 overflow-auto">
         <Outlet />
-      </Box>
-    </Box>
+      </main>
+
+      {/* Floating Dock Navigation */}
+      <div className="relative z-20 pb-8">
+        <Dock magnification={60} distance={140} direction="bottom">
+          {dockItems.map((item, index) => (
+            <DockIcon
+              key={index}
+              className={cn(
+                'bg-background/80 backdrop-blur-md border border-border/50 transition-all duration-300',
+                item.isActive && 'bg-primary/20 border-primary/50'
+              )}
+            >
+              <button
+                onClick={() => {
+                  if (item.path) {
+                    navigate(item.path)
+                  } else if (item.onClick) {
+                    item.onClick()
+                  }
+                }}
+                className="flex h-full w-full items-center justify-center"
+                title={item.label}
+              >
+                <item.icon
+                  className={cn(
+                    'h-5 w-5 transition-colors',
+                    item.isActive ? 'text-primary' : 'text-foreground'
+                  )}
+                />
+              </button>
+            </DockIcon>
+          ))}
+        </Dock>
+      </div>
+    </div>
   )
 }

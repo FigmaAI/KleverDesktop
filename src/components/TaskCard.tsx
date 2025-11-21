@@ -1,28 +1,17 @@
 import {
-  Button,
-  Card,
-  CardContent,
-  CardOverflow,
-  Chip,
-  IconButton,
-  ListItem,
-  ListItemButton,
-  ListItemContent,
-  ListItemDecorator,
-  Stack,
-  Typography,
-  Tooltip,
-} from '@mui/joy'
-import {
-  PlayArrow,
-  Stop,
-  Delete as DeleteIcon,
-  Description as DescriptionIcon,
+  Play,
+  StopCircle,
+  Trash2,
+  FileText,
   CheckCircle,
-  Error as ErrorIcon,
-  Schedule,
-  Cancel,
-} from '@mui/icons-material'
+  AlertCircle,
+  Clock,
+  XCircle,
+} from 'lucide-react'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { Task } from '../types/project'
 
 interface TaskCardProps {
@@ -42,54 +31,20 @@ export function TaskCard({
   onDelete,
   onViewMarkdown,
 }: TaskCardProps) {
-  const getStatusLabel = () => {
+  const getStatusConfig = () => {
     switch (task.status) {
       case 'pending':
-        return 'Scheduled'
+        return { label: 'Scheduled', icon: Clock, variant: 'secondary' as const }
       case 'running':
-        return 'Running'
+        return { label: 'Running', icon: Play, variant: 'default' as const }
       case 'completed':
-        return 'Finished'
+        return { label: 'Finished', icon: CheckCircle, variant: 'default' as const }
       case 'failed':
-        return 'Error'
+        return { label: 'Error', icon: AlertCircle, variant: 'destructive' as const }
       case 'cancelled':
-        return 'Stopped'
+        return { label: 'Stopped', icon: XCircle, variant: 'secondary' as const }
       default:
-        return 'Unknown'
-    }
-  }
-
-  const getStatusIcon = () => {
-    switch (task.status) {
-      case 'pending':
-        return <Schedule fontSize="small" />
-      case 'running':
-        return <PlayArrow fontSize="small" />
-      case 'completed':
-        return <CheckCircle fontSize="small" />
-      case 'failed':
-        return <ErrorIcon fontSize="small" />
-      case 'cancelled':
-        return <Cancel fontSize="small" />
-      default:
-        return <Schedule fontSize="small" />
-    }
-  }
-
-  const getStatusColor = (): 'neutral' | 'primary' | 'success' | 'danger' | 'warning' => {
-    switch (task.status) {
-      case 'pending':
-        return 'neutral'
-      case 'running':
-        return 'primary'
-      case 'completed':
-        return 'success'
-      case 'failed':
-        return 'danger'
-      case 'cancelled':
-        return 'warning'
-      default:
-        return 'neutral'
+        return { label: 'Unknown', icon: Clock, variant: 'secondary' as const }
     }
   }
 
@@ -109,9 +64,10 @@ export function TaskCard({
     // API model metrics
     if (task.modelProvider === 'api') {
       if (task.metrics.tokens !== undefined && task.metrics.tokens > 0) {
-        const tokensText = task.metrics.tokens >= 1000
-          ? `${(task.metrics.tokens / 1000).toFixed(1)}K tokens`
-          : `${task.metrics.tokens} tokens`
+        const tokensText =
+          task.metrics.tokens >= 1000
+            ? `${(task.metrics.tokens / 1000).toFixed(1)}K tokens`
+            : `${task.metrics.tokens} tokens`
         parts.push(tokensText)
       }
 
@@ -127,9 +83,10 @@ export function TaskCard({
       }
 
       if (task.metrics.memoryUsage !== undefined && task.metrics.memoryUsage > 0) {
-        const memoryText = task.metrics.memoryUsage >= 1024
-          ? `${(task.metrics.memoryUsage / 1024).toFixed(1)}GB`
-          : `${task.metrics.memoryUsage.toFixed(0)}MB`
+        const memoryText =
+          task.metrics.memoryUsage >= 1024
+            ? `${(task.metrics.memoryUsage / 1024).toFixed(1)}GB`
+            : `${task.metrics.memoryUsage.toFixed(0)}MB`
         parts.push(`Memory ${memoryText}`)
       }
     }
@@ -159,160 +116,92 @@ export function TaskCard({
     onViewMarkdown?.(task)
   }
 
+  const statusConfig = getStatusConfig()
+  const StatusIcon = statusConfig.icon
+
   // Card View
   if (variant === 'card') {
     return (
-      <Card
-        variant="outlined"
-        sx={{
-          transition: 'all 0.2s',
-          minHeight: '240px',
-          display: 'flex',
-          flexDirection: 'column',
-          '&:hover': {
-            boxShadow: 'sm',
-            borderColor: 'neutral.outlinedHoverBorder',
-          },
-        }}
-      >
-        <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <Stack spacing={2} sx={{ flex: 1, justifyContent: 'space-between' }}>
-            {/* Top Section: Description */}
-            <Typography
-              level="body-md"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                minHeight: '52px',
-              }}
-            >
+      <Card className="group relative min-h-[240px] transition-all duration-300 hover:shadow-lg">
+        <CardContent className="flex h-full flex-col justify-between pt-6">
+          {/* Top Section: Description */}
+          <div className="mb-4">
+            <p className="line-clamp-2 text-sm text-foreground">
               {task.goal || task.description || 'No description'}
-            </Typography>
+            </p>
+          </div>
 
-            {/* Bottom Section: Status, Metrics, and Actions */}
-            <Stack spacing={2}>
-              {/* Status & Model */}
-              <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-                <Chip
-                  size="md"
-                  variant="soft"
-                  color={getStatusColor()}
-                  startDecorator={getStatusIcon()}
+          {/* Middle Section: Status & Model */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={statusConfig.variant} className="flex items-center gap-1">
+              <StatusIcon className="h-3 w-3" />
+              {statusConfig.label}
+            </Badge>
+            {task.model && (
+              <Badge variant="outline" className="text-xs">
+                {task.model}
+              </Badge>
+            )}
+          </div>
+
+          {/* Bottom Section: Timestamp and Actions */}
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {task.startedAt
+                ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
+            </p>
+
+            <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              {task.status === 'pending' && (
+                <Button size="sm" onClick={handleStart} className="h-8">
+                  <Play className="mr-1 h-3 w-3" />
+                  Start
+                </Button>
+              )}
+
+              {task.status === 'running' && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleStop}
+                  className="h-8"
                 >
-                  {getStatusLabel()}
-                </Chip>
-                {task.model && (
-                  <Chip
-                    size="sm"
-                    variant="outlined"
-                    color="neutral"
-                  >
-                    {task.model}
-                  </Chip>
-                )}
-              </Stack>
+                  <StopCircle className="mr-1 h-3 w-3" />
+                  Stop
+                </Button>
+              )}
 
-              {/* Bottom Row: Timestamp and Actions */}
-              <Stack 
-                direction="row" 
-                spacing={1.5} 
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{ width: '100%' }}
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleViewMarkdown}
+                disabled={!task.resultPath}
+                title="View Results"
+                className="h-8 w-8"
               >
-                {/* Left: Timestamp */}
-                <Typography 
-                  level="body-xs" 
-                  textColor="text.secondary"
-                  sx={{ 
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    minWidth: 0,
-                    flex: 1,
-                  }}
-                >
-                  {task.startedAt 
-                    ? `Started ${new Date(task.startedAt).toLocaleString()}`
-                    : `Created ${new Date(task.createdAt).toLocaleDateString()}`
-                  }
-                </Typography>
+                <FileText className="h-4 w-4" />
+              </Button>
 
-                {/* Right: Action Buttons */}
-                <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-                  {task.status === 'pending' && (
-                    <Button
-                      size="sm"
-                      variant="solid"
-                      color="primary"
-                      startDecorator={<PlayArrow />}
-                      onClick={handleStart}
-                    >
-                      Start
-                    </Button>
-                  )}
-
-                  {task.status === 'running' && (
-                    <Button
-                      size="sm"
-                      variant="solid"
-                      color="danger"
-                      startDecorator={<Stop />}
-                      onClick={handleStop}
-                    >
-                      Stop
-                    </Button>
-                  )}
-
-                  <Tooltip title="View Results">
-                    <IconButton
-                      size="sm"
-                      variant="plain"
-                      color="neutral"
-                      onClick={handleViewMarkdown}
-                      disabled={!task.resultPath}
-                    >
-                      <DescriptionIcon />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Delete Task">
-                    <IconButton
-                      size="sm"
-                      variant="plain"
-                      color="danger"
-                      onClick={handleDelete}
-                      disabled={task.status === 'running'}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </Stack>
-          </Stack>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleDelete}
+                disabled={task.status === 'running'}
+                title="Delete Task"
+                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
+
+        {/* Footer: Metrics */}
         {getMetricsText() && (
-          <CardOverflow
-            variant="soft"
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              gap: 1.5,
-              py: 1,
-              px: 2,
-              bgcolor: 'background.level1',
-              borderTop: '1px solid',
-              borderColor: 'divider',
-            }}
-          >
-            <Typography level="body-sm" textColor="text.secondary">
-              {getMetricsText()}
-            </Typography>
-          </CardOverflow>
+          <CardFooter className="border-t bg-muted/50 py-3">
+            <p className="text-sm text-muted-foreground">{getMetricsText()}</p>
+          </CardFooter>
         )}
       </Card>
     )
@@ -320,136 +209,87 @@ export function TaskCard({
 
   // List View
   return (
-    <ListItem>
-      <ListItemButton sx={{ cursor: 'default' }}>
-        <ListItemDecorator sx={{ alignSelf: 'flex-start', mt: 0.5 }}>
-          {getStatusIcon()}
-        </ListItemDecorator>
-        <ListItemContent>
-          <Stack spacing={1.5} sx={{ width: '100%' }}>
-            {/* Task Description */}
-            <Typography
-              level="body-md"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {task.goal || task.description || 'No description'}
-            </Typography>
-            
-            {/* Status & Model */}
-            <Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
-              <Chip
-                size="sm"
-                variant="soft"
-                color={getStatusColor()}
-                startDecorator={getStatusIcon()}
-              >
-                {getStatusLabel()}
-              </Chip>
-              {task.model && (
-                <Chip
-                  size="sm"
-                  variant="outlined"
-                  color="neutral"
-                >
-                  {task.model}
-                </Chip>
-              )}
-            </Stack>
+    <div className="flex items-start gap-4 rounded-lg border p-4 transition-colors hover:bg-accent/50">
+      <div className="mt-1">
+        <StatusIcon className="h-5 w-5 text-muted-foreground" />
+      </div>
 
-            {/* Task Metrics */}
-            {getMetricsText() && (
-              <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1 }}>
-                {getMetricsText()}
-              </Typography>
+      <div className="flex-1 space-y-3">
+        {/* Task Description */}
+        <p className="line-clamp-2 text-sm text-foreground">
+          {task.goal || task.description || 'No description'}
+        </p>
+
+        {/* Status & Model */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
+            <StatusIcon className="h-3 w-3" />
+            {statusConfig.label}
+          </Badge>
+          {task.model && (
+            <Badge variant="outline" className="text-xs">
+              {task.model}
+            </Badge>
+          )}
+        </div>
+
+        {/* Metrics */}
+        {getMetricsText() && (
+          <p className="text-sm text-muted-foreground">{getMetricsText()}</p>
+        )}
+
+        {/* Bottom: Timestamp and Actions */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {task.startedAt
+              ? `Started ${new Date(task.startedAt).toLocaleString()}`
+              : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
+          </p>
+
+          <div className="flex gap-1">
+            {task.status === 'pending' && (
+              <Button size="sm" onClick={handleStart} className="h-8">
+                <Play className="mr-1 h-3 w-3" />
+                Start
+              </Button>
             )}
 
-            {/* Bottom Row: Timestamp and Actions */}
-            <Stack 
-              direction="row" 
-              spacing={1.5} 
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ width: '100%' }}
-            >
-              {/* Left: Timestamp */}
-              <Typography 
-                level="body-xs" 
-                textColor="text.secondary"
-                sx={{ 
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  minWidth: 0,
-                  flex: 1,
-                }}
+            {task.status === 'running' && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleStop}
+                className="h-8"
               >
-                {task.startedAt 
-                  ? `Started ${new Date(task.startedAt).toLocaleString()}`
-                  : `Created ${new Date(task.createdAt).toLocaleDateString()}`
-                }
-              </Typography>
+                <StopCircle className="mr-1 h-3 w-3" />
+                Stop
+              </Button>
+            )}
 
-              {/* Right: Actions */}
-              <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-                {task.status === 'pending' && (
-                  <Button
-                    size="sm"
-                    variant="solid"
-                    color="primary"
-                    startDecorator={<PlayArrow />}
-                    onClick={handleStart}
-                  >
-                    Start
-                  </Button>
-                )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleViewMarkdown}
+              disabled={!task.resultPath}
+              title="View Results"
+              className="h-8 w-8"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
 
-                {task.status === 'running' && (
-                  <Button
-                    size="sm"
-                    variant="solid"
-                    color="danger"
-                    startDecorator={<Stop />}
-                    onClick={handleStop}
-                  >
-                    Stop
-                  </Button>
-                )}
-
-                <Tooltip title="View Results">
-                  <IconButton
-                    size="sm"
-                    variant="plain"
-                    color="neutral"
-                    onClick={handleViewMarkdown}
-                    disabled={!task.resultPath}
-                  >
-                    <DescriptionIcon />
-                  </IconButton>
-                </Tooltip>
-
-                <Tooltip title="Delete Task">
-                  <IconButton
-                    size="sm"
-                    variant="plain"
-                    color="danger"
-                    onClick={handleDelete}
-                    disabled={task.status === 'running'}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-            </Stack>
-          </Stack>
-        </ListItemContent>
-      </ListItemButton>
-    </ListItem>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleDelete}
+              disabled={task.status === 'running'}
+              title="Delete Task"
+              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
-
