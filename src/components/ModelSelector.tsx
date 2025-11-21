@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Select, Option, Stack, Autocomplete, AutocompleteOption, Box, Typography, Chip } from '@mui/joy'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Combobox, ComboboxOption } from '@/components/ui/combobox'
+import { Badge } from '@/components/ui/badge'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
 
 interface ModelSelectorProps {
@@ -117,27 +125,34 @@ export function ModelSelector({
     }
   }, [modelType, localModel, apiModel, apiProvider, onChange])
 
+  // Prepare combobox options for API models with badges
+  const apiComboboxOptions: ComboboxOption[] = useMemo(() => {
+    return apiModelOptions.map((option) => ({
+      value: option,
+      label: option,
+    }))
+  }, [apiModelOptions])
+
   return (
-    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
+    <div className="flex flex-wrap items-center gap-2">
       {/* Model Type Selection */}
       {(hasLocal || hasApi) && (
         <Select
           value={modelType}
-          onChange={(_, value) => setModelType(value as 'local' | 'api')}
-          size={size}
+          onValueChange={(value) => setModelType(value as 'local' | 'api')}
           disabled={disabled}
-          sx={{ minWidth: 100 }}
         >
-          {hasLocal && (
-            <Option value="local">
-              🖥️ Local
-            </Option>
-          )}
-          {hasApi && (
-            <Option value="api">
-              ☁️ API
-            </Option>
-          )}
+          <SelectTrigger className="w-[120px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {hasLocal && (
+              <SelectItem value="local">🖥️ Local</SelectItem>
+            )}
+            {hasApi && (
+              <SelectItem value="api">☁️ API</SelectItem>
+            )}
+          </SelectContent>
         </Select>
       )}
 
@@ -145,17 +160,19 @@ export function ModelSelector({
       {modelType === 'local' && localModels.length > 0 && (
         <Select
           value={localModel}
-          onChange={(_, value) => setLocalModel(value || '')}
-          placeholder="Select model"
-          size={size}
+          onValueChange={(value) => setLocalModel(value || '')}
           disabled={disabled}
-          sx={{ minWidth: 180 }}
         >
-          {localModels.map((m) => (
-            <Option key={m} value={m}>
-              {m}
-            </Option>
-          ))}
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select model" />
+          </SelectTrigger>
+          <SelectContent>
+            {localModels.map((m) => (
+              <SelectItem key={m} value={m}>
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       )}
 
@@ -165,62 +182,59 @@ export function ModelSelector({
           {/* Provider Selection */}
           <Select
             value={apiProvider}
-            onChange={(_, value) => {
+            onValueChange={(value) => {
               setApiProvider(value || '')
               setApiModel('') // Reset model when provider changes
             }}
-            placeholder="Provider"
-            size={size}
             disabled={disabled}
-            sx={{ minWidth: 140 }}
           >
-            {providers.map((provider) => (
-              <Option key={provider.id} value={provider.id}>
-                {provider.name}
-              </Option>
-            ))}
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Provider" />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  {provider.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
 
-          {/* Model Selection with Vision tags */}
+          {/* Model Selection with Combobox */}
           {apiProvider && (
-            <Autocomplete
-              value={apiModel}
-              onChange={(_, newValue) => setApiModel(newValue || '')}
-              onInputChange={(_, newValue) => setApiModel(newValue)}
-              options={apiModelOptions}
-              placeholder="Model"
-              size={size}
-              disabled={disabled}
-              freeSolo
-              sx={{ minWidth: 200 }}
-              renderOption={(props, option) => {
-                const modelInfo = providerModels.find(m => m.id === option)
-                return (
-                  <AutocompleteOption {...props} key={option}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                      <Typography level="body-sm" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {option}
-                      </Typography>
-                      {modelInfo && (
-                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                          {modelInfo.supportsVision && (
-                            <Chip size="sm" color="success" variant="soft">Vision</Chip>
-                          )}
-                          {modelInfo.maxInputTokens && (
-                            <Chip size="sm" variant="soft">
-                              {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
-                            </Chip>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </AutocompleteOption>
-                )
-              }}
-            />
+            <div className="relative w-[240px]">
+              <Combobox
+                options={apiComboboxOptions}
+                value={apiModel}
+                onValueChange={(value) => setApiModel(value)}
+                placeholder="Model"
+                searchPlaceholder="Search models..."
+                emptyText="No models found"
+                disabled={disabled}
+                className="w-full"
+              />
+              {/* Show badges for selected model */}
+              {apiModel && (() => {
+                const modelInfo = providerModels.find(m => m.id === apiModel)
+                return modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens) ? (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
+                    {modelInfo.supportsVision && (
+                      <Badge variant="default" className="text-xs">
+                        Vision
+                      </Badge>
+                    )}
+                    {modelInfo.maxInputTokens && (
+                      <Badge variant="secondary" className="text-xs">
+                        {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
+                      </Badge>
+                    )}
+                  </div>
+                ) : null
+              })()}
+            </div>
           )}
         </>
       )}
-    </Stack>
+    </div>
   )
 }
