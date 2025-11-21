@@ -6,9 +6,38 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./vite-env.d.ts" />
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, crashReporter } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
+
+/**
+ * Enable crash reporting for debugging (Build 13+)
+ * Crash reports stored locally, NOT uploaded
+ */
+crashReporter.start({
+  productName: 'Klever Desktop',
+  submitURL: '', // Empty = local-only crash reports
+  uploadToServer: false,
+  compress: true,
+});
+
+/**
+ * V8 Crash Workarounds for macOS Sequoia (Build 13+)
+ * Fixes DNS-related crash at ~6.6s after launch
+ * See: CRASH_ANALYSIS.md
+ */
+// Disable V8 optimizations that trigger crashes on macOS Sequoia beta
+app.commandLine.appendSwitch('js-flags', '--no-opt');
+// Disable macOS-specific features causing crashes
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+// Reduce DNS/network complexity to prevent ares_dns_rr crashes
+app.commandLine.appendSwitch('disable-http-cache');
+
+// Enable verbose logging in development
+if (!app.isPackaged) {
+  app.commandLine.appendSwitch('enable-logging');
+  app.commandLine.appendSwitch('v', '1');
+}
 
 let mainWindow: BrowserWindow | null = null;
 
