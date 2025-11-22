@@ -95,25 +95,19 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to sandboxed container workspaces/{projectName}
+ * @returns Path to ~/Documents/KleverWorkspace/{projectName}
  *
- * For MAS (Mac App Store) builds, this uses the app's sandbox container.
- * For darwin builds, this uses ~/Library/Application Support/klever-desktop/
- *
- * Users can override this by selecting a custom folder via file picker,
- * which grants security-scoped access even in MAS sandbox.
+ * Reverted to use Documents folder for better user accessibility.
+ * This matches the pre-MAS behavior (which used ~/Documents/apps).
  */
 export function getProjectWorkspaceDir(projectName: string): string {
-  // Use app's sandboxed user data directory
-  // MAS: ~/Library/Containers/com.klever.desktop/Data/Library/Application Support/klever-desktop/
-  // Darwin: ~/Library/Application Support/klever-desktop/
-  const userDataPath = app.getPath('userData');
-  const workspacesDir = path.join(userDataPath, 'workspaces');
+  const documentsPath = app.getPath('documents');
+  const workspaceRoot = path.join(documentsPath, 'KleverWorkspace');
 
-  // Ensure workspaces directory exists
-  ensureDirectoryExists(workspacesDir);
+  // Ensure workspace root directory exists
+  ensureDirectoryExists(workspaceRoot);
 
-  return path.join(workspacesDir, projectName);
+  return path.join(workspaceRoot, projectName);
 }
 
 /**

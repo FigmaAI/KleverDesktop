@@ -169,8 +169,8 @@ export function Settings() {
       const result = await window.electronAPI.configReset()
 
       if (result.success) {
-        console.log('[Settings] Configuration reset successful, restarting app...')
-        await window.electronAPI.appRestart()
+        // Reload to re-check setup status
+        window.location.reload()
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to reset configuration:', errorMsg)

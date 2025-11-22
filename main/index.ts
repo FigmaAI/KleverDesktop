@@ -29,7 +29,7 @@ crashReporter.start({
 // Disable V8 optimizations that trigger crashes on macOS Sequoia beta
 app.commandLine.appendSwitch('js-flags', '--no-opt');
 // Disable macOS-specific features causing crashes
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,Fontations');
 // Reduce DNS/network complexity to prevent ares_dns_rr crashes
 app.commandLine.appendSwitch('disable-http-cache');
 

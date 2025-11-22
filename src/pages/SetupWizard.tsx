@@ -92,8 +92,8 @@ export function SetupWizard() {
         setCurrentStep(currentStep + 1)
       }
     } else if (integrationTestSuccess) {
-      // Already saved config in step 2, restart app to reload setup status
-      await window.electronAPI.appRestart()
+      // Already saved config in step 2, reload to trigger App checkSetup
+      window.location.reload()
     }
   }
 
@@ -186,13 +186,13 @@ export function SetupWizard() {
   const canProceedFromStep2 = () => {
     // At least one provider must be enabled
     if (!modelConfig.enableLocal && !modelConfig.enableApi) return false
-    
+
     // If local is enabled, must have a model selected
     if (modelConfig.enableLocal && !modelConfig.localModel) return false
-    
+
     // If API is enabled, must have provider, key, and model
     if (modelConfig.enableApi && (!modelConfig.apiProvider || !modelConfig.apiKey || !modelConfig.apiModel)) return false
-    
+
     return true
   }
 

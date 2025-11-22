@@ -244,43 +244,31 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         args.push('--model_name', task.modelName);
       }
 
-      // Create a wrapper script to add scripts directory to sys.path before importing
-      // This ensures imports work correctly on all platforms (especially Windows)
-      const wrapperScript = `import sys
-import os
-
-# Add scripts directory to sys.path for imports
-scripts_dir = os.path.join(os.path.dirname(__file__), 'scripts')
-sys.path.insert(0, scripts_dir)
-
-# Change to scripts directory and execute self_explorer
-os.chdir(scripts_dir)
-with open('self_explorer.py', 'r', encoding='utf-8') as f:
-    code = compile(f.read(), 'self_explorer.py', 'exec')
-    exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
-`;
-
-      const wrapperPath = path.join(appagentDir, '_task_wrapper.py');
-      fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
-
-      // Update args to use wrapper script instead of direct script
-      args[1] = wrapperPath;  // Replace scriptPath with wrapperPath
-
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
+
+      // Add appagent/scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(appagentDir, 'scripts');
+      const existingPythonPath = pythonEnv.PYTHONPATH || '';
+      const pythonPath = existingPythonPath
+        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+        : scriptsDir;
 
       // Add Android SDK default paths to PATH for adb/emulator detection
       const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
       const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
       const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
 
+      // NO WRAPPER: Run self_explorer.py directly
+      // This simplifies execution and avoids path/import issues
       const taskProcess = spawnBundledPython(args, {
-        cwd: appagentDir,  // ✅ Changed from project.workspaceDir to appagent directory
+        cwd: appagentDir,  // Run from appagent directory to ensure relative imports work
         env: {
-          ...pythonEnv,         // Python bundled environment variables (includes PYTHONUNBUFFERED=1)
+          ...pythonEnv,         // Python bundled environment variables
           ...configEnvVars,     // 22 config settings from config.json
+          PYTHONPATH: pythonPath, // Add scripts directory to PYTHONPATH
           PATH: updatedPath,    // Add Android SDK tools to PATH
-          PYTHONUNBUFFERED: '1', // Force unbuffered output (redundant but explicit)
+          PYTHONUNBUFFERED: '1', // Force unbuffered output
           PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
         }
       });

@@ -28,9 +28,10 @@ function App() {
           timeoutPromise
         ]) as { setupComplete: boolean };
 
+        console.log('[App] Setup check result:', result);
         setSetupComplete(result.setupComplete)
       } catch (error) {
-        console.error('[App.tsx] Failed to check setup status:', error)
+        console.error('[App] Failed to check setup status:', error)
         // Default to showing setup wizard on error - safer than blocking
         setSetupComplete(false)
       } finally {
@@ -45,9 +46,46 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [])
 
-  // Show loading state while checking
+  // Skeleton UI for loading state
   if (isChecking || setupComplete === null) {
-    return null // or a loading spinner
+    return (
+      <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
+        {/* Sidebar Skeleton */}
+        <div className="w-64 bg-gray-800 border-r border-gray-700 p-4 flex flex-col gap-6">
+          <div className="h-8 bg-gray-700 rounded w-3/4 animate-pulse"></div>
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-700 rounded w-full animate-pulse"></div>
+            <div className="h-10 bg-gray-700 rounded w-full animate-pulse"></div>
+            <div className="h-10 bg-gray-700 rounded w-full animate-pulse"></div>
+          </div>
+          <div className="mt-auto space-y-4">
+            <div className="h-10 bg-gray-700 rounded w-full animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Main Content Skeleton */}
+        <div className="flex-1 flex flex-col">
+          {/* Header Skeleton */}
+          <div className="h-16 bg-gray-800 border-b border-gray-700 flex items-center px-6">
+            <div className="h-6 bg-gray-700 rounded w-1/4 animate-pulse"></div>
+          </div>
+
+          {/* Body Skeleton */}
+          <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-gray-800 rounded-lg p-6 border border-gray-700 h-48 flex flex-col gap-4">
+                  <div className="h-6 bg-gray-700 rounded w-1/2 animate-pulse"></div>
+                  <div className="h-4 bg-gray-700 rounded w-full animate-pulse"></div>
+                  <div className="h-4 bg-gray-700 rounded w-3/4 animate-pulse"></div>
+                  <div className="mt-auto h-8 bg-gray-700 rounded w-1/3 animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

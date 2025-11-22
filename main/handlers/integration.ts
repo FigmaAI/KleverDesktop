@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
 import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
-import { ensureDirectoryExists, loadProjects, saveProjects } from '../utils/project-storage';
+import { ensureDirectoryExists, loadProjects, saveProjects, getProjectWorkspaceDir } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
 
@@ -103,11 +103,9 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       }
 
       // Setup workspace directory for integration test
-      // Use sandboxed container for MAS compatibility
-      const userDataPath = app.getPath('userData');
-      const workspaceDir = path.join(userDataPath, 'integration-tests');
-      ensureDirectoryExists(workspaceDir);
-
+      // Use getProjectWorkspaceDir helper which uses standard userData path
+      const workspaceDir = getProjectWorkspaceDir('Feeling_Lucky');
+      
       // Create or get project
       const data = loadProjects();
       let project = data.projects.find(p => p.name === 'Feeling_Lucky');
@@ -161,30 +159,12 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       mainWindow?.webContents.send('integration:output', `📝 Created task "${taskName}"\n`);
       mainWindow?.webContents.send('integration:output', `   Task directory: ${currentTaskDir}\n\n`);
 
-      // Create a wrapper script to add scripts directory to sys.path before importing
-      // This ensures imports work correctly on all platforms (especially Windows)
-      const wrapperScript = `import sys
-import os
-
-# Add scripts directory to sys.path for imports
-scripts_dir = os.path.join(os.path.dirname(__file__), 'scripts')
-sys.path.insert(0, scripts_dir)
-
-# Change to scripts directory and execute self_explorer
-os.chdir(scripts_dir)
-with open('self_explorer.py', 'r', encoding='utf-8') as f:
-    code = compile(f.read(), 'self_explorer.py', 'exec')
-    exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
-`;
-
-      const wrapperPath = path.join(appagentPath, '_integration_wrapper.py');
-      fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
-
-      // Use bundled Python to run the integration test via wrapper
+      // Run self_explorer.py directly (no wrapper)
+      // This avoids the wrapper script path issues and simplifies execution
       integrationTestProcess = spawnBundledPython(
         [
           '-u',
-          wrapperPath,
+          selfExplorerScript,
           '--app',
           'Feeling_Lucky',
           '--platform',
@@ -199,7 +179,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
           'https://www.google.com',
         ],
         {
-          cwd: appagentPath,
+          cwd: appagentPath, // Run from appagent directory to ensure relative imports work
           env: env,
         }
       );

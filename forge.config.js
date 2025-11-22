@@ -15,128 +15,72 @@ const convertToWinStoreVersion = (version) => {
 
 const appVersion = convertToWinStoreVersion(packageJson.version);
 
-// Check if this is a MAS build (Mac App Store)
-// MAS builds need special signing with sandbox entitlements
-// Darwin builds should NOT be signed with MAS certificates
-const isMASBuild = process.env.PLATFORM === 'mas' || process.argv.includes('--platform=mas');
-
 module.exports = {
   packagerConfig: {
-    appBundleId: 'com.klever.desktop', // Force Bundle ID for macOS
-    appId: 'com.klever.desktop',
-    productName: 'Klever Desktop',
-    buildVersion: '16', // Build number for App Store (increment for each submission) - Fixed signing configuration
-    asar: false, // Disable asar temporarily to debug renderer packaging
+    name: 'Klever Desktop',
+    executableName: 'klever-desktop',
+    appBundleId: 'com.klever.desktop',
+    appCategoryType: 'public.app-category.developer-tools',
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
+    asar: true, // Enable asar for performance and security
     extraResource: [
       'appagent', // Python scripts only, not Python runtime
       'dist' // Renderer build output (Vite builds to dist/)
     ],
-    // Export compliance: Skip encryption dialog in App Store Connect
-    // We only use standard HTTPS/TLS which is exempt from export regulations
     extendInfo: {
       ITSAppUsesNonExemptEncryption: false
     },
 
-    // Mac App Store signing configuration (ONLY for MAS builds)
-    // Darwin builds will use ad-hoc or no signing
-    osxSign: isMASBuild ? {
-      identity: process.env.CSC_NAME, // Apple Distribution
-      platform: 'mas',
-      type: 'distribution',
-      appBundleId: 'com.klever.desktop', // MUST match App Store Connect
-      entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
-      'entitlements-inherit': path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
-      // Optional: Add provisioning profile if you have one
-      provisioningProfile: process.env.MAS_PROVISIONING_PROFILE || path.resolve(__dirname, 'build/klever.provisionprofile'),
-      // CRITICAL: Sign all Electron helper processes with inherit entitlements
-      optionsForFile: (filePath) => {
-        // IMPORTANT: Only sign executables and .app bundles, not resource files
-        const isExecutable = filePath.endsWith('.app') ||
-                            filePath.endsWith('.dylib') ||
-                            filePath.endsWith('.framework') ||
-                            (!filePath.includes('.') && !filePath.includes('Resources'));
-
-        if (!isExecutable) {
-          // Skip resource files (locale.pak, images, etc.)
-          return undefined;
-        }
-
-        // All helper apps and Login Items must use inherit entitlements
-        const isHelper = filePath.includes('Helper') ||
-                        filePath.includes('LoginItems') ||
-                        filePath.includes('Login Helper');
-
-        if (isHelper) {
-          return {
-            entitlements: path.resolve(__dirname, 'build/entitlements.mas.inherit.plist'),
-          };
-        }
-
-        // Main app uses main entitlements
-        return {
-          entitlements: path.resolve(__dirname, 'build/entitlements.mas.plist'),
-        };
-      },
-      hardenedRuntime: true, // MAS builds MUST use hardened runtime for entitlements to work (JIT, etc.)
-      gatekeeperAssess: false, // Disable Gatekeeper assessment for MAS
-    } : undefined, // No signing for darwin builds
-
-    // Universal build configuration
-    osxUniversal: {
-      // Required to ensure universal binary is created when --arch=universal is used
+    // macOS Signing & Notarization (Developer ID)
+    osxSign: {
+      identity: 'Developer ID Application', // Will pick up certificate from Keychain
+      'hardened-runtime': true,
+      'gatekeeper-assess': false,
+      entitlements: path.join(__dirname, 'build/entitlements.mac.plist'),
+      'entitlements-inherit': path.join(__dirname, 'build/entitlements.mac.plist'),
     },
+    osxNotarize: process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD && process.env.APPLE_TEAM_ID ? {
+      appleId: process.env.APPLE_ID,
+      appleIdPassword: process.env.APPLE_ID_PASSWORD,
+      teamId: process.env.APPLE_TEAM_ID,
+    } : undefined,
   },
 
   rebuildConfig: {},
 
   makers: [
-    // Windows Store (MSIX) - Unsigned for Partner Center signing
+    // Windows Setup (Squirrel.Windows)
     {
-      name: '@electron-forge/maker-appx',
+      name: '@electron-forge/maker-squirrel',
       config: {
-        // Do NOT include devCert or certPass - this creates unsigned package
-        // Microsoft Partner Center will sign the package after upload
-        assets: path.join(__dirname, 'build'),
-        // Let Forge auto-generate manifest with proper version substitution
-        makeVersionWinStoreCompatible: true,
-
-        // Package identity (must match Partner Center reservation)
-        // Use environment variables for security and flexibility
-        publisher: process.env.WIN_PUBLISHER_ID || 'CN=151CE182-E4E4-44BC-B167-68C3C482DE94',
-        publisherDisplayName: process.env.WIN_PUBLISHER_NAME || 'JooHyung Park',
-        packageName: process.env.WIN_PACKAGE_NAME || 'JooHyungPark.KleverDesktop',
-        packageDisplayName: process.env.WIN_PACKAGE_DISPLAY_NAME || 'Klever Desktop',
-        packageDescription: 'AI-powered UI automation and testing tool',
-        packageVersion: appVersion, // Auto-synced from package.json (converted to x.x.x.x format)
-
-        // Store listing details
-        identityName: process.env.WIN_IDENTITY_NAME || 'JooHyungPark.KleverDesktop', // Reserved in Partner Center
-        backgroundColor: '#FFFFFF',
-
-        // Architecture support
-        arch: 'x64', // or 'arm64', 'neutral'
-
-        // Windows SDK requirements (makeappx.exe creates MSIX format by default in SDK 10.0.19041+)
-        windowsKit: process.env.WINDOWS_KIT_PATH || 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64',
+        name: 'klever-desktop',
+        authors: 'Klever Team',
+        exe: 'klever-desktop.exe',
+        iconUrl: 'https://raw.githubusercontent.com/Klever/KleverDesktop/main/build/icon.ico', // URL required for Squirrel
+        setupIcon: path.join(__dirname, 'build/icon.ico'),
+        loadingGif: path.join(__dirname, 'build/install-spinner.gif'), // Optional
+        // Certificate configuration (Certum Open Source / Azure Trusted Signing later)
+        // certificateFile: process.env.WINDOWS_CERT_FILE,
+        // certificatePassword: process.env.WINDOWS_CERT_PASSWORD,
       },
       platforms: ['win32'],
     },
 
-    // Mac App Store (PKG) - Universal binary
+    // macOS DMG
     {
-      name: '@electron-forge/maker-pkg',
+      name: '@electron-forge/maker-dmg',
       config: {
-        identity: process.env.CSC_INSTALLER_NAME, // 3rd Party Mac Developer Installer
-        install: '/Applications',
+        icon: path.join(__dirname, 'build/icon.icns'),
+        format: 'ULFO',
+        name: 'Klever Desktop',
       },
-      platforms: ['mas'],
+      platforms: ['darwin'],
     },
 
-    // ZIP maker for development and testing
+    // ZIP (Portable)
     {
       name: '@electron-forge/maker-zip',
-      platforms: ['darwin', 'linux', 'win32'],
+      platforms: ['darwin', 'win32'],
     },
   ],
 
@@ -168,30 +112,22 @@ module.exports = {
     },
   ],
 
-  // Publishers (optional - for automated publishing)
+  // GitHub Releases Publisher
   publishers: [
-    // {
-    //   name: '@electron-forge/publisher-github',
-    //   config: {
-    //     repository: {
-    //       owner: 'FigmaAI',
-    //       name: 'KleverDesktop'
-    //     },
-    //     prerelease: false,
-    //     draft: true
-    //   }
-    // }
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: {
+          owner: 'FigmaAI', // Update with actual owner
+          name: 'KleverDesktop'
+        },
+        prerelease: true, // Default to prerelease
+        draft: true // Default to draft to review before publishing
+      }
+    }
   ],
 
-  // Build hooks
   hooks: {
-    // Pre-package hook - verify bundle before packaging
-    prePackage: async (_config, platform, arch) => {
-      console.log(`Pre-package hook: ${platform}-${arch}`);
-      // Optional: Run scripts/verify-bundle.js here
-    },
-
-    // Post-make hook - display build artifacts
     postMake: async (_config, makeResults) => {
       console.log('Build artifacts created:');
       makeResults.forEach((result) => {
