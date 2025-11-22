@@ -23,7 +23,7 @@ export function SetupStepper({ steps, currentStep }: SetupStepperProps) {
               {index < steps.length - 1 && (
                 <div
                   className={cn(
-                    'absolute left-4 top-10 md:left-5 md:top-12 h-full w-1 rounded-full',
+                    'absolute left-3 top-8 md:left-4 md:top-10 h-full w-0.5 rounded-full',
                     isCompleted ? 'bg-primary' : 'bg-border'
                   )}
                   style={{
@@ -36,7 +36,7 @@ export function SetupStepper({ steps, currentStep }: SetupStepperProps) {
               <div className="relative z-10 flex-shrink-0">
                 <div
                   className={cn(
-                    'flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-full text-sm font-semibold transition-all',
+                    'flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full text-xs font-semibold transition-all',
                     isCompleted &&
                       'bg-primary text-primary-foreground',
                     isActive &&
@@ -46,7 +46,7 @@ export function SetupStepper({ steps, currentStep }: SetupStepperProps) {
                   )}
                 >
                   {isCompleted ? (
-                    <CheckCircle className="h-5 w-5 md:h-6 md:w-6" />
+                    <CheckCircle className="h-4 w-4 md:h-5 md:w-5" />
                   ) : (
                     index + 1
                   )}

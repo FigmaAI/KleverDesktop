@@ -33,7 +33,7 @@ export function ModelSelector({
   const [localModels, setLocalModels] = useState<string[]>([])
   const [hasLocal, setHasLocal] = useState(false)
   const [hasApi, setHasApi] = useState(false)
-  
+
   // Use LiteLLM providers hook for API models
   const { providers, getProviderModels } = useLiteLLMProviders()
 
@@ -85,7 +85,7 @@ export function ModelSelector({
         if (config.model?.enableApi && config.model?.api?.model) {
           setHasApi(true)
           setApiModel(config.model.api.model)
-          
+
           // Try to detect provider from model name
           const modelName = config.model.api.model
           const detectedProvider = detectProviderFromModel(modelName)
@@ -141,7 +141,7 @@ export function ModelSelector({
           onValueChange={(value) => setModelType(value as 'local' | 'api')}
           disabled={disabled}
         >
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[104px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -162,7 +162,7 @@ export function ModelSelector({
           onValueChange={(value) => setLocalModel(value || '')}
           disabled={disabled}
         >
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="relative w-[200px]">
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
@@ -187,7 +187,7 @@ export function ModelSelector({
             }}
             disabled={disabled}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Provider" />
             </SelectTrigger>
             <SelectContent>
@@ -201,7 +201,7 @@ export function ModelSelector({
 
           {/* Model Selection with Combobox */}
           {apiProvider && (
-            <div className="relative w-[240px]">
+            <div className="relative w-[200px]">
               <Combobox
                 options={apiComboboxOptions}
                 value={apiModel}

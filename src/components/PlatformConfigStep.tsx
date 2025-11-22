@@ -1,10 +1,10 @@
-import { FolderOpen } from 'lucide-react'
+import { FolderOpen, ExternalLink } from 'lucide-react'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface PlatformConfigStepProps {
   androidSdkPath: string
@@ -20,6 +20,10 @@ export function PlatformConfigStep({
     if (selectedPath) {
       setAndroidSdkPath(selectedPath)
     }
+  }
+
+  const openLink = (url: string) => {
+    window.electronAPI.openExternal(url)
   }
 
   return (
@@ -41,7 +45,7 @@ export function PlatformConfigStep({
                 <Input
                   value={androidSdkPath}
                   onChange={(e) => setAndroidSdkPath(e.target.value)}
-                  placeholder="/Volumes/Backup/Android-SDK"
+                  placeholder="e.g., ~/Library/Android/sdk"
                   className="flex-1"
                 />
                 <Button variant="outline" onClick={handleBrowse}>
@@ -50,37 +54,74 @@ export function PlatformConfigStep({
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Path to your Android SDK directory (contains platform-tools and emulator
-                folders).
+                Path to your Android SDK directory (contains platform-tools, emulator, and other tools).
                 <br />
-                This is required for Android device automation via ADB.
+                This is required for Android device automation and emulator management.
               </p>
             </div>
 
-            {/* Info Box */}
+            {/* Installation Guide */}
             <Alert>
+              <AlertTitle className="flex items-center gap-2 text-sm font-semibold">
+                📥 How to install Android SDK
+              </AlertTitle>
               <AlertDescription>
-                <p className="font-semibold text-sm mb-2">How to find your Android SDK path</p>
-                <div className="text-sm space-y-1">
-                  <p>
-                    • Open Android Studio → Preferences → Appearance & Behavior → System
-                    Settings → Android SDK
-                  </p>
-                  <p>
-                    • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
-                  </p>
-                  <p>
-                    • You can also use <code className="px-1 py-0.5 bg-muted rounded">which adb</code> in
-                    terminal and remove &quot;/platform-tools/adb&quot;
-                  </p>
+                <div className="text-sm space-y-3 mt-2">
+                  <div>
+                    <p className="font-medium mb-1">Option 1: Android Studio (Recommended)</p>
+                    <p className="text-muted-foreground mb-2">
+                      Install Android Studio which includes the full Android SDK
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openLink('https://developer.android.com/studio')}
+                      className="gap-2"
+                    >
+                      Download Android Studio <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <p className="font-medium mb-1">Option 2: Command Line Tools Only</p>
+                    <p className="text-muted-foreground mb-2">
+                      Download only the SDK command-line tools (smaller download)
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openLink('https://developer.android.com/studio#command-line-tools-only')}
+                      className="gap-2"
+                    >
+                      Download Command Line Tools <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <p className="font-medium mb-1">After Installation:</p>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <li>
+                        Open Android Studio → Settings → Appearance & Behavior → System Settings → Android SDK
+                      </li>
+                      <li>
+                        Copy the SDK path shown at the top
+                      </li>
+                      <li>
+                        Paste the path in the field above
+                      </li>
+                      <li>
+                        Alternatively, use: <code className="px-1 py-0.5 bg-muted rounded text-xs">which adb</code> and remove "/platform-tools/adb"
+                      </li>
+                    </ul>
+                  </div>
                 </div>
               </AlertDescription>
             </Alert>
 
             {/* Note about other settings */}
-            <Alert variant="default">
+            <Alert className="bg-primary/5 border-primary/20">
               <AlertDescription>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm">
                   <strong>Note:</strong> Other platform settings (screenshot directory, web
                   browser settings, etc.) use default values and can be customized later in the
                   Settings page.

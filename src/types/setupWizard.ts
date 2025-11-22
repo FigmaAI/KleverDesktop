@@ -23,6 +23,13 @@ export interface ModelConfig {
 
 export type TestStatus = 'idle' | 'testing' | 'success' | 'error'
 
+export interface PlatformToolsState {
+  python: ToolStatus
+  pythonEnv: ToolStatus
+  androidStudio: ToolStatus
+  homebrew: ToolStatus
+}
+
 export interface StepConfig {
   label: string
   description: string

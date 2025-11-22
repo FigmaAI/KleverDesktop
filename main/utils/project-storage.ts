@@ -95,19 +95,13 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to ~/Documents/KleverWorkspace/{projectName}
+ * @returns Path to ~/Documents/{projectName}
  *
- * Reverted to use Documents folder for better user accessibility.
- * This matches the pre-MAS behavior (which used ~/Documents/apps).
+ * Projects are stored directly in the Documents folder for better user accessibility.
  */
 export function getProjectWorkspaceDir(projectName: string): string {
   const documentsPath = app.getPath('documents');
-  const workspaceRoot = path.join(documentsPath, 'KleverWorkspace');
-
-  // Ensure workspace root directory exists
-  ensureDirectoryExists(workspaceRoot);
-
-  return path.join(workspaceRoot, projectName);
+  return path.join(documentsPath, projectName);
 }
 
 /**

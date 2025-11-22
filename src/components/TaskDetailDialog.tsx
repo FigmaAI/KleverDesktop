@@ -37,9 +37,16 @@ export function TaskDetailDialog({
 
   // Reset state when task changes
   useEffect(() => {
-    setOutput(task.output || '')
-    setIsRunning(task.status === 'running')
-  }, [task.output, task.status])
+    const newOutput = task.output || ''
+    if (output !== newOutput) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOutput(newOutput)
+    }
+    const shouldBeRunning = task.status === 'running'
+    if (isRunning !== shouldBeRunning) {
+      setIsRunning(shouldBeRunning)
+    }
+  }, [task.output, task.status, output, isRunning])
 
   // Setup event listeners when dialog opens
   useEffect(() => {
@@ -143,7 +150,7 @@ export function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           {/* Task Info Header */}
           <div className="space-y-4">

@@ -283,6 +283,15 @@ if (!window.electronAPI) {
     stopIntegrationTest: async () => {
       return { success: true }
     },
+    cleanupIntegrationTest: async () => {
+      return { success: true }
+    },
+    fetchGitHubStars: async (repo: string) => {
+      // Mock GitHub API response
+      console.log('[Mock] Fetching GitHub stars for:', repo)
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      return { success: true, stars: 123 }
+    },
     onEnvProgress: (cb) => {
       if (!mockCallbacks['env:progress']) mockCallbacks['env:progress'] = []
       mockCallbacks['env:progress'].push(cb)
@@ -338,9 +347,12 @@ if (!window.electronAPI) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
-  </React.StrictMode>,
+  <HashRouter
+    future={{
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    }}
+  >
+    <App />
+  </HashRouter>,
 )

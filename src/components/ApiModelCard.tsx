@@ -134,17 +134,19 @@ export function ApiModelCard({
             disabled={!modelConfig.enableApi || providersLoading}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a provider..." />
+              <SelectValue placeholder="Select a provider...">
+                {selectedProvider?.name}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {providers.map((provider) => (
                 <SelectItem key={provider.id} value={provider.id}>
-                  <div>
-                    <div className="font-medium">{provider.name}</div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{provider.name}</span>
                     {provider.description && (
-                      <div className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {provider.description}
-                      </div>
+                      </span>
                     )}
                   </div>
                 </SelectItem>

@@ -51,16 +51,19 @@ export function TerminalButton({ animateAttention = false }: TerminalButtonProps
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
             onClick={handleClick}
-            className={cn('relative', animateAttention && 'animate-pulse-attention')}
+            className={cn(
+              'relative gap-2',
+              animateAttention && 'animate-pulse-attention'
+            )}
           >
-            <Terminal className="h-5 w-5" />
+            <Terminal className="h-4 w-4" />
+            <span>Terminal</span>
             {badgeContent && (
               <span
                 className={cn(
-                  'absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs font-semibold',
+                  'absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs font-semibold',
                   getBadgeStyles()
                 )}
               >

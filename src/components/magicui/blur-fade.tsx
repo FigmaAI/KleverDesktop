@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -37,19 +37,12 @@ export function BlurFade({
     visible: { y: 0, opacity: 1, filter: `blur(0px)` },
   };
   const combinedVariants = variant || defaultVariants;
-  const [hasAnimated, setHasAnimated] = useState(false);
-
-  useEffect(() => {
-    if (isInView && !hasAnimated) {
-      setHasAnimated(true);
-    }
-  }, [isInView, hasAnimated]);
 
   return (
     <motion.div
       ref={ref}
       initial="hidden"
-      animate={hasAnimated ? "visible" : "hidden"}
+      animate={isInView ? "visible" : "hidden"}
       exit="hidden"
       variants={combinedVariants}
       transition={{

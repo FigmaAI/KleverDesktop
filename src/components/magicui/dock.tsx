@@ -1,21 +1,25 @@
-import { cn } from "@/lib/utils";
+"use client";
+
+import React, { PropsWithChildren, useRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import React, { PropsWithChildren, useRef } from "react";
+
+import { cn } from "@/lib/utils";
 
 export interface DockProps extends VariantProps<typeof dockVariants> {
   className?: string;
-  magnification?: number;
-  distance?: number;
+  iconSize?: number;
+  iconMagnification?: number;
+  iconDistance?: number;
   direction?: "top" | "middle" | "bottom";
   children: React.ReactNode;
 }
 
-const DEFAULT_MAGNIFICATION = 60;
-const DEFAULT_DISTANCE = 140;
+// Separate type for props that should be passed to DOM
+type DockDOMProps = Omit<React.HTMLAttributes<HTMLDivElement>, keyof DockProps>;
 
 const dockVariants = cva(
-  "mx-auto w-max mt-8 h-[58px] p-2 flex items-end gap-2 rounded-2xl border supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 backdrop-blur-md"
+  "supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 mx-auto mt-8 flex h-[58px] w-max gap-2 rounded-2xl border p-2 backdrop-blur-md",
 );
 
 const Dock = React.forwardRef<HTMLDivElement, DockProps>(
@@ -23,31 +27,41 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
     {
       className,
       children,
-      magnification = DEFAULT_MAGNIFICATION,
-      distance = DEFAULT_DISTANCE,
+      iconSize = 40,
+      iconMagnification = 60,
+      iconDistance = 140,
       direction = "bottom",
       ...props
     },
-    ref
+    ref,
   ) => {
     const mouseX = useMotionValue(Infinity);
 
     const renderChildren = () => {
       return React.Children.map(children, (child: any) => {
-        return React.cloneElement(child, {
-          mouseX: mouseX,
-          magnification: magnification,
-          distance: distance,
-        });
+        // Only pass dock-specific props to DockIcon components
+        // Other components (like Separator) should not receive these props
+        if (React.isValidElement(child) && child.type === DockIcon) {
+          return React.cloneElement(child, {
+            mouseX: mouseX,
+            size: iconSize,
+            magnification: iconMagnification,
+            distance: iconDistance,
+          });
+        }
+        return child;
       });
     };
+
+    // Filter out custom props that shouldn't be passed to DOM
+    const { ...domProps } = props;
 
     return (
       <motion.div
         ref={ref}
         onMouseMove={(e) => mouseX.set(e.pageX)}
         onMouseLeave={() => mouseX.set(Infinity)}
-        {...props}
+        {...domProps}
         className={cn(dockVariants({ className }), {
           "items-start": direction === "top",
           "items-center": direction === "middle",
@@ -57,7 +71,7 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
         {renderChildren()}
       </motion.div>
     );
-  }
+  },
 );
 
 Dock.displayName = "Dock";
@@ -73,8 +87,9 @@ export interface DockIconProps {
 }
 
 const DockIcon = ({
-  magnification = DEFAULT_MAGNIFICATION,
-  distance = DEFAULT_DISTANCE,
+  size,
+  magnification = 60,
+  distance = 140,
   mouseX,
   className,
   children,
@@ -84,13 +99,14 @@ const DockIcon = ({
 
   const distanceCalc = useTransform(mouseX, (val: number) => {
     const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+
     return val - bounds.x - bounds.width / 2;
   });
 
   let widthSync = useTransform(
     distanceCalc,
     [-distance, 0, distance],
-    [40, magnification, 40]
+    [40, magnification, 40],
   );
 
   let width = useSpring(widthSync, {
@@ -105,7 +121,7 @@ const DockIcon = ({
       style={{ width }}
       className={cn(
         "flex aspect-square cursor-pointer items-center justify-center rounded-full",
-        className
+        className,
       )}
       {...props}
     >
@@ -116,4 +132,5 @@ const DockIcon = ({
 
 DockIcon.displayName = "DockIcon";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { Dock, DockIcon, dockVariants };

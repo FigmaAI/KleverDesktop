@@ -1,12 +1,36 @@
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Home, Settings, Terminal, Plus } from 'lucide-react'
-import { InteractiveGridPattern } from '@/components/magicui/interactive-grid-pattern'
+import { Home, Settings, Terminal, Github, Search } from 'lucide-react'
+import { DotPattern } from '@/components/magicui/dot-pattern'
 import { Dock, DockIcon } from '@/components/magicui/dock'
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler'
+import { CommandMenu } from '@/components/CommandMenu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [commandOpen, setCommandOpen] = useState(false)
+
+  // Keyboard shortcut for command menu (Cmd+K or Ctrl+K)
+  useEffect(() => {
+    const down = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandOpen((open) => !open)
+      }
+    }
+
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [])
 
   const dockItems = [
     {
@@ -30,25 +54,15 @@ export function Layout() {
       },
       isActive: false,
     },
-    {
-      icon: Plus,
-      label: 'New Project',
-      path: '/projects/new',
-      isActive: location.pathname === '/projects/new',
-    },
   ]
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background">
-      {/* Animated Grid Background */}
-      <InteractiveGridPattern
-        className="absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_center,white,transparent_85%)]"
-        width={60}
-        height={60}
-        numSquares={50}
-        maxOpacity={0.3}
-        duration={3}
-        repeatDelay={1}
+      {/* Static Dot Background */}
+      <DotPattern
+        className={cn(
+          "[mask-image:radial-gradient(300px_circle_at_center,white,transparent)]",
+        )}
       />
 
       {/* Main Content */}
@@ -56,38 +70,88 @@ export function Layout() {
         <Outlet />
       </main>
 
+      {/* Command Menu */}
+      <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
+
       {/* Floating Dock Navigation */}
       <div className="relative z-20 pb-8">
-        <Dock magnification={60} distance={140} direction="bottom">
-          {dockItems.map((item, index) => (
-            <DockIcon
-              key={index}
-              className={cn(
-                'bg-background/80 backdrop-blur-md border border-border/50 transition-all duration-300',
-                item.isActive && 'bg-primary/20 border-primary/50'
-              )}
-            >
-              <button
-                onClick={() => {
-                  if (item.path) {
-                    navigate(item.path)
-                  } else if (item.onClick) {
-                    item.onClick()
-                  }
-                }}
-                className="flex h-full w-full items-center justify-center"
-                title={item.label}
-              >
-                <item.icon
-                  className={cn(
-                    'h-5 w-5 transition-colors',
-                    item.isActive ? 'text-primary' : 'text-foreground'
-                  )}
-                />
-              </button>
+        <TooltipProvider>
+          <Dock direction="middle">
+            {dockItems.map((item) => (
+              <DockIcon key={item.label}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        if (item.path) {
+                          navigate(item.path)
+                        } else if (item.onClick) {
+                          item.onClick()
+                        }
+                      }}
+                      aria-label={item.label}
+                      className="flex size-full items-center justify-center"
+                    >
+                      <item.icon className="size-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
+            ))}
+            <Separator orientation="vertical" className="h-full py-2" />
+            
+            {/* Search Button */}
+            <DockIcon>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setCommandOpen(true)}
+                    aria-label="Search"
+                    className="flex size-full items-center justify-center"
+                  >
+                    <Search className="size-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Search ⌘K</p>
+                </TooltipContent>
+              </Tooltip>
             </DockIcon>
-          ))}
-        </Dock>
+
+            {/* GitHub Link */}
+            <DockIcon>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => {
+                      window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
+                    }}
+                    aria-label="GitHub"
+                    className="flex size-full items-center justify-center"
+                  >
+                    <Github className="size-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>GitHub</p>
+                </TooltipContent>
+              </Tooltip>
+            </DockIcon>
+
+            <Separator orientation="vertical" className="h-full py-2" />
+            
+            {/* Theme Toggle */}
+            <DockIcon>
+              <AnimatedThemeToggler 
+                className="flex size-full items-center justify-center"
+                title="Toggle theme"
+              />
+            </DockIcon>
+          </Dock>
+        </TooltipProvider>
       </div>
     </div>
   )

@@ -218,6 +218,7 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
 
     // Environment events
     const handleEnvProgress = (data: string) => {
+      // console.log('[TerminalContext] Received env:progress:', data);
       addLine({
         source: 'env',
         type: 'stdout',
@@ -260,7 +261,20 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       })
     }
 
-    // NOTE: Integration test events are handled by useIntegrationTest hook directly
+    // Integration test events
+    const handleIntegrationOutput = (data: string) => {
+      addLine({
+        source: 'integration',
+        type: 'stdout',
+        content: data,
+      })
+    }
+
+    const handleIntegrationComplete = (success: boolean) => {
+      // This is handled by useIntegrationTest hook for state management
+      // We just log the completion here
+      console.log('[TerminalContext] Integration test complete:', success)
+    }
 
     // Register listeners
     window.electronAPI.onTaskOutput(handleTaskOutput)
@@ -271,9 +285,8 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     window.electronAPI.onInstallProgress(handleInstallProgress)
     window.electronAPI.onProjectOutput(handleProjectOutput)
     window.electronAPI.onProjectError(handleProjectError)
-    // NOTE: Integration test events are handled by useIntegrationTest hook directly
-    // window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
-    // window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
+    window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
+    window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
 
     // Cleanup
     return () => {

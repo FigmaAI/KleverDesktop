@@ -264,13 +264,13 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
     if (integrationTestProcess) {
       integrationTestProcess.kill('SIGTERM');
       integrationTestProcess = null;
-      
+
       // Update task status to cancelled
       if (currentTask && currentTaskDir) {
         try {
           const data = loadProjects();
           const project = data.projects.find(p => p.name === 'Feeling_Lucky');
-          
+
           if (project) {
             const taskToUpdate = project.tasks.find(t => t.id === currentTask!.id);
             if (taskToUpdate) {
@@ -284,14 +284,46 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           console.error('[Integration Test] Failed to update task status on stop:', error);
         }
       }
-      
+
       currentTask = null;
       currentTaskDir = null;
-      
+
       mainWindow?.webContents.send('integration:output', '\n[Test stopped by user]\n');
       mainWindow?.webContents.send('integration:complete', false);
       return { success: true };
     }
     return { success: false, error: 'No running test' };
+  });
+
+  // Cleanup integration test project (called when setup wizard completes)
+  ipcMain.handle('integration:cleanup', async () => {
+    try {
+      const data = loadProjects();
+      const projectIndex = data.projects.findIndex(p => p.name === 'Feeling_Lucky');
+
+      if (projectIndex !== -1) {
+        const project = data.projects[projectIndex];
+
+        // Delete workspace directory
+        try {
+          if (fs.existsSync(project.workspaceDir)) {
+            fs.rmSync(project.workspaceDir, { recursive: true, force: true });
+          }
+        } catch (fsError) {
+          console.error('[Integration Cleanup] Error deleting workspace:', fsError);
+        }
+
+        // Remove project from storage
+        data.projects.splice(projectIndex, 1);
+        saveProjects(data);
+
+        return { success: true };
+      }
+
+      return { success: true }; // No project to cleanup
+    } catch (error) {
+      console.error('[Integration Cleanup] Error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   });
 }

@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react'
-import { ToolStatus } from '@/types/setupWizard'
-
-interface PlatformToolsState {
-  python: ToolStatus
-  pythonEnv: ToolStatus
-  androidStudio: ToolStatus
-  homebrew: ToolStatus
-}
+import { ToolStatus, PlatformToolsState } from '@/types/setupWizard'
 
 export function usePlatformTools() {
   const [toolsStatus, setToolsStatus] = useState<PlatformToolsState>({
@@ -60,27 +53,28 @@ export function usePlatformTools() {
       }))
     }
 
-    // Check Playwright browsers (only if Python is installed)
+    // Check Python environment (venv + packages + Playwright)
     setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, checking: true } }))
     try {
       const envCheck = await window.electronAPI.envCheck()
 
-      const playwrightInstalled = envCheck.success && envCheck.playwright?.installed
+      // Environment is ready if venv is valid AND Playwright is installed
+      const envReady = envCheck.success && envCheck.venv?.valid && envCheck.playwright?.installed
 
       setToolsStatus((prev) => ({
         ...prev,
         pythonEnv: {
           checking: false,
-          installed: playwrightInstalled || false,
-          error: playwrightInstalled ? undefined : 'Playwright browsers not installed',
+          installed: envReady || false,
+          error: envReady ? undefined : 'Python env is not set up',
           installing: false,
         },
       }))
     } catch (error) {
-      console.error('[usePlatformTools] Error checking Playwright:', error)
+      console.error('[usePlatformTools] Error checking Python environment:', error)
       setToolsStatus((prev) => ({
         ...prev,
-        pythonEnv: { checking: false, installed: false, error: 'Failed to check Playwright', installing: false },
+        pythonEnv: { checking: false, installed: false, error: 'Failed to check Python environment', installing: false },
       }))
     }
 

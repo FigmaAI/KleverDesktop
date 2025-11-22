@@ -68,6 +68,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Integration test
   runIntegrationTest: (config: Record<string, unknown>) => ipcRenderer.invoke('integration:test', config),
   stopIntegrationTest: () => ipcRenderer.invoke('integration:stop'),
+  cleanupIntegrationTest: () => ipcRenderer.invoke('integration:cleanup'),
+
+  // GitHub API
+  fetchGitHubStars: (repo: string) => ipcRenderer.invoke('github:fetchStars', repo),
 
   // Event listeners
   onEnvProgress: (callback: (data: string) => void) => {

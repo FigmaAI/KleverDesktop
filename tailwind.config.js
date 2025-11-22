@@ -78,11 +78,41 @@ export default {
             boxShadow: '0 0 0 0 rgba(59, 130, 246, 0)',
           },
         },
+        'shimmer-slide': {
+          to: {
+            transform: 'translate(calc(100cqw - 100%), 0)',
+          },
+        },
+        'spin-around': {
+          '0%': {
+            transform: 'translateZ(0) rotate(0)',
+          },
+          '15%, 35%': {
+            transform: 'translateZ(0) rotate(90deg)',
+          },
+          '65%, 85%': {
+            transform: 'translateZ(0) rotate(270deg)',
+          },
+          '100%': {
+            transform: 'translateZ(0) rotate(360deg)',
+          },
+        },
+        'rainbow': {
+          '0%': {
+            backgroundPosition: '0%',
+          },
+          '100%': {
+            backgroundPosition: '200%',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-attention': 'pulse-attention 1s ease-out forwards',
+        'shimmer-slide': 'shimmer-slide var(--speed) ease-in-out infinite alternate',
+        'spin-around': 'spin-around var(--speed) infinite linear',
+        'rainbow': 'rainbow 8s linear infinite',
       },
     },
   },

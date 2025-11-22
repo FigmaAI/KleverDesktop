@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Save,
   CheckCircle,
-  Palette,
   Brain,
   Smartphone,
   Sparkles,
@@ -11,12 +11,10 @@ import {
   Menu,
   AlertTriangle,
   AlertCircle,
-  Sun,
-  Moon,
-  Monitor,
+  ArrowLeft,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -34,8 +32,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BlurFade } from '@/components/magicui/blur-fade'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { ModelSettingsCard } from '@/components/ModelSettingsCard'
@@ -44,7 +43,7 @@ import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
 import { SystemInfoCard } from '@/components/SystemInfoCard'
 
-type SettingsSection = 'appearance' | 'model' | 'platform' | 'agent' | 'image' | 'system' | 'danger'
+type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'system' | 'danger'
 
 interface MenuItem {
   id: SettingsSection
@@ -53,19 +52,19 @@ interface MenuItem {
 }
 
 export function Settings() {
+  const navigate = useNavigate()
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [hardResetDialogOpen, setHardResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isHardResetting, setIsHardResetting] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hardResetErrorMessage, setHardResetErrorMessage] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance')
+  const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<SettingsSection, HTMLDivElement | null>>({
-    appearance: null,
     model: null,
     platform: null,
     agent: null,
@@ -77,7 +76,6 @@ export function Settings() {
   // Menu items
   const menuItems: MenuItem[] = useMemo(
     () => [
-      { id: 'appearance', label: 'Appearance', icon: Palette },
       { id: 'model', label: 'Model', icon: Brain },
       { id: 'platform', label: 'Platform', icon: Smartphone },
       { id: 'agent', label: 'Agent', icon: Sparkles },
@@ -189,23 +187,38 @@ export function Settings() {
     setIsHardResetting(true)
     setHardResetErrorMessage(null)
 
+    // Show loading screen
+    setShowLoading(true)
+
     try {
+      // 1. Call backend to delete files (config, projects, python-env)
       const result = await window.electronAPI.configHardReset()
 
       if (result.success) {
-        console.log('[Settings] Hard reset successful, restarting app...')
-        await window.electronAPI.appRestart()
+        console.log('[Settings] Hard reset successful, clearing local storage and navigating...')
+
+        // 2. Clear client-side storage
+        localStorage.clear()
+        sessionStorage.clear()
+
+        // 3. Wait a bit to show the loading screen (UX)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        // 4. Navigate to setup wizard
+        navigate('/setup')
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to perform hard reset:', errorMsg)
         setHardResetErrorMessage(`Failed to perform hard reset: ${errorMsg}`)
         setIsHardResetting(false)
+        setShowLoading(false)
       }
     } catch (error) {
       console.error('[Settings] Error performing hard reset:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
       setHardResetErrorMessage(`An error occurred while performing hard reset: ${errorMsg}`)
       setIsHardResetting(false)
+      setShowLoading(false)
     }
   }
 
@@ -263,44 +276,48 @@ export function Settings() {
     )
   }
 
+  if (showLoading) {
+    return <LoadingScreen />
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b bg-background/95 px-6 py-4 backdrop-blur">
-        <div className="flex items-center gap-3">
-          {/* Mobile menu button */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-4 w-4" />
+      <PageHeader
+        title="Settings"
+        backButton={
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-            <p className="text-sm text-muted-foreground">Configure your application preferences</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {saveSuccess && (
-            <Alert variant="success" className="w-auto py-2">
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>Saved!</AlertDescription>
-            </Alert>
-          )}
-          {saveError && (
-            <Alert variant="destructive" className="w-auto py-2">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{saveError}</AlertDescription>
-            </Alert>
-          )}
-          <Button onClick={handleManualSave} disabled={!hasChanges || saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
-          </Button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            {saveSuccess && (
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Saved!</span>
+              </div>
+            )}
+            {saveError && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">{saveError}</span>
+              </div>
+            )}
+            <Button size="sm" onClick={handleManualSave} disabled={!hasChanges || saving}>
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">{saving ? 'Saving...' : hasChanges ? 'Save' : 'Saved'}</span>
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop Sidebar */}
@@ -322,49 +339,15 @@ export function Settings() {
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">
           <div className="mx-auto max-w-4xl space-y-6">
-            {/* Appearance */}
-            <BlurFade delay={0.1}>
-              <Card
-                ref={(el) => (sectionRefs.current.appearance = el)}
-                className="scroll-mt-6"
-              >
-                <CardHeader>
-                  <CardTitle>Appearance</CardTitle>
-                  <CardDescription>Choose your preferred color theme</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ToggleGroup
-                    type="single"
-                    value={theme}
-                    onValueChange={(value) => value && setTheme(value as typeof theme)}
-                    className="justify-start"
-                  >
-                    <ToggleGroupItem value="system" className="gap-2">
-                      <Monitor className="h-4 w-4" />
-                      System
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="light" className="gap-2">
-                      <Sun className="h-4 w-4" />
-                      Light
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="dark" className="gap-2">
-                      <Moon className="h-4 w-4" />
-                      Dark
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </CardContent>
-              </Card>
-            </BlurFade>
-
             {/* Model Configuration */}
-            <BlurFade delay={0.2}>
+            <BlurFade delay={0.1}>
               <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
                 <ModelSettingsCard modelConfig={modelConfig} setModelConfig={setModelConfig} />
               </div>
             </BlurFade>
 
             {/* Platform Configuration */}
-            <BlurFade delay={0.3}>
+            <BlurFade delay={0.2}>
               <div ref={(el) => (sectionRefs.current.platform = el)} className="scroll-mt-6">
                 <PlatformSettingsCard
                   platformSettings={platformSettings}
@@ -374,28 +357,28 @@ export function Settings() {
             </BlurFade>
 
             {/* Agent Behavior */}
-            <BlurFade delay={0.4}>
+            <BlurFade delay={0.3}>
               <div ref={(el) => (sectionRefs.current.agent = el)} className="scroll-mt-6">
                 <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
               </div>
             </BlurFade>
 
             {/* Image Optimization */}
-            <BlurFade delay={0.5}>
+            <BlurFade delay={0.4}>
               <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
                 <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
               </div>
             </BlurFade>
 
             {/* System Information */}
-            <BlurFade delay={0.6}>
+            <BlurFade delay={0.5}>
               <div ref={(el) => (sectionRefs.current.system = el)} className="scroll-mt-6">
                 <SystemInfoCard systemInfo={systemInfo} />
               </div>
             </BlurFade>
 
             {/* Danger Zone */}
-            <BlurFade delay={0.7}>
+            <BlurFade delay={0.6}>
               <Card
                 ref={(el) => (sectionRefs.current.danger = el)}
                 className="scroll-mt-6 border-destructive/50"
@@ -530,18 +513,18 @@ export function Settings() {
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>⚠️ WARNING: This will delete EVERYTHING!</AlertTitle>
             <AlertDescription>
-              This operation will permanently delete the entire <code>~/.klever-desktop/</code>{' '}
-              directory.
+              This operation will permanently delete all application data and all project workspaces.
             </AlertDescription>
           </Alert>
 
           <div className="space-y-2">
             <p className="text-sm font-medium">This will permanently delete:</p>
             <ul className="list-disc space-y-1 pl-6 text-sm font-semibold text-muted-foreground">
-              <li>All projects and tasks</li>
+              <li>All projects and tasks (metadata)</li>
+              <li>All project workspace directories in <code>~/Documents</code></li>
               <li>All configuration and settings</li>
               <li>Python runtime and installed packages</li>
-              <li>All other application data</li>
+              <li>All application cache and data</li>
             </ul>
             <p className="text-sm font-bold text-destructive">
               This action is IRREVERSIBLE and cannot be undone!

@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Button } from '@/components/ui/button'
-import { SetupStepper } from '@/components/SetupStepper'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
-import { TerminalButton } from '@/components/UniversalTerminal'
+import { PageHeader } from '@/components/PageHeader'
+// import { DotPattern } from '@/components/magicui/dot-pattern'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
 import { useModelConfig } from '@/hooks/useModelConfig'
 import { useIntegrationTest } from '@/hooks/useIntegrationTest'
 import { StepConfig } from '@/types/setupWizard'
+import { cn } from '@/lib/utils'
+import logoImg from '@/assets/logo.png'
 
 const steps: StepConfig[] = [
   { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
@@ -21,10 +23,9 @@ const steps: StepConfig[] = [
 
 export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [animateTerminalButton, setAnimateTerminalButton] = useState(false)
 
   // Platform tools hook
-  const { toolsStatus, setToolsStatus, checkPlatformTools, downloadPython, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
+  const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
 
   // Model configuration hook
   const {
@@ -57,17 +58,6 @@ export function SetupWizard() {
     }
   }, [currentStep, checkPlatformTools])
 
-  // Animate terminal button when integration test starts
-  useEffect(() => {
-    if (integrationTestRunning) {
-      setAnimateTerminalButton(true)
-      const timer = setTimeout(() => {
-        setAnimateTerminalButton(false)
-      }, 3000) // Animate for 3 seconds
-      return () => clearTimeout(timer)
-    }
-  }, [integrationTestRunning])
-
   const handleNext = async () => {
     if (currentStep < steps.length - 1) {
       // If moving from Step 0 (Platform Tools), validate Python is installed
@@ -92,6 +82,12 @@ export function SetupWizard() {
         setCurrentStep(currentStep + 1)
       }
     } else if (integrationTestSuccess) {
+      // Cleanup integration test project before completing setup
+      try {
+        await window.electronAPI.cleanupIntegrationTest()
+      } catch (error) {
+        console.error('[SetupWizard] Failed to cleanup integration test project:', error)
+      }
       // Already saved config in step 2, reload to trigger App checkSetup
       window.location.reload()
     }
@@ -197,38 +193,69 @@ export function SetupWizard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <BlurFade delay={0.1} className="w-full h-full flex flex-col">
-        <div className="flex flex-col gap-2 md:gap-3 p-2 sm:p-3 md:p-4 flex-1">
-          {/* Header Section */}
-          <BlurFade delay={0.2}>
-            <div className="mb-1 md:mb-2 flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold mb-1">
-                  Welcome to Klever Desktop
-                </h2>
-                <p className="text-sm md:text-base text-muted-foreground">
-                  Let&apos;s set up your environment for AI-powered UI automation
-                </p>
+    <div className="flex h-screen flex-col bg-background">
+      <PageHeader
+        logo={<img src={logoImg} alt="Klever Desktop" className="h-8 w-8" />}
+        title="Setup Wizard"
+        subtitle="Configure your environment for AI-powered UI automation"
+      />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Horizontal Stepper at top */}
+        <div className="border-b bg-background px-6 py-4">
+          <div className="mx-auto flex max-w-2xl items-center justify-center gap-2">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-center">
+                {/* Step Circle */}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      'flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors',
+                      index < currentStep
+                        ? 'bg-primary text-primary-foreground'
+                        : index === currentStep
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground'
+                    )}
+                  >
+                    {index + 1}
+                  </div>
+                  <span
+                    className={cn(
+                      'hidden text-sm font-medium sm:inline',
+                      index === currentStep
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+
+                {/* Connector Line */}
+                {index < steps.length - 1 && (
+                  <div
+                    className={cn(
+                      'mx-2 h-0.5 w-8 sm:w-12',
+                      index < currentStep ? 'bg-primary' : 'bg-muted'
+                    )}
+                  />
+                )}
               </div>
-              <TerminalButton animateAttention={animateTerminalButton} />
-            </div>
-          </BlurFade>
+            ))}
+          </div>
+        </div>
 
-          {/* Stepper and Content Layout */}
-          <div className="flex gap-1 sm:gap-2 md:gap-4 flex-1">
-            {/* Vertical Stepper on the left */}
-            <SetupStepper steps={steps} currentStep={currentStep} />
-
-            {/* Step Content on the right */}
-            <div className="flex-1 min-w-0">
+        {/* Step Content */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-6">{/* Added flex flex-col */}
+          <div className="flex-1 overflow-auto">
+            <BlurFade delay={0.1} inView>
               {/* Step 0: Platform Tools Check */}
               {currentStep === 0 && (
                 <PlatformToolsStep
                   toolsStatus={toolsStatus}
                   setToolsStatus={setToolsStatus}
                   checkPlatformTools={checkPlatformTools}
-                  downloadPython={downloadPython}
                 />
               )}
 
@@ -267,57 +294,55 @@ export function SetupWizard() {
                   onStopTest={handleStopIntegrationTest}
                 />
               )}
-            </div>
+            </BlurFade>
           </div>
 
           {/* Navigation Buttons */}
-          <BlurFade delay={0.4}>
-            <div className="flex justify-end gap-2 pt-2">
+          <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              className="min-w-[100px]"
+            >
+              Back
+            </Button>
+            {currentStep === 0 ? (
               <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 0}
+                onClick={handleNext}
+                disabled={!canProceedFromStep0()}
                 className="min-w-[100px]"
               >
-                Back
+                Next
               </Button>
-              {currentStep === 0 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!canProceedFromStep0()}
-                  className="min-w-[100px]"
-                >
-                  Next
-                </Button>
-              ) : currentStep === 1 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!canProceedFromStep1()}
-                  className="min-w-[100px]"
-                >
-                  Next
-                </Button>
-              ) : currentStep === 2 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!canProceedFromStep2()}
-                  className="min-w-[100px]"
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleNext}
-                  disabled={!integrationTestSuccess}
-                  className="min-w-[100px]"
-                >
-                  Get Started
-                </Button>
-              )}
-            </div>
-          </BlurFade>
+            ) : currentStep === 1 ? (
+              <Button
+                onClick={handleNext}
+                disabled={!canProceedFromStep1()}
+                className="min-w-[100px]"
+              >
+                Next
+              </Button>
+            ) : currentStep === 2 ? (
+              <Button
+                onClick={handleNext}
+                disabled={!canProceedFromStep2()}
+                className="min-w-[100px]"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNext}
+                disabled={!integrationTestSuccess}
+                className="min-w-[100px]"
+              >
+                Get Started
+              </Button>
+            )}
+          </div>
         </div>
-      </BlurFade>
+      </div>
     </div>
   )
 }

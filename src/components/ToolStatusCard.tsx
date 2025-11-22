@@ -26,6 +26,16 @@ export function ToolStatusCard({
     return status.installed ? 'bg-green-50 dark:bg-green-950' : 'bg-yellow-50 dark:bg-yellow-950'
   }
 
+  const getStatusText = () => {
+    if (status.checking) return 'Checking...'
+    if (status.installing) return 'Installing...'
+    if (status.error) return status.error
+    if (status.version) return `v${status.version}`
+    if (subtitle) return subtitle
+    if (status.installed) return 'Ready'
+    return 'Not installed'
+  }
+
   return (
     <BlurFade delay={delay}>
       <div
@@ -36,7 +46,7 @@ export function ToolStatusCard({
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {status.checking ? (
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground flex-shrink-0" />
           ) : status.installed ? (
             <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
           ) : (
@@ -45,17 +55,18 @@ export function ToolStatusCard({
           <div className="min-w-0 flex-1">
             <p
               className={cn(
-                'text-sm',
-                status.installed ? 'font-medium text-foreground' : 'text-muted-foreground'
+                'text-sm font-medium truncate',
+                status.installed ? 'text-foreground' : 'text-muted-foreground'
               )}
             >
               {name}
             </p>
-            {status.version && (
-              <p className="text-xs text-muted-foreground">v{status.version}</p>
-            )}
-            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-            {status.error && <p className="text-xs text-destructive">{status.error}</p>}
+            <p className={cn(
+              'text-xs truncate',
+              status.error ? 'text-destructive' : 'text-muted-foreground'
+            )}>
+              {getStatusText()}
+            </p>
           </div>
         </div>
         {!status.installed && !status.checking && onInstall && (
@@ -64,7 +75,7 @@ export function ToolStatusCard({
             variant={installLabel === 'Install' ? 'default' : 'outline'}
             onClick={onInstall}
             disabled={status.installing}
-            className={cn(installLabel === 'Install' && 'min-w-[100px]')}
+            className={cn(installLabel === 'Install' && 'min-w-[100px]', 'flex-shrink-0')}
           >
             {status.installing ? (
               <>

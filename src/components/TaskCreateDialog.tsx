@@ -106,7 +106,12 @@ export function TaskCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent
+        className="max-w-2xl"
+        onInteractOutside={(e) => {
+          e.preventDefault()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
@@ -130,7 +135,7 @@ export function TaskCreateDialog({
             <Textarea
               placeholder={
                 platform === 'web'
-                  ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take screenshots of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
+                  ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take a screenshot of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
                   : 'Describe what you want to automate on the Android device...\nFor example: "Open Instagram and like the top 5 posts"\n\nPress Cmd/Ctrl + Enter to submit'
               }
               value={goal}
