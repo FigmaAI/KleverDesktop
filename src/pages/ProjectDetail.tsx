@@ -56,43 +56,23 @@ export function ProjectDetail() {
     loadProject()
   }, [id, loadProject])
 
-  // Add new useEffect for keyboard shortcut
+  // Keyboard shortcut for creating task (Cmd+Shift+N or Ctrl+Shift+N)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac');
-      const isCmdOrCtrl = (isMac && e.metaKey) || (!isMac && e.ctrlKey);
-
-      if (isCmdOrCtrl && e.key === 't') { // Check for 'Cmd/Ctrl + T'
-        e.preventDefault(); // Prevent default browser behavior (e.g., open new tab)
-        setCreateDialogOpen(true); // Open the TaskCreateDialog
+    const down = (e: globalThis.KeyboardEvent) => {
+      if (
+        e.key === 'n' &&
+        (e.metaKey || e.ctrlKey) &&
+        e.shiftKey &&
+        !e.altKey
+      ) {
+        e.preventDefault()
+        setCreateDialogOpen(true)
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []); // Empty dependency array means it runs once on mount and cleans up on unmount
-
-  // Add new useEffect for keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac');
-      const isCmdOrCtrl = (isMac && e.metaKey) || (!isMac && e.ctrlKey);
-
-      if (isCmdOrCtrl && e.key === 't') { // Check for 'Cmd/Ctrl + T'
-        e.preventDefault(); // Prevent default browser behavior (e.g., open new tab)
-        setCreateDialogOpen(true); // Open the TaskCreateDialog
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []); // Empty dependency array means it runs once on mount and cleans up on unmount
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [])
 
   const handleStartTask = async (task: Task, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -288,7 +268,7 @@ export function ProjectDetail() {
                 <Plus className="h-4 w-4" />
                 Add Task
                 <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>T
+                  {typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘⇧N' : 'Ctrl⇧N'}
                 </kbd>
               </RainbowButton>
             </div>
@@ -300,9 +280,6 @@ export function ProjectDetail() {
               <RainbowButton onClick={() => setCreateDialogOpen(true)} size="sm">
                 <Plus className="h-4 w-4" />
                 Add Task
-                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>T
-                </kbd>
               </RainbowButton>
             </div>
 

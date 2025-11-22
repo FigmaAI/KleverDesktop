@@ -82,8 +82,8 @@ export function Layout() {
 
       {/* Terminal Drawer */}
       <Drawer open={terminalOpen} onOpenChange={setTerminalOpen}>
-        <DrawerContent className="max-h-[85vh] h-[85vh]">
-          <div className="flex flex-col h-full overflow-hidden">
+        <DrawerContent className="max-h-[85vh]">
+          <div className="flex flex-col h-full min-h-[60vh] overflow-hidden">
             <TerminalHeader />
             <TerminalOutput />
           </div>
