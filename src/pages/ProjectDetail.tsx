@@ -56,6 +56,44 @@ export function ProjectDetail() {
     loadProject()
   }, [id, loadProject])
 
+  // Add new useEffect for keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac');
+      const isCmdOrCtrl = (isMac && e.metaKey) || (!isMac && e.ctrlKey);
+
+      if (isCmdOrCtrl && e.key === 't') { // Check for 'Cmd/Ctrl + T'
+        e.preventDefault(); // Prevent default browser behavior (e.g., open new tab)
+        setCreateDialogOpen(true); // Open the TaskCreateDialog
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Empty dependency array means it runs once on mount and cleans up on unmount
+
+  // Add new useEffect for keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac');
+      const isCmdOrCtrl = (isMac && e.metaKey) || (!isMac && e.ctrlKey);
+
+      if (isCmdOrCtrl && e.key === 't') { // Check for 'Cmd/Ctrl + T'
+        e.preventDefault(); // Prevent default browser behavior (e.g., open new tab)
+        setCreateDialogOpen(true); // Open the TaskCreateDialog
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Empty dependency array means it runs once on mount and cleans up on unmount
+
   const handleStartTask = async (task: Task, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!id) return
@@ -250,7 +288,7 @@ export function ProjectDetail() {
                 <Plus className="h-4 w-4" />
                 Add Task
                 <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>Shift+N
+                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>T
                 </kbd>
               </RainbowButton>
             </div>
@@ -262,110 +300,113 @@ export function ProjectDetail() {
               <RainbowButton onClick={() => setCreateDialogOpen(true)} size="sm">
                 <Plus className="h-4 w-4" />
                 Add Task
+                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>T
+                </kbd>
               </RainbowButton>
             </div>
 
             <AnimatedList delay={100}>
-            {project.tasks.map((task) => {
-              const statusConfig = getStatusConfig(task.status)
-              const StatusIcon = statusConfig.icon
+              {project.tasks.map((task) => {
+                const statusConfig = getStatusConfig(task.status)
+                const StatusIcon = statusConfig.icon
 
-              return (
-                <div
-                  key={task.id}
-                  className={cn(
-                    'group flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
-                    'hover:shadow-lg hover:border-primary/30'
-                  )}
-                >
-                  {/* Status Icon */}
-                  <div className="flex-shrink-0 mt-1">
-                    <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-2">
-                    {/* Description/Goal */}
-                    <p className="text-sm leading-relaxed">
-                      {task.goal || task.description || 'No description'}
-                    </p>
-
-                    {/* Status & Model */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
-                        {statusConfig.label}
-                      </Badge>
-                      {task.model && (
-                        <Badge variant="outline" className="text-xs">
-                          {task.model}
-                        </Badge>
-                      )}
-                      {task.status === 'running' && (
-                        <div className="flex items-center gap-1.5">
-                          <Circle className="h-2 w-2 fill-primary text-primary animate-pulse" />
-                        </div>
-                      )}
+                return (
+                  <div
+                    key={task.id}
+                    className={cn(
+                      'group flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                      'hover:shadow-lg hover:border-primary/30'
+                    )}
+                  >
+                    {/* Status Icon */}
+                    <div className="flex-shrink-0 mt-1">
+                      <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
                     </div>
 
-                    {/* Timestamp */}
-                    <p className="text-xs text-muted-foreground">
-                      {task.startedAt
-                        ? `Started ${new Date(task.startedAt).toLocaleString()}`
-                        : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
-                    </p>
-                  </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      {/* Description/Goal */}
+                      <p className="text-sm leading-relaxed">
+                        {task.goal || task.description || 'No description'}
+                      </p>
 
-                  {/* Actions */}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {task.status === 'pending' && (
+                      {/* Status & Model */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
+                          {statusConfig.label}
+                        </Badge>
+                        {task.model && (
+                          <Badge variant="outline" className="text-xs">
+                            {task.model}
+                          </Badge>
+                        )}
+                        {task.status === 'running' && (
+                          <div className="flex items-center gap-1.5">
+                            <Circle className="h-2 w-2 fill-primary text-primary animate-pulse" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Timestamp */}
+                      <p className="text-xs text-muted-foreground">
+                        {task.startedAt
+                          ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                          : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {task.status === 'pending' && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => handleStartTask(task, e)}
+                          className="h-8"
+                        >
+                          <Play className="mr-1 h-3 w-3" />
+                          Start
+                        </Button>
+                      )}
+
+                      {task.status === 'running' && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={(e) => handleStopTask(task, e)}
+                          className="h-8"
+                        >
+                          <StopCircle className="mr-1 h-3 w-3" />
+                          Stop
+                        </Button>
+                      )}
+
                       <Button
-                        size="sm"
-                        onClick={(e) => handleStartTask(task, e)}
-                        className="h-8"
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e) => handleViewMarkdown(task, e)}
+                        disabled={!task.resultPath}
+                        title="View Results"
+                        className="h-8 w-8"
                       >
-                        <Play className="mr-1 h-3 w-3" />
-                        Start
+                        <FileText className="h-4 w-4" />
                       </Button>
-                    )}
 
-                    {task.status === 'running' && (
                       <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={(e) => handleStopTask(task, e)}
-                        className="h-8"
+                        size="icon"
+                        variant="ghost"
+                        onClick={(e) => handleDeleteTask(task, e)}
+                        disabled={task.status === 'running'}
+                        title="Delete Task"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
-                        <StopCircle className="mr-1 h-3 w-3" />
-                        Stop
+                        <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={(e) => handleViewMarkdown(task, e)}
-                      disabled={!task.resultPath}
-                      title="View Results"
-                      className="h-8 w-8"
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={(e) => handleDeleteTask(task, e)}
-                      disabled={task.status === 'running'}
-                      title="Delete Task"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </AnimatedList>
+                )
+              })}
+            </AnimatedList>
           </>
         )}
       </div>

@@ -12,12 +12,20 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
+import {
+  Drawer,
+  DrawerContent,
+} from '@/components/ui/drawer'
+import { TerminalHeader } from '@/components/UniversalTerminal/TerminalHeader'
+import { TerminalOutput } from '@/components/UniversalTerminal/TerminalOutput'
+import { useTerminal } from '@/hooks/useTerminal'
 import { cn } from '@/lib/utils'
 
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [commandOpen, setCommandOpen] = useState(false)
+  const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
 
   // Keyboard shortcut for command menu (Cmd+K or Ctrl+K)
   useEffect(() => {
@@ -49,10 +57,9 @@ export function Layout() {
       icon: Terminal,
       label: 'Terminal',
       onClick: () => {
-        // TODO: Open terminal panel
-        console.log('Terminal clicked')
+        setTerminalOpen(!terminalOpen)
       },
-      isActive: false,
+      isActive: terminalOpen,
     },
   ]
 
@@ -72,6 +79,16 @@ export function Layout() {
 
       {/* Command Menu */}
       <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
+
+      {/* Terminal Drawer */}
+      <Drawer open={terminalOpen} onOpenChange={setTerminalOpen}>
+        <DrawerContent className="max-h-[85vh] h-[85vh]">
+          <div className="flex flex-col h-full overflow-hidden">
+            <TerminalHeader />
+            <TerminalOutput />
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Floating Dock Navigation */}
       <div className="relative z-20 pb-8">
@@ -102,7 +119,7 @@ export function Layout() {
               </DockIcon>
             ))}
             <Separator orientation="vertical" className="h-full py-2" />
-            
+
             {/* Search Button */}
             <DockIcon>
               <Tooltip>
@@ -142,10 +159,10 @@ export function Layout() {
             </DockIcon>
 
             <Separator orientation="vertical" className="h-full py-2" />
-            
+
             {/* Theme Toggle */}
             <DockIcon>
-              <AnimatedThemeToggler 
+              <AnimatedThemeToggler
                 className="flex size-full items-center justify-center"
                 title="Toggle theme"
               />
