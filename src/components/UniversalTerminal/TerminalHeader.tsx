@@ -1,17 +1,15 @@
 /**
  * Terminal Header
- * Header with tabs, controls, and drag handle
+ * Simple header with title and controls
  */
 
 import { GripVertical, X, Trash2, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTerminal } from '@/hooks/useTerminal'
-import type { TerminalTab } from '@/types/terminal'
 
 export function TerminalHeader() {
-  const { activeTab, setActiveTab, processes, clearLines, setIsOpen, getFilteredLines } = useTerminal()
+  const { processes, clearLines, setIsOpen, lines } = useTerminal()
 
   const runningCount = processes.filter((p) => p.status === 'running').length
 
@@ -22,7 +20,6 @@ export function TerminalHeader() {
   }
 
   const handleCopy = () => {
-    const lines = getFilteredLines()
     const text = lines.map((line) => line.content).join('\n')
 
     // Use textarea method for better Electron compatibility
@@ -43,35 +40,29 @@ export function TerminalHeader() {
   }
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1 border-b border-border bg-background select-none cursor-grab active:cursor-grabbing">
+    <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 select-none cursor-grab active:cursor-grabbing">
       {/* Drag indicator */}
-      <GripVertical className="h-5 w-5 text-muted-foreground" />
+      <GripVertical className="h-4 w-4 text-muted-foreground" />
 
       {/* Title */}
-      <h3 className="text-sm font-bold flex-shrink-0">
-        Terminal
-        {runningCount > 0 && (
-          <span className="ml-1 text-xs text-muted-foreground">({runningCount} running)</span>
-        )}
-      </h3>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TerminalTab)} className="flex-1 min-w-0">
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="projects">Projects</TabsTrigger>
-          <TabsTrigger value="setup">Setup</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex-1">
+        <h3 className="text-sm font-semibold">
+          Terminal
+          {runningCount > 0 && (
+            <span className="ml-2 text-xs text-muted-foreground font-normal">
+              ({runningCount} running)
+            </span>
+          )}
+        </h3>
+      </div>
 
       {/* Controls */}
-      <TooltipProvider>
+      <TooltipProvider delayDuration={300}>
         <div className="flex gap-1">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={handleCopy}>
-                <Copy className="h-4 w-4" />
+              <Button size="sm" variant="ghost" onClick={handleCopy} disabled={lines.length === 0}>
+                <Copy className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Copy output</TooltipContent>
@@ -79,8 +70,8 @@ export function TerminalHeader() {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button size="sm" variant="ghost" onClick={handleClear}>
-                <Trash2 className="h-4 w-4" />
+              <Button size="sm" variant="ghost" onClick={handleClear} disabled={lines.length === 0}>
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Clear output</TooltipContent>
@@ -89,7 +80,7 @@ export function TerminalHeader() {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button size="sm" variant="ghost" onClick={() => setIsOpen(false)}>
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>Close terminal</TooltipContent>

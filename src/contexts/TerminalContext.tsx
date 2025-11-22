@@ -9,7 +9,6 @@ import type {
   TerminalLine,
   TerminalProcess,
   TerminalContextValue,
-  TerminalTab,
   TerminalSettings,
   TerminalType,
   TerminalLevel,
@@ -35,7 +34,6 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
   const [processes, setProcesses] = useState<TerminalProcess[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [height, setHeight] = useState(50)
-  const [activeTab, setActiveTab] = useState<TerminalTab>('all')
   const [settings, setSettings] = useState<TerminalSettings>(DEFAULT_SETTINGS)
   const [errorCount, setErrorCount] = useState(0)
   const [warningCount, setWarningCount] = useState(0)
@@ -169,21 +167,6 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
     setSettings((prev) => ({ ...prev, ...newSettings }))
   }, [])
 
-  // Get filtered lines based on active tab
-  const getFilteredLines = useCallback(() => {
-    if (activeTab === 'all') return lines
-
-    const sourceMap: Record<TerminalTab, string[]> = {
-      all: [],
-      tasks: ['task'],
-      projects: ['project'],
-      setup: ['env', 'integration'],
-    }
-
-    const sources = sourceMap[activeTab]
-    return lines.filter((line) => sources.includes(line.source))
-  }, [lines, activeTab])
-
   // Note: Notification badges are cleared when terminal button is clicked
   // This is handled in the TerminalButton component
 
@@ -309,13 +292,11 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       processes,
       isOpen,
       height,
-      activeTab,
       settings,
       errorCount,
       warningCount,
       setIsOpen,
       setHeight,
-      setActiveTab,
       updateSettings,
       addLine,
       addProcess,
@@ -323,14 +304,12 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       removeProcess,
       clearLines,
       clearNotifications,
-      getFilteredLines,
     }),
     [
       lines,
       processes,
       isOpen,
       height,
-      activeTab,
       settings,
       errorCount,
       warningCount,
@@ -340,7 +319,6 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       removeProcess,
       clearLines,
       clearNotifications,
-      getFilteredLines,
       updateSettings,
     ]
   )

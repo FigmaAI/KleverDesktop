@@ -45,7 +45,6 @@ export interface TerminalState {
   processes: TerminalProcess[]
   isOpen: boolean
   height: number // 30-70 (%)
-  activeTab: TerminalTab
   settings: TerminalSettings
   errorCount: number
   warningCount: number
@@ -54,7 +53,6 @@ export interface TerminalState {
 export interface TerminalContextValue extends TerminalState {
   setIsOpen: (isOpen: boolean) => void
   setHeight: (height: number) => void
-  setActiveTab: (tab: TerminalTab) => void
   updateSettings: (settings: Partial<TerminalSettings>) => void
   addLine: (line: Omit<TerminalLine, 'id' | 'timestamp' | 'level'>) => void
   addProcess: (process: Omit<TerminalProcess, 'startedAt' | 'hasError'>) => void
@@ -62,5 +60,4 @@ export interface TerminalContextValue extends TerminalState {
   removeProcess: (id: string) => void
   clearLines: () => void
   clearNotifications: () => void
-  getFilteredLines: () => TerminalLine[]
 }

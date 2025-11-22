@@ -3,7 +3,7 @@ import { ModelConfig } from '@/types/setupWizard'
 import { useTerminal } from './useTerminal'
 
 export function useIntegrationTest() {
-  const { addLine, addProcess, updateProcess, clearLines, setIsOpen, setActiveTab } = useTerminal()
+  const { addLine, addProcess, updateProcess, clearLines, setIsOpen } = useTerminal()
 
   const [integrationTestRunning, setIntegrationTestRunning] = useState(false)
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
@@ -48,7 +48,6 @@ export function useIntegrationTest() {
     setIntegrationTestSuccess(false)
     clearLines()
     setIsOpen(true)
-    setActiveTab('setup')
 
     const processId = 'integration-test'
     addProcess({
@@ -83,7 +82,7 @@ export function useIntegrationTest() {
         content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       })
     }
-  }, [addLine, addProcess, updateProcess, clearLines, setIsOpen, setActiveTab])
+  }, [addLine, addProcess, updateProcess, clearLines, setIsOpen])
 
   const handleStopIntegrationTest = useCallback(async () => {
     await window.electronAPI.stopIntegrationTest()

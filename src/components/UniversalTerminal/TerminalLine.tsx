@@ -17,22 +17,22 @@ export function TerminalLine({ line, showTimestamp = true }: TerminalLineProps) 
   const getColor = () => {
     switch (line.level) {
       case 'error':
-        return 'text-red-500' // Red
+        return 'text-[#ff7b72]' // GitHub red
       case 'warning':
-        return 'text-orange-500' // Orange
+        return 'text-[#ffa657]' // GitHub orange
       case 'info':
       default:
-        return 'text-[#d4d4d4]' // Light gray (VS Code default)
+        return 'text-[#e6edf3]' // GitHub light
     }
   }
 
   // Get source label and color
   const getSourceBadge = () => {
     const badges = {
-      task: { label: 'TASK', color: 'text-green-500' },
-      project: { label: 'PROJ', color: 'text-blue-500' },
-      env: { label: 'SETUP', color: 'text-purple-500' },
-      integration: { label: 'TEST', color: 'text-orange-500' },
+      task: { label: 'TASK', color: 'text-[#7ee787]' }, // GitHub green
+      project: { label: 'PROJ', color: 'text-[#79c0ff]' }, // GitHub blue
+      env: { label: 'SETUP', color: 'text-[#d2a8ff]' }, // GitHub purple
+      integration: { label: 'TEST', color: 'text-[#ffa657]' }, // GitHub orange
     }
 
     return badges[line.source]
@@ -52,20 +52,20 @@ export function TerminalLine({ line, showTimestamp = true }: TerminalLineProps) 
   return (
     <div
       className={cn(
-        'font-mono text-sm whitespace-pre-wrap break-words leading-relaxed',
-        'py-0.5 flex gap-2 hover:bg-white/5',
+        'font-mono text-xs whitespace-pre-wrap break-words leading-relaxed',
+        'py-0.5 px-1 flex gap-2 rounded hover:bg-[#1c2128] transition-colors',
         getColor()
       )}
     >
       {showTimestamp && (
-        <span className="text-gray-500 text-xs flex-shrink-0 select-none">
+        <span className="text-[#7d8590] text-[0.65rem] flex-shrink-0 select-none opacity-70">
           {formatTimestamp(line.timestamp)}
         </span>
       )}
 
       <span
         className={cn(
-          'text-xs font-bold flex-shrink-0 select-none min-w-[45px]',
+          'text-[0.65rem] font-semibold flex-shrink-0 select-none min-w-[50px]',
           sourceBadge.color
         )}
       >
