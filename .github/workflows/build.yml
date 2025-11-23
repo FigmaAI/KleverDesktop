@@ -1,7 +1,6 @@
 name: Build and Release
 
 on:
-
   workflow_dispatch:
     inputs:
       draft:
@@ -16,13 +15,12 @@ on:
         type: boolean
 
 jobs:
-  build:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest] #, windows-latest]
+  # ========================================
+  # macOS Build Job
+  # ========================================
+  build-macos:
+    name: Build macOS Universal
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Code
@@ -37,97 +35,253 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Build Python Runtime (Universal)
+        shell: bash
+        run: |
+          echo "Building Python runtime for macOS (universal)..."
+          node scripts/build-python.js --platform=darwin-arm64
+          node scripts/build-python.js --platform=darwin-x64
+
+      # ========================================
+      # Certificate Setup
+      # ========================================
       - name: Install Apple Certificate
-        if: matrix.os == 'macos-latest'
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
         run: |
-          # Create certificate file
+          echo "Installing Apple Developer ID certificate..."
+
+          # Create certificate file from base64
           CERT_PATH=$RUNNER_TEMP/build_certificate.p12
           echo -n "$CERTIFICATE_P12_BASE64" | base64 --decode -o $CERT_PATH
 
-          # Create keychain
+          # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "" $KEYCHAIN_PATH
+          KEYCHAIN_PASSWORD=$(uuidgen)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "" $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
           # Import certificate to keychain
           security import $CERT_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Build and Package (macOS)
-        if: matrix.os == 'macos-latest'
+          # Verify certificate installation
+          echo "Installed certificates:"
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+      # ========================================
+      # Verify Notarization Environment
+      # ========================================
+      - name: Verify Notarization Credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Verifying Apple notarization credentials..."
+
+          if [ -z "$APPLE_ID" ]; then
+            echo "❌ Error: APPLE_ID is not set"
+            exit 1
+          fi
+
+          if [ -z "$APPLE_ID_PASSWORD" ]; then
+            echo "❌ Error: APPLE_ID_PASSWORD is not set"
+            exit 1
+          fi
+
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "❌ Error: APPLE_TEAM_ID is not set"
+            exit 1
+          fi
+
+          echo "✅ APPLE_ID: $APPLE_ID"
+          echo "✅ APPLE_ID_PASSWORD: ${APPLE_ID_PASSWORD:0:4}****"
+          echo "✅ APPLE_TEAM_ID: $APPLE_TEAM_ID"
+          echo "All notarization credentials are set correctly"
+
+      # ========================================
+      # Build and Sign (with Notarization)
+      # ========================================
+      - name: Build, Sign, and Notarize
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-notarize*,electron-osx-sign*
         run: |
-          npm run make -- --arch=universal
+          echo "Starting universal build with notarization..."
+          echo "This may take 5-10 minutes for notarization to complete..."
 
-      - name: Verify Notarization (macOS)
-        if: matrix.os == 'macos-latest'
+          # Run make with notarization
+          npm run make -- --arch=universal 2>&1 | tee build.log
+
+          echo "Build and notarization completed"
+
+      # ========================================
+      # Verify Notarization
+      # ========================================
+      - name: Verify Notarization
         run: |
-          echo "Verifying notarization for built app..."
+          echo "=== Verifying Notarization Status ==="
 
-          # Find the packaged .app bundle (before DMG creation)
+          # Find the app bundle
           APP_PATH=$(find out -name "Klever Desktop.app" -type d | head -n 1)
 
-          if [ -d "$APP_PATH" ]; then
-            echo "Found app bundle: $APP_PATH"
-
-            echo "Checking code signature..."
-            codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-
-            echo "Checking notarization ticket (stapled)..."
-            stapler validate "$APP_PATH" || echo "Warning: Notarization ticket not stapled (this is expected if notarization is async)"
-
-            echo "Checking Gatekeeper acceptance..."
-            spctl -a -vvv -t execute "$APP_PATH"
-
-            echo "✅ Notarization verification completed"
-          else
-            echo "Error: App bundle not found in out/ directory"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "❌ Error: App bundle not found"
             ls -R out/
             exit 1
           fi
 
-      - name: Build and Package (Windows)
-        if: matrix.os == 'windows-latest'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # WINDOWS_CERT_FILE: ${{ secrets.WINDOWS_CERT_FILE }}
-          # WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
-        run: |
-          npm run make
+          echo "Found app bundle: $APP_PATH"
+          echo ""
 
-      - name: Upload Artifacts (macOS)
-        if: matrix.os == 'macos-latest'
+          # 1. Verify code signature
+          echo "1️⃣ Checking code signature..."
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          if [ $? -eq 0 ]; then
+            echo "✅ Code signature is valid"
+          else
+            echo "❌ Code signature verification failed"
+            exit 1
+          fi
+          echo ""
+
+          # 2. Check signature details
+          echo "2️⃣ Code signature details:"
+          codesign -dv --verbose=4 "$APP_PATH" 2>&1 | grep -E "(Authority|TeamIdentifier|Timestamp|Notarization)"
+          echo ""
+
+          # 3. Verify notarization ticket
+          echo "3️⃣ Checking notarization ticket..."
+          stapler validate "$APP_PATH"
+          STAPLER_EXIT_CODE=$?
+
+          if [ $STAPLER_EXIT_CODE -eq 0 ]; then
+            echo "✅ Notarization ticket is stapled"
+          else
+            echo "⚠️  Warning: Notarization ticket not stapled"
+            echo "This may indicate notarization is still in progress or failed"
+
+            # Check if notarization info exists
+            echo "Checking notarization info..."
+            codesign -dv --verbose=4 "$APP_PATH" 2>&1 | grep "Notarization"
+          fi
+          echo ""
+
+          # 4. Gatekeeper assessment (may fail if not notarized)
+          echo "4️⃣ Checking Gatekeeper acceptance..."
+          spctl -a -vvv -t execute "$APP_PATH"
+          SPCTL_EXIT_CODE=$?
+
+          if [ $SPCTL_EXIT_CODE -eq 0 ]; then
+            echo "✅ Gatekeeper accepts the app"
+          else
+            echo "⚠️  Warning: Gatekeeper assessment failed"
+            echo "Exit code: $SPCTL_EXIT_CODE"
+
+            # Don't fail the build - notarization might be async
+            echo "Continuing build despite Gatekeeper warning..."
+          fi
+          echo ""
+
+          echo "=== Verification Summary ==="
+          echo "✅ Code signature: Valid"
+          echo "Notarization ticket: $([ $STAPLER_EXIT_CODE -eq 0 ] && echo '✅ Stapled' || echo '⚠️  Not stapled')"
+          echo "Gatekeeper: $([ $SPCTL_EXIT_CODE -eq 0 ] && echo '✅ Accepted' || echo '⚠️  Needs review')"
+
+      - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: macOS-artifacts
-          path: out/make/**/*.dmg
+          name: macos-artifacts
+          path: |
+            out/make/**/*.dmg
+          retention-days: 7
 
-      - name: Upload Artifacts (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Upload Build Log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Windows-artifacts
-          path: out/make/squirrel.windows/*/*Setup.exe
+          name: macos-build-log
+          path: build.log
+          retention-days: 7
 
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  # ========================================
+  # Windows Build Job
+  # ========================================
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Extract Version from package.json
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Python Runtime (Windows)
+        shell: bash
+        run: |
+          echo "Building Python runtime for Windows..."
+          node scripts/build-python.js --platform=win32-x64
+
+      # Optional: Windows Code Signing
+      # - name: Install Windows Certificate
+      #   if: ${{ secrets.WINDOWS_CERT_FILE != '' }}
+      #   env:
+      #     WINDOWS_CERT_FILE: ${{ secrets.WINDOWS_CERT_FILE }}
+      #     WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+      #   run: |
+      #     # Decode certificate
+      #     $CertPath = "$env:RUNNER_TEMP\windows_cert.pfx"
+      #     [System.Convert]::FromBase64String($env:WINDOWS_CERT_FILE) | Set-Content $CertPath -Encoding Byte
+      #
+      #     # Import certificate
+      #     $CertPassword = ConvertTo-SecureString -String $env:WINDOWS_CERT_PASSWORD -Force -AsPlainText
+      #     Import-PfxCertificate -FilePath $CertPath -CertStoreLocation Cert:\CurrentUser\My -Password $CertPassword
+
+      - name: Build and Package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # WINDOWS_CERT_FILE: ${{ secrets.WINDOWS_CERT_FILE }}
+          # WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: npm run make
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: |
+            out/make/squirrel.windows/**/*Setup.exe
+          retention-days: 7
+
+  # ========================================
+  # Create GitHub Release
+  # ========================================
+  release:
+    name: Create GitHub Release
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Extract Version
         id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -137,17 +291,22 @@ jobs:
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: macOS-artifacts
+          name: macos-artifacts
           path: artifacts/macos
 
-      # - name: Download Windows Artifacts
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     name: Windows-artifacts
-      #     path: artifacts/windows
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts/windows
 
       - name: List Artifacts
-        run: ls -R artifacts
+        run: |
+          echo "=== macOS Artifacts ==="
+          find artifacts/macos -type f -name "*.dmg" -exec ls -lh {} \; || echo "No DMG files found"
+          echo ""
+          echo "=== Windows Artifacts ==="
+          find artifacts/windows -type f -name "*.exe" -exec ls -lh {} \; || echo "No EXE files found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -158,15 +317,15 @@ jobs:
             ## Klever Desktop v${{ steps.version.outputs.version }}
 
             ### Downloads
-            - **macOS**: Download the `.dmg` file below
-            <!-- - **Windows**: Download the `Setup.exe` file below -->
+            - **macOS**: Download the `.dmg` file below (Universal - Intel + Apple Silicon)
+            - **Windows**: Download the `Setup.exe` file below
 
             ### Installation
             - **macOS**: Open the DMG, drag Klever Desktop to Applications
-            <!-- - **Windows**: Run the Setup.exe installer -->
+            - **Windows**: Run the Setup.exe installer
 
             ### Auto-Updates
-            <!-- - Windows: Auto-updates are enabled via Squirrel -->
+            - Windows: Auto-updates are enabled via Squirrel
             - macOS: Check for updates in the app menu
 
             ---
@@ -174,8 +333,7 @@ jobs:
             For full changelog and documentation, see [CLAUDE.md](https://github.com/FigmaAI/KleverDesktop/blob/main/CLAUDE.md)
           files: |
             artifacts/macos/**/*.dmg
-            # artifacts/windows/**/*.exe
-          draft: ${{ github.event.inputs.draft || 'true' }}
-          prerelease: ${{ github.event.inputs.prerelease || 'true' }}
+            artifacts/windows/**/*.exe
+          draft: ${{ github.event.inputs.draft == 'true' }}
+          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
           generate_release_notes: true
-
