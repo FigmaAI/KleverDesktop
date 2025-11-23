@@ -43,6 +43,7 @@ export function ProjectDetail() {
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'status'>('latest')
+  const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
 
   const loadProject = useCallback(async () => {
     if (!id) return
@@ -225,6 +226,47 @@ export function ProjectDetail() {
     }
   }, [project, sortBy])
 
+  // Keyboard navigation for task list (up/down arrows)
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (sortedTasks.length === 0) return
+
+      // Prevent navigation if user is typing in an input or dialog is open
+      if (
+        createDialogOpen ||
+        markdownDialogOpen ||
+        (e.target as HTMLElement).tagName === 'INPUT' ||
+        (e.target as HTMLElement).tagName === 'TEXTAREA' ||
+        (e.target as HTMLElement).closest('[role="dialog"]')
+      ) {
+        return
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedTaskIndex((prev) => Math.min(prev + 1, sortedTasks.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedTaskIndex((prev) => Math.max(prev - 1, 0))
+      } else if (e.key === 'Enter' && sortedTasks[selectedTaskIndex]) {
+        e.preventDefault()
+        const task = sortedTasks[selectedTaskIndex]
+        if (task.resultPath) {
+          setSelectedTask(task)
+          setMarkdownDialogOpen(true)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sortedTasks, selectedTaskIndex, createDialogOpen, markdownDialogOpen])
+
+  // Reset selected index when tasks change
+  useEffect(() => {
+    setSelectedTaskIndex(0)
+  }, [sortedTasks.length])
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -300,7 +342,7 @@ export function ProjectDetail() {
                   </kbd>
                 </RainbowButton>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={handleDeleteProject}
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
@@ -336,9 +378,10 @@ export function ProjectDetail() {
             </div>
 
             <AnimatedList delay={100}>
-              {sortedTasks.map((task) => {
+              {sortedTasks.map((task, index) => {
                 const statusConfig = getStatusConfig(task.status)
                 const StatusIcon = statusConfig.icon
+                const isSelected = index === selectedTaskIndex
 
                 return (
                   <div
@@ -358,7 +401,8 @@ export function ProjectDetail() {
                     className={cn(
                       'group relative flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
                       'hover:shadow-lg hover:border-primary/30',
-                      'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                      'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                      isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                     )}
                   >
                     {task.status === 'running' && (
