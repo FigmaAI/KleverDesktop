@@ -186,7 +186,11 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
         return;
       }
 
-      exec('brew --version', { timeout: 5000 }, (error, stdout) => {
+      // Fix PATH for macOS to include Homebrew locations
+      const env = { ...process.env };
+      env.PATH = `${env.PATH}:/usr/local/bin:/opt/homebrew/bin`;
+
+      exec('brew --version', { timeout: 5000, env }, (error, stdout) => {
         if (error) {
           resolve({ success: false, error: 'Homebrew not installed' });
           return;
