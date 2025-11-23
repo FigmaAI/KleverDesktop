@@ -1,9 +1,7 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+
   workflow_dispatch:
     inputs:
       draft:
@@ -24,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest] #, windows-latest]
 
     steps:
       - name: Checkout Code
@@ -51,6 +49,26 @@ jobs:
             node scripts/build-python.js --platform=win32-x64
           fi
 
+      - name: Install Apple Certificate
+        if: matrix.os == 'macos-latest'
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          # Create certificate file
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo -n "$CERTIFICATE_P12_BASE64" | base64 --decode -o $CERT_PATH
+
+          # Create keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "" $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import $CERT_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
       - name: Build and Package (macOS)
         if: matrix.os == 'macos-latest'
         env:
@@ -60,6 +78,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm run make -- --arch=universal
+
+      - name: Verify Notarization (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "Verifying notarization for built DMG..."
+          DMG_PATH=$(find out/make -name "*.dmg" -type f | head -n 1)
+          if [ -f "$DMG_PATH" ]; then
+            echo "Found DMG: $DMG_PATH"
+            echo "Checking notarization status..."
+            spctl -a -vvv -t install "$DMG_PATH"
+            echo "Checking Gatekeeper acceptance..."
+            codesign -dv --verbose=4 "$DMG_PATH"
+          else
+            echo "Error: DMG file not found"
+            exit 1
+          fi
 
       - name: Build and Package (Windows)
         if: matrix.os == 'windows-latest'
@@ -107,11 +141,11 @@ jobs:
           name: macOS-artifacts
           path: artifacts/macos
 
-      - name: Download Windows Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: Windows-artifacts
-          path: artifacts/windows
+      # - name: Download Windows Artifacts
+      #   uses: actions/download-artifact@v4
+      #   with:
+      #     name: Windows-artifacts
+      #     path: artifacts/windows
 
       - name: List Artifacts
         run: ls -R artifacts
@@ -126,14 +160,14 @@ jobs:
 
             ### Downloads
             - **macOS**: Download the `.dmg` file below
-            - **Windows**: Download the `Setup.exe` file below
+            <!-- - **Windows**: Download the `Setup.exe` file below -->
 
             ### Installation
             - **macOS**: Open the DMG, drag Klever Desktop to Applications
-            - **Windows**: Run the Setup.exe installer
+            <!-- - **Windows**: Run the Setup.exe installer -->
 
             ### Auto-Updates
-            - Windows: Auto-updates are enabled via Squirrel
+            <!-- - Windows: Auto-updates are enabled via Squirrel -->
             - macOS: Check for updates in the app menu
 
             ---
@@ -141,7 +175,7 @@ jobs:
             For full changelog and documentation, see [CLAUDE.md](https://github.com/FigmaAI/KleverDesktop/blob/main/CLAUDE.md)
           files: |
             artifacts/macos/**/*.dmg
-            artifacts/windows/**/*.exe
+            # artifacts/windows/**/*.exe
           draft: ${{ github.event.inputs.draft || 'true' }}
           prerelease: ${{ github.event.inputs.prerelease || 'true' }}
           generate_release_notes: true

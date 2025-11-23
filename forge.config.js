@@ -9,6 +9,7 @@ module.exports = {
     appCategoryType: 'public.app-category.developer-tools',
     icon: './build/icon', // Will use .icns for macOS, .ico for Windows
     asar: true, // Enable asar for performance and security
+    arch: 'universal', // Universal binary for macOS (Intel + Apple Silicon)
     extraResource: [
       'appagent', // Python scripts only, not Python runtime
       'dist' // Renderer build output (Vite builds to dist/)

@@ -1,13 +1,21 @@
-# Use nvm instead of volta for this project
-# Remove volta from PATH and use nvm
-export PATH=$(echo $PATH | tr ':' '\n' | grep -v volta | tr '\n' ':' | sed 's/:$//')
+# Set Environment Variables
 
-# Load nvm
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+# Apple Distribution certificate (for app signing)
+export CSC_NAME="Apple Distribution: JooHyung Park (ZQC7QNZ4J8)"
 
-# Use Node version from .nvmrc if it exists
-if [ -f .nvmrc ]; then
-  nvm use
-fi
+# Apple Installer certificate (for PKG signing)
+export CSC_INSTALLER_NAME="3rd Party Mac Developer Installer: JooHyung Park (ZQC7QNZ4J8)"
 
+# Apple Provisioning Profile
+export MAS_PROVISIONING_PROFILE="build/klever.provisionprofile"
+
+# Apple ID and credentials
+export APPLE_ID="dusskapark@gmail.com"
+export APPLE_APP_SPECIFIC_PASSWORD="iwii-gwwz-avxs-tpfq"
+export APPLE_ID_PASSWORD="iwii-gwwz-avxs-tpfq"  # Alias for Electron Forge notarization
+export APPLE_TEAM_ID="ZQC7QNZ4J8"
+
+# Apple App Store credentials
+export APPSTORE_API_KEY_ID="46XH2S25US"
+export APPSTORE_API_ISSUER_ID="1be4efad-4dd8-4d1d-bb49-2496e7eb82c3"
+export APPSTORE_API_KEY="build/AuthKey_46XH2S25US.p8"

@@ -30,6 +30,7 @@
 - **Node.js** 18+ 및 npm
 - **Git** 및 GitHub 계정 접근 권한
 - **Electron Forge** 7.10.2+ (이미 구성됨)
+- **direnv** (선택사항, 환경 변수 관리용)
 
 ### 플랫폼별 요구사항
 
@@ -91,12 +92,29 @@ Apple은 App Store 외부에서 배포되는 앱에 대해 공증을 요구합�
 
 **환경 변수 설정:**
 
+`~/.zshrc`에 설정하거나, 프로젝트 루트에 `.envrc` 파일을 생성하여 관리할 수 있습니다 (권장).
+
+**방법 A: .envrc 사용 (권장)**
+
+1. `direnv` 설치 (macOS: `brew install direnv`)
+2. 프로젝트 루트에 `.envrc` 파일 생성:
+   ```bash
+   export APPLE_ID="your-apple-id@example.com"
+   export APPLE_ID_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # 앱별 비밀번호
+   export APPLE_TEAM_ID="ABCDEF1234"  # 10자리 Team ID
+   export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx" # 릴리즈 업로드용
+   ```
+3. `direnv allow` 실행하여 환경 변수 로드
+
+**방법 B: 쉘 설정 파일 사용**
+
 `~/.zshrc` 또는 `~/.bash_profile`에 다음을 추가:
 
 ```bash
 export APPLE_ID="your-apple-id@example.com"
 export APPLE_ID_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # 앱별 비밀번호
 export APPLE_TEAM_ID="ABCDEF1234"  # 10자리 Team ID
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
 ```
 
 쉘 재로드:
@@ -354,22 +372,17 @@ npm run make -- --platform=win32 --arch=x64
 npm run make -- --platform=linux --arch=x64
 ```
 
-### 2. GitHub 릴리즈에 배포
+### 2. 로컬에서 배포 (Manual Publish)
+
+로컬 머신에서 직접 GitHub 릴리즈를 생성하고 아티팩트를 업로드하는 방법입니다.
 
 **사전 요구사항:**
 
-1. GitHub Personal Access Token 생성:
-   - https://github.com/settings/tokens 방문
-   - 새 토큰 생성 (classic)
-   - 범위 활성화: `repo` (개인 저장소의 전체 제어)
-   - 토큰 복사
+1. GitHub Personal Access Token 생성 (권한: `repo`)
+2. 환경 변수 설정 (위의 `.envrc` 설정 참조):
+   - `GITHUB_TOKEN`이 환경 변수로 설정되어 있어야 합니다.
 
-2. 환경 변수 설정:
-   ```bash
-   export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
-   ```
-
-**릴리즈 배포:**
+**배포 명령:**
 
 ```bash
 # 한 번에 빌드 및 배포
@@ -390,12 +403,44 @@ npm run make
 
 1. https://github.com/FigmaAI/KleverDesktop/releases 방문
 2. 드래프트 릴리즈 찾기
-3. 릴리즈 노트 편집
-4. 변경 로그 추가
-5. 안정 릴리즈인 경우 "This is a pre-release" 체크 해제
-6. "Publish release" 클릭
+3. 릴리즈 노트 편집 및 "Publish release" 클릭
 
-### 3. 릴리즈 체크리스트
+### 3. CI/CD 자동 배포 (GitHub Actions)
+
+GitHub Actions를 통해 태그 푸시 시 자동으로 빌드하고 배포할 수 있습니다. 이를 위해 GitHub 저장소에 Secrets를 설정해야 합니다.
+
+**Secrets 설정:**
+
+1. 저장소 설정(Settings) > Secrets and variables > Actions 로 이동
+2. "New repository secret" 클릭하여 다음 변수들을 추가:
+
+| Secret 이름 | 설명 | 상태/비고 |
+|---|---|---|
+| `APPLE_ID` | Apple Developer 계정 이메일 | ✅ 기존 `build-mas.yml`에 존재 |
+| `APPLE_ID_PASSWORD` | 앱별 비밀번호 | ✅ 기존 `APPLE_APP_SPECIFIC_PASSWORD` 사용 가능 (이름 매핑 필요) |
+| `APPLE_TEAM_ID` | 10자리 Team ID | ✅ 기존 `build-mas.yml`에 존재 |
+| `GITHUB_TOKEN` | GitHub Token | ✅ GitHub Actions 자동 생성 |
+| `CERTIFICATE_P12_BASE64` | **Developer ID Application** 인증서 (.p12)의 Base64 값 | ⚠️ 확인 필요: 기존 값은 MAS용(Apple Distribution)일 수 있음. GitHub 배포용은 **Developer ID**여야 함. |
+| `CERTIFICATE_PASSWORD` | 인증서 비밀번호 | ✅ 기존 `CERTIFICATE_PASSWORD` 사용 가능 |
+| `WINDOWS_CERT_FILE` | (Windows) PFX 인증서 Base64 | ❌ 신규 필요 (Windows 배포 시) |
+| `WINDOWS_CERT_PASSWORD` | (Windows) 인증서 비밀번호 | ❌ 신규 필요 (Windows 배포 시) |
+
+> **중요: 인증서 종류 확인**
+> 기존 `build-mas.yml`에서 사용하던 `CERTIFICATE_P12_BASE64`가 **"Apple Distribution"** (App Store용) 인증서라면, GitHub 릴리즈용으로는 사용할 수 없습니다.
+> **"Developer ID Application"** 인증서를 새로 내보내기 하여 Base64로 인코딩한 후 Secrets를 업데이트하거나, `DEVELOPER_ID_CERTIFICATE_P12_BASE64` 같은 새 이름으로 등록해야 합니다.
+
+**Base64 인코딩 방법:**
+
+```bash
+# macOS
+base64 -i certificate.p12 | pbcopy
+```
+
+> **참고**: `.github/workflows/build.yml` 워크플로우가 이 Secret들을 사용하여 빌드 및 서명을 수행합니다.
+
+### 4. 릴리즈 체크리스트
+
+
 
 배포 전:
 
@@ -408,7 +453,7 @@ npm run make
 - [ ] 필요시 문서 업데이트
 - [ ] git 태그 생성: `git tag v2.0.0 && git push --tags`
 
-### 4. 자동 업데이트 구성
+### 5. 자동 업데이트 구성
 
 **Windows (Squirrel):**
 
