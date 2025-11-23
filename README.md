@@ -40,10 +40,10 @@
 
 <div align="center">
 
-| Platform | File | Size |
+| Platform | File | Note |
 |----------|------|------|
-| **macOS** | `Klever Desktop-{version}-arm64.dmg` | ~400MB |
-| **Windows** | `klever-desktop-{version} Setup.exe` | ~350MB |
+| **macOS** | `Klever.Desktop.dmg` | Universal build that supports both Intel and Apple Silicon Mac |
+| **Windows** | `Klever.Desktop-2.0.0.Setup.exe` | No certification yet |
 
 </div>
 
