@@ -76,7 +76,7 @@ export function PlatformToolsStep({
                 {/* Homebrew (macOS only) */}
                 {isMac && (
                   <ToolStatusCard
-                    name="Homebrew"
+                    name="Homebrew (Optional)"
                     status={toolsStatus.homebrew}
                     delay={0.1}
                     onInstall={() => window.electronAPI.openExternal('https://brew.sh')}

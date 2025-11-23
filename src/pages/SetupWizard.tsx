@@ -165,12 +165,12 @@ export function SetupWizard() {
   }
 
   const canProceedFromStep0 = () => {
-    const isMac = window.navigator.platform.toLowerCase().includes('mac')
     return (
       toolsStatus.python.installed &&
       toolsStatus.pythonEnv.installed &&
-      toolsStatus.androidStudio.installed &&
-      (!isMac || toolsStatus.homebrew.installed)
+      toolsStatus.androidStudio.installed
+      // Homebrew is now optional
+      // (!isMac || toolsStatus.homebrew.installed)
     )
   }
 
