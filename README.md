@@ -54,13 +54,12 @@
 1. **Download** the `.dmg` file from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
 2. **Open** the DMG file
 3. **Drag** Klever Desktop to your Applications folder
-4. **First Launch**: Right-click the app and select "Open" (required for unsigned apps)
-   - If you see "App can't be opened because it is from an unidentified developer":
-     - Go to **System Preferences → Security & Privacy → General**
-     - Click **"Open Anyway"** next to the blocked app message
-     - Click **"Open"** in the confirmation dialog
+4. **Launch** the app from your Applications folder
+   - The app is **signed with Developer ID and notarized by Apple**, so it should open without issues
+   - On first launch, you may see a confirmation dialog asking if you want to open the app
+   - Click **"Open"** to proceed
 
-> **Note**: We use Developer ID signing and notarization, but macOS may still show Gatekeeper warnings on first launch.
+> **Note**: All macOS builds are signed with Developer ID and notarized by Apple for security. Gatekeeper will verify the app automatically.
 
 #### Windows Installation
 
