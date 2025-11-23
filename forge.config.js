@@ -58,7 +58,7 @@ module.exports = {
       config: {
         icon: path.join(__dirname, 'build/icon.icns'),
         format: 'ULFO',
-        name: 'Klever Desktop',
+        name: `klever-desktop-${require('./package.json').version}`,
       },
       platforms: ['darwin'],
     },

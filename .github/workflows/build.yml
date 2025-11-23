@@ -123,7 +123,7 @@ jobs:
           echo "=== Verifying Notarization Status ==="
 
           # Find the app bundle
-          APP_PATH=$(find out -name "Klever Desktop.app" -type d | head -n 1)
+          APP_PATH=$(find out -name "*.app" -type d | head -n 1)
 
           if [ ! -d "$APP_PATH" ]; then
             echo "❌ Error: App bundle not found"
