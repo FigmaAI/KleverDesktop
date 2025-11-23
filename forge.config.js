@@ -63,11 +63,12 @@ module.exports = {
       platforms: ['darwin'],
     },
 
-    // ZIP (Portable)
-    {
-      name: '@electron-forge/maker-zip',
-      platforms: ['darwin', 'win32'],
-    },
+    // ZIP (Portable) - Disabled to reduce artifact size
+    // Uncomment if needed for auto-updates or portable distribution
+    // {
+    //   name: '@electron-forge/maker-zip',
+    //   platforms: ['darwin', 'win32'],
+    // },
   ],
 
   plugins: [
