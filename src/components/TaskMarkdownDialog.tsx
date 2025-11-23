@@ -224,7 +224,7 @@ export function TaskMarkdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
+      <DialogContent showClose={false} className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold">Task Result</h2>
@@ -304,14 +304,37 @@ export function TaskMarkdownDialog({
               </p>
             </div>
           ) : content ? (
-            <div className="markdown-body p-6 prose prose-sm dark:prose-invert max-w-none">
+            <div className="p-6">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  img({ src, alt }) {
-                    return <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />
+                  h1: ({ children }) => <h1 className="text-3xl font-bold mb-4 mt-6 first:mt-0">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-2xl font-semibold mb-3 mt-5 first:mt-0">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-xl font-semibold mb-2 mt-4 first:mt-0">{children}</h3>,
+                  h4: ({ children }) => <h4 className="text-lg font-semibold mb-2 mt-3 first:mt-0">{children}</h4>,
+                  p: ({ children }) => <p className="mb-4 leading-relaxed text-foreground">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-4 ml-6 list-disc space-y-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-4 ml-6 list-decimal space-y-2">{children}</ol>,
+                  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                  blockquote: ({ children }) => <blockquote className="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">{children}</blockquote>,
+                  code: ({ className, children }) => {
+                    const isInline = !className
+                    return isInline ? (
+                      <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">{children}</code>
+                    ) : (
+                      <code className={`block bg-muted p-4 rounded-lg my-4 overflow-x-auto text-sm font-mono ${className}`}>{children}</code>
+                    )
                   },
-                  p: ({ children }) => <div className="mb-4 leading-relaxed">{children}</div>,
+                  pre: ({ children }) => <pre className="bg-muted p-4 rounded-lg my-4 overflow-x-auto">{children}</pre>,
+                  a: ({ children, href }) => <a href={href} className="text-primary underline hover:text-primary/80" target="_blank" rel="noopener noreferrer">{children}</a>,
+                  table: ({ children }) => <div className="overflow-x-auto my-4"><table className="min-w-full border-collapse border border-border">{children}</table></div>,
+                  thead: ({ children }) => <thead className="bg-muted">{children}</thead>,
+                  tbody: ({ children }) => <tbody>{children}</tbody>,
+                  tr: ({ children }) => <tr className="border-b border-border">{children}</tr>,
+                  th: ({ children }) => <th className="border border-border px-4 py-2 text-left font-semibold">{children}</th>,
+                  td: ({ children }) => <td className="border border-border px-4 py-2">{children}</td>,
+                  hr: () => <hr className="my-6 border-border" />,
+                  img: ({ src, alt }) => <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />,
                 }}
               >
                 {content}

@@ -401,16 +401,17 @@ export function ProjectDetail() {
       )}
 
       {/* Task Markdown Dialog */}
-      {selectedTask && (
+      {selectedTask && project && (
         <TaskMarkdownDialog
           open={markdownDialogOpen}
           onClose={() => {
             setMarkdownDialogOpen(false)
             setSelectedTask(null)
           }}
-          projectId={project?.id || ''}
-          taskId={selectedTask.id}
+          workspaceDir={project.workspaceDir}
+          taskResultPath={selectedTask.resultPath}
           taskName={selectedTask.name || selectedTask.goal}
+          taskStatus={selectedTask.status}
         />
       )}
     </div>
