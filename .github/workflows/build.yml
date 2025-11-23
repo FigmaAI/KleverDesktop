@@ -35,13 +35,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Python Runtime (Universal)
-        shell: bash
-        run: |
-          echo "Building Python runtime for macOS (universal)..."
-          node scripts/build-python.js --platform=darwin-arm64
-          node scripts/build-python.js --platform=darwin-x64
-
       # ========================================
       # Certificate Setup
       # ========================================
@@ -230,12 +223,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-
-      - name: Build Python Runtime (Windows)
-        shell: bash
-        run: |
-          echo "Building Python runtime for Windows..."
-          node scripts/build-python.js --platform=win32-x64
 
       # Optional: Windows Code Signing
       # - name: Install Windows Certificate

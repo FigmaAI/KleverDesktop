@@ -73,6 +73,13 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
             items[newIndex]?.focus();
             return newIndex;
           });
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          // Execute the focused dock item
+          const activeElement = document.activeElement as HTMLButtonElement;
+          if (activeElement && items.includes(activeElement)) {
+            e.preventDefault();
+            activeElement.click();
+          }
         }
       };
 

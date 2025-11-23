@@ -50,12 +50,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         <ToastContext.Provider value={contextValue}>
             {children}
             {/* Toast container */}
-            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-50 pointer-events-none items-center">
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-50 pointer-events-none items-center">
                 {toasts.map((t) => (
                     <div
                         key={t.id}
                         className={cn(
-                            'bg-primary text-primary-foreground rounded-md shadow-lg p-4 min-w-[250px] pointer-events-auto animate-in fade-in slide-in-from-bottom-5 duration-300',
+                            'bg-primary text-primary-foreground rounded-md shadow-lg p-4 min-w-[250px] pointer-events-auto animate-in fade-in slide-in-from-top-5 duration-300',
                             'border border-primary/20',
                         )}
                     >

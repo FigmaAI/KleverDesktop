@@ -27,6 +27,9 @@ export function Layout() {
   const [commandOpen, setCommandOpen] = useState(false)
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
 
+  // Detect platform for keyboard shortcuts
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+
   // Keyboard shortcuts
   useEffect(() => {
     const down = (e: globalThis.KeyboardEvent) => {
@@ -102,7 +105,7 @@ export function Layout() {
     {
       icon: Terminal,
       label: 'Terminal',
-      shortcut: '⌃⇧`',
+      shortcut: isMac ? '⌃⇧`' : 'Ctrl+Shift+`',
       onClick: () => {
         setTerminalOpen(!terminalOpen)
       },
