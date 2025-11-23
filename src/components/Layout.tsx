@@ -154,7 +154,7 @@ export function Layout() {
                         }
                       }}
                       aria-label={item.label}
-                      className="flex size-full items-center justify-center"
+                      className="flex size-full items-center justify-center outline-none"
                     >
                       <item.icon className="size-5" />
                     </button>
@@ -174,7 +174,7 @@ export function Layout() {
                   <button
                     onClick={() => setCommandOpen(true)}
                     aria-label="Search"
-                    className="flex size-full items-center justify-center"
+                    className="flex size-full items-center justify-center outline-none"
                   >
                     <Search className="size-5" />
                   </button>
@@ -194,7 +194,7 @@ export function Layout() {
                       window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
                     }}
                     aria-label="GitHub"
-                    className="flex size-full items-center justify-center"
+                    className="flex size-full items-center justify-center outline-none"
                   >
                     <Github className="size-5" />
                   </button>

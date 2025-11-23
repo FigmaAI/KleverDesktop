@@ -29,6 +29,7 @@ export function ProjectList() {
     // Check if animation has already been shown in this session
     return sessionStorage.getItem('projectListAnimated') === 'true'
   })
+  const [selectedIndex, setSelectedIndex] = useState(0)
 
   useEffect(() => {
     loadProjects()
@@ -127,6 +128,42 @@ export function ProjectList() {
     }
   }, [projects, sortBy])
 
+  // Keyboard navigation for project list (up/down arrows)
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (sortedProjects.length === 0) return
+
+      // Prevent navigation if user is typing in an input or dialog is open
+      if (
+        createDialogOpen ||
+        (e.target as HTMLElement).tagName === 'INPUT' ||
+        (e.target as HTMLElement).tagName === 'TEXTAREA' ||
+        (e.target as HTMLElement).closest('[role="dialog"]')
+      ) {
+        return
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.min(prev + 1, sortedProjects.length - 1))
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex((prev) => Math.max(prev - 1, 0))
+      } else if (e.key === 'Enter' && sortedProjects[selectedIndex]) {
+        e.preventDefault()
+        navigate(`/projects/${sortedProjects[selectedIndex].id}`)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [sortedProjects, selectedIndex, navigate, createDialogOpen])
+
+  // Reset selected index when projects change
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [sortedProjects.length])
+
   const handleOpenCommandMenu = () => {
     // Trigger Cmd+K / Ctrl+K keyboard shortcut
     const event = new KeyboardEvent('keydown', {
@@ -215,9 +252,10 @@ export function ProjectList() {
             {hasAnimated ? (
               // Static list (no animation on subsequent visits)
               <div className="grid gap-3">
-                {sortedProjects.map((project) => {
+                {sortedProjects.map((project, index) => {
                   const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
                   const statusSummary = getTaskStatusSummary(project)
+                  const isSelected = index === selectedIndex
 
                   return (
                     <div
@@ -225,7 +263,8 @@ export function ProjectList() {
                       onClick={() => navigate(`/projects/${project.id}`)}
                       className={cn(
                         'group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
-                        'hover:shadow-lg hover:border-primary/50 cursor-pointer'
+                        'hover:shadow-lg hover:border-primary/50 cursor-pointer',
+                        isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                       )}
                     >
                       {/* Icon */}
@@ -290,9 +329,10 @@ export function ProjectList() {
             ) : (
               // Animated list (first visit only)
               <AnimatedList delay={150}>
-                {sortedProjects.map((project) => {
+                {sortedProjects.map((project, index) => {
                   const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
                   const statusSummary = getTaskStatusSummary(project)
+                  const isSelected = index === selectedIndex
 
                   return (
                     <div
@@ -300,7 +340,8 @@ export function ProjectList() {
                       onClick={() => navigate(`/projects/${project.id}`)}
                       className={cn(
                         'group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
-                        'hover:shadow-lg hover:border-primary/50 cursor-pointer'
+                        'hover:shadow-lg hover:border-primary/50 cursor-pointer',
+                        isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
                       )}
                     >
                       {/* Icon */}
