@@ -517,8 +517,6 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 
 ## Documentation
 
-### Build & Deployment
-
 - **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - Complete GitHub Releases guide
   - Developer ID signing and notarization (macOS)
   - Code signing options (Windows)
@@ -526,26 +524,9 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 
 - **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - 한국어 GitHub 릴리즈 가이드
 
-- **[docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)** - Mac App Store build troubleshooting
-  - V8 initialization crash fixes
-  - Sandbox compliance issues
-  - Entitlements configuration
-
-- **[docs/MAS_BUILD_TROUBLESHOOTING_KR.md](docs/MAS_BUILD_TROUBLESHOOTING_KR.md)** - Mac App Store 빌드 문제 해결 (한국어)
-
 - **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - App Store Connect export compliance automation
   - ITSAppUsesNonExemptEncryption configuration
   - TestFlight upload automation
-
-### Technical Docs
-
-- **[docs/BUILD_13_FIX_SUMMARY.md](docs/BUILD_13_FIX_SUMMARY.md)** - Build 13 fixes summary
-- **[docs/CRASH_ANALYSIS.md](docs/CRASH_ANALYSIS.md)** - Crash debugging guide
-- **[docs/sandbox-solution-report.md](docs/sandbox-solution-report.md)** - MAS Sandbox critical issue analysis (Korean)
-- **[docs/console_error.md](docs/console_error.md)** - Console error troubleshooting
-- **[docs/20251123_console_error.md](docs/20251123_console_error.md)** - Console error troubleshooting (dated)
-
-### Main Docs
 
 - **[README.md](README.md)** - User-facing documentation
 - **[PRIVACY.md](PRIVACY.md)** - Privacy policy
