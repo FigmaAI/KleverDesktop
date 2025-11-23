@@ -1,82 +1,79 @@
 # CLAUDE.md
 
-This file provides comprehensive guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Comprehensive development guide for Klever Desktop - AI-powered UI automation tool.
 
 ## Table of Contents
 
-- [Project Overview](#project-overview)
-- [Quick Start Commands](#quick-start-commands)
+- [Quick Start](#quick-start)
+- [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
-  - [Three-Layer Electron Architecture](#three-layer-electron-architecture)
-  - [Component Catalog](#component-catalog)
-  - [SetupWizard Architecture](#setupwizard-architecture-refactored)
-- [IPC Communication Pattern](#ipc-communication-pattern)
-- [Model Configuration](#model-configuration)
-- [Python Backend](#python-backend-monorepo)
-- [Common Development Patterns](#common-development-patterns)
-- [Key Files Reference](#key-files-reference)
-- [Development Notes](#development-notes)
-- [Prerequisites](#prerequisites)
-- [Troubleshooting](#troubleshooting)
-- [Electron Forge Build System](#electron-forge-build-system)
-- [Build Scripts & Tools](#build-scripts--tools)
-- [Best Practices](#best-practices)
-- [Contributing](#contributing)
-- [Additional Resources](#additional-resources)
+- [Development Workflow](#development-workflow)
+- [Build & Distribution](#build--distribution)
+- [Key Concepts](#key-concepts)
 - [Documentation](#documentation)
-- [Update History](#update-history)
 
 ---
 
-## Project Overview
+## Quick Start
 
-**Klever Desktop** is an Electron-based desktop application that enables automated UI exploration and testing using local AI models (via Ollama) or remote APIs. It provides a user-friendly interface for managing automation projects on Android (via ADB) and Web (via Playwright).
+### Prerequisites
+- **Node.js** 18+
+- **Python** 3.11+ (bundled in production)
+- **macOS/Windows/Linux**
 
-**Tech Stack:**
-- **Frontend**: React 18 + TypeScript + MUI Joy UI + Framer Motion
-- **Desktop**: Electron 31
-- **Backend**: Python 3.11+ automation scripts (monorepo)
-- **Build**: Electron Forge 7 + Vite 5 + TypeScript 5
-- **AI**: Ollama (local) or OpenAI-compatible APIs
-
----
-
-## Quick Start Commands
-
-### Initial Setup
+### Setup
 ```bash
-npm install                                    # Install Node dependencies
-python3 -m pip install -r appagent/requirements.txt  # Install Python dependencies
-python3 -m playwright install chromium         # Install Playwright browser
+# Install dependencies
+npm install
+
+# Build Python runtime (optional for dev)
+npm run python:build
+
+# Start development
+npm run start
 ```
 
-### Development
+### Development Commands
 ```bash
-npm run start          # Electron Forge dev mode (Vite + Electron with hot reload)
-npm run dev            # Vite dev server only (http://localhost:5173)
-npm run electron       # Electron only (requires Vite running separately)
-```
-
-### Build & Package (Electron Forge)
-```bash
-npm run typecheck      # Type-check TypeScript without building
-npm run package        # Package app (unsigned) → out/klever-desktop-{platform}/
-npm run make           # Create distributable packages (AppX, PKG, ZIP) → out/make/
-npm run publish        # Publish to configured publishers
-```
-
-### Python Bundling (New)
-```bash
-node scripts/build-python.js           # Download & setup Python 3.11.9 runtime
-node scripts/verify-bundle.js          # Verify all required files before packaging
-node scripts/fetch-appagent.js         # Update appagent code (optional)
-```
-
-### Linting
-```bash
-npm run lint           # Check for linting errors
+npm run start          # Electron + Vite dev server with hot reload
+npm run dev            # Vite dev server only (browser testing)
+npm run typecheck      # TypeScript type checking
+npm run lint           # ESLint check
 npm run lint:fix       # Auto-fix linting errors
 ```
+
+### Build Commands
+```bash
+npm run package        # Package app (unsigned)
+npm run make           # Create distributable (DMG/Setup.exe)
+npm run publish        # Build and publish to GitHub Releases
+```
+
+---
+
+## Tech Stack
+
+### Frontend
+- **React 18** - UI framework with hooks
+- **TypeScript 5** - Type-safe JavaScript
+- **shadcn/ui** - Component library built on Radix UI
+- **Tailwind CSS** - Utility-first CSS framework
+- **Framer Motion** - Animation library
+- **React Router 6** - Client-side routing (HashRouter)
+
+### Desktop
+- **Electron 33** - Desktop application framework
+- **Electron Forge 7** - Build and distribution tooling
+- **Vite 5** - Fast build tool and dev server
+
+### Backend
+- **Python 3.11+** - Automation scripts (bundled)
+- **Playwright** - Web browser automation
+- **ADB** - Android device automation
+
+### AI
+- **Ollama** - Local AI models (recommended: qwen3-vl:4b)
+- **OpenAI-compatible APIs** - Remote AI providers
 
 ---
 
@@ -84,189 +81,113 @@ npm run lint:fix       # Auto-fix linting errors
 
 ### Three-Layer Electron Architecture
 
-#### 1. Main Process (`main/`)
-**Location**: `/main/index.ts` (77 lines)
-
-The Electron main process that:
-- Creates BrowserWindow (1200x800px, min 1000x600px)
-- Loads Vite dev server (localhost:5173) in dev or `dist/index.html` in production
-- Registers all IPC handlers via `registerAllHandlers()` from `main/handlers/index.ts`
-- Manages application lifecycle and cleanup
-- Handles process cleanup on app quit via `cleanupAllProcesses()`
-
-**Handler Architecture** - Modular organization in `main/handlers/`:
-- `index.ts` (41 lines) - Central registration point for all handlers
-- `task.ts` (452 lines) - CRUD operations for tasks, task execution, markdown generation
-- `installations.ts` (196 lines) - Playwright browser installation (simplified)
-- `project.ts` (268 lines) - CRUD operations for projects, project execution
-- `model.ts` (243 lines) - Model connection testing, API model fetching
-- `system-checks.ts` (220 lines) - Python, packages, Ollama, ADB, Playwright, Homebrew checks
-- `integration.ts` (209 lines) - Integration test execution
-- `config.ts` (131 lines) - Config load/save, setup verification
-- `utilities.ts` (71 lines) - System info and shell operations
-- `ollama.ts` (51 lines) - Ollama list and pull operations
-- `dialogs.ts` (31 lines) - File/folder dialog handlers
-
-**Utilities** - Helper modules in `main/utils/`:
-- `config-manager.ts` - YAML config file management
-- `project-storage.ts` - JSON-based project storage in `~/.klever-desktop/`
-- `python-runtime.ts` - Bundled Python runtime management (simplified, no venv)
-- `process-manager.ts` - Subprocess spawning and tracking
-- ~~`python-manager.ts`~~ - **DEPRECATED**: Legacy venv-based approach (use python-runtime.ts instead)
-
-#### 2. Preload Script (`main/preload.ts`)
-**Location**: `/main/preload.ts` (123 lines)
-
-Context bridge that:
-- Exposes 70+ IPC methods via `contextBridge.exposeInMainWorld('electronAPI', {...})`
-- Provides type-safe bridge between main and renderer processes
-- Includes event listeners: `onEnvProgress`, `onProjectOutput`, `onTaskComplete`, `onTaskOutput`, etc.
-- Supports file dialogs: `selectFolder`, `selectMarkdownFile`
-
-**CRITICAL RULE**: Every IPC handler in `main/handlers/` MUST be exposed in `preload.ts`, or you'll get "not a function" errors at runtime.
-
-#### 3. Renderer Process (`src/`)
-**Location**: `/src/` (React application)
-
-**Entry Point**: `src/main.tsx`
-- React 18 with StrictMode
-- CssVarsProvider for MUI Joy theming
-- Mock electronAPI for browser testing (when `window.electronAPI` is undefined)
-- Comprehensive mock data for all IPC handlers to support browser-based development
-
-**Router**: `src/App.tsx`
-- Dynamic routing based on setup completion status
-- Checks setup status on mount via `checkSetup()` IPC handler
-- Conditional routes:
-  - If setup incomplete: redirects to `/setup`
-  - If setup complete: renders main app with Layout
-
 ```
-Setup incomplete:
-  /setup → SetupWizard (first-time setup)
-  /* → Navigate to /setup
-
-Setup complete:
-  / → Layout (main app shell)
-    ├── /projects → ProjectList
-    ├── /projects/new → ProjectCreate
-    ├── /projects/:id → ProjectDetail
-    └── /settings → Settings
-  /* → Navigate to /projects
+┌─────────────────────────────────────────────────────────┐
+│                   Renderer Process                       │
+│  React App (src/) - UI Components & Business Logic      │
+│  - Uses contextBridge API via window.electronAPI        │
+└─────────────────────────────────────────────────────────┘
+                           ↕ IPC
+┌─────────────────────────────────────────────────────────┐
+│                    Preload Script                        │
+│  main/preload.ts - Context Bridge (70+ IPC methods)     │
+│  - Exposes safe API to renderer                         │
+└─────────────────────────────────────────────────────────┘
+                           ↕ IPC
+┌─────────────────────────────────────────────────────────┐
+│                    Main Process                          │
+│  main/index.ts - Window management & IPC handlers       │
+│  main/handlers/ - Business logic (2000+ lines)          │
+│  - Python subprocess management                          │
+│  - File system operations                                │
+│  - System integrations                                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-**Component Structure**:
-- `src/components/` - 23+ reusable UI components (see Component Catalog below)
-- `src/pages/` - Page components (SetupWizard, ProjectList, ProjectDetail, ProjectCreate, Settings)
-- `src/hooks/` - Custom React hooks (usePlatformTools, useModelConfig, useIntegrationTest, useSettings)
-- `src/types/` - TypeScript definitions
+### Directory Structure
+
+```
+KleverDesktop/
+├── main/                      # Main process (Electron)
+│   ├── index.ts              # Entry point (77 lines)
+│   ├── preload.ts            # Context bridge (123 lines)
+│   ├── handlers/             # IPC handlers (2000+ lines)
+│   │   ├── index.ts         # Handler registration
+│   │   ├── task.ts          # Task CRUD & execution (452 lines)
+│   │   ├── project.ts       # Project CRUD & execution (268 lines)
+│   │   ├── model.ts         # Model config & testing (243 lines)
+│   │   ├── system-checks.ts # System verification (220 lines)
+│   │   ├── integration.ts   # Integration tests (209 lines)
+│   │   ├── installations.ts # Playwright setup (196 lines)
+│   │   ├── config.ts        # Config management (131 lines)
+│   │   ├── utilities.ts     # System utilities (71 lines)
+│   │   ├── ollama.ts        # Ollama operations (51 lines)
+│   │   └── dialogs.ts       # File/folder dialogs (31 lines)
+│   ├── utils/                # Utility modules
+│   │   ├── config-manager.ts
+│   │   ├── project-storage.ts
+│   │   ├── python-runtime.ts
+│   │   └── process-manager.ts
+│   └── types/                # Main process types
+│
+├── src/                       # Renderer process (React)
+│   ├── main.tsx              # React entry point
+│   ├── App.tsx               # Router & layout
+│   ├── components/           # Reusable UI components (23+)
+│   ├── hooks/                # Custom React hooks
+│   ├── pages/                # Page components
+│   ├── types/                # TypeScript types
+│   └── lib/                  # Utilities & helpers
+│
+├── appagent/                  # Python automation scripts (monorepo)
+│   ├── scripts/
+│   │   ├── self_explorer.py  # Main automation loop
+│   │   ├── and_controller.py # Android controller (ADB)
+│   │   ├── web_controller.py # Web controller (Playwright)
+│   │   └── model.py          # AI model integration
+│   ├── requirements.txt
+│   └── config.yaml           # Runtime config (generated)
+│
+├── build/                     # Build assets
+│   ├── icon.icns             # macOS icon
+│   ├── icon.ico              # Windows icon
+│   └── entitlements.mac.plist # macOS entitlements
+│
+├── scripts/                   # Build & utility scripts
+│   ├── build-python.js       # Python runtime bundling
+│   ├── verify-bundle.js      # Pre-build verification
+│   └── fetch-appagent.js     # Update appagent code
+│
+├── .github/workflows/         # CI/CD
+│   └── build.yml             # GitHub Releases automation
+│
+├── forge.config.js           # Electron Forge config
+├── vite.config.ts            # Vite config (renderer)
+├── vite.main.config.js       # Vite config (main)
+├── vite.preload.config.js    # Vite config (preload)
+├── package.json
+└── tsconfig.json
+```
 
 ---
 
-## Component Catalog
+## Development Workflow
 
-The application includes 23+ reusable components in `src/components/`:
+### 1. IPC Communication Pattern
 
-**Setup Wizard Components**:
-- `SetupStepper.tsx` - Vertical stepper navigation
-- `PlatformToolsStep.tsx` - Step 0: Platform tools check
-- `PlatformConfigStep.tsx` - Platform configuration step
-- `ToolStatusCard.tsx` - Reusable tool status display
-- `EnvironmentSetup.tsx` - Python environment setup UI
-- `ModelConfigStep.tsx` - Step 1: Model configuration
-- `LocalModelCard.tsx` - Ollama configuration card
-- `ApiModelCard.tsx` - API model configuration card
-- `IntegrationTestStep.tsx` - Step 2: Integration test
-
-**Settings Components**:
-- `ModelSelector.tsx` - Model selection dropdown
-- `ModelSettingsCard.tsx` - Model settings configuration
-- `PlatformSettingsCard.tsx` - Platform-specific settings
-- `AgentSettingsCard.tsx` - AI agent settings
-- `ImageSettingsCard.tsx` - Image processing settings
-- `SystemInfoCard.tsx` - System information display
-
-**Project & Task Components**:
-- `ProjectCard.tsx` - Project list item card
-- `TaskCard.tsx` - Task list item card
-- `TaskCreateDialog.tsx` - Task creation dialog
-- `TaskDetailDialog.tsx` - Task detail view dialog
-- `TaskMarkdownDialog.tsx` - Markdown report viewer
-- `TaskMetricsSummary.tsx` - Task metrics display
-- `TaskStatusSummary.tsx` - Task status overview
-
-**Layout**:
-- `Layout.tsx` - Main application shell with navigation
-
-## SetupWizard Architecture (Refactored)
-
-The SetupWizard has been refactored from a monolithic 1,387-line component into a clean, modular structure:
-
-### File Structure
-```
-src/
-├── pages/
-│   └── SetupWizard.tsx               # Main orchestrator (343 lines)
-├── hooks/                             # Custom hooks
-│   ├── usePlatformTools.tsx          # Platform tools checking logic
-│   ├── useModelConfig.tsx            # Model configuration state & logic
-│   ├── useIntegrationTest.tsx        # Integration test logic
-│   └── useSettings.tsx               # Settings state management
-├── components/                        # Reusable UI components (see Component Catalog above)
-└── types/
-    └── setupWizard.ts                # SetupWizard-specific types
-```
-
-### Custom Hooks Pattern
-
-**`usePlatformTools()`** (`src/hooks/usePlatformTools.tsx`):
-- State: `toolsStatus` for Python, pythonEnv, androidStudio, homebrew
-- Method: `checkPlatformTools()` - Checks all tools asynchronously
-- Returns: `{ toolsStatus, setToolsStatus, checkPlatformTools }`
-
-**`useModelConfig(currentStep)`** (`src/hooks/useModelConfig.tsx`):
-- State: `modelConfig`, test statuses, Ollama/API models
-- Methods: `handleTestLocalConnection()`, `handleTestApiConnection()`, `fetchOllamaModels()`, `fetchApiModels()`
-- Auto-fetches models when step changes
-- Debounces API calls (500ms) to reduce requests
-
-**`useIntegrationTest()`** (`src/hooks/useIntegrationTest.tsx`):
-- State: Running status, completion, success, terminal output
-- Methods: `handleRunIntegrationTest(modelConfig)`, `handleStopIntegrationTest()`
-- Listens to IPC events for real-time output
-
-**`useSettings()`** (`src/hooks/useSettings.tsx`):
-- State: Settings data, loading status
-- Methods: Load, save, and update app settings
-- Syncs with `config.yaml` via IPC handlers
-
-### Component Organization Benefits
-
-1. **Project Consistency**: Follows standard src/components/, src/hooks/, src/types/ structure
-2. **Improved Reusability**: All components can be imported from `@/components/`
-3. **Better Maintainability**: Flat structure makes navigation easier
-4. **Enhanced Testability**: Hooks and components testable in isolation
-5. **Type Safety**: Shared types in `@/types/setupWizard` ensure consistency
-6. **Scalability**: 23+ components organized by feature domain (Setup, Settings, Projects/Tasks)
-
----
-
-## IPC Communication Pattern
-
-### Three-Step Process
-
-When adding new functionality that requires communication between renderer and main process, follow this pattern:
+Every feature that requires main process access follows this pattern:
 
 #### Step 1: Add Handler in `main/handlers/`
+
 ```typescript
 // main/handlers/example.ts
 import { ipcMain } from 'electron'
 
 export function registerExampleHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('namespace:action', async (event, ...args) => {
+  ipcMain.handle('example:action', async (event, arg) => {
     try {
       // Implementation
-      return { success: true, data: ... }
+      return { success: true, data: result }
     } catch (error) {
       return { success: false, error: error.message }
     }
@@ -278,35 +199,38 @@ Register in `main/handlers/index.ts`:
 ```typescript
 import { registerExampleHandlers } from './example'
 
-export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null) {
-  // ... existing handlers
+export function registerAllHandlers(ipcMain, getMainWindow) {
   registerExampleHandlers(ipcMain)
+  // ... other handlers
 }
 ```
 
 #### Step 2: Expose in `main/preload.ts`
+
 ```typescript
 contextBridge.exposeInMainWorld('electronAPI', {
   // ... existing methods
-  namespaceAction: (...args) => ipcRenderer.invoke('namespace:action', ...args),
+  exampleAction: (arg) => ipcRenderer.invoke('example:action', arg),
 })
 ```
 
 #### Step 3: Add TypeScript Types in `src/types/electron.d.ts`
+
 ```typescript
 declare global {
   interface Window {
     electronAPI: {
       // ... existing methods
-      namespaceAction: (...args: ArgTypes) => Promise<{ success: boolean; data?: DataType; error?: string }>
+      exampleAction: (arg: ArgType) => Promise<{ success: boolean; data?: DataType; error?: string }>
     }
   }
 }
 ```
 
 #### Step 4: Use in React Components
+
 ```typescript
-const result = await window.electronAPI.namespaceAction(...args)
+const result = await window.electronAPI.exampleAction(arg)
 if (result.success) {
   // Handle success
 } else {
@@ -316,221 +240,211 @@ if (result.success) {
 
 **CRITICAL**: If you add an IPC handler but forget to expose it in preload.ts, you'll get a "not a function" error at runtime.
 
+### 2. Component Development
+
+Use shadcn/ui components for consistency:
+
+```typescript
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+export function MyComponent() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Title</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={handleClick}>Click Me</Button>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+### 3. State Management
+
+Use React hooks for state management:
+
+```typescript
+// Custom hook example (src/hooks/useModelConfig.tsx)
+export function useModelConfig() {
+  const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const loadConfig = async () => {
+    setLoading(true)
+    const result = await window.electronAPI.configLoad()
+    if (result.success) {
+      setModelConfig(result.config)
+    }
+    setLoading(false)
+  }
+
+  return { modelConfig, loading, loadConfig }
+}
+```
+
+### 4. Python Integration
+
+Python scripts are bundled and executed via subprocess:
+
+```typescript
+// main/utils/python-runtime.ts
+export async function executePythonScript(scriptPath: string, args: string[]) {
+  const pythonPath = getPythonPath() // Bundled Python
+  const process = spawn(pythonPath, [scriptPath, ...args], {
+    env: getPythonEnv()
+  })
+
+  // Handle output, errors, exit
+}
+```
+
 ---
 
-## Model Configuration
+## Build & Distribution
 
-The app supports **dual model configuration** (both can be enabled simultaneously):
+### Build System: Electron Forge 7
 
-### Configuration Interface
+We use **GitHub Releases** for distribution (no app stores).
+
+#### Configuration: `forge.config.js`
+
+```javascript
+module.exports = {
+  packagerConfig: {
+    name: 'Klever Desktop',
+    icon: './build/icon',
+    asar: true,
+    extraResource: ['appagent', 'dist'],
+
+    // macOS: Developer ID signing + notarization
+    osxSign: {
+      identity: 'Developer ID Application',
+      'hardened-runtime': true,
+      entitlements: 'build/entitlements.mac.plist',
+    },
+    osxNotarize: {
+      appleId: process.env.APPLE_ID,
+      appleIdPassword: process.env.APPLE_ID_PASSWORD,
+      teamId: process.env.APPLE_TEAM_ID,
+    },
+  },
+
+  makers: [
+    // Windows: Squirrel installer
+    { name: '@electron-forge/maker-squirrel', platforms: ['win32'] },
+    // macOS: DMG disk image
+    { name: '@electron-forge/maker-dmg', platforms: ['darwin'] },
+    // Portable: ZIP archive
+    { name: '@electron-forge/maker-zip', platforms: ['darwin', 'win32'] },
+  ],
+
+  publishers: [
+    // GitHub Releases
+    {
+      name: '@electron-forge/publisher-github',
+      config: {
+        repository: { owner: 'FigmaAI', name: 'KleverDesktop' },
+        draft: true,
+        prerelease: true,
+      }
+    }
+  ]
+}
+```
+
+### GitHub Actions Workflow
+
+**File**: `.github/workflows/build.yml`
+
+**Trigger**: Push tag `v*` or manual dispatch
+
+**Flow**:
+1. **Build on macOS runner**: DMG + notarization
+2. **Build on Windows runner**: Setup.exe (Squirrel)
+3. **Create GitHub Release**: Attach all artifacts
+
+**Required Secrets** (macOS signing):
+- `APPLE_ID` - Apple ID email
+- `APPLE_ID_PASSWORD` - App-specific password
+- `APPLE_TEAM_ID` - 10-character Team ID
+
+**Optional Secrets** (Windows signing):
+- `WINDOWS_CERT_FILE` - .pfx certificate
+- `WINDOWS_CERT_PASSWORD` - Certificate password
+
+### Release Process
+
+```bash
+# 1. Update version
+npm version 2.0.1
+
+# 2. Push tag (triggers GitHub Actions)
+git push --tags
+
+# 3. Wait for CI to build and create draft release
+
+# 4. Review and publish release on GitHub
+```
+
+### Output Structure
+
+```
+out/
+├── klever-desktop-darwin-arm64/        # Packaged app (macOS)
+├── klever-desktop-win32-x64/           # Packaged app (Windows)
+└── make/
+    ├── dmg/darwin/arm64/
+    │   └── Klever Desktop-2.0.0-arm64.dmg    # macOS installer
+    ├── squirrel.windows/x64/
+    │   ├── klever-desktop-2.0.0 Setup.exe    # Windows installer
+    │   ├── RELEASES                          # Update metadata
+    │   └── klever-desktop-2.0.0-full.nupkg   # Update package
+    └── zip/
+        ├── darwin/...                         # Portable macOS
+        └── win32/...                          # Portable Windows
+```
+
+---
+
+## Key Concepts
+
+### 1. Model Configuration
+
+Dual model support (local + remote):
+
 ```typescript
 interface ModelConfig {
-  enableLocal: boolean      // Use local Ollama
-  enableApi: boolean        // Use remote API
-  localBaseUrl: string      // Default: http://localhost:11434/v1/chat/completions
-  localModel: string        // e.g., 'qwen3-vl:4b'
-  apiBaseUrl: string        // e.g., 'https://api.openai.com/v1/chat/completions'
-  apiKey: string            // API key (password-masked in UI)
-  apiModel: string          // e.g., 'gpt-4o-mini'
+  enableLocal: boolean       // Use Ollama
+  enableApi: boolean         // Use remote API
+  localBaseUrl: string       // Ollama endpoint
+  localModel: string         // e.g., 'qwen3-vl:4b'
+  apiBaseUrl: string         // Remote API endpoint
+  apiKey: string             // API key
+  apiModel: string           // e.g., 'gpt-4o-mini'
 }
 ```
 
-### Model Providers
+**Provider Detection**: Automatically detects OpenAI, OpenRouter, Anthropic, Grok from URL.
 
-**Local Models (Ollama)**:
-- Recommended for privacy and offline access
-- Default model: `qwen3-vl:4b` (optimized for 16GB RAM)
-- Models auto-fetched via `check:ollama` IPC handler
-- Pull new models via `ollama:pull` handler
-
-**API Models**:
-- Intelligent provider detection from URL:
-  - OpenAI: `api.openai.com`
-  - OpenRouter: `openrouter.ai`
-  - Anthropic: `api.anthropic.com`
-  - Grok: `api.x.ai`
-- Auto-fetches available models via `model:fetchApiModels`
-- Autocomplete dropdown for model selection
-
-### Dual-Mode Behavior
-- When both enabled, API is preferred for requests
-- Each can be tested independently via `model:testConnection` handler
-- Config saved to `appagent/config.yaml` via `model:saveConfig`
-
----
-
-## Python Backend (Monorepo)
-
-**Location**: `/appagent/` (monorepo folder, no longer a git submodule)
-
-### Key Scripts
-- `scripts/self_explorer.py` - Main automation logic (UI exploration loop)
-- `scripts/and_controller.py` - Android device controller via ADB
-- `scripts/web_controller.py` - Web browser controller via Playwright
-- `scripts/model.py` - AI model integration (Ollama/API)
-- `config.yaml` - Runtime configuration (generated by SetupWizard)
-
-### Python Runtime Management
-
-**Architecture Change (2024-11-18)**: Migrated from complex venv-based approach to simplified bundled Python.
-
-**Bundled Python Location**:
-- Dev: `resources/python/{platform}/python/bin/python3`
-- Prod: `extraResources/python/{platform}/python/bin/python3`
-
-**Key Functions** (from `main/utils/python-runtime.ts`):
-- `getPythonPath()` - Returns path to bundled Python executable
-- `getAppagentPath()` - Returns path to appagent directory
-- `getPythonEnv()` - Returns environment variables for Python execution
-- `executePythonScript(scriptPath, args)` - Execute Python script with bundled runtime
-- `spawnBundledPython(args, options)` - Low-level Python process spawning
-- `checkPythonRuntime()` - Verify Python and appagent availability
-- `checkPlaywrightBrowsers()` - Check if Playwright browsers are installed
-- `installPlaywrightBrowsers()` - Install Playwright Chromium browser
-
-**Installation Flow** (Simplified):
-1. Python is bundled with the app (no runtime installation needed)
-2. Dependencies are pre-installed in bundled Python
-3. Only Playwright browsers need runtime installation via `install:playwright`
-
-**Benefits**:
-- ✅ No venv creation at runtime
-- ✅ Deterministic Python environment
-- ✅ Faster startup time
-- ✅ No system Python fallback complexity
-- ✅ Clear error messages when Python is missing
-
-**For Development**:
-```bash
-# Build/download bundled Python runtime
-node scripts/build-python.js
-
-# Or use system Python (create symlink)
-mkdir -p resources/python/linux-x64/python/bin
-ln -s $(which python3) resources/python/linux-x64/python/bin/python3
-
-# Install dependencies
-python3 -m pip install -r appagent/requirements.txt
-python3 -m playwright install chromium
-```
-
----
-
-## Common Development Patterns
-
-### 1. Platform Tools Checking
-
-The SetupWizard checks required tools in Step 0:
-
-```typescript
-interface ToolStatus {
-  checking: boolean      // Currently checking
-  installed: boolean     // Tool is installed
-  version?: string       // Version string (if available)
-  error?: string         // Error message
-  installing?: boolean   // Currently installing
-}
-```
-
-**Checked Tools**:
-- **Python 3.11+**: via `checkPythonRuntime()` - checks bundled Python
-- **Python Environment**: Bundled Python + packages + Playwright browsers
-- **Android Studio**: via `checkAndroidStudio()` - looks for ADB executable
-- **Homebrew** (macOS only): via `checkHomebrew()` - package manager
-
-**Pattern**:
-```typescript
-const { toolsStatus, checkPlatformTools } = usePlatformTools()
-
-useEffect(() => {
-  if (currentStep === 0) {
-    checkPlatformTools()
-  }
-}, [currentStep, checkPlatformTools])
-```
-
-### 2. Debounced API Calls
-
-To avoid excessive API requests, use debouncing:
-
-```typescript
-useEffect(() => {
-  if (modelConfig.enableApi && modelConfig.apiBaseUrl) {
-    const timeoutId = window.setTimeout(() => {
-      fetchApiModels()
-    }, 500) // 500ms debounce
-
-    return () => window.clearTimeout(timeoutId)
-  }
-}, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey])
-```
-
-### 3. Config File Management
-
-**Config Location**: `appagent/config.yaml`
-
-**IPC Handlers**:
-- `config:load` - Read YAML config, returns parsed object
-- `config:save` - Write YAML config from object
-- `model:saveConfig` - Save model config with validation
-- `config:reset` - Delete config (forces re-setup)
-- `check:setup` - Verify venv status AND config validity
-
-**Usage**:
-```typescript
-// Load config
-const result = await window.electronAPI.configLoad()
-if (result.success) {
-  setModelConfig(result.config)
-}
-
-// Save config
-await window.electronAPI.saveModelConfig(modelConfig)
-```
-
-### 4. Real-Time Progress Updates
-
-For long-running operations, use IPC event listeners:
-
-```typescript
-// In component
-useEffect(() => {
-  window.electronAPI.onEnvProgress((data: string) => {
-    setTerminalLines(prev => [...prev, <TerminalOutput>{data}</TerminalOutput>])
-  })
-}, [])
-
-// In main process (handler)
-getMainWindow()?.webContents.send('env:progress', outputLine)
-```
-
-**Available Event Channels**:
-- `env:progress` - Environment setup progress
-- `install:progress` - Installation progress
-- `ollama:pull:progress` - Ollama model download progress
-- `project:output` - Project execution output
-- `task:output` - Task execution output (real-time)
-- `task:complete` - Task execution completion
-- `integration:test:output` - Integration test output
-- `integration:test:complete` - Integration test completion
-
-### 5. Project & Task Management
+### 2. Project & Task Management
 
 **Data Storage**: `~/.klever-desktop/projects.json`
 
-**Structure**:
 ```typescript
 interface Project {
-  id: string              // UUID
+  id: string
   name: string
   platform: 'android' | 'web'
-  device?: string         // Android device ID or Web URL
-  url?: string
+  device?: string          // Android device ID
+  url?: string             // Web URL
   status: 'active' | 'archived'
-  createdAt: string       // ISO timestamp
+  createdAt: string
   updatedAt: string
-  tasks: Task[]           // Nested tasks array
-  workspaceDir: string    // ~/Documents/{projectName}/
+  tasks: Task[]
+  workspaceDir: string     // ~/Documents/{projectName}/
 }
 
 interface Task {
@@ -541,110 +455,136 @@ interface Task {
   createdAt: string
   updatedAt: string
   lastRunAt?: string
-  resultPath?: string     // Path to result files
-  output?: string         // Execution output
-  error?: string          // Error message
+  resultPath?: string      // Path to result files
+  output?: string
+  error?: string
 }
 ```
 
-**IPC Handlers**:
-- `project:list`, `project:create`, `project:update`, `project:delete`
-- `task:create`, `task:update`, `task:delete`
-- `task:start`, `task:stop` - Execute task with Python subprocess, generates markdown reports
-- `task:getMarkdown` - Retrieve markdown report for completed task
-- `project:start`, `project:stop` - Run project exploration
-- File dialogs: `selectFolder`, `selectMarkdownFile` - Native OS file/folder selection
+### 3. Python Runtime Management
 
----
+**Architecture**: Bundled Python (no runtime installation required)
 
-## Key Files Reference
+**Key Functions** (`main/utils/python-runtime.ts`):
+- `getPythonPath()` - Path to bundled Python
+- `getAppagentPath()` - Path to appagent directory
+- `executePythonScript(scriptPath, args)` - Execute Python script
+- `checkPythonRuntime()` - Verify Python availability
+- `installPlaywrightBrowsers()` - Install Playwright Chromium
 
-### Main Process
-- `main/index.ts` (77 lines) - Entry point, window creation, handler registration
-- `main/preload.ts` (123 lines) - Context bridge with 70+ IPC methods
-- `main/handlers/index.ts` (41 lines) - Central handler registration
+**Development**:
+```bash
+# Build/download Python runtime
+npm run python:build
 
-### Handlers (2,041 lines total)
-- `main/handlers/task.ts` (452 lines) - Task CRUD, execution, markdown generation
-- `main/handlers/installations.ts` (324 lines) - Environment setup, installations
-- `main/handlers/project.ts` (268 lines) - Project CRUD and execution
-- `main/handlers/model.ts` (243 lines) - Model testing and API fetching
-- `main/handlers/system-checks.ts` (220 lines) - System tool verification
-- `main/handlers/integration.ts` (209 lines) - Integration test execution
-- `main/handlers/config.ts` (131 lines) - Config management
-- `main/handlers/utilities.ts` (71 lines) - System utilities
-- `main/handlers/ollama.ts` (51 lines) - Ollama operations
-- `main/handlers/dialogs.ts` (31 lines) - File/folder dialogs
+# Or use system Python (create symlink)
+mkdir -p resources/python/linux-x64/python/bin
+ln -s $(which python3) resources/python/linux-x64/python/bin/python3
 
-### Utilities
-- `main/utils/config-manager.ts` - YAML config management
-- `main/utils/project-storage.ts` - JSON project storage
-- `main/utils/python-manager.ts` - Python venv management
-- `main/utils/process-manager.ts` - Subprocess tracking
+# Install dependencies
+python3 -m pip install -r appagent/requirements.txt
+python3 -m playwright install chromium
+```
 
-### Renderer
-- `src/main.tsx` - React entry point with mock API
-- `src/App.tsx` - Router with setup-based conditional rendering
-- `src/pages/SetupWizard.tsx` (343 lines) - Multi-step setup wizard
-- `src/pages/` - ProjectList, ProjectDetail, ProjectCreate, Settings
-- `src/hooks/` - usePlatformTools, useModelConfig, useIntegrationTest, useSettings
-- `src/components/` - 23+ reusable UI components (see Component Catalog section)
+**Production**: Python is bundled in `extraResources/python/{platform}/`
 
-### Configuration
-- `package.json` - Dependencies, scripts, build config
-- `vite.config.ts` - Vite build configuration with path alias (`@` → `./src`)
-- `tsconfig.json`, `tsconfig.main.json`, `tsconfig.node.json` - TypeScript configs
-- `eslint.config.mjs` - ESLint configuration
+### 4. Real-Time Progress Updates
 
-### Types
-- `src/types/electron.d.ts` - IPC method signatures (70+ methods)
-- `src/types/project.ts` - Project and Task types
-- `src/types/setupWizard.ts` - SetupWizard types (ToolStatus, ModelConfig, TestStatus, StepConfig)
-- `main/types/model.ts` - Model configuration types
+For long-running operations, use IPC event listeners:
 
----
+```typescript
+// Renderer (React component)
+useEffect(() => {
+  window.electronAPI.onTaskOutput((data: string) => {
+    setOutput(prev => [...prev, data])
+  })
+}, [])
 
-## Development Notes
+// Main (handler)
+getMainWindow()?.webContents.send('task:output', outputLine)
+```
 
-### Important Constants
-- **Vite Dev Server**: Port 5173 (strict, no fallback)
-- **Window Size**: 1200x800px (min 1000x600px)
-- **API Debounce**: 500ms for model fetching
-- **Progress Estimation**: ~2% per terminal line output
+**Available Event Channels**:
+- `env:progress` - Environment setup
+- `task:output` - Task execution output
+- `task:complete` - Task completion
+- `project:output` - Project execution
+- `integration:test:output` - Integration test output
+- `integration:test:complete` - Test completion
 
-### Framework Specifics
-- **UI Library**: MUI Joy (not Material-UI) - `@mui/joy`
-- **Animations**: Framer Motion - `framer-motion`
-- **Terminal**: react-terminal-ui for output display
-- **Routing**: React Router v6 with BrowserRouter
-- **State Management**: React Hooks (no Redux/Context)
+### 5. File Paths
 
-### Electron Specifics
-- **Development**: Loads from `http://localhost:5173`
-- **Production**: Loads from `dist/index.html`
-- **Python Subprocess**: Spawned via `spawn()`, cleaned up on app quit
-- **IPC Pattern**: `ipcMain.handle()` in main, `ipcRenderer.invoke()` in renderer
-
-### File Paths
-- **User Data**: `app.getPath('userData')` → `~/.klever-desktop/` or `~/Library/Application Support/klever-desktop/`
+- **User Data**: `app.getPath('userData')` → `~/.klever-desktop/`
 - **Projects Storage**: `{userData}/projects.json`
-- **Python Venv**: `{userData}/python-env/`
+- **Python Runtime** (dev): `resources/python/{platform}/python/`
+- **Python Runtime** (prod): `extraResources/python/{platform}/python/`
 - **Workspaces**: `~/Documents/{projectName}/`
 - **Config**: `appagent/config.yaml`
 
 ---
 
-## Prerequisites
+## Documentation
 
-### Required
-- **Node.js**: 18+ (for Electron 31 and Vite 5)
-- **Python**: 3.11+ (bundled in packaged app, required for development)
-- **Git**: For submodule management
+### Build & Deployment
 
-### Optional (for full functionality)
-- **Ollama**: For local AI models - https://ollama.com/download
-- **Android Studio**: For Android device automation (provides ADB)
-- **Homebrew** (macOS): Package manager for dependencies
+- **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - Complete GitHub Releases guide
+  - Developer ID signing and notarization (macOS)
+  - Code signing options (Windows)
+  - Building and publishing step-by-step
+
+- **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - 한국어 GitHub 릴리즈 가이드
+
+- **[docs/BUILD_ICONS.md](docs/BUILD_ICONS.md)** - Icon generation guide
+  - Platform-specific formats (ICNS, ICO)
+  - Size requirements
+  - Asset generation tools
+
+### Technical Docs
+
+- **[docs/BUILD_13_FIX_SUMMARY.md](docs/BUILD_13_FIX_SUMMARY.md)** - Build 13 fixes summary
+- **[docs/CRASH_ANALYSIS.md](docs/CRASH_ANALYSIS.md)** - Crash debugging guide
+
+### Main Docs
+
+- **[README.md](README.md)** - User-facing documentation
+- **[PRIVACY.md](PRIVACY.md)** - Privacy policy
+
+---
+
+## Best Practices
+
+### Code Organization
+
+1. **IPC Handlers**: Group related handlers in same file (e.g., all project operations in `project.ts`)
+2. **Hooks**: Extract stateful logic into custom hooks for reusability
+3. **Components**: Keep components under 300 lines; split into smaller pieces if larger
+4. **Types**: Share types between main and renderer via `src/types/` and `main/types/`
+
+### Error Handling
+
+- Always return `{ success: boolean, error?: string }` from IPC handlers
+- Use try-catch blocks in async operations
+- Log errors with descriptive context
+
+### Performance
+
+- Debounce API calls and expensive operations (500ms recommended)
+- Use `useMemo` and `useCallback` for expensive computations
+- Minimize IPC calls; batch operations when possible
+
+### Security
+
+- Never use `any` type; maintain strict type safety
+- Avoid command injection in Python subprocess calls
+- Validate user input before file system operations
+- Use asar for code protection in production
+
+### Development
+
+- Test in both dev and production builds
+- Update TypeScript types when adding IPC handlers
+- Run `npm run typecheck` before committing
+- Use ESLint auto-fix: `npm run lint:fix`
 
 ---
 
@@ -658,536 +598,33 @@ interface Task {
 
 **Python subprocess not working**:
 - **Cause**: Bundled Python missing or dependencies not installed
-- **Fix**: Run `node scripts/build-python.js` to download Python runtime, or create symlink to system Python for development
-
-**Homebrew check failing on non-Mac**:
-- **Cause**: `check:homebrew` handler is macOS-specific
-- **Expected**: On Windows/Linux, the check should auto-pass or be skipped
+- **Fix**: Run `npm run python:build` to download Python runtime
 
 **Vite port already in use**:
 - **Cause**: Another process using port 5173
-- **Fix**: Kill the process (`lsof -ti:5173 | xargs kill -9` on Unix) or change port in `vite.config.ts`
-
-**TypeScript errors after refactoring**:
-- **Cause**: Import paths changed or types not updated
-- **Fix**: Run `npm run typecheck` to check TypeScript errors, and ensure all imports use the new structure
-
-**Import errors after refactor**:
-- **Cause**: Components moved to standard src/components/, src/hooks/, src/types/ structure
-- **Fix**: Use path alias imports: `@/components/`, `@/hooks/`, `@/types/setupWizard`
-
----
-
-## Electron Forge Build System
-
-**Migration**: The project migrated from electron-builder to Electron Forge (v7.10.2) for official Electron tooling. We use **GitHub Releases** for distribution instead of App Stores.
-
-### Configuration Files
-
-#### forge.config.js
-**Location**: `/forge.config.js` (~130 lines)
-
-Main Electron Forge configuration with:
-- **packagerConfig**: App metadata, icons, extraResources (appagent), Developer ID signing (macOS)
-- **makers**: Squirrel.Windows (Windows), DMG (macOS), ZIP (portable)
-- **publishers**: GitHub Releases publisher
-- **plugins**: Vite plugin for main/preload/renderer processes
-- **hooks**: Post-make build hooks
-
-#### Vite Configs for Electron Forge
-- **vite.main.config.js**: Main process build configuration (Forge outputs to .vite/build/main.js)
-- **vite.preload.config.js**: Preload script build configuration (Forge outputs to .vite/build/preload.js)
-- **vite.config.ts**: Renderer process build (src/ → dist/)
-
-### Makers (Distribution Packages)
-
-#### Squirrel.Windows (Windows Installer)
-```javascript
-{
-  name: '@electron-forge/maker-squirrel',
-  config: {
-    name: 'klever-desktop',
-    authors: 'Klever Team',
-    exe: 'klever-desktop.exe',
-    iconUrl: 'https://raw.githubusercontent.com/FigmaAI/KleverDesktop/main/build/icon.ico',
-    setupIcon: path.join(__dirname, 'build/icon.ico'),
-    // Optional code signing (recommended for production)
-    // certificateFile: process.env.WINDOWS_CERT_FILE,
-    // certificatePassword: process.env.WINDOWS_CERT_PASSWORD,
-  },
-  platforms: ['win32'],
-}
-```
-
-**Windows Build Strategy**:
-1. Build Squirrel installer: `npm run make -- --platform=win32`
-2. Optionally sign with code signing certificate
-3. Publish to GitHub Releases
-4. Users download `Setup.exe` installer
-5. Auto-updates work out of the box via Squirrel
-
-**Code Signing** (Optional but recommended):
-- Free: Certum Open Source Code Signing (for open-source projects)
-- Paid: DigiCert, Sectigo
-- Without signing: Users see SmartScreen warnings initially
-
-#### DMG (macOS Disk Image)
-```javascript
-{
-  name: '@electron-forge/maker-dmg',
-  config: {
-    icon: path.join(__dirname, 'build/icon.icns'),
-    format: 'ULFO',
-    name: 'Klever Desktop',
-  },
-  platforms: ['darwin'],
-}
-```
-
-**macOS Build Strategy**:
-1. Build and sign with Developer ID: `npm run make -- --platform=darwin`
-2. Automatic notarization (if environment variables set)
-3. Publish to GitHub Releases
-4. Users download DMG and drag to Applications folder
-
-**Developer ID Signing & Notarization**:
-
-Required environment variables:
-```bash
-export APPLE_ID="your-apple-id@example.com"
-export APPLE_ID_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # App-specific password
-export APPLE_TEAM_ID="ABCDEF1234"  # 10-character Team ID
-```
-
-Signing configuration in `forge.config.js`:
-```javascript
-osxSign: {
-  identity: 'Developer ID Application',  // Auto-detected from Keychain
-  'hardened-runtime': true,
-  'gatekeeper-assess': false,
-  entitlements: 'build/entitlements.mac.plist',
-  'entitlements-inherit': 'build/entitlements.mac.plist',
-},
-osxNotarize: {
-  appleId: process.env.APPLE_ID,
-  appleIdPassword: process.env.APPLE_ID_PASSWORD,
-  teamId: process.env.APPLE_TEAM_ID,
-}
-```
-
-**Key Entitlements** (build/entitlements.mac.plist):
-- `com.apple.security.cs.allow-jit` - JIT compilation (required for V8/Electron)
-- `com.apple.security.cs.allow-unsigned-executable-memory` - V8 memory
-- `com.apple.security.cs.allow-dyld-environment-variables` - Dynamic linking
-- `com.apple.security.cs.disable-library-validation` - Native modules/Python
-- **No sandbox** - Developer ID apps are not sandboxed
-
-**Verification**:
-```bash
-# Verify notarization
-spctl -a -vv -t install "out/make/dmg/darwin/arm64/Klever Desktop-2.0.0-arm64.dmg"
-# Should output: accepted, source=Notarized Developer ID
-```
-
-#### ZIP Maker (Portable Distribution)
-```javascript
-{
-  name: '@electron-forge/maker-zip',
-  platforms: ['darwin', 'win32'],
-}
-```
-
-### GitHub Releases Publisher
-
-```javascript
-publishers: [
-  {
-    name: '@electron-forge/publisher-github',
-    config: {
-      repository: {
-        owner: 'FigmaAI',
-        name: 'KleverDesktop'
-      },
-      prerelease: true,  // Default to prerelease
-      draft: true        // Default to draft for review
-    }
-  }
-]
-```
-
-**Publishing Requirements**:
-- GitHub Personal Access Token with `repo` scope
-- Set environment variable: `export GITHUB_TOKEN="ghp_xxxxx"`
-
-### Build Commands
-
-**Development**:
-```bash
-npm run start           # Electron Forge dev mode with hot reload
-```
-
-**Packaging**:
-```bash
-npm run package         # Package app → out/klever-desktop-{platform}-{arch}/
-npm run make            # Create distributable packages → out/make/
-npm run publish         # Build and publish to GitHub Releases
-```
-
-**Platform-Specific Builds**:
-```bash
-# macOS DMG + ZIP (requires macOS)
-npm run make -- --platform=darwin --arch=arm64,x64
-
-# Windows Setup (can be cross-compiled with Wine)
-npm run make -- --platform=win32 --arch=x64
-
-# Linux ZIP
-npm run make -- --platform=linux --arch=x64
-```
-
-**Output Structure**:
-```
-out/
-├── klever-desktop-win32-x64/              # Packaged app (Windows)
-├── klever-desktop-darwin-arm64/           # Packaged app (macOS)
-└── make/
-    ├── squirrel.windows/x64/
-    │   ├── klever-desktop-2.0.0 Setup.exe    # Windows installer (distribute this)
-    │   ├── RELEASES                          # Update metadata
-    │   └── klever-desktop-2.0.0-full.nupkg   # Full package (for auto-updates)
-    ├── dmg/darwin/arm64/
-    │   └── Klever Desktop-2.0.0-arm64.dmg    # macOS disk image
-    └── zip/
-        ├── darwin/arm64/klever-desktop-darwin-arm64-2.0.0.zip
-        └── win32/x64/klever-desktop-win32-x64-2.0.0.zip
-```
-
-### Platform-Specific Notes
-
-**Windows**:
-- Squirrel.Windows provides automatic updates
-- Code signing optional but recommended (reduces SmartScreen warnings)
-- Cross-compilation from macOS/Linux requires Wine
-
-**macOS**:
-- Developer ID signing required (users can't open unsigned apps easily)
-- Notarization required for Gatekeeper acceptance
-- No sandbox restrictions (full system access)
-- Apple Developer account required ($99/year)
-
-**Linux**:
-- ZIP archives for manual distribution
-- Can add DEB/RPM makers for package manager distribution
-- No signing required
-
-### Migration from App Store Distribution
-
-**Previous Strategy** (Deprecated):
-- Mac App Store (MAS) with sandbox restrictions
-- Microsoft Store with AppX packages
-
-**New Strategy** (Current):
-- GitHub Releases for direct distribution
-- Developer ID signing (macOS) instead of MAS
-- Squirrel installer (Windows) instead of AppX
-- Faster release cycles, no store review process
-- No sandbox restrictions
-
-**What Changed**:
-- Removed `@electron-forge/maker-appx` and `@electron-forge/maker-pkg`
-- Added `@electron-forge/maker-squirrel` and `@electron-forge/maker-dmg`
-- Added `@electron-forge/publisher-github`
-- Switched from `entitlements.mas.plist` to `entitlements.mac.plist`
-- Removed sandbox entitlement for Developer ID distribution
-
-**Maintained**:
-- Existing Vite build process (via `@electron-forge/plugin-vite`)
-- Python scripts bundling (appagent as extraResource)
-- Development workflow (npm scripts)
-
-### Complete Distribution Guide
-
-For detailed instructions on building, signing, and publishing to GitHub Releases, see:
-- **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - Complete English guide
-- **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - 한국어 가이드
-
----
-
-## Build Scripts & Tools
-
-The project includes several utility scripts for Python runtime management and build verification:
-
-### scripts/build-python.js
-
-Downloads and configures Python 3.11.9 embedded distribution for the target platform.
-
-**Usage**:
-```bash
-node scripts/build-python.js [options]
-
-Options:
-  --platform <platform>  Target platform (darwin-x64, darwin-arm64, win32-x64, linux-x64)
-  --dry-run             Preview actions without executing
-  --force              Force re-download even if Python exists
-```
-
-**Features**:
-- Downloads platform-specific Python 3.11.9
-- Installs dependencies from `appagent/requirements.txt`
-- Creates `resources/python/{platform}/python/` directory structure
-- Pre-installs Playwright browsers
-
-### scripts/verify-bundle.js
-
-Verifies all required files are present before packaging the application.
-
-**Usage**:
-```bash
-node scripts/verify-bundle.js [options]
-
-Options:
-  --platform <platform>  Target platform (default: current platform)
-  --skip-python         Skip Python runtime checks (for dev builds)
-  --strict             Fail on warnings
-```
-
-**Checks**:
-- ✅ Electron build artifacts (.vite/build/, dist/)
-- ✅ appagent Python scripts
-- ✅ Python runtime (optional with --skip-python)
-- ✅ Python dependencies (ollama, playwright)
-
-**Output**:
-- Color-coded results (green = pass, red = fail)
-- Detailed troubleshooting tips for missing files
-- Summary with pass/fail counts
-
-### scripts/fetch-appagent.js
-
-Updates appagent code from the original repository (useful after monorepo migration).
-
-**Usage**:
-```bash
-node scripts/fetch-appagent.js [options]
-
-Options:
-  --branch <branch>  Git branch to fetch (default: main)
-  --force           Overwrite existing appagent directory
-  --dry-run         Preview actions without executing
-```
-
-**Features**:
-- Downloads latest appagent code from GitHub
-- Preserves local config.yaml
-- Supports both submodule and monorepo modes
-- Safe: backs up existing directory before overwriting
-
----
-
-## Best Practices
-
-### When Modifying Code
-
-1. **Adding IPC Handlers**: Always update all three files (handler, preload, types)
-2. **State Management**: Use custom hooks for complex state logic
-3. **Component Size**: Keep components under 300 lines; split into smaller pieces if larger
-4. **Error Handling**: Always return `{ success: boolean, error?: string }` from IPC handlers
-5. **TypeScript**: Maintain strict type safety; avoid `any` types
-6. **Console Logging**: Use descriptive prefixes like `[ComponentName]` for debugging
-
-### Code Organization
-
-1. **Handlers**: Group related IPC handlers in same file (e.g., all project operations in `project.ts`)
-2. **Hooks**: Extract stateful logic into custom hooks for reusability
-3. **Components**: Follow atomic design - atoms (buttons), molecules (cards), organisms (pages)
-4. **Types**: Share types between main and renderer via `src/types/` and `main/types/`
-
-### Performance
-
-1. **Debounce**: Use debouncing for API calls and expensive operations
-2. **Lazy Loading**: Consider code-splitting for large routes
-3. **Memoization**: Use `useMemo` and `useCallback` for expensive computations
-4. **IPC**: Minimize IPC calls; batch operations when possible
-
----
-
-## Contributing
-
-When contributing to this project:
-
-1. **Test Both Processes**: Ensure changes work in both dev and production builds
-2. **Update Types**: Keep TypeScript definitions in sync with implementations
-3. **Document IPC**: Add comments to new IPC handlers explaining their purpose
-4. **Follow Patterns**: Maintain consistency with existing code patterns
-5. **Update CLAUDE.md**: If adding major features, update this file
-6. **Documentation Location**: **IMPORTANT** - All documentation files (guides, troubleshooting, technical docs) MUST be created in the `docs/` folder, NOT in the project root. Only CLAUDE.md, README.md, and PRIVACY.md should remain in the root directory
+- **Fix**: Kill the process or change port in `vite.config.ts`
+
+**TypeScript errors after changes**:
+- **Cause**: Types not updated or imports changed
+- **Fix**: Run `npm run typecheck` and update types accordingly
+
+**Build fails on macOS**:
+- **Cause**: Missing entitlements or certificates
+- **Fix**: Check `build/entitlements.mac.plist` exists and certificates installed
 
 ---
 
 ## Additional Resources
 
 - **Electron Docs**: https://www.electronjs.org/docs/latest
-- **MUI Joy Docs**: https://mui.com/joy-ui/getting-started/
-- **Vite Docs**: https://vitejs.dev/guide/
-- **Ollama Docs**: https://github.com/ollama/ollama/blob/main/docs/api.md
+- **Electron Forge**: https://www.electronforge.io/
+- **shadcn/ui**: https://ui.shadcn.com/
+- **Tailwind CSS**: https://tailwindcss.com/
+- **Vite**: https://vitejs.dev/
+- **Ollama**: https://ollama.com/
 
 ---
 
-## Documentation
-
-The project includes comprehensive documentation in the `docs/` folder:
-
-### Build & Deployment Guides
-
-- **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - **PRIMARY**: Complete GitHub Releases distribution guide
-  - Developer ID signing and notarization (macOS)
-  - Code signing options (Windows)
-  - Building and publishing to GitHub Releases
-  - Auto-update configuration
-  - Complete step-by-step instructions
-
-- **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - **주요 문서**: GitHub 릴리즈 배포 가이드 (한국어)
-  - Developer ID 서명 및 공증 (macOS)
-  - 코드 서명 옵션 (Windows)
-  - GitHub 릴리즈 빌드 및 배포
-  - 자동 업데이트 구성
-
-- **[docs/BUILD_ICONS.md](docs/BUILD_ICONS.md)** - Icon requirements and generation guide
-  - Platform-specific icon formats
-  - Size requirements
-  - Asset generation tools
-
-### Deprecated Guides (App Store Distribution - No Longer Used)
-
-- **[docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)** - Mac App Store build troubleshooting (deprecated)
-- **[docs/MAS_BUILD_TROUBLESHOOTING_KR.md](docs/MAS_BUILD_TROUBLESHOOTING_KR.md)** - Mac App Store 빌드 문제 해결 (deprecated)
-- **[docs/BUILD_WINDOWS_STORE.md](docs/BUILD_WINDOWS_STORE.md)** - Windows Store deployment (deprecated)
-- **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - App Store Connect compliance (deprecated)
-
-### Technical Documentation
-
-- **[docs/BUILD_13_FIX_SUMMARY.md](docs/BUILD_13_FIX_SUMMARY.md)** - Summary of Build 13 fixes
-  - DNS crash resolution
-  - Critical bug fixes
-  - Performance improvements
-
-- **[docs/CRASH_ANALYSIS.md](docs/CRASH_ANALYSIS.md)** - Detailed crash analysis and debugging
-  - Common crash patterns
-  - Debugging techniques
-  - Solutions and workarounds
-
-### Main Documentation Files
-
-- **[CLAUDE.md](CLAUDE.md)** - This file; comprehensive AI assistant guide for development
-- **[README.md](README.md)** - User-facing documentation and getting started guide
-- **[PRIVACY.md](PRIVACY.md)** - Privacy policy and data handling information
-
----
-
-## Update History
-
-**2025-11-23**: Migration to GitHub Releases distribution strategy
-- **Distribution Strategy Change**: Moved from App Store distributions to GitHub Releases
-  - Removed Mac App Store (MAS) and Microsoft Store support
-  - Added Developer ID signing and notarization for macOS
-  - Added Squirrel.Windows installer for Windows
-  - Added GitHub Releases publisher for automated distribution
-- **forge.config.js Updates**:
-  - Replaced `@electron-forge/maker-appx` and `@electron-forge/maker-pkg` with `@electron-forge/maker-squirrel` and `@electron-forge/maker-dmg`
-  - Added `@electron-forge/publisher-github` for GitHub Releases
-  - Updated macOS signing to use Developer ID instead of MAS certificates
-  - Removed Windows Store and Mac App Store specific configurations
-- **New Documentation**:
-  - Created `docs/GITHUB_RELEASE_GUIDE.md` - Complete GitHub Releases distribution guide
-  - Created `docs/GITHUB_RELEASE_GUIDE_KR.md` - 한국어 GitHub 릴리즈 배포 가이드
-  - Updated CLAUDE.md to reflect new distribution strategy
-  - Deprecated App Store guides (MAS_BUILD_TROUBLESHOOTING.md, BUILD_WINDOWS_STORE.md)
-- **Benefits**:
-  - Faster release cycles (no store review process)
-  - Direct distribution to users
-  - No sandbox restrictions (full system access)
-  - Auto-updates via Squirrel (Windows) and future electron-updater (macOS)
-
-**2025-11-21**: Documentation organization and improvements
-- **Documentation Structure**: Organized all guide documents into `docs/` folder
-  - Moved BUILD_13_FIX_SUMMARY.md, CRASH_ANALYSIS.md, MAS_BUILD_TROUBLESHOOTING.md, MAS_BUILD_TROUBLESHOOTING_KR.md to docs/
-  - Kept CLAUDE.md, README.md, and PRIVACY.md in project root for visibility
-- **CLAUDE.md Enhancements**:
-  - Added comprehensive table of contents for easy navigation
-  - Added Documentation section with links to all guide documents
-  - Improved overall structure and scanability
-- **README.md Updates**:
-  - Added App Store and Windows Store download badges
-  - Updated download section with official store links
-  - Improved user-facing documentation
-
-**2025-11-20 (Evening)**: Fixed Mac App Store V8 initialization crash
-- **Critical Bug Fix**: Resolved EXC_BREAKPOINT crash during Electron/V8 startup
-  - Issue: Helper processes not properly signed with inherit entitlements
-  - Symptom: App crashed within ~120ms of launch with SIGTRAP in V8 initialization
-- **forge.config.js Updates**:
-  - Added `optionsForFile` callback to ensure ALL Electron helper processes use inherit entitlements
-  - Fixed provisioning profile reference to use environment variable (`MAS_PROVISIONING_PROFILE`)
-  - Added hardened runtime flags (`hardenedRuntime: true`, `signatureFlags: ['runtime']`)
-  - Added `gatekeeperAssess: false` for MAS builds
-- **Entitlements Updates**:
-  - Enhanced `build/entitlements.mas.inherit.plist` with network access for helper processes
-  - Ensured critical JIT and memory entitlements are inherited by all child processes
-- **New Documentation**:
-  - Created `MAS_BUILD_TROUBLESHOOTING.md` - Comprehensive Mac App Store build troubleshooting guide
-  - Added detailed Mac App Store code signing section in CLAUDE.md
-  - Documented helper process signing requirements and verification steps
-- **Impact**: MAS builds now properly sign all Electron processes, preventing V8 crash on launch
-
-**2025-11-20 (Morning)**: Migration to Electron Forge build system
-- **Build System**: Migrated from electron-builder to Electron Forge v7.10.2
-  - Official Electron tooling for long-term stability
-  - Native Windows Store (AppX) and Mac App Store (PKG) support
-  - Vite integration via `@electron-forge/plugin-vite`
-- **New Configuration Files**:
-  - `forge.config.js` - Main Electron Forge configuration
-  - `vite.main.config.js` - Main process Vite config
-  - `vite.preload.config.js` - Preload script Vite config
-  - `build/appxmanifest.xml` - Windows AppX manifest template
-- **Windows Store Strategy**: Unsigned AppX builds for Microsoft Partner Center store-managed signing
-- **Mac App Store**: PKG builds with MAS entitlements and signing certificates
-- **Removed**: electron-builder dependency and package.json build section
-- **Updated Scripts**: `start`, `package`, `make`, `publish` for Electron Forge workflow
-- **Documentation**: Added comprehensive Electron Forge Build System section
-
-**2025-11-19**: Documentation cleanup and improvements
-- **Removed Unnecessary Files**: Deleted `PLANNING.md` and `REFACTORING_PROPOSAL.md` (outdated planning documents)
-- **README Updates**:
-  - Updated appagent description from "submodule" to "monorepo"
-  - Updated python-manager.ts reference to python-runtime.ts
-  - Corrected installations.ts line count (324 → 196 lines)
-  - Improved Python setup instructions with bundled runtime options
-- **Documentation Status**: All core documentation (CLAUDE.md, README.md) now up-to-date with current architecture
-
-**2024-11-18**: Major Python bundling refactoring
-- **Architecture Change**: Migrated from git submodule to monorepo structure
-- **Python Runtime**: Replaced `python-manager.ts` with simplified `python-runtime.ts`
-  - Removed venv creation at runtime
-  - Eliminated system Python fallback
-  - Bundled Python only approach
-  - Reduced installations.ts from 324 → 196 lines
-- **New Scripts**:
-  - `scripts/build-python.js` - Download and setup Python 3.11.9 runtime
-  - `scripts/verify-bundle.js` - Pre-build verification tool
-  - `scripts/fetch-appagent.js` - Update appagent code mechanism
-- **Migrated Handlers**: Updated task.ts, integration.ts, project.ts to use `python-runtime.ts`
-- **Benefits**: Faster startup, deterministic environment, clearer error messages
-
-**2025-11-16**: Updated documentation to reflect current codebase state
-- Updated all line counts for main process files
-- Added new `dialogs.ts` handler (31 lines)
-- Documented handler growth: 1,616 → 2,041 total lines
-- Added Component Catalog section with 23+ components organized by domain
-- Documented new event channels: `task:output`, `task:complete`
-- Added new IPC handlers: `task:getMarkdown`, `selectFolder`, `selectMarkdownFile`
-- Updated hooks documentation to include `useSettings`
-- Documented App.tsx conditional routing based on setup status
-- Updated preload.ts: 60+ → 70+ IPC methods
-
-**2025-11-14**: SetupWizard refactoring
-- Reorganized to follow project structure conventions (src/hooks/, src/components/, src/types/)
+**Last Updated**: 2025-11-23
+**Version**: 2.0.0
+**Distribution**: GitHub Releases only
