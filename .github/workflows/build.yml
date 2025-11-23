@@ -70,16 +70,27 @@ jobs:
       - name: Verify Notarization (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          echo "Verifying notarization for built DMG..."
-          DMG_PATH=$(find out/make -name "*.dmg" -type f | head -n 1)
-          if [ -f "$DMG_PATH" ]; then
-            echo "Found DMG: $DMG_PATH"
-            echo "Checking notarization status..."
-            spctl -a -vvv -t install "$DMG_PATH"
+          echo "Verifying notarization for built app..."
+
+          # Find the packaged .app bundle (before DMG creation)
+          APP_PATH=$(find out -name "Klever Desktop.app" -type d | head -n 1)
+
+          if [ -d "$APP_PATH" ]; then
+            echo "Found app bundle: $APP_PATH"
+
+            echo "Checking code signature..."
+            codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
+            echo "Checking notarization ticket (stapled)..."
+            stapler validate "$APP_PATH" || echo "Warning: Notarization ticket not stapled (this is expected if notarization is async)"
+
             echo "Checking Gatekeeper acceptance..."
-            codesign -dv --verbose=4 "$DMG_PATH"
+            spctl -a -vvv -t execute "$APP_PATH"
+
+            echo "✅ Notarization verification completed"
           else
-            echo "Error: DMG file not found"
+            echo "Error: App bundle not found in out/ directory"
+            ls -R out/
             exit 1
           fi
 
