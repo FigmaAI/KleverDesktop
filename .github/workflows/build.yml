@@ -5,6 +5,17 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create as draft release'
+        required: false
+        default: 'true'
+        type: boolean
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: 'true'
+        type: boolean
 
 jobs:
   build:
@@ -32,10 +43,12 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            node scripts/build-python.js --platform=darwin --arch=arm64
-            node scripts/build-python.js --platform=darwin --arch=x64
+            echo "Building Python runtime for macOS (universal)..."
+            node scripts/build-python.js --platform=darwin-arm64
+            node scripts/build-python.js --platform=darwin-x64
           else
-            node scripts/build-python.js --platform=win32 --arch=x64
+            echo "Building Python runtime for Windows..."
+            node scripts/build-python.js --platform=win32-x64
           fi
 
       - name: Build and Package (macOS)
@@ -81,6 +94,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Extract Version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -99,10 +119,30 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Klever Desktop v${{ steps.version.outputs.version }}
+          body: |
+            ## Klever Desktop v${{ steps.version.outputs.version }}
+
+            ### Downloads
+            - **macOS**: Download the `.dmg` file below
+            - **Windows**: Download the `Setup.exe` file below
+
+            ### Installation
+            - **macOS**: Open the DMG, drag Klever Desktop to Applications
+            - **Windows**: Run the Setup.exe installer
+
+            ### Auto-Updates
+            - Windows: Auto-updates are enabled via Squirrel
+            - macOS: Check for updates in the app menu
+
+            ---
+
+            For full changelog and documentation, see [CLAUDE.md](https://github.com/FigmaAI/KleverDesktop/blob/main/CLAUDE.md)
           files: |
             artifacts/macos/**/*.dmg
             artifacts/windows/**/*.exe
-          draft: true
-          prerelease: true
+          draft: ${{ github.event.inputs.draft || 'true' }}
+          prerelease: ${{ github.event.inputs.prerelease || 'true' }}
           generate_release_notes: true
 
