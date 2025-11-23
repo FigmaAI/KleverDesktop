@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -12,9 +12,9 @@ import {
   Clock,
   XCircle,
   FolderOpen,
-  Circle,
   Search,
 } from 'lucide-react'
+import { ShineBorder } from '@/components/ui/shine-border'
 import { Button } from '@/components/ui/button'
 import { RainbowButton } from '@/components/ui/rainbow-button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,13 @@ import { AnimatedList } from '@/components/ui/animated-list'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { PageHeader } from '@/components/PageHeader'
 import { TaskCreateDialog, TaskMarkdownDialog } from '@/components'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Project, Task } from '../types/project'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +42,7 @@ export function ProjectDetail() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'status'>('latest')
 
   const loadProject = useCallback(async () => {
     if (!id) return
@@ -56,13 +64,13 @@ export function ProjectDetail() {
     loadProject()
   }, [id, loadProject])
 
-  // Keyboard shortcut for creating task (Cmd+Shift+N or Ctrl+Shift+N)
+  // Keyboard shortcut for creating task (Cmd+T or Ctrl+T)
   useEffect(() => {
     const down = (e: globalThis.KeyboardEvent) => {
       if (
-        e.key === 'n' &&
+        e.key === 't' &&
         (e.metaKey || e.ctrlKey) &&
-        e.shiftKey &&
+        !e.shiftKey &&
         !e.altKey
       ) {
         e.preventDefault()
@@ -126,7 +134,7 @@ export function ProjectDetail() {
     }
   }
 
-  const handleViewMarkdown = (task: Task, e: React.MouseEvent) => {
+  const handleViewMarkdown = (task: Task, e: React.SyntheticEvent) => {
     e.stopPropagation()
     setSelectedTask(task)
     setMarkdownDialogOpen(true)
@@ -199,6 +207,24 @@ export function ProjectDetail() {
     }
   }
 
+  const sortedTasks = useMemo(() => {
+    if (!project) return []
+    const sorted = [...project.tasks]
+    switch (sortBy) {
+      case 'latest':
+        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      case 'status': {
+        // Sort by status priority: running > pending > completed > failed > cancelled
+        const statusPriority: Record<string, number> = { running: 0, pending: 1, completed: 2, failed: 3, cancelled: 4 }
+        return sorted.sort((a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99))
+      }
+      default:
+        return sorted
+    }
+  }, [project, sortBy])
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -264,45 +290,91 @@ export function ProjectDetail() {
               <p className="mb-6 text-sm text-muted-foreground">
                 Add your first task to start automating
               </p>
-              <RainbowButton onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add Task
-                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                  {typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘⇧N' : 'Ctrl⇧N'}
-                </kbd>
-              </RainbowButton>
+              <div className="flex items-center gap-3">
+                <RainbowButton onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  Add Task
+                  <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                    <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>
+                    <span className="text-xs">T</span>
+                  </kbd>
+                </RainbowButton>
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteProject}
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Project
+                </Button>
+              </div>
             </div>
           </BlurFade>
         ) : (
           <>
-            {/* Add Task Button */}
-            <div className="flex items-center justify-end mb-4">
+            {/* Filter and Add Task Button */}
+            <div className="flex items-center justify-between mb-4">
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'latest' | 'oldest' | 'status')}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="latest">Latest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                </SelectContent>
+              </Select>
+
               <RainbowButton onClick={() => setCreateDialogOpen(true)} size="sm">
                 <Plus className="h-4 w-4" />
                 Add Task
+                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-50">
+                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>
+                  <span className="text-xs">T</span>
+                </kbd>
               </RainbowButton>
             </div>
 
             <AnimatedList delay={100}>
-              {project.tasks.map((task) => {
+              {sortedTasks.map((task) => {
                 const statusConfig = getStatusConfig(task.status)
                 const StatusIcon = statusConfig.icon
 
                 return (
                   <div
                     key={task.id}
+                    tabIndex={0}
+                    onClick={(e) => {
+                      // Don't trigger if clicking on buttons
+                      if ((e.target as HTMLElement).closest('button')) return
+                      handleViewMarkdown(task, e)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if ((e.target as HTMLElement).closest('button')) return
+                        handleViewMarkdown(task, e)
+                      }
+                    }}
                     className={cn(
-                      'group flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
-                      'hover:shadow-lg hover:border-primary/30'
+                      'group relative flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                      'hover:shadow-lg hover:border-primary/30',
+                      'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                     )}
                   >
+                    {task.status === 'running' && (
+                      <ShineBorder
+                        className="rounded-lg"
+                        shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]}
+                      />
+                    )}
+
                     {/* Status Icon */}
-                    <div className="flex-shrink-0 mt-1">
+                    <div className="flex-shrink-0 mt-1 z-10">
                       <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex-1 min-w-0 space-y-2 z-10">
                       {/* Description/Goal */}
                       <p className="text-sm leading-relaxed">
                         {task.goal || task.description || 'No description'}
@@ -318,11 +390,6 @@ export function ProjectDetail() {
                             {task.model}
                           </Badge>
                         )}
-                        {task.status === 'running' && (
-                          <div className="flex items-center gap-1.5">
-                            <Circle className="h-2 w-2 fill-primary text-primary animate-pulse" />
-                          </div>
-                        )}
                       </div>
 
                       {/* Timestamp */}
@@ -334,7 +401,7 @@ export function ProjectDetail() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 z-10">
                       {task.status === 'pending' && (
                         <Button
                           size="sm"

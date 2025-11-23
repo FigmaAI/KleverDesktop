@@ -7,6 +7,7 @@ import {
   Settings
 } from './pages'
 import { Layout } from './components'
+import { ToastProvider } from '@/components/ui/toast'
 import { LoadingScreen } from './components/LoadingScreen'
 import { TerminalProvider } from './contexts/TerminalContext'
 
@@ -85,34 +86,36 @@ function App() {
   // Also show loading screen if setup check is still in progress or result is null
   if (showLoading || isChecking || setupComplete === null) {
     return (
-      <LoadingScreen 
-        minDuration={3000} 
+      <LoadingScreen
+        minDuration={3000}
         onMinDurationComplete={() => setMinDurationComplete(true)}
       />
     )
   }
 
   return (
-    <TerminalProvider>
-      <Routes>
-        {!setupComplete ? (
-          <>
-            <Route path="/setup" element={<SetupWizard />} />
-            <Route path="*" element={<Navigate to="/setup" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/projects" replace />} />
-              <Route path="projects" element={<ProjectList />} />
-              <Route path="projects/:id" element={<ProjectDetail />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/projects" replace />} />
-          </>
-        )}
-      </Routes>
-    </TerminalProvider>
+    <ToastProvider>
+      <TerminalProvider>
+        <Routes>
+          {!setupComplete ? (
+            <>
+              <Route path="/setup" element={<SetupWizard />} />
+              <Route path="*" element={<Navigate to="/setup" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Navigate to="/projects" replace />} />
+                <Route path="projects" element={<ProjectList />} />
+                <Route path="projects/:id" element={<ProjectDetail />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/projects" replace />} />
+            </>
+          )}
+        </Routes>
+      </TerminalProvider>
+    </ToastProvider>
   )
 }
 

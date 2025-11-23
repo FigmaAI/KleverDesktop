@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { ToolStatus, PlatformToolsState } from '@/types/setupWizard'
+import { PlatformToolsState } from '@/types/setupWizard'
 
 export function usePlatformTools() {
   const [toolsStatus, setToolsStatus] = useState<PlatformToolsState>({

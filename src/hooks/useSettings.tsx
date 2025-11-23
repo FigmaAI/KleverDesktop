@@ -34,15 +34,7 @@ export interface ImageSettings {
   imageQuality: number
 }
 
-export interface SystemInfo {
-  platform: string
-  arch: string
-  cpus: number
-  totalMemory: number
-  freeMemory: number
-  pythonVersion?: string
-  envStatus?: 'ready' | 'not_ready' | 'checking'
-}
+
 
 export function useSettings() {
   // Model configuration
@@ -87,15 +79,7 @@ export function useSettings() {
     imageQuality: 85,
   })
 
-  // System information
-  const [systemInfo, setSystemInfo] = useState<SystemInfo>({
-    platform: '',
-    arch: '',
-    cpus: 0,
-    totalMemory: 0,
-    freeMemory: 0,
-    envStatus: 'checking',
-  })
+
 
   // Loading states
   const [loading, setLoading] = useState(true)
@@ -161,34 +145,7 @@ export function useSettings() {
     }
   }, [])
 
-  // Load system information
-  const loadSystemInfo = useCallback(async () => {
-    try {
-      const info = await window.electronAPI.getSystemInfo()
-      if (info) {
-        setSystemInfo(prev => ({
-          ...prev,
-          platform: info.platform || '',
-          arch: info.arch || '',
-          cpus: info.cpus || 0,
-          totalMemory: info.totalMemory || 0,
-          freeMemory: info.freeMemory || 0,
-        }))
-      }
 
-      // Check Python environment
-      const envCheck = await window.electronAPI.envCheck()
-      if (envCheck.success && envCheck.bundledPython) {
-        setSystemInfo(prev => ({
-          ...prev,
-          pythonVersion: envCheck.bundledPython?.version,
-          envStatus: envCheck.venv?.valid ? 'ready' : 'not_ready',
-        }))
-      }
-    } catch (error) {
-      console.error('[useSettings] Error loading system info:', error)
-    }
-  }, [])
 
   // Save all settings to config
   const saveSettings = useCallback(async () => {
@@ -279,8 +236,7 @@ export function useSettings() {
   // Auto-load settings on mount
   useEffect(() => {
     loadSettings()
-    loadSystemInfo()
-  }, [loadSettings, loadSystemInfo])
+  }, [loadSettings])
 
   return {
     modelConfig,
@@ -291,13 +247,11 @@ export function useSettings() {
     setAgentSettings,
     imageSettings,
     setImageSettings,
-    systemInfo,
     loading,
     saving,
     saveError,
     saveSuccess,
     saveSettings,
     loadSettings,
-    loadSystemInfo,
   }
 }

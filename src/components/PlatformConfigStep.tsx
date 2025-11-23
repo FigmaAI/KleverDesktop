@@ -110,7 +110,7 @@ export function PlatformConfigStep({
                         Paste the path in the field above
                       </li>
                       <li>
-                        Alternatively, use: <code className="px-1 py-0.5 bg-muted rounded text-xs">which adb</code> and remove "/platform-tools/adb"
+                        Alternatively, use: <code className="px-1 py-0.5 bg-muted rounded text-xs">which adb</code> and remove &quot;/platform-tools/adb&quot;
                       </li>
                     </ul>
                   </div>

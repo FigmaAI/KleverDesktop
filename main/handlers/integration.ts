@@ -5,7 +5,7 @@
  * IMPORTANT: Integration test now uses config.json and CLI parameters
  */
 
-import { IpcMain, BrowserWindow, app } from 'electron';
+import { IpcMain, BrowserWindow } from 'electron';
 import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';

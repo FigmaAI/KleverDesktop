@@ -105,6 +105,17 @@ export default {
             backgroundPosition: '200%',
           },
         },
+        'shine': {
+          '0%': {
+            'background-position': '0% 0%',
+          },
+          '50%': {
+            'background-position': '100% 100%',
+          },
+          'to': {
+            'background-position': '0% 0%',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -113,6 +124,7 @@ export default {
         'shimmer-slide': 'shimmer-slide var(--speed) ease-in-out infinite alternate',
         'spin-around': 'spin-around var(--speed) infinite linear',
         'rainbow': 'rainbow 8s linear infinite',
+        'shine': 'shine var(--duration) infinite linear',
       },
     },
   },

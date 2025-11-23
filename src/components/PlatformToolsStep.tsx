@@ -6,7 +6,7 @@ import { EnvironmentSetup } from './EnvironmentSetup'
 import { ToolStatusCard } from './ToolStatusCard'
 import { Terminal, AnimatedSpan } from '@/components/ui/terminal'
 import { useTerminal } from '@/hooks/useTerminal'
-import { ToolStatus, PlatformToolsState } from '@/types/setupWizard'
+import { PlatformToolsState } from '@/types/setupWizard'
 import { renderAnsi } from '@/utils/ansiParser'
 
 interface PlatformToolsStepProps {
@@ -121,7 +121,7 @@ export function PlatformToolsStep({
                   >
                     {envLines.length === 0 ? (
                       <AnimatedSpan className="text-muted-foreground">
-                        Ready to install. Click "Install" or "Setup" on the left to start.
+                        Ready to install. Click &quot;Install&quot; or &quot;Setup&quot; on the left to start.
                       </AnimatedSpan>
                     ) : (
                       <>

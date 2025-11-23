@@ -51,8 +51,8 @@ export interface TerminalState {
 }
 
 export interface TerminalContextValue extends TerminalState {
-  setIsOpen: (isOpen: boolean) => void
-  setHeight: (height: number) => void
+  setIsOpen: (isOpen: boolean | ((prev: boolean) => boolean)) => void
+  setHeight: (height: number | ((prev: number) => number)) => void
   updateSettings: (settings: Partial<TerminalSettings>) => void
   addLine: (line: Omit<TerminalLine, 'id' | 'timestamp' | 'level'>) => void
   addProcess: (process: Omit<TerminalProcess, 'startedAt' | 'hasError'>) => void

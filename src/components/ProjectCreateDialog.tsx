@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useToast } from '@/components/ui/toast'
 import { FolderOpen, Smartphone, Globe } from 'lucide-react'
 import {
   Dialog,
@@ -28,6 +29,7 @@ export function ProjectCreateDialog({
   const [platform, setPlatform] = useState<Platform>('android')
   const [projectName, setProjectName] = useState('')
   const [workspaceDir, setWorkspaceDir] = useState('')
+  const { toast } = useToast()
 
   const canCreate = () => {
     return projectName.trim() !== ''
@@ -53,15 +55,15 @@ export function ProjectCreateDialog({
 
       if (result.success && result.project) {
         const message = result.message || `Project created at ${result.project.workspaceDir}`
-        alert(message)
+        toast({ title: 'Project Created', description: message })
         onProjectCreated?.(result.project)
         handleClose()
       } else {
-        alert(`Failed to create project: ${result.error}`)
+        toast({ title: 'Error', description: `Failed to create project: ${result.error}` })
       }
     } catch (error) {
       console.error('Error creating project:', error)
-      alert('Failed to create project. Please try again.')
+      toast({ title: 'Error', description: 'Failed to create project. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -82,7 +84,7 @@ export function ProjectCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" showClose={false} onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
         </DialogHeader>

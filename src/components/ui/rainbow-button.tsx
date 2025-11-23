@@ -37,7 +37,7 @@ const rainbowButtonVariants = cva(
 
 interface RainbowButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof rainbowButtonVariants> {
+  VariantProps<typeof rainbowButtonVariants> {
   asChild?: boolean
 }
 
@@ -57,4 +57,5 @@ const RainbowButton = React.forwardRef<HTMLButtonElement, RainbowButtonProps>(
 
 RainbowButton.displayName = "RainbowButton"
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { RainbowButton, rainbowButtonVariants, type RainbowButtonProps }

@@ -230,7 +230,7 @@ export async function installRequirements(
       onOutput?.(text); // pip outputs progress to stderr
     });
 
-    upgradePip.on('close', (code) => {
+    upgradePip.on('close', (_code) => {
       // Install requirements
       onOutput?.('\nInstalling packages from requirements.txt...\n');
 

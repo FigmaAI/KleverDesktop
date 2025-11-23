@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useToast } from '@/components/ui/toast'
 import { useNavigate } from 'react-router-dom'
 import {
   Save,
-  CheckCircle,
   Brain,
   Smartphone,
   Sparkles,
   Image as ImageIcon,
-  Info,
   Menu,
   AlertTriangle,
   AlertCircle,
@@ -41,9 +40,8 @@ import { ModelSettingsCard } from '@/components/ModelSettingsCard'
 import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
 import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
-import { SystemInfoCard } from '@/components/SystemInfoCard'
 
-type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'system' | 'danger'
+type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'danger'
 
 interface MenuItem {
   id: SettingsSection
@@ -62,6 +60,7 @@ export function Settings() {
   const [hardResetErrorMessage, setHardResetErrorMessage] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { toast } = useToast()
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<SettingsSection, HTMLDivElement | null>>({
@@ -69,7 +68,6 @@ export function Settings() {
     platform: null,
     agent: null,
     image: null,
-    system: null,
     danger: null,
   })
 
@@ -80,7 +78,6 @@ export function Settings() {
       { id: 'platform', label: 'Platform', icon: Smartphone },
       { id: 'agent', label: 'Agent', icon: Sparkles },
       { id: 'image', label: 'Image', icon: ImageIcon },
-      { id: 'system', label: 'System Info', icon: Info },
       { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
     ],
     []
@@ -96,7 +93,6 @@ export function Settings() {
     setAgentSettings,
     imageSettings,
     setImageSettings,
-    systemInfo,
     loading,
     saving,
     saveError,
@@ -121,6 +117,19 @@ export function Settings() {
       isInitialLoad.current = false
     }
   }, [loading, modelConfig, platformSettings, agentSettings, imageSettings])
+
+  // Show toast on save success or error
+  useEffect(() => {
+    if (saveSuccess) {
+      toast({ description: 'Your configuration has been updated successfully.' })
+    }
+  }, [saveSuccess, toast])
+
+  useEffect(() => {
+    if (saveError) {
+      toast({ title: 'Save Failed', description: saveError })
+    }
+  }, [saveError, toast])
 
   // Mark as changed whenever settings update (after initial load)
   useEffect(() => {
@@ -299,18 +308,6 @@ export function Settings() {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            {saveSuccess && (
-              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                <CheckCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Saved!</span>
-              </div>
-            )}
-            {saveError && (
-              <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">{saveError}</span>
-              </div>
-            )}
             <Button size="sm" onClick={handleManualSave} disabled={!hasChanges || saving}>
               <Save className="h-4 w-4" />
               <span className="hidden sm:inline ml-2">{saving ? 'Saving...' : hasChanges ? 'Save' : 'Saved'}</span>
@@ -367,13 +364,6 @@ export function Settings() {
             <BlurFade delay={0.4}>
               <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
                 <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
-              </div>
-            </BlurFade>
-
-            {/* System Information */}
-            <BlurFade delay={0.5}>
-              <div ref={(el) => (sectionRefs.current.system = el)} className="scroll-mt-6">
-                <SystemInfoCard systemInfo={systemInfo} />
               </div>
             </BlurFade>
 

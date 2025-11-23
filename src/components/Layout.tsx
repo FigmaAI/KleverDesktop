@@ -27,35 +27,82 @@ export function Layout() {
   const [commandOpen, setCommandOpen] = useState(false)
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
 
-  // Keyboard shortcut for command menu (Cmd+K or Ctrl+K)
+  // Keyboard shortcuts
   useEffect(() => {
     const down = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac')
+      const modKey = isMac ? e.metaKey : e.ctrlKey
+
+      // Search: Cmd+K / Ctrl+K
+      if (e.key === 'k' && modKey) {
         e.preventDefault()
         setCommandOpen((open) => !open)
+      }
+
+      // Projects: Cmd+P / Ctrl+P
+      if (e.key === 'p' && modKey) {
+        e.preventDefault()
+        navigate('/projects')
+      }
+
+      // Settings: Cmd+, / Ctrl+,
+      if (e.key === ',' && modKey) {
+        e.preventDefault()
+        navigate('/settings')
+      }
+
+      // Terminal: Ctrl+Shift+`
+      if (e.key === '`' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault()
+        setTerminalOpen((open) => !open)
+      }
+
+      // GitHub: Cmd+G / Ctrl+G
+      if (e.key === 'g' && modKey) {
+        e.preventDefault()
+        window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
+      }
+
+      // Theme: Cmd+\ / Ctrl+\
+      if (e.key === '\\' && modKey) {
+        e.preventDefault()
+        // Toggle theme logic is handled by AnimatedThemeToggler internally usually,
+        // but since we need to trigger it programmatically, we might need a context or just toggle class.
+        // For now, let's manually toggle the class on documentElement as a fallback or dispatch event.
+        // However, AnimatedThemeToggler likely uses useTheme or similar.
+        // Let's try to simulate a click or just toggle the class directly if simple.
+        // Assuming simple class toggle for now as seen in App.tsx
+        if (document.documentElement.classList.contains('dark')) {
+          document.documentElement.classList.remove('dark')
+        } else {
+          document.documentElement.classList.add('dark')
+        }
       }
     }
 
     document.addEventListener('keydown', down)
     return () => document.removeEventListener('keydown', down)
-  }, [])
+  }, [navigate, setTerminalOpen])
 
   const dockItems = [
     {
       icon: Home,
       label: 'Projects',
+      shortcut: '⌘P',
       path: '/projects',
       isActive: location.pathname.startsWith('/projects'),
     },
     {
       icon: Settings,
       label: 'Settings',
+      shortcut: '⌘,',
       path: '/settings',
       isActive: location.pathname === '/settings',
     },
     {
       icon: Terminal,
       label: 'Terminal',
+      shortcut: '⌃⇧`',
       onClick: () => {
         setTerminalOpen(!terminalOpen)
       },
@@ -113,7 +160,7 @@ export function Layout() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{item.label}</p>
+                    <p>{item.label} <kbd className="ml-1 text-xs text-muted-foreground font-sans">{item.shortcut}</kbd></p>
                   </TooltipContent>
                 </Tooltip>
               </DockIcon>
@@ -133,7 +180,7 @@ export function Layout() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Search ⌘K</p>
+                  <p>Search <kbd className="ml-1 text-xs text-muted-foreground font-sans">⌘K</kbd></p>
                 </TooltipContent>
               </Tooltip>
             </DockIcon>
@@ -153,7 +200,7 @@ export function Layout() {
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>GitHub</p>
+                  <p>GitHub <kbd className="ml-1 text-xs text-muted-foreground font-sans">⌘G</kbd></p>
                 </TooltipContent>
               </Tooltip>
             </DockIcon>
@@ -162,10 +209,16 @@ export function Layout() {
 
             {/* Theme Toggle */}
             <DockIcon>
-              <AnimatedThemeToggler
-                className="flex size-full items-center justify-center"
-                title="Toggle theme"
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex size-full items-center justify-center">
+                    <AnimatedThemeToggler />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Toggle Theme <kbd className="ml-1 text-xs text-muted-foreground font-sans">⌘\</kbd></p>
+                </TooltipContent>
+              </Tooltip>
             </DockIcon>
           </Dock>
         </TooltipProvider>

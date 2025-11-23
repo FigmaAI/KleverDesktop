@@ -4,9 +4,9 @@ import { MorphingText } from '@/components/magicui/morphing-text'
 import { cn } from '@/lib/utils'
 
 const loadingTexts = [
-    'Local First',
-    'Open Source',
+    'Local First AI',
     'UI Self Explorer',
+    'Klever'
 ]
 
 interface LoadingScreenProps {
