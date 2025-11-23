@@ -185,37 +185,51 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
       // macOS: Use Homebrew to install android-platform-tools (ADB) and android-commandlinetools (SDK)
       if (platform === 'darwin') {
-        console.log('[Android SDK Install] Installing android-platform-tools and android-commandlinetools via Homebrew...');
-        
-        const install = spawn('brew', ['install', '--cask', 'android-commandlinetools', 'android-platform-tools']);
+        // Check if Homebrew is available
+        exec('brew --version', { timeout: 3000 }, (brewError) => {
+          if (!brewError) {
+            // Homebrew is available, use it
+            console.log('[Android SDK Install] Installing android-platform-tools and android-commandlinetools via Homebrew...');
 
-        let output = '';
-        install.stdout?.on('data', (data) => {
-          output += data.toString();
-          console.log('[Android SDK Install] stdout:', data.toString());
-          getMainWindow()?.webContents.send('install:progress', data.toString());
-        });
+            const install = spawn('brew', ['install', '--cask', 'android-commandlinetools', 'android-platform-tools']);
 
-        install.stderr?.on('data', (data) => {
-          output += data.toString();
-          console.log('[Android SDK Install] stderr:', data.toString());
-          getMainWindow()?.webContents.send('install:progress', data.toString());
-        });
+            let output = '';
+            install.stdout?.on('data', (data) => {
+              output += data.toString();
+              console.log('[Android SDK Install] stdout:', data.toString());
+              getMainWindow()?.webContents.send('install:progress', data.toString());
+            });
 
-        install.on('close', (code) => {
-          console.log('[Android SDK Install] Installation finished with code:', code);
-          
-          if (code === 0) {
-            getMainWindow()?.webContents.send('install:progress', '\n✅ Android SDK Tools installed successfully!\n');
-            resolve({ success: true, output });
+            install.stderr?.on('data', (data) => {
+              output += data.toString();
+              console.log('[Android SDK Install] stderr:', data.toString());
+              getMainWindow()?.webContents.send('install:progress', data.toString());
+            });
+
+            install.on('close', (code) => {
+              console.log('[Android SDK Install] Installation finished with code:', code);
+
+              if (code === 0) {
+                getMainWindow()?.webContents.send('install:progress', '\n✅ Android SDK Tools installed successfully!\n');
+                resolve({ success: true, output });
+              } else {
+                resolve({ success: false, error: `Installation failed with code ${code}`, output });
+              }
+            });
+
+            install.on('error', (error) => {
+              console.error('[Android SDK Install] Error:', error.message);
+              resolve({ success: false, error: error.message });
+            });
           } else {
-            resolve({ success: false, error: `Installation failed with code ${code}`, output });
+            // Homebrew not available
+            console.log('[Android SDK Install] Homebrew is not installed');
+            resolve({
+              success: false,
+              error: 'Homebrew is not installed. Please install Homebrew first (https://brew.sh) or download Android SDK manually from https://developer.android.com/studio',
+              needsManualInstall: true
+            });
           }
-        });
-
-        install.on('error', (error) => {
-          console.error('[Android SDK Install] Error:', error.message);
-          resolve({ success: false, error: error.message });
         });
 
       // Windows: Try Chocolatey
