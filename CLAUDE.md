@@ -680,18 +680,19 @@ interface Task {
 
 ## Electron Forge Build System
 
-**Migration**: The project migrated from electron-builder to Electron Forge (v7.10.2) for official Electron tooling and better Windows/Mac App Store support.
+**Migration**: The project migrated from electron-builder to Electron Forge (v7.10.2) for official Electron tooling. We use **GitHub Releases** for distribution instead of App Stores.
 
 ### Configuration Files
 
 #### forge.config.js
-**Location**: `/forge.config.js` (~170 lines)
+**Location**: `/forge.config.js` (~130 lines)
 
 Main Electron Forge configuration with:
-- **packagerConfig**: App metadata, icons, extraResources (appagent), macOS signing
-- **makers**: Windows Store (AppX), Mac App Store (PKG), ZIP
+- **packagerConfig**: App metadata, icons, extraResources (appagent), Developer ID signing (macOS)
+- **makers**: Squirrel.Windows (Windows), DMG (macOS), ZIP (portable)
+- **publishers**: GitHub Releases publisher
 - **plugins**: Vite plugin for main/preload/renderer processes
-- **hooks**: Pre-package and post-make build hooks
+- **hooks**: Post-make build hooks
 
 #### Vite Configs for Electron Forge
 - **vite.main.config.js**: Main process build configuration (Forge outputs to .vite/build/main.js)
@@ -700,102 +701,123 @@ Main Electron Forge configuration with:
 
 ### Makers (Distribution Packages)
 
-#### Windows Store (AppX) - Unsigned for Partner Center
+#### Squirrel.Windows (Windows Installer)
 ```javascript
 {
-  name: '@electron-forge/maker-appx',
+  name: '@electron-forge/maker-squirrel',
   config: {
-    // NO devCert or certPass - creates unsigned package
-    // Microsoft Partner Center will sign after upload
-    packageName: 'KleverDesktop',
-    publisher: 'CN=YourPublisherName', // From Partner Center
-    identityName: 'YourCompany.KleverDesktop', // Reserved in Partner Center
-    backgroundColor: '#FFFFFF',
-    arch: 'x64', // or 'arm64'
+    name: 'klever-desktop',
+    authors: 'Klever Team',
+    exe: 'klever-desktop.exe',
+    iconUrl: 'https://raw.githubusercontent.com/FigmaAI/KleverDesktop/main/build/icon.ico',
+    setupIcon: path.join(__dirname, 'build/icon.ico'),
+    // Optional code signing (recommended for production)
+    // certificateFile: process.env.WINDOWS_CERT_FILE,
+    // certificatePassword: process.env.WINDOWS_CERT_PASSWORD,
   },
   platforms: ['win32'],
 }
 ```
 
-**Windows Store Build Strategy**:
-1. Build unsigned AppX package: `npm run make`
-2. Upload to Microsoft Partner Center
-3. Partner Center applies **store-managed signing**
-4. Package is signed and published to Windows Store
+**Windows Build Strategy**:
+1. Build Squirrel installer: `npm run make -- --platform=win32`
+2. Optionally sign with code signing certificate
+3. Publish to GitHub Releases
+4. Users download `Setup.exe` installer
+5. Auto-updates work out of the box via Squirrel
 
-**Requirements**:
-- Windows 10/11 with Windows SDK installed
-- Partner Center account with reserved app name
-- Publisher identity configured in Partner Center
+**Code Signing** (Optional but recommended):
+- Free: Certum Open Source Code Signing (for open-source projects)
+- Paid: DigiCert, Sectigo
+- Without signing: Users see SmartScreen warnings initially
 
-#### Mac App Store (PKG)
+#### DMG (macOS Disk Image)
 ```javascript
 {
-  name: '@electron-forge/maker-pkg',
+  name: '@electron-forge/maker-dmg',
   config: {
-    identity: '3rd Party Mac Developer Installer: Your Name (TEAM_ID)',
-    install: '/Applications',
+    icon: path.join(__dirname, 'build/icon.icns'),
+    format: 'ULFO',
+    name: 'Klever Desktop',
   },
-  platforms: ['mas'], // Mac App Store platform
+  platforms: ['darwin'],
 }
 ```
 
-**Requirements**:
-- Apple Developer account
-- Distribution certificates and provisioning profiles
-- Entitlements configured (build/entitlements.mas.plist, build/entitlements.mas.inherit.plist)
+**macOS Build Strategy**:
+1. Build and sign with Developer ID: `npm run make -- --platform=darwin`
+2. Automatic notarization (if environment variables set)
+3. Publish to GitHub Releases
+4. Users download DMG and drag to Applications folder
 
-**CRITICAL: Mac App Store Code Signing**
+**Developer ID Signing & Notarization**:
 
-Electron apps consist of multiple processes that ALL must be properly signed:
-- Main App: Uses `build/entitlements.mas.plist`
-- Helper (GPU, Renderer, Plugin): MUST use `build/entitlements.mas.inherit.plist`
+Required environment variables:
+```bash
+export APPLE_ID="your-apple-id@example.com"
+export APPLE_ID_PASSWORD="xxxx-xxxx-xxxx-xxxx"  # App-specific password
+export APPLE_TEAM_ID="ABCDEF1234"  # 10-character Team ID
+```
 
-**Common Issue: V8 Initialization Crash (EXC_BREAKPOINT)**
-
-**Symptoms**: App crashes immediately (~120ms after launch) with `SIGTRAP` in V8 initialization
-
-**Root Cause**: Helper processes not signed with correct entitlements, causing JIT compilation failure
-
-**Solution** (implemented in forge.config.js:42-53):
+Signing configuration in `forge.config.js`:
 ```javascript
 osxSign: {
-  // ... other config
-  optionsForFile: (filePath) => {
-    // CRITICAL: Helper processes MUST use inherit entitlements
-    if (filePath.includes('Helper')) {
-      return { entitlements: 'build/entitlements.mas.inherit.plist' };
-    }
-    return { entitlements: 'build/entitlements.mas.plist' };
-  },
-  hardenedRuntime: true,
-  gatekeeperAssess: false,
-  signatureFlags: ['runtime'],
+  identity: 'Developer ID Application',  // Auto-detected from Keychain
+  'hardened-runtime': true,
+  'gatekeeper-assess': false,
+  entitlements: 'build/entitlements.mac.plist',
+  'entitlements-inherit': 'build/entitlements.mac.plist',
+},
+osxNotarize: {
+  appleId: process.env.APPLE_ID,
+  appleIdPassword: process.env.APPLE_ID_PASSWORD,
+  teamId: process.env.APPLE_TEAM_ID,
 }
 ```
 
-**Key Entitlements** (required for V8/Electron):
-- `com.apple.security.cs.allow-jit` - JIT compilation
+**Key Entitlements** (build/entitlements.mac.plist):
+- `com.apple.security.cs.allow-jit` - JIT compilation (required for V8/Electron)
 - `com.apple.security.cs.allow-unsigned-executable-memory` - V8 memory
 - `com.apple.security.cs.allow-dyld-environment-variables` - Dynamic linking
-- `com.apple.security.cs.disable-library-validation` - Native modules
+- `com.apple.security.cs.disable-library-validation` - Native modules/Python
+- **No sandbox** - Developer ID apps are not sandboxed
 
 **Verification**:
 ```bash
-# Check helper process signatures
-codesign -d --entitlements - "out/.../Electron Helper (Renderer).app"
-# Should show com.apple.security.cs.allow-jit = true
+# Verify notarization
+spctl -a -vv -t install "out/make/dmg/darwin/arm64/Klever Desktop-2.0.0-arm64.dmg"
+# Should output: accepted, source=Notarized Developer ID
 ```
 
-**Full troubleshooting guide**: See [docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)
-
-#### ZIP Maker (Development/Testing)
+#### ZIP Maker (Portable Distribution)
 ```javascript
 {
   name: '@electron-forge/maker-zip',
-  platforms: ['darwin', 'linux', 'win32'],
+  platforms: ['darwin', 'win32'],
 }
 ```
+
+### GitHub Releases Publisher
+
+```javascript
+publishers: [
+  {
+    name: '@electron-forge/publisher-github',
+    config: {
+      repository: {
+        owner: 'FigmaAI',
+        name: 'KleverDesktop'
+      },
+      prerelease: true,  // Default to prerelease
+      draft: true        // Default to draft for review
+    }
+  }
+]
+```
+
+**Publishing Requirements**:
+- GitHub Personal Access Token with `repo` scope
+- Set environment variable: `export GITHUB_TOKEN="ghp_xxxxx"`
 
 ### Build Commands
 
@@ -808,54 +830,86 @@ npm run start           # Electron Forge dev mode with hot reload
 ```bash
 npm run package         # Package app → out/klever-desktop-{platform}-{arch}/
 npm run make            # Create distributable packages → out/make/
-npm run publish         # Publish to configured publishers (GitHub, S3, etc.)
+npm run publish         # Build and publish to GitHub Releases
+```
+
+**Platform-Specific Builds**:
+```bash
+# macOS DMG + ZIP (requires macOS)
+npm run make -- --platform=darwin --arch=arm64,x64
+
+# Windows Setup (can be cross-compiled with Wine)
+npm run make -- --platform=win32 --arch=x64
+
+# Linux ZIP
+npm run make -- --platform=linux --arch=x64
 ```
 
 **Output Structure**:
 ```
 out/
-├── klever-desktop-win32-x64/          # Packaged app (Windows)
-├── klever-desktop-darwin-arm64/       # Packaged app (macOS)
+├── klever-desktop-win32-x64/              # Packaged app (Windows)
+├── klever-desktop-darwin-arm64/           # Packaged app (macOS)
 └── make/
-    ├── appx/
-    │   └── klever-desktop-2.0.0.appx  # Windows Store package (unsigned)
-    ├── pkg/
-    │   └── klever-desktop-2.0.0.pkg   # Mac App Store package
+    ├── squirrel.windows/x64/
+    │   ├── klever-desktop-2.0.0 Setup.exe    # Windows installer (distribute this)
+    │   ├── RELEASES                          # Update metadata
+    │   └── klever-desktop-2.0.0-full.nupkg   # Full package (for auto-updates)
+    ├── dmg/darwin/arm64/
+    │   └── Klever Desktop-2.0.0-arm64.dmg    # macOS disk image
     └── zip/
-        └── klever-desktop-*.zip       # Compressed archive
+        ├── darwin/arm64/klever-desktop-darwin-arm64-2.0.0.zip
+        └── win32/x64/klever-desktop-win32-x64-2.0.0.zip
 ```
 
 ### Platform-Specific Notes
 
 **Windows**:
-- AppX builds require Windows 10/11 + Windows SDK
-- Unsigned packages for Partner Center store-managed signing
-- Custom manifest template: `build/appxmanifest.xml`
+- Squirrel.Windows provides automatic updates
+- Code signing optional but recommended (reduces SmartScreen warnings)
+- Cross-compilation from macOS/Linux requires Wine
 
 **macOS**:
-- MAS builds require signing certificates
-- Entitlements: `build/entitlements.mas.plist`, `build/entitlements.mas.inherit.plist`
-- Sandbox enabled for App Store compliance
+- Developer ID signing required (users can't open unsigned apps easily)
+- Notarization required for Gatekeeper acceptance
+- No sandbox restrictions (full system access)
+- Apple Developer account required ($99/year)
 
 **Linux**:
 - ZIP archives for manual distribution
-- No official app store support in current config
+- Can add DEB/RPM makers for package manager distribution
+- No signing required
 
-### Migration from electron-builder
+### Migration from App Store Distribution
 
-**Removed**:
-- `electron-builder` package
-- `build` section in package.json
+**Previous Strategy** (Deprecated):
+- Mac App Store (MAS) with sandbox restrictions
+- Microsoft Store with AppX packages
 
-**Added**:
-- `@electron-forge/cli` and plugins
-- `forge.config.js` configuration
-- Vite config files for main/preload processes
+**New Strategy** (Current):
+- GitHub Releases for direct distribution
+- Developer ID signing (macOS) instead of MAS
+- Squirrel installer (Windows) instead of AppX
+- Faster release cycles, no store review process
+- No sandbox restrictions
+
+**What Changed**:
+- Removed `@electron-forge/maker-appx` and `@electron-forge/maker-pkg`
+- Added `@electron-forge/maker-squirrel` and `@electron-forge/maker-dmg`
+- Added `@electron-forge/publisher-github`
+- Switched from `entitlements.mas.plist` to `entitlements.mac.plist`
+- Removed sandbox entitlement for Developer ID distribution
 
 **Maintained**:
 - Existing Vite build process (via `@electron-forge/plugin-vite`)
 - Python scripts bundling (appagent as extraResource)
 - Development workflow (npm scripts)
+
+### Complete Distribution Guide
+
+For detailed instructions on building, signing, and publishing to GitHub Releases, see:
+- **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - Complete English guide
+- **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - 한국어 가이드
 
 ---
 
@@ -985,28 +1039,30 @@ The project includes comprehensive documentation in the `docs/` folder:
 
 ### Build & Deployment Guides
 
-- **[docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)** - Comprehensive Mac App Store build troubleshooting guide
-  - V8 initialization crash solutions
-  - Code signing requirements
-  - Entitlements configuration
-  - Step-by-step verification procedures
+- **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - **PRIMARY**: Complete GitHub Releases distribution guide
+  - Developer ID signing and notarization (macOS)
+  - Code signing options (Windows)
+  - Building and publishing to GitHub Releases
+  - Auto-update configuration
+  - Complete step-by-step instructions
 
-- **[docs/MAS_BUILD_TROUBLESHOOTING_KR.md](docs/MAS_BUILD_TROUBLESHOOTING_KR.md)** - 한국어 Mac App Store 빌드 문제 해결 가이드
-
-- **[docs/BUILD_WINDOWS_STORE.md](docs/BUILD_WINDOWS_STORE.md)** - Windows Store deployment guide
-  - Partner Center setup
-  - AppX package creation
-  - Store-managed signing workflow
+- **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - **주요 문서**: GitHub 릴리즈 배포 가이드 (한국어)
+  - Developer ID 서명 및 공증 (macOS)
+  - 코드 서명 옵션 (Windows)
+  - GitHub 릴리즈 빌드 및 배포
+  - 자동 업데이트 구성
 
 - **[docs/BUILD_ICONS.md](docs/BUILD_ICONS.md)** - Icon requirements and generation guide
   - Platform-specific icon formats
   - Size requirements
   - Asset generation tools
 
-- **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - Export compliance automation for App Store Connect
-  - Automatic encryption declaration
-  - ITSAppUsesNonExemptEncryption configuration
-  - TestFlight upload workflow
+### Deprecated Guides (App Store Distribution - No Longer Used)
+
+- **[docs/MAS_BUILD_TROUBLESHOOTING.md](docs/MAS_BUILD_TROUBLESHOOTING.md)** - Mac App Store build troubleshooting (deprecated)
+- **[docs/MAS_BUILD_TROUBLESHOOTING_KR.md](docs/MAS_BUILD_TROUBLESHOOTING_KR.md)** - Mac App Store 빌드 문제 해결 (deprecated)
+- **[docs/BUILD_WINDOWS_STORE.md](docs/BUILD_WINDOWS_STORE.md)** - Windows Store deployment (deprecated)
+- **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - App Store Connect compliance (deprecated)
 
 ### Technical Documentation
 
@@ -1029,6 +1085,28 @@ The project includes comprehensive documentation in the `docs/` folder:
 ---
 
 ## Update History
+
+**2025-11-23**: Migration to GitHub Releases distribution strategy
+- **Distribution Strategy Change**: Moved from App Store distributions to GitHub Releases
+  - Removed Mac App Store (MAS) and Microsoft Store support
+  - Added Developer ID signing and notarization for macOS
+  - Added Squirrel.Windows installer for Windows
+  - Added GitHub Releases publisher for automated distribution
+- **forge.config.js Updates**:
+  - Replaced `@electron-forge/maker-appx` and `@electron-forge/maker-pkg` with `@electron-forge/maker-squirrel` and `@electron-forge/maker-dmg`
+  - Added `@electron-forge/publisher-github` for GitHub Releases
+  - Updated macOS signing to use Developer ID instead of MAS certificates
+  - Removed Windows Store and Mac App Store specific configurations
+- **New Documentation**:
+  - Created `docs/GITHUB_RELEASE_GUIDE.md` - Complete GitHub Releases distribution guide
+  - Created `docs/GITHUB_RELEASE_GUIDE_KR.md` - 한국어 GitHub 릴리즈 배포 가이드
+  - Updated CLAUDE.md to reflect new distribution strategy
+  - Deprecated App Store guides (MAS_BUILD_TROUBLESHOOTING.md, BUILD_WINDOWS_STORE.md)
+- **Benefits**:
+  - Faster release cycles (no store review process)
+  - Direct distribution to users
+  - No sandbox restrictions (full system access)
+  - Auto-updates via Squirrel (Windows) and future electron-updater (macOS)
 
 **2025-11-21**: Documentation organization and improvements
 - **Documentation Structure**: Organized all guide documents into `docs/` folder

@@ -1,19 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const packageJson = require('./package.json');
-
-// Convert package.json version (x.x.x) to Windows Store format (x.x.x.x)
-const convertToWinStoreVersion = (version) => {
-  const parts = version.split('.');
-  // Ensure we have exactly 4 parts, padding with 0 if needed
-  while (parts.length < 4) {
-    parts.push('0');
-  }
-  return parts.slice(0, 4).join('.');
-};
-
-const appVersion = convertToWinStoreVersion(packageJson.version);
 
 module.exports = {
   packagerConfig: {
@@ -56,10 +42,9 @@ module.exports = {
         name: 'klever-desktop',
         authors: 'Klever Team',
         exe: 'klever-desktop.exe',
-        iconUrl: 'https://raw.githubusercontent.com/Klever/KleverDesktop/main/build/icon.ico', // URL required for Squirrel
+        iconUrl: 'https://raw.githubusercontent.com/FigmaAI/KleverDesktop/main/build/icon.ico',
         setupIcon: path.join(__dirname, 'build/icon.ico'),
-        loadingGif: path.join(__dirname, 'build/install-spinner.gif'), // Optional
-        // Certificate configuration (Certum Open Source / Azure Trusted Signing later)
+        // Certificate configuration (optional for GitHub releases)
         // certificateFile: process.env.WINDOWS_CERT_FILE,
         // certificatePassword: process.env.WINDOWS_CERT_PASSWORD,
       },
