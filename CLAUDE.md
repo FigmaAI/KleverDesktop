@@ -154,7 +154,7 @@ KleverDesktop/
 │   └── entitlements.mac.plist # macOS entitlements
 │
 ├── scripts/                   # Build & utility scripts
-│   ├── build-python.js       # Python runtime bundling
+│   ├── build-python.js       # Legacy Python build script (not used)
 │   ├── verify-bundle.js      # Pre-build verification
 │   └── fetch-appagent.js     # Update appagent code
 │
@@ -292,7 +292,7 @@ Python scripts are bundled and executed via subprocess:
 ```typescript
 // main/utils/python-runtime.ts
 export async function executePythonScript(scriptPath: string, args: string[]) {
-  const pythonPath = getPythonPath() // Bundled Python
+  const pythonPath = getPythonPath() // Python from ~/.klever-desktop/
   const process = spawn(pythonPath, [scriptPath, ...args], {
     env: getPythonEnv()
   })
@@ -463,10 +463,11 @@ interface Task {
 
 ### 3. Python Runtime Management
 
-**Architecture**: Bundled Python (no runtime installation required)
+**Architecture**: Python is downloaded to `~/.klever-desktop/python/` during the setup wizard
 
 **Key Functions** (`main/utils/python-runtime.ts`):
-- `getPythonPath()` - Path to bundled Python
+- `getPythonPath()` - Path to Python installation in ~/.klever-desktop/
+- `getPythonInstallDir()` - Get Python install directory
 - `getAppagentPath()` - Path to appagent directory
 - `executePythonScript(scriptPath, args)` - Execute Python script
 - `checkPythonRuntime()` - Verify Python availability
@@ -474,19 +475,15 @@ interface Task {
 
 **Development**:
 ```bash
-# Build/download Python runtime
-npm run python:build
+# Python is downloaded automatically by the app to ~/.klever-desktop/python/
+# during the first-run setup wizard
 
-# Or use system Python (create symlink)
-mkdir -p resources/python/linux-x64/python/bin
-ln -s $(which python3) resources/python/linux-x64/python/bin/python3
-
-# Install dependencies
+# Or use system Python for development
 python3 -m pip install -r appagent/requirements.txt
 python3 -m playwright install chromium
 ```
 
-**Production**: Python is bundled in `extraResources/python/{platform}/`
+**Production**: Python is downloaded to `~/.klever-desktop/python/{platform}-{arch}/python/` on first run
 
 ### 4. Real-Time Progress Updates
 
@@ -516,8 +513,7 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 
 - **User Data**: `app.getPath('userData')` → `~/.klever-desktop/`
 - **Projects Storage**: `{userData}/projects.json`
-- **Python Runtime** (dev): `resources/python/{platform}/python/`
-- **Python Runtime** (prod): `extraResources/python/{platform}/python/`
+- **Python Runtime**: `~/.klever-desktop/python/{platform}-{arch}/python/`
 - **Workspaces**: `~/Documents/{projectName}/`
 - **Config**: `appagent/config.yaml`
 
@@ -597,8 +593,8 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 - **Fix**: Add the method to `contextBridge.exposeInMainWorld()` in preload.ts
 
 **Python subprocess not working**:
-- **Cause**: Bundled Python missing or dependencies not installed
-- **Fix**: Run `npm run python:build` to download Python runtime
+- **Cause**: Python not installed in ~/.klever-desktop/ or dependencies missing
+- **Fix**: Run the Setup Wizard in the app to download and install Python
 
 **Vite port already in use**:
 - **Cause**: Another process using port 5173

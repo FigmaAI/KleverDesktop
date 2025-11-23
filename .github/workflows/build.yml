@@ -37,18 +37,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Python Runtime
-        shell: bash
-        run: |
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            echo "Building Python runtime for macOS (universal)..."
-            node scripts/build-python.js --platform=darwin-arm64
-            node scripts/build-python.js --platform=darwin-x64
-          else
-            echo "Building Python runtime for Windows..."
-            node scripts/build-python.js --platform=win32-x64
-          fi
-
       - name: Install Apple Certificate
         if: matrix.os == 'macos-latest'
         env:
