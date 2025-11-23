@@ -337,8 +337,7 @@ module.exports = {
     { name: '@electron-forge/maker-squirrel', platforms: ['win32'] },
     // macOS: DMG disk image
     { name: '@electron-forge/maker-dmg', platforms: ['darwin'] },
-    // Portable: ZIP archive
-    { name: '@electron-forge/maker-zip', platforms: ['darwin', 'win32'] },
+    // ZIP maker disabled to reduce artifact size
   ],
 
   publishers: [
@@ -398,13 +397,10 @@ out/
 └── make/
     ├── dmg/darwin/arm64/
     │   └── Klever Desktop-2.0.0-arm64.dmg    # macOS installer
-    ├── squirrel.windows/x64/
-    │   ├── klever-desktop-2.0.0 Setup.exe    # Windows installer
-    │   ├── RELEASES                          # Update metadata
-    │   └── klever-desktop-2.0.0-full.nupkg   # Update package
-    └── zip/
-        ├── darwin/...                         # Portable macOS
-        └── win32/...                          # Portable Windows
+    └── squirrel.windows/x64/
+        ├── klever-desktop-2.0.0 Setup.exe    # Windows installer
+        ├── RELEASES                          # Update metadata
+        └── klever-desktop-2.0.0-full.nupkg   # Update package
 ```
 
 ---
