@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus } from '../utils/python-runtime';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -33,6 +33,12 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
 
   if (!hasActiveAndroidTasks) {
     try {
+      // Check if python environment is valid before trying to run cleanup
+      const status = checkVenvStatus();
+      if (!status.valid) {
+        return;
+      }
+
       // Call Python script to stop emulator
       const appagentDir = getAppagentPath();
       const pythonEnv = getPythonEnv();
@@ -388,6 +394,13 @@ export async function cleanupTaskProcesses(): Promise<void> {
 
   // Always cleanup emulators on app exit
   try {
+    // Check if python environment is valid before trying to run cleanup
+    const status = checkVenvStatus();
+    if (!status.valid) {
+      console.log('[app-exit] Python environment not valid, skipping emulator cleanup');
+      return;
+    }
+
     const appagentDir = getAppagentPath();
     const pythonEnv = getPythonEnv();
 

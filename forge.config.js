@@ -41,7 +41,7 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         name: 'klever-desktop',
-        authors: 'Klever Team',
+        authors: 'JooHyung Park',
         exe: 'klever-desktop.exe',
         iconUrl: 'https://raw.githubusercontent.com/FigmaAI/KleverDesktop/main/build/icon.ico',
         setupIcon: path.join(__dirname, 'build/icon.ico'),
