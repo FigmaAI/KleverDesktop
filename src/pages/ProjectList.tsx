@@ -1,39 +1,59 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Plus, Smartphone, Globe, Trash2, FolderOpen, Circle, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { RainbowButton } from '@/components/ui/rainbow-button'
+import { Badge } from '@/components/ui/badge'
+import { AnimatedList } from '@/components/ui/animated-list'
+import { PageHeader, GitHubLink, ProjectCreateDialog } from '@/components'
 import {
-  Box,
-  Button,
-  Grid,
-  IconButton,
-  Sheet,
-  Stack,
-  Typography,
-  List,
-  Divider,
-  ToggleButtonGroup,
-} from '@mui/joy'
-import {
-  Add as AddIcon,
-  ViewModule,
-  ViewList,
-  ChevronLeft,
-  ChevronRight,
-  FirstPage,
-  LastPage,
-} from '@mui/icons-material'
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Project } from '../types/project'
-import { ProjectCard } from '../components'
+import { cn } from '@/lib/utils'
+import logoImg from '@/assets/logo.png'
+
+type SortOption = 'latest' | 'oldest' | 'a-z' | 'z-a'
 
 export function ProjectList() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card')
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 12
+  const [sortBy, setSortBy] = useState<SortOption>('latest')
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [hasAnimated, setHasAnimated] = useState(() => {
+    // Check if animation has already been shown in this session
+    return sessionStorage.getItem('projectListAnimated') === 'true'
+  })
 
   useEffect(() => {
     loadProjects()
+  }, [])
+
+  useEffect(() => {
+    // Mark animation as shown after projects load
+    if (!loading && projects.length > 0 && !hasAnimated) {
+      setHasAnimated(true)
+      sessionStorage.setItem('projectListAnimated', 'true')
+    }
+  }, [loading, projects.length, hasAnimated])
+
+  // Keyboard shortcut for new project
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      // Check for Cmd+N (Mac) or Ctrl+N (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+        e.preventDefault()
+        setCreateDialogOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const loadProjects = async () => {
@@ -50,230 +70,309 @@ export function ProjectList() {
     }
   }
 
+  const handleDelete = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!confirm('Are you sure you want to delete this project?')) return
 
-  // Pagination logic
-  const totalPages = Math.ceil(projects.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedProjects = projects.slice(startIndex, endIndex)
-
-  // Reset to first page if current page is out of range
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1)
+    try {
+      const result = await window.electronAPI.projectDelete(projectId)
+      if (result.success) {
+        loadProjects()
+      } else {
+        alert(`Failed to delete project: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      alert('Failed to delete project')
     }
-  }, [projects.length, currentPage, totalPages])
+  }
+
+  const handleOpenWorkDir = async (project: Project, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const sanitizedName = project.name.replace(/ /g, '')
+    const workDir = `${project.workspaceDir}/apps/${sanitizedName}`
+
+    try {
+      const result = await window.electronAPI.openFolder(workDir)
+      if (!result.success) {
+        alert(`Failed to open folder: ${result.error}`)
+      }
+    } catch (error) {
+      console.error('Exception opening folder:', error)
+      alert('Failed to open folder')
+    }
+  }
+
+  const getTaskStatusSummary = (project: Project) => {
+    const total = project.tasks.length
+    const running = project.tasks.filter((t) => t.status === 'running').length
+    return { total, running }
+  }
+
+  // Sort projects based on selected option
+  const sortedProjects = useMemo(() => {
+    const sorted = [...projects]
+
+    switch (sortBy) {
+      case 'latest':
+        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      case 'a-z':
+        return sorted.sort((a, b) => a.name.localeCompare(b.name))
+      case 'z-a':
+        return sorted.sort((a, b) => b.name.localeCompare(a.name))
+      default:
+        return sorted
+    }
+  }, [projects, sortBy])
+
+  const handleOpenCommandMenu = () => {
+    // Trigger Cmd+K / Ctrl+K keyboard shortcut
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      metaKey: typeof window !== 'undefined' && window.navigator.platform.includes('Mac'),
+      ctrlKey: typeof window !== 'undefined' && !window.navigator.platform.includes('Mac'),
+      bubbles: true
+    })
+    document.dispatchEvent(event)
+  }
+
+  const handleProjectCreated = (project: Project) => {
+    loadProjects()
+    navigate(`/projects/${project.id}`)
+  }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      <Box sx={{ p: 4, flex: 1 }}>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
-          sx={{ mb: 3, gap: 2 }}
-        >
-          <Box>
-            <Typography level="h2" fontWeight="bold">
-              Projects
-            </Typography>
-            <Typography level="body-md" textColor="text.secondary">
-              Manage your automation projects
-            </Typography>
-          </Box>
-          <Stack
-            direction="row"
-            spacing={2}
-            alignItems="center"
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-          >
-            <ToggleButtonGroup
-              value={viewMode}
-              onChange={(_event, newValue) => {
-                if (newValue !== null) {
-                  setViewMode(newValue as 'card' | 'list')
-                }
-              }}
-              sx={{ flex: { xs: 1, sm: 'none' } }}
-            >
-              <Button value="card" startDecorator={<ViewModule />} sx={{ flex: { xs: 1, sm: 'none' } }}>
-                Card
-              </Button>
-              <Button value="list" startDecorator={<ViewList />} sx={{ flex: { xs: 1, sm: 'none' } }}>
-                List
-              </Button>
-            </ToggleButtonGroup>
-            <Button
-              startDecorator={<AddIcon />}
-              color="primary"
-              onClick={() => navigate('/projects/new')}
-              sx={{ flex: { xs: 1, sm: 'none' } }}
-            >
-              New
+    <div className="flex h-full flex-col">
+      <PageHeader
+        logo={
+          <img
+            src={logoImg}
+            alt="Klever Desktop"
+            className="h-8 w-8"
+          />
+        }
+        title="Projects"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button onClick={handleOpenCommandMenu} variant="outline" size="sm">
+              <Search className="h-4 w-4" />
+              Search
+              <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>K
+              </kbd>
             </Button>
-          </Stack>
-        </Stack>
+            <GitHubLink />
+          </div>
+        }
+      />
+      <div className="container mx-auto flex-1 space-y-6 p-8">
 
+        {/* Content */}
         {loading ? (
-          <Sheet
-            variant="outlined"
-            sx={{
-              p: 4,
-              borderRadius: 'md',
-              bgcolor: 'background.surface',
-              textAlign: 'center',
-            }}
-          >
-            <Typography>Loading projects...</Typography>
-          </Sheet>
+          <div className="flex h-[400px] items-center justify-center">
+            <p className="text-muted-foreground">Loading projects...</p>
+          </div>
         ) : projects.length === 0 ? (
-          <Sheet
-            variant="outlined"
-            sx={{
-              p: 4,
-              borderRadius: 'md',
-              bgcolor: 'background.surface',
-              textAlign: 'center',
-            }}
-          >
-            <Typography level="title-lg" sx={{ mb: 1 }}>
-              No projects yet
-            </Typography>
-            <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
+          <div className="flex h-[400px] flex-col items-center justify-center rounded-lg border bg-card p-8 text-center">
+            <h3 className="mb-2 text-lg font-semibold">No projects yet</h3>
+            <p className="mb-6 text-sm text-muted-foreground">
               Create your first project to get started with UI automation
-            </Typography>
-            <Button
-              variant="solid"
-              color="primary"
-              startDecorator={<AddIcon />}
-              sx={{ minWidth: 200 }}
-              onClick={() => navigate('/projects/new')}
-            >
-              Create Project
-            </Button>
-          </Sheet>
+            </p>
+            <RainbowButton onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Create Project <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-50">
+                <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>N
+              </kbd>
+            </RainbowButton>
+          </div>
         ) : (
-          <Stack spacing={3}>
-            {/* Card View */}
-            {viewMode === 'card' && (
-              <Grid container spacing={2}>
-                {paginatedProjects.map((project) => (
-                  <Grid key={project.id} xs={12} sm={6} md={4}>
-                    <ProjectCard
-                      project={project}
-                      variant="card"
-                      expand={true}
-                      clickable={true}
-                      showDelete={true}
-                      onDeleted={loadProjects}
-                      onClick={(id) => navigate(`/projects/${id}`)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
+          <>
+            {/* Filter and Create Button */}
+            <div className="flex items-center justify-between mb-4">
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="latest">Latest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="a-z">Name (A-Z)</SelectItem>
+                  <SelectItem value="z-a">Name (Z-A)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <RainbowButton onClick={() => setCreateDialogOpen(true)} size="sm">
+                <Plus className="h-4 w-4" />
+                New Project
+                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-50">
+                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>N
+                </kbd>
+              </RainbowButton>
+            </div>
+
+            {hasAnimated ? (
+              // Static list (no animation on subsequent visits)
+              <div className="grid gap-3">
+                {sortedProjects.map((project) => {
+                  const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
+                  const statusSummary = getTaskStatusSummary(project)
+
+                  return (
+                    <div
+                      key={project.id}
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                      className={cn(
+                        'group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                        'hover:shadow-lg hover:border-primary/50 cursor-pointer'
+                      )}
+                    >
+                      {/* Icon */}
+                      <div className="flex-shrink-0 rounded-lg bg-primary/10 p-3">
+                        <PlatformIcon className="h-6 w-6 text-primary" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg truncate">{project.name}</h3>
+                          <Badge
+                            variant={project.platform === 'android' ? 'default' : 'secondary'}
+                            className="capitalize flex-shrink-0"
+                          >
+                            {project.platform}
+                          </Badge>
+                          {statusSummary.running > 0 && (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <Circle className="h-2 w-2 fill-primary text-primary animate-pulse" />
+                              <span className="text-xs text-primary font-medium">
+                                {statusSummary.running} running
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>
+                            {statusSummary.total} {statusSummary.total === 1 ? 'task' : 'tasks'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleOpenWorkDir(project, e)}
+                          title="Open workspace folder"
+                          className="h-8 w-8"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleDelete(project.id, e)}
+                          title="Delete Project"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              // Animated list (first visit only)
+              <AnimatedList delay={150}>
+                {sortedProjects.map((project) => {
+                  const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
+                  const statusSummary = getTaskStatusSummary(project)
+
+                  return (
+                    <div
+                      key={project.id}
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                      className={cn(
+                        'group relative flex items-center gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                        'hover:shadow-lg hover:border-primary/50 cursor-pointer'
+                      )}
+                    >
+                      {/* Icon */}
+                      <div className="flex-shrink-0 rounded-lg bg-primary/10 p-3">
+                        <PlatformIcon className="h-6 w-6 text-primary" />
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-lg truncate">{project.name}</h3>
+                          <Badge
+                            variant={project.platform === 'android' ? 'default' : 'secondary'}
+                            className="capitalize flex-shrink-0"
+                          >
+                            {project.platform}
+                          </Badge>
+                          {statusSummary.running > 0 && (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <Circle className="h-2 w-2 fill-primary text-primary animate-pulse" />
+                              <span className="text-xs text-primary font-medium">
+                                {statusSummary.running} running
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span>Created {new Date(project.createdAt).toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>
+                            {statusSummary.total} {statusSummary.total === 1 ? 'task' : 'tasks'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleOpenWorkDir(project, e)}
+                          title="Open workspace folder"
+                          className="h-8 w-8"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleDelete(project.id, e)}
+                          title="Delete Project"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </AnimatedList>
             )}
-
-            {/* List View */}
-            {viewMode === 'list' && (
-              <List
-                variant="outlined"
-                sx={{
-                  borderRadius: 'md',
-                  bgcolor: 'background.surface',
-                }}
-              >
-                {paginatedProjects.map((project, index) => (
-                  <Box key={project.id}>
-                    <ProjectCard
-                      project={project}
-                      variant="list"
-                      expand={true}
-                      clickable={true}
-                      showDelete={true}
-                      onDeleted={loadProjects}
-                      onClick={(id) => navigate(`/projects/${id}`)}
-                    />
-                    {index < paginatedProjects.length - 1 && <Divider />}
-                  </Box>
-                ))}
-              </List>
-            )}
-
-            {/* Pagination */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <IconButton
-                  variant="outlined"
-                  color="neutral"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(1)}
-                >
-                  <FirstPage />
-                </IconButton>
-                <IconButton
-                  variant="outlined"
-                  color="neutral"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(currentPage - 1)}
-                >
-                  <ChevronLeft />
-                </IconButton>
-
-                <Stack direction="row" spacing={0.5}>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    // Show first page, last page, current page, and pages around current
-                    const showPage =
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-
-                    if (!showPage) {
-                      // Show ellipsis
-                      if (page === currentPage - 2 || page === currentPage + 2) {
-                        return (
-                          <Typography key={page} level="body-sm" sx={{ px: 1, alignSelf: 'center' }}>
-                            ...
-                          </Typography>
-                        )
-                      }
-                      return null
-                    }
-
-                    return (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? 'solid' : 'outlined'}
-                        color={currentPage === page ? 'primary' : 'neutral'}
-                        onClick={() => setCurrentPage(page)}
-                        sx={{ minWidth: 40 }}
-                      >
-                        {page}
-                      </Button>
-                    )
-                  })}
-                </Stack>
-
-                <IconButton
-                  variant="outlined"
-                  color="neutral"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                >
-                  <ChevronRight />
-                </IconButton>
-                <IconButton
-                  variant="outlined"
-                  color="neutral"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(totalPages)}
-                >
-                  <LastPage />
-                </IconButton>
-              </Stack>
-            </Box>
-          </Stack>
+          </>
         )}
-      </Box>
-    </Box>
+      </div>
+
+      {/* Project Create Dialog */}
+      <ProjectCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onProjectCreated={handleProjectCreated}
+      />
+    </div>
   )
 }

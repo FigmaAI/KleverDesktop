@@ -1,16 +1,10 @@
-import { motion } from 'framer-motion'
-import {
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  Input,
-  FormHelperText,
-  Button,
-  Box,
-} from '@mui/joy'
-import { Folder, FolderOpen } from '@mui/icons-material'
+import { FolderOpen, ExternalLink } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 interface PlatformConfigStepProps {
   androidSdkPath: string
@@ -28,99 +22,115 @@ export function PlatformConfigStep({
     }
   }
 
+  const openLink = (url: string) => {
+    window.electronAPI.openExternal(url)
+  }
+
   return (
-    <motion.div
-      key="step-1"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 'md',
-          bgcolor: 'background.surface',
-        }}
-      >
-        <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
-          Platform Configuration
-        </Typography>
-        <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-          Configure platform-specific settings for automation
-        </Typography>
+    <BlurFade key="step-1" delay={0.1}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Platform Configuration</CardTitle>
+          <CardDescription>Configure platform-specific settings for automation</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Android SDK Path */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Android SDK Path
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={androidSdkPath}
+                  onChange={(e) => setAndroidSdkPath(e.target.value)}
+                  placeholder="e.g., ~/Library/Android/sdk"
+                  className="flex-1"
+                />
+                <Button variant="outline" onClick={handleBrowse}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Browse
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Path to your Android SDK directory (contains platform-tools, emulator, and other tools).
+                <br />
+                This is required for Android device automation and emulator management.
+              </p>
+            </div>
 
-        <Stack spacing={3}>
-          {/* Android SDK Path */}
-          <FormControl>
-            <FormLabel>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Folder fontSize="small" />
-                <span>Android SDK Path</span>
-              </Stack>
-            </FormLabel>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Input
-                value={androidSdkPath}
-                onChange={(e) => setAndroidSdkPath(e.target.value)}
-                placeholder="/Volumes/Backup/Android-SDK"
-                size="lg"
-                sx={{ flex: 1 }}
-              />
-              <Button
-                variant="outlined"
-                color="neutral"
-                startDecorator={<FolderOpen />}
-                onClick={handleBrowse}
-                size="lg"
-              >
-                Browse
-              </Button>
-            </Box>
-            <FormHelperText>
-              Path to your Android SDK directory (contains platform-tools and emulator folders).
-              <br />
-              This is required for Android device automation via ADB.
-            </FormHelperText>
-          </FormControl>
+            {/* Installation Guide */}
+            <Alert>
+              <AlertTitle className="flex items-center gap-2 text-sm font-semibold">
+                📥 How to install Android SDK
+              </AlertTitle>
+              <AlertDescription>
+                <div className="text-sm space-y-3 mt-2">
+                  <div>
+                    <p className="font-medium mb-1">Option 1: Android Studio (Recommended)</p>
+                    <p className="text-muted-foreground mb-2">
+                      Install Android Studio which includes the full Android SDK
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openLink('https://developer.android.com/studio')}
+                      className="gap-2"
+                    >
+                      Download Android Studio <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
 
-          {/* Info Box */}
-          <Sheet
-            variant="soft"
-            color="primary"
-            sx={{
-              p: 2,
-              borderRadius: 'sm',
-            }}
-          >
-            <Typography level="title-sm" sx={{ mb: 1 }}>
-              How to find your Android SDK path
-            </Typography>
-            <Typography level="body-sm">
-              • Open Android Studio → Preferences → Appearance & Behavior → System Settings → Android SDK
-              <br />
-              • The path is shown at the top (e.g., /Users/username/Library/Android/sdk)
-              <br />• You can also use <code>which adb</code> in terminal and remove &quot;/platform-tools/adb&quot;
-            </Typography>
-          </Sheet>
+                  <div className="border-t pt-3">
+                    <p className="font-medium mb-1">Option 2: Command Line Tools Only</p>
+                    <p className="text-muted-foreground mb-2">
+                      Download only the SDK command-line tools (smaller download)
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openLink('https://developer.android.com/studio#command-line-tools-only')}
+                      className="gap-2"
+                    >
+                      Download Command Line Tools <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
 
-          {/* Note about other settings */}
-          <Sheet
-            variant="soft"
-            color="neutral"
-            sx={{
-              p: 2,
-              borderRadius: 'sm',
-            }}
-          >
-            <Typography level="body-sm" textColor="text.secondary">
-              <strong>Note:</strong> Other platform settings (screenshot directory, web browser settings, etc.)
-              use default values and can be customized later in the Settings page.
-            </Typography>
-          </Sheet>
-        </Stack>
-      </Sheet>
-    </motion.div>
+                  <div className="border-t pt-3">
+                    <p className="font-medium mb-1">After Installation:</p>
+                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <li>
+                        Open Android Studio → Settings → Appearance & Behavior → System Settings → Android SDK
+                      </li>
+                      <li>
+                        Copy the SDK path shown at the top
+                      </li>
+                      <li>
+                        Paste the path in the field above
+                      </li>
+                      <li>
+                        Alternatively, use: <code className="px-1 py-0.5 bg-muted rounded text-xs">which adb</code> and remove &quot;/platform-tools/adb&quot;
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+
+            {/* Note about other settings */}
+            <Alert className="bg-primary/5 border-primary/20">
+              <AlertDescription>
+                <p className="text-sm">
+                  <strong>Note:</strong> Other platform settings (screenshot directory, web
+                  browser settings, etc.) use default values and can be customized later in the
+                  Settings page.
+                </p>
+              </AlertDescription>
+            </Alert>
+          </div>
+        </CardContent>
+      </Card>
+    </BlurFade>
   )
 }

@@ -1,19 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Card,
-  FormControl,
-  FormHelperText,
-  FormLabel,
-  Input,
-  Sheet,
-  Stack,
-  Typography,
-  Snackbar,
-} from '@mui/joy'
-import { ArrowBack, FolderOpen, Language, PhoneAndroid } from '@mui/icons-material'
+import { ArrowLeft, FolderOpen, Smartphone, Globe } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 import type { Platform } from '../types/project'
 
 export function ProjectCreate() {
@@ -24,17 +16,6 @@ export function ProjectCreate() {
   const [platform, setPlatform] = useState<Platform>('android')
   const [projectName, setProjectName] = useState('')
   const [workspaceDir, setWorkspaceDir] = useState('')
-
-  // Snackbar state
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean
-    message: string
-    color: 'success' | 'danger'
-  }>({
-    open: false,
-    message: '',
-    color: 'success',
-  })
 
   const canCreate = () => {
     return projectName.trim() !== ''
@@ -55,182 +36,178 @@ export function ProjectCreate() {
       const result = await window.electronAPI.projectCreate({
         name: projectName,
         platform,
-        workspaceDir: workspaceDir || undefined, // Send undefined if empty
+        workspaceDir: workspaceDir || undefined,
       })
 
       if (result.success && result.project) {
-        // Show success message
-        const message = result.message || `Project created successfully at ${result.project.workspaceDir}`
-        const projectId = result.project.id
-        setSnackbar({
-          open: true,
-          message,
-          color: 'success',
-        })
-
-        // Navigate after a short delay to show the snackbar
-        setTimeout(() => {
-          navigate(`/projects/${projectId}`)
-        }, 1500)
+        const message = result.message || `Project created at ${result.project.workspaceDir}`
+        alert(message)
+        navigate(`/projects/${result.project.id}`)
       } else {
-        // Show error message
-        setSnackbar({
-          open: true,
-          message: `Failed to create project: ${result.error}`,
-          color: 'danger',
-        })
+        alert(`Failed to create project: ${result.error}`)
       }
     } catch (error) {
       console.error('Error creating project:', error)
-      setSnackbar({
-        open: true,
-        message: 'Failed to create project. Please try again.',
-        color: 'danger',
-      })
+      alert('Failed to create project. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      <Box sx={{ p: 4, flex: 1, maxWidth: 800, mx: 'auto', width: '100%' }}>
-        <Stack spacing={2} sx={{ mb: 4 }}>
-          <Button
-            variant="plain"
-            color="neutral"
-            startDecorator={<ArrowBack />}
-            onClick={() => navigate('/projects')}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            Back to Projects
-          </Button>
-          <Typography level="h2" fontWeight="bold">
-            Create New Project
-          </Typography>
-          <Typography level="body-md" textColor="text.secondary">
-            A project contains a set of automation tasks for a specific app or website.
-          </Typography>
-        </Stack>
+    <div className="flex h-full flex-col">
+      <div className="container mx-auto max-w-3xl flex-1 space-y-6 p-8">
+        {/* Back Button */}
+        <Button variant="ghost" onClick={() => navigate('/projects')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Projects
+        </Button>
 
-        <Sheet
-          variant="outlined"
-          sx={{
-            p: 4,
-            borderRadius: 'md',
-            bgcolor: 'background.surface',
-          }}
-        >
-          <Stack spacing={4}>
-            {/* --- Section 1: Project Details --- */}
-            <Stack spacing={2}>
-              <Typography level="title-lg" component="h3">
-                1. Project Details
-              </Typography>
-              <FormControl required>
-                <FormLabel>Project Name</FormLabel>
+        {/* Header */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Create New Project</h1>
+          <p className="text-muted-foreground">
+            A project contains a set of automation tasks for a specific app or website.
+          </p>
+        </div>
+
+        {/* Form */}
+        <Card>
+          <CardContent className="space-y-8 pt-6">
+            {/* Section 1: Project Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">1. Project Details</h3>
+
+              <div className="space-y-2">
+                <Label htmlFor="projectName">
+                  Project Name <span className="text-destructive">*</span>
+                </Label>
                 <Input
+                  id="projectName"
                   placeholder="e.g., Instagram Automation"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                 />
-                <FormHelperText>
+                <p className="text-sm text-muted-foreground">
                   The name of the app or website you want to automate.
-                </FormHelperText>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Workspace Directory (Optional)</FormLabel>
-                <Input
-                  readOnly
-                  value={workspaceDir}
-                  placeholder="Default: App container (MAS-safe)"
-                  endDecorator={
-                    <Button
-                      variant="soft"
-                      color="neutral"
-                      startDecorator={<FolderOpen />}
-                      onClick={handleSelectWorkspace}
-                    >
-                      Browse
-                    </Button>
-                  }
-                />
-                <FormHelperText>
-                  Choose a custom folder for project files, or leave empty for default container location.
-                </FormHelperText>
-              </FormControl>
-            </Stack>
+                </p>
+              </div>
 
-            {/* --- Section 2: Platform Selection --- */}
-            <Stack spacing={2}>
-              <Typography level="title-lg" component="h3">
-                2. Select Platform
-              </Typography>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <div className="space-y-2">
+                <Label htmlFor="workspaceDir">Workspace Directory (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="workspaceDir"
+                    readOnly
+                    value={workspaceDir}
+                    placeholder="Default: ~/Documents"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleSelectWorkspace}
+                    className="shrink-0"
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Browse
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  The directory where project data and outputs will be stored.
+                </p>
+              </div>
+            </div>
+
+            {/* Section 2: Platform Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">2. Select Platform</h3>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Android Platform Card */}
                 <Card
-                  variant={platform === 'android' ? 'solid' : 'outlined'}
-                  color={platform === 'android' ? 'primary' : 'neutral'}
+                  className={cn(
+                    'cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg',
+                    platform === 'android'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary'
+                      : 'border-border hover:border-primary/50'
+                  )}
                   onClick={() => setPlatform('android')}
-                  sx={{
-                    flex: 1,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': { transform: 'translateY(-2px)', boxShadow: 'md' },
-                  }}
                 >
-                  <Stack alignItems="center" spacing={2} sx={{ p: 2 }}>
-                    <PhoneAndroid sx={{ fontSize: 40 }} />
-                    <Typography level="title-md">Android</Typography>
-                  </Stack>
+                  <CardContent className="flex flex-col items-center justify-center space-y-3 p-8">
+                    <div
+                      className={cn(
+                        'rounded-full p-4',
+                        platform === 'android' ? 'bg-primary/10' : 'bg-muted'
+                      )}
+                    >
+                      <Smartphone
+                        className={cn(
+                          'h-8 w-8',
+                          platform === 'android' ? 'text-primary' : 'text-muted-foreground'
+                        )}
+                      />
+                    </div>
+                    <h4
+                      className={cn(
+                        'text-lg font-semibold',
+                        platform === 'android' ? 'text-primary' : 'text-foreground'
+                      )}
+                    >
+                      Android
+                    </h4>
+                  </CardContent>
                 </Card>
 
+                {/* Web Platform Card */}
                 <Card
-                  variant={platform === 'web' ? 'solid' : 'outlined'}
-                  color={platform === 'web' ? 'primary' : 'neutral'}
+                  className={cn(
+                    'cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg',
+                    platform === 'web'
+                      ? 'border-primary bg-primary/5 ring-2 ring-primary'
+                      : 'border-border hover:border-primary/50'
+                  )}
                   onClick={() => setPlatform('web')}
-                  sx={{
-                    flex: 1,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    '&:hover': { transform: 'translateY(-2px)', boxShadow: 'md' },
-                  }}
                 >
-                  <Stack alignItems="center" spacing={2} sx={{ p: 2 }}>
-                    <Language sx={{ fontSize: 40 }} />
-                    <Typography level="title-md">Web</Typography>
-                  </Stack>
+                  <CardContent className="flex flex-col items-center justify-center space-y-3 p-8">
+                    <div
+                      className={cn(
+                        'rounded-full p-4',
+                        platform === 'web' ? 'bg-primary/10' : 'bg-muted'
+                      )}
+                    >
+                      <Globe
+                        className={cn(
+                          'h-8 w-8',
+                          platform === 'web' ? 'text-primary' : 'text-muted-foreground'
+                        )}
+                      />
+                    </div>
+                    <h4
+                      className={cn(
+                        'text-lg font-semibold',
+                        platform === 'web' ? 'text-primary' : 'text-foreground'
+                      )}
+                    >
+                      Web
+                    </h4>
+                  </CardContent>
                 </Card>
-              </Stack>
-            </Stack>
+              </div>
+            </div>
 
-            {/* --- Action Button --- */}
-            <Stack direction="row" spacing={2} sx={{ mt: 2, justifyContent: 'flex-end' }}>
+            {/* Action Button */}
+            <div className="flex justify-end pt-4">
               <Button
                 size="lg"
-                variant="solid"
-                color="primary"
                 onClick={handleCreate}
                 disabled={!canCreate() || loading}
-                loading={loading}
               >
-                Create Project
+                {loading ? 'Creating...' : 'Create Project'}
               </Button>
-            </Stack>
-          </Stack>
-        </Sheet>
-      </Box>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        color={snackbar.color}
-        variant="soft"
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {snackbar.message}
-      </Snackbar>
-    </Box>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

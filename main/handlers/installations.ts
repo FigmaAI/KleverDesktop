@@ -5,18 +5,21 @@
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import * as path from 'path';
-import * as fs from 'fs';
-import * as os from 'os';
 import {
   checkPythonRuntime,
   checkPlaywrightBrowsers,
   installPlaywrightBrowsers,
   isPythonInstalled,
   getPythonInstallDir,
-  getPythonPath
+  getPythonPath,
+  checkVenvStatus,
+  createVirtualEnvironment,
+  installRequirements,
+  getAppagentPath
 } from '../utils/python-runtime';
+import { downloadPython } from '../utils/python-download';
 
 /**
  * Register all installation handlers
@@ -29,7 +32,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       const pythonStatus = checkPythonRuntime();
 
       if (!pythonStatus.available) {
-        console.error('[env:check] Python runtime not available:', pythonStatus.error);
+        // Normal state for initial setup, use log instead of error
+        console.log('[env:check] Python runtime not found (needs installation)');
         return {
           success: false,
           error: pythonStatus.error,
@@ -48,6 +52,9 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // Check Playwright browsers
       const playwrightInstalled = await checkPlaywrightBrowsers();
 
+      // Check venv status
+      const venvStatus = checkVenvStatus();
+
       const result = {
         success: true,
         bundledPython: {
@@ -56,6 +63,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
           version: '3.11.9', // Bundled version
           isBundled: true,
         },
+        venv: venvStatus,
         playwright: {
           installed: playwrightInstalled,
         },
@@ -73,20 +81,59 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     }
   });
 
-  // Environment setup (simplified - only Playwright)
+  // Environment setup (venv + requirements + Playwright)
   ipcMain.handle('env:setup', async () => {
     try {
       const mainWindow = getMainWindow();
 
-      // Verify Python runtime is available
-      const pythonStatus = checkPythonRuntime();
-      if (!pythonStatus.available) {
-        throw new Error(`Python runtime not available: ${pythonStatus.error}. Please run 'yarn python:build' first.`);
+      // 1. Check if Python is downloaded
+      if (!isPythonInstalled()) {
+        const errorMsg = 'Python is not installed yet. Please install Python first.';
+        mainWindow?.webContents.send('env:progress', `❌ ${errorMsg}\n`);
+        return { success: false, error: errorMsg };
       }
 
-      mainWindow?.webContents.send('env:progress', '✓ Python runtime verified\n');
+      mainWindow?.webContents.send('env:progress', '✓ Python runtime found\n');
 
-      // Install Playwright browsers
+      // 2. Check virtual environment status
+      const venvStatus = checkVenvStatus();
+      
+      if (!venvStatus.valid) {
+        mainWindow?.webContents.send('env:progress', '\n📦 Creating virtual environment...\n');
+        
+        const venvResult = await createVirtualEnvironment(
+          (data: string) => mainWindow?.webContents.send('env:progress', data),
+          (data: string) => mainWindow?.webContents.send('env:progress', data)
+        );
+
+        if (!venvResult.success) {
+          throw new Error(`Failed to create virtual environment: ${venvResult.error}`);
+        }
+
+        mainWindow?.webContents.send('env:progress', '✓ Virtual environment created\n');
+      } else {
+        mainWindow?.webContents.send('env:progress', '✓ Virtual environment already exists\n');
+      }
+
+      // 3. Install requirements.txt packages
+      mainWindow?.webContents.send('env:progress', '\n📦 Installing Python packages from requirements.txt...\n');
+      
+      const appagentPath = getAppagentPath();
+      const requirementsPath = path.join(appagentPath, 'requirements.txt');
+
+      const requirementsResult = await installRequirements(
+        requirementsPath,
+        (data: string) => mainWindow?.webContents.send('env:progress', data),
+        (data: string) => mainWindow?.webContents.send('env:progress', data)
+      );
+
+      if (!requirementsResult.success) {
+        throw new Error(`Failed to install requirements: ${requirementsResult.error}`);
+      }
+
+      mainWindow?.webContents.send('env:progress', '✓ Python packages installed\n');
+
+      // 4. Install Playwright browsers
       mainWindow?.webContents.send('env:progress', '\n🎭 Installing Playwright browsers...\n');
 
       const onProgress = (data: string) => mainWindow?.webContents.send('env:progress', data);
@@ -131,35 +178,92 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     }
   });
 
-  // Install Android Studio (via Homebrew cask) - LEGACY
+  // Install Android SDK (ADB + Command Line Tools)
   ipcMain.handle('install:androidStudio', async () => {
     return new Promise((resolve) => {
-      if (process.platform !== 'darwin') {
-        resolve({ success: false, error: 'Android Studio installation via Homebrew is only supported on macOS' });
-        return;
+      const platform = process.platform;
+
+      // macOS: Use Homebrew to install android-platform-tools (ADB) and android-commandlinetools (SDK)
+      if (platform === 'darwin') {
+        console.log('[Android SDK Install] Installing android-platform-tools and android-commandlinetools via Homebrew...');
+        
+        const install = spawn('brew', ['install', '--cask', 'android-commandlinetools', 'android-platform-tools']);
+
+        let output = '';
+        install.stdout?.on('data', (data) => {
+          output += data.toString();
+          console.log('[Android SDK Install] stdout:', data.toString());
+          getMainWindow()?.webContents.send('install:progress', data.toString());
+        });
+
+        install.stderr?.on('data', (data) => {
+          output += data.toString();
+          console.log('[Android SDK Install] stderr:', data.toString());
+          getMainWindow()?.webContents.send('install:progress', data.toString());
+        });
+
+        install.on('close', (code) => {
+          console.log('[Android SDK Install] Installation finished with code:', code);
+          
+          if (code === 0) {
+            getMainWindow()?.webContents.send('install:progress', '\n✅ Android SDK Tools installed successfully!\n');
+            resolve({ success: true, output });
+          } else {
+            resolve({ success: false, error: `Installation failed with code ${code}`, output });
+          }
+        });
+
+        install.on('error', (error) => {
+          console.error('[Android SDK Install] Error:', error.message);
+          resolve({ success: false, error: error.message });
+        });
+
+      // Windows: Try Chocolatey
+      } else if (platform === 'win32') {
+        // Check if Chocolatey is available
+        exec('choco --version', { timeout: 3000 }, (chocoError) => {
+          if (!chocoError) {
+            // Chocolatey is available, use it
+            console.log('[Android SDK Install] Installing adb via Chocolatey...');
+            const install = spawn('choco', ['install', 'adb', '-y']);
+
+            let output = '';
+            install.stdout?.on('data', (data) => {
+              output += data.toString();
+              getMainWindow()?.webContents.send('install:progress', data.toString());
+            });
+
+            install.stderr?.on('data', (data) => {
+              output += data.toString();
+              getMainWindow()?.webContents.send('install:progress', data.toString());
+            });
+
+            install.on('close', (code) => {
+              if (code === 0) {
+                getMainWindow()?.webContents.send('install:progress', '\n✅ ADB installed successfully!\n');
+                resolve({ success: true, output });
+              } else {
+                resolve({ success: false, error: `Installation failed with code ${code}`, output });
+              }
+            });
+          } else {
+            // Chocolatey not available
+            resolve({ 
+              success: false, 
+              error: 'Please install Chocolatey first or download Android SDK manually.',
+              needsManualInstall: true
+            });
+          }
+        });
+
+      // Linux
+      } else {
+        resolve({ 
+          success: false, 
+          error: 'Please install Android SDK manually.',
+          needsManualInstall: true
+        });
       }
-
-      const install = spawn('brew', ['install', '--cask', 'android-studio']);
-
-      let output = '';
-      install.stdout?.on('data', (data) => {
-        output += data.toString();
-        getMainWindow()?.webContents.send('install:progress', data.toString());
-      });
-
-      install.stderr?.on('data', (data) => {
-        output += data.toString();
-        getMainWindow()?.webContents.send('install:progress', data.toString());
-      });
-
-      install.on('close', (code) => {
-        resolve({ success: code === 0, output });
-      });
-
-      install.on('error', (error) => {
-        console.error('[Android Studio] Error:', error.message);
-        resolve({ success: false, error: error.message });
-      });
     });
   });
 
@@ -214,19 +318,34 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   // Download and install Python runtime - SIMPLIFIED: Just checks bundle status or throws error
   // Since we are now enforcing bundling, runtime download is not the primary path.
   // However, we keep a minimal implementation for dev fallback or manual setup if needed.
+  // Download and install Python runtime
   ipcMain.handle('python:download', async () => {
     const mainWindow = getMainWindow();
-    mainWindow?.webContents.send('python:progress', '⚠️  Python download is deprecated. Please use the bundled version.\n');
     
-    // Re-run check
+    // Re-run check first
     if (isPythonInstalled()) {
-       mainWindow?.webContents.send('python:progress', '✅ Bundled Python found.\n');
+       mainWindow?.webContents.send('python:progress', '✅ Python is already installed.\n');
        return { success: true };
     }
 
-    return { 
-      success: false, 
-      message: 'Bundled Python not found. Please rebuild the app with "yarn python:build" and "yarn package".' 
+    mainWindow?.webContents.send('python:progress', '🚀 Starting Python download...\n');
+    
+    const onProgress = (message: string) => {
+      mainWindow?.webContents.send('python:progress', message);
     };
+
+    // Import dynamically to avoid circular dependencies if any, or just use the imported one
+    // We need to import downloadPython at the top of the file first.
+    // Assuming it's imported as `import { downloadPython } from '../utils/python-download';`
+    
+    const result = await downloadPython(onProgress);
+    
+    if (result.success) {
+      mainWindow?.webContents.send('python:progress', '\n✅ Python installed successfully!\n');
+    } else {
+      mainWindow?.webContents.send('python:progress', `\n❌ Download failed: ${result.error}\n`);
+    }
+
+    return result;
   });
 }

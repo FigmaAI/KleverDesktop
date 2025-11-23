@@ -1,20 +1,15 @@
 /**
  * Terminal Header
- * Header with tabs, controls, and drag handle
+ * Simple header with title and controls
  */
 
-import { Box, Typography, IconButton, Tabs, TabList, Tab, Tooltip } from '@mui/joy'
-import {
-  Close as CloseIcon,
-  Delete as ClearIcon,
-  DragIndicator as DragIcon,
-  ContentCopy as CopyIcon,
-} from '@mui/icons-material'
+import { GripVertical, X, Trash2, Copy } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTerminal } from '@/hooks/useTerminal'
-import type { TerminalTab } from '@/types/terminal'
 
 export function TerminalHeader() {
-  const { activeTab, setActiveTab, processes, clearLines, setIsOpen, getFilteredLines } = useTerminal()
+  const { processes, clearLines, setIsOpen, lines } = useTerminal()
 
   const runningCount = processes.filter((p) => p.status === 'running').length
 
@@ -25,7 +20,6 @@ export function TerminalHeader() {
   }
 
   const handleCopy = () => {
-    const lines = getFilteredLines()
     const text = lines.map((line) => line.content).join('\n')
 
     // Use textarea method for better Electron compatibility
@@ -46,71 +40,53 @@ export function TerminalHeader() {
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        px: 2,
-        py: 1,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.surface',
-        cursor: 'grab',
-        userSelect: 'none',
-        '&:active': {
-          cursor: 'grabbing',
-        },
-      }}
-    >
+    <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 select-none cursor-grab active:cursor-grabbing">
       {/* Drag indicator */}
-      <DragIcon sx={{ color: 'text.tertiary', fontSize: '1.2rem' }} />
+      <GripVertical className="h-4 w-4 text-muted-foreground" />
 
       {/* Title */}
-      <Typography level="title-sm" fontWeight="bold" sx={{ flex: 0 }}>
-        Terminal
-        {runningCount > 0 && (
-          <Typography component="span" level="body-xs" sx={{ ml: 1, color: 'text.tertiary' }}>
-            ({runningCount} running)
-          </Typography>
-        )}
-      </Typography>
-
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onChange={(_, value) => setActiveTab(value as TerminalTab)}
-        sx={{ flex: 1, minWidth: 0 }}
-        size="sm"
-      >
-        <TabList>
-          <Tab value="all">All</Tab>
-          <Tab value="tasks">Tasks</Tab>
-          <Tab value="projects">Projects</Tab>
-          <Tab value="setup">Setup</Tab>
-        </TabList>
-      </Tabs>
+      <div className="flex-1">
+        <h3 className="text-sm font-semibold">
+          Terminal
+          {runningCount > 0 && (
+            <span className="ml-2 text-xs text-muted-foreground font-normal">
+              ({runningCount} running)
+            </span>
+          )}
+        </h3>
+      </div>
 
       {/* Controls */}
-      <Box sx={{ display: 'flex', gap: 0.5 }}>
-        <Tooltip title="Copy output">
-          <IconButton size="sm" variant="plain" color="neutral" onClick={handleCopy}>
-            <CopyIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <TooltipProvider delayDuration={300}>
+        <div className="flex gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="sm" variant="ghost" onClick={handleCopy} disabled={lines.length === 0}>
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copy output</TooltipContent>
+          </Tooltip>
 
-        <Tooltip title="Clear output">
-          <IconButton size="sm" variant="plain" color="neutral" onClick={handleClear}>
-            <ClearIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="sm" variant="ghost" onClick={handleClear} disabled={lines.length === 0}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Clear output</TooltipContent>
+          </Tooltip>
 
-        <Tooltip title="Close terminal">
-          <IconButton size="sm" variant="plain" color="neutral" onClick={() => setIsOpen(false)}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    </Box>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="sm" variant="ghost" onClick={() => setIsOpen(false)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close terminal</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion'
-import { Box, Typography, Sheet, Button, CircularProgress } from '@mui/joy'
-import { CheckCircle as CheckCircleIcon, Warning as WarningIcon } from '@mui/icons-material'
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { ToolStatus } from '@/types/setupWizard'
 
 interface ToolStatusCardProps {
@@ -20,75 +21,73 @@ export function ToolStatusCard({
   onInstall,
   installLabel = 'Install',
 }: ToolStatusCardProps) {
-  const getColor = () => {
-    if (status.checking) return 'neutral'
-    return status.installed ? 'success' : 'warning'
+  const getColorClass = () => {
+    if (status.checking) return 'bg-muted'
+    return status.installed ? 'bg-green-50 dark:bg-green-950' : 'bg-yellow-50 dark:bg-yellow-950'
+  }
+
+  const getStatusText = () => {
+    if (status.checking) return 'Checking...'
+    if (status.installing) return 'Installing...'
+    if (status.error) return status.error
+    if (status.version) return `v${status.version}`
+    if (subtitle) return subtitle
+    if (status.installed) return 'Ready'
+    return 'Not installed'
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay }}
-    >
-      <Sheet
-        variant="soft"
-        color={getColor()}
-        sx={{
-          p: 2,
-          borderRadius: 'sm',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          justifyContent: 'space-between',
-        }}
+    <BlurFade delay={delay}>
+      <div
+        className={cn(
+          'rounded-md p-3 flex items-center justify-between gap-3',
+          getColorClass()
+        )}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {status.checking ? (
-            <CircularProgress size="sm" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground flex-shrink-0" />
           ) : status.installed ? (
-            <CheckCircleIcon color="success" />
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
           ) : (
-            <WarningIcon color="warning" />
+            <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
           )}
-          <Box>
-            <Typography
-              level="body-sm"
-              fontWeight={status.installed ? 'md' : 'normal'}
-              textColor={status.installed ? 'text.primary' : 'text.secondary'}
+          <div className="min-w-0 flex-1">
+            <p
+              className={cn(
+                'text-sm font-medium truncate',
+                status.installed ? 'text-foreground' : 'text-muted-foreground'
+              )}
             >
               {name}
-            </Typography>
-            {status.version && (
-              <Typography level="body-xs" textColor="text.tertiary">
-                v{status.version}
-              </Typography>
-            )}
-            {subtitle && (
-              <Typography level="body-xs" textColor="text.tertiary">
-                {subtitle}
-              </Typography>
-            )}
-            {status.error && (
-              <Typography level="body-xs" textColor="danger.500">
-                {status.error}
-              </Typography>
-            )}
-          </Box>
-        </Box>
+            </p>
+            <p className={cn(
+              'text-xs truncate',
+              status.error ? 'text-destructive' : 'text-muted-foreground'
+            )}>
+              {getStatusText()}
+            </p>
+          </div>
+        </div>
         {!status.installed && !status.checking && onInstall && (
           <Button
             size="sm"
-            variant={installLabel === 'Install' ? 'solid' : 'outlined'}
-            color={installLabel === 'Install' ? 'primary' : 'warning'}
+            variant={installLabel === 'Install' ? 'default' : 'outline'}
             onClick={onInstall}
-            loading={status.installing}
-            sx={{ minWidth: installLabel === 'Install' ? '100px' : 'auto' }}
+            disabled={status.installing}
+            className={cn(installLabel === 'Install' && 'min-w-[100px]', 'flex-shrink-0')}
           >
-            {installLabel}
+            {status.installing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Installing...
+              </>
+            ) : (
+              installLabel
+            )}
           </Button>
         )}
-      </Sheet>
-    </motion.div>
+      </div>
+    </BlurFade>
   )
 }

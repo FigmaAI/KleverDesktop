@@ -1,19 +1,16 @@
 import { useState } from 'react'
+import { Calendar, Loader2 } from 'lucide-react'
 import {
-  Modal,
-  ModalDialog,
-  ModalClose,
-  Textarea,
-  Button,
-  Box,
-  Input,
-  DialogTitle,
+  Dialog,
   DialogContent,
-  IconButton,
-  Tooltip,
-  Stack,
-} from '@mui/joy'
-import { Schedule } from '@mui/icons-material'
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Label } from '@/components/ui/label'
 import { ModelSelector } from './ModelSelector'
 import type { Platform, Task } from '../types/project'
 
@@ -36,7 +33,9 @@ export function TaskCreateDialog({
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
-  const [selectedModel, setSelectedModel] = useState<{ type: 'local' | 'api'; model: string } | undefined>()
+  const [selectedModel, setSelectedModel] = useState<
+    { type: 'local' | 'api'; model: string } | undefined
+  >()
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
 
@@ -54,9 +53,10 @@ export function TaskCreateDialog({
     setLoading(true)
     try {
       // For Android, prepend instruction to search and open the app first
-      const taskGoal = platform === 'android'
-        ? `Search and open ${projectName} app and follow the prompt below:\n\n${goal.trim()}`
-        : goal.trim()
+      const taskGoal =
+        platform === 'android'
+          ? `Search and open ${projectName} app and follow the prompt below:\n\n${goal.trim()}`
+          : goal.trim()
 
       const taskInput = {
         projectId,
@@ -105,93 +105,84 @@ export function TaskCreateDialog({
   const isEligible = goal.trim() && (platform === 'android' || url.trim())
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <ModalDialog sx={{ maxWidth: 700, width: '90%' }}>
-        <ModalClose />
-        <DialogTitle>Create New Task</DialogTitle>
-        <DialogContent>
-          <Textarea
-            placeholder={
-              platform === 'web'
-                ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take screenshots of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
-                : 'Describe what you want to automate on the Android device...\nFor example: "Open Instagram and like the top 5 posts"\n\nPress Cmd/Ctrl + Enter to submit'
-            }
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            onKeyDown={handleKeyDown}
-            minRows={6}
-            maxRows={12}
-            size="lg"
-            sx={{
-              fontSize: '1rem',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-            }}
-            startDecorator={
-              platform === 'web' && (
-                <Box sx={{ display: 'flex', gap: 0.5, width: '100%' }}>
-                  <Input
-                    placeholder="https://example.com"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    size="sm"
-                    sx={{ flex: 1 }}
-                  />
-                </Box>
-              )
-            }
-            endDecorator={
-              <Stack
-                direction="row"
-                spacing={1}
-                sx={{
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  pt: 1,
-                }}
-              >
-                {/* Left: Model Type & Model Selection */}
-                <ModelSelector
-                  value={selectedModel}
-                  onChange={setSelectedModel}
-                  size="sm"
-                />
+    <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent
+        className="max-w-2xl"
+        onInteractOutside={(e) => {
+          e.preventDefault()
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>Create New Task</DialogTitle>
+        </DialogHeader>
 
-                {/* Right: Action Buttons */}
-                <Stack direction="row" spacing={1}>
-                  <Tooltip title="Schedule task (Coming soon)" placement="top">
-                    <IconButton
-                      size="sm"
-                      variant="outlined"
-                      color="neutral"
-                      disabled
-                    >
-                      <Schedule fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Button
-                    loading={loading}
-                    disabled={!isEligible}
-                    loadingIndicator="Running…"
-                    color="primary"
-                    size="sm"
-                    onClick={handleSubmit}
-                    endDecorator="⌘⏎"
-                  >
+        <div className="space-y-4">
+          {/* URL Input (Web Platform Only) */}
+          {platform === 'web' && (
+            <div className="space-y-2">
+              <Label>Website URL</Label>
+              <Input
+                placeholder="https://example.com"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </div>
+          )}
+
+          {/* Task Description */}
+          <div className="space-y-2">
+            <Label>Task Description</Label>
+            <Textarea
+              placeholder={
+                platform === 'web'
+                  ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take a screenshot of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
+                  : 'Describe what you want to automate on the Android device...\nFor example: "Open Instagram and like the top 5 posts"\n\nPress Cmd/Ctrl + Enter to submit'
+              }
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={8}
+              className="resize-none font-sans text-base"
+            />
+          </div>
+
+          {/* Bottom Controls */}
+          <div className="flex items-center justify-between pt-2">
+            {/* Left: Model Selection */}
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+
+            {/* Right: Action Buttons */}
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="outline" disabled>
+                      <Calendar className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Schedule task (Coming soon)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <Button size="sm" onClick={handleSubmit} disabled={!isEligible || loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
                     Run
-                  </Button>
-
-                </Stack>
-              </Stack>
-            }
-          />
-        </DialogContent>
-        {/* <DialogActions>
-          <Button variant="plain" color="neutral" onClick={handleClose}>
-            Cancel
-          </Button>
-        </DialogActions> */}
-      </ModalDialog>
-    </Modal>
+                    <span className="ml-2 text-xs opacity-60">⌘⏎</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

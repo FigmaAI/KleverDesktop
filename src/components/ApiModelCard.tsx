@@ -1,32 +1,23 @@
+import { useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, RefreshCw, ExternalLink, Eye, EyeOff } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Input } from '@/components/ui/input'
+import { Combobox, ComboboxOption } from '@/components/ui/combobox'
+import { Button } from '@/components/ui/button'
 import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Alert,
-  Input,
-  Autocomplete,
-  AutocompleteOption,
-  IconButton,
   Select,
-  Option,
-  Link,
-  Chip,
-} from '@mui/joy'
-import Checkbox from '@mui/joy/Checkbox'
-import {
-  Warning as WarningIcon,
-  Refresh as RefreshIcon,
-  OpenInNew as OpenInNewIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
-} from '@mui/icons-material'
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { ModelConfig } from '@/types/setupWizard'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
-import { useEffect, useMemo, useState } from 'react'
 
 interface ApiModelCardProps {
   modelConfig: ModelConfig
@@ -94,279 +85,262 @@ export function ApiModelCard({
   }, [selectedProvider?.id])
 
   // Handle provider selection
-  const handleProviderChange = (_event: React.SyntheticEvent | null, newValue: string | null) => {
-    const providerId = newValue || ''
-    setModelConfig({ 
-      ...modelConfig, 
-      apiProvider: providerId,
+  const handleProviderChange = (value: string) => {
+    setModelConfig({
+      ...modelConfig,
+      apiProvider: value,
       apiModel: '', // Reset model when provider changes
     })
   }
 
-  // Card content (can be used standalone or wrapped in Sheet)
+  // Prepare combobox options for model selection
+  const modelComboboxOptions: ComboboxOption[] = useMemo(() => {
+    return modelOptions.map((option) => ({
+      value: option,
+      label: option,
+    }))
+  }, [modelOptions])
+
+  // Card content (can be used standalone or wrapped in Card)
   const cardContent = (
-    <>
+    <div className="space-y-4">
       {showCheckbox && (
-        <Box sx={{ mb: 2 }}>
-          <Checkbox
-            label={
-              <Typography level="title-md" fontWeight="bold">
-                API Model (Cloud Services)
-              </Typography>
-            }
-            checked={modelConfig.enableApi}
-            onChange={(e) =>
-              setModelConfig({ ...modelConfig, enableApi: e.target.checked })
-            }
-            sx={{ mb: 0.5 }}
-          />
-          <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
+        <div className="space-y-2">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="enable-api-model"
+              checked={modelConfig.enableApi}
+              onCheckedChange={(checked) =>
+                setModelConfig({ ...modelConfig, enableApi: checked as boolean })
+              }
+            />
+            <Label htmlFor="enable-api-model" className="text-base font-semibold">
+              API Model (Cloud Services)
+            </Label>
+          </div>
+          <p className="ml-6 text-sm text-muted-foreground">
             100+ models from OpenAI, Anthropic, Google, and more
-          </Typography>
-        </Box>
+          </p>
+        </div>
       )}
 
-      <Stack spacing={2}>
+      <div className="space-y-4">
         {/* Provider Selection */}
-        <FormControl>
-          <FormLabel>AI Provider</FormLabel>
+        <div className="space-y-2">
+          <Label>AI Provider</Label>
           <Select
             value={modelConfig.apiProvider || ''}
-            onChange={handleProviderChange}
-            placeholder="Select a provider..."
+            onValueChange={handleProviderChange}
             disabled={!modelConfig.enableApi || providersLoading}
-            sx={{ minWidth: 200 }}
           >
-            {providers.map((provider) => (
-              <Option key={provider.id} value={provider.id}>
-                <Box>
-                  <Typography level="body-md">{provider.name}</Typography>
-                  {provider.description && (
-                    <Typography level="body-xs" textColor="text.secondary">
-                      {provider.description}
-                    </Typography>
-                  )}
-                </Box>
-              </Option>
-            ))}
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a provider...">
+                {selectedProvider?.name}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((provider) => (
+                <SelectItem key={provider.id} value={provider.id}>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{provider.name}</span>
+                    {provider.description && (
+                      <span className="text-xs text-muted-foreground">
+                        {provider.description}
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
           </Select>
-          <FormHelperText>
-            {providersLoading ? (
-              'Loading providers...'
-            ) : providersError ? (
-              <Typography textColor="danger.500">{providersError}</Typography>
-            ) : providers.length > 0 ? (
-              `${providers.length} providers available`
-            ) : (
-              'No providers found'
-            )}
-          </FormHelperText>
-        </FormControl>
+          <p className="text-sm text-muted-foreground">
+            {providersLoading
+              ? 'Loading providers...'
+              : providersError
+                ? <span className="text-destructive">{providersError}</span>
+                : providers.length > 0
+                  ? `${providers.length} providers available`
+                  : 'No providers found'}
+          </p>
+        </div>
 
         {/* Provider Info (when selected) */}
         {selectedProvider && (
-          <Alert variant="soft" color="primary">
-            <Stack spacing={1}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography level="title-sm" fontWeight="bold">
-                  {selectedProvider.name}
-                </Typography>
-                {selectedProvider.requiresBaseUrl && (
-                  <Chip size="sm" color="warning">Custom URL Required</Chip>
+          <Alert>
+            <AlertDescription>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{selectedProvider.name}</span>
+                  {selectedProvider.requiresBaseUrl && (
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                      Custom URL Required
+                    </Badge>
+                  )}
+                </div>
+                {selectedProvider.description && (
+                  <p className="text-sm">{selectedProvider.description}</p>
                 )}
-              </Box>
-              {selectedProvider.description && (
-                <Typography level="body-sm">
-                  {selectedProvider.description}
-                </Typography>
-              )}
-              <Link
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault()
-                  window.electronAPI.openExternal(selectedProvider.apiKeyUrl)
-                }}
-                level="body-sm"
-                endDecorator={<OpenInNewIcon fontSize="small" />}
-              >
-                Get API Key
-              </Link>
-            </Stack>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    window.electronAPI.openExternal(selectedProvider.apiKeyUrl)
+                  }}
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  Get API Key
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </AlertDescription>
           </Alert>
         )}
 
         {/* API Base URL (conditional - only for OpenRouter, Azure, etc.) */}
         {selectedProvider?.requiresBaseUrl && (
-          <FormControl>
-            <FormLabel>API Base URL</FormLabel>
+          <div className="space-y-2">
+            <Label>API Base URL</Label>
             <Input
               value={modelConfig.apiBaseUrl}
               onChange={(e) => setModelConfig({ ...modelConfig, apiBaseUrl: e.target.value })}
               placeholder={selectedProvider.defaultBaseUrl || 'https://...'}
               disabled={!modelConfig.enableApi}
             />
-            <FormHelperText>
-              {selectedProvider.defaultBaseUrl 
+            <p className="text-sm text-muted-foreground">
+              {selectedProvider.defaultBaseUrl
                 ? `Default: ${selectedProvider.defaultBaseUrl}`
-                : 'Custom endpoint URL'
-              }
-            </FormHelperText>
-          </FormControl>
+                : 'Custom endpoint URL'}
+            </p>
+          </div>
         )}
 
         {/* API Key */}
-        <FormControl>
-          <FormLabel>API Key</FormLabel>
-          <Input
-            type={showApiKey ? 'text' : 'password'}
-            value={modelConfig.apiKey}
-            onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
-            placeholder={selectedProvider ? 'Enter your API key...' : 'Select a provider first'}
-            disabled={!modelConfig.enableApi || !selectedProvider}
-            endDecorator={
-              modelConfig.apiKey && (
-                <IconButton
-                  variant="plain"
-                  color="neutral"
-                  size="sm"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  disabled={!modelConfig.enableApi || !selectedProvider}
-                  sx={{ mr: -1 }}
-                >
-                  {showApiKey ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                </IconButton>
-              )
-            }
-          />
-          <FormHelperText>
+        <div className="space-y-2">
+          <Label>API Key</Label>
+          <div className="relative">
+            <Input
+              type={showApiKey ? 'text' : 'password'}
+              value={modelConfig.apiKey}
+              onChange={(e) => setModelConfig({ ...modelConfig, apiKey: e.target.value })}
+              placeholder={
+                selectedProvider ? 'Enter your API key...' : 'Select a provider first'
+              }
+              disabled={!modelConfig.enableApi || !selectedProvider}
+              className="pr-10"
+            />
+            {modelConfig.apiKey && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowApiKey(!showApiKey)}
+                disabled={!modelConfig.enableApi || !selectedProvider}
+              >
+                {showApiKey ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+                <span className="sr-only">
+                  {showApiKey ? 'Hide' : 'Show'} API key
+                </span>
+              </Button>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
             {selectedProvider
               ? 'Your API key (stored securely on your device)'
-              : 'Select a provider to continue'
-            }
-          </FormHelperText>
-        </FormControl>
+              : 'Select a provider to continue'}
+          </p>
+        </div>
 
         {/* Model Selection */}
-        <FormControl>
-          <FormLabel>
+        <div className="space-y-2">
+          <Label>
             Model Name
             {selectedProvider && (
-              <Typography level="body-xs" textColor="text.secondary" sx={{ ml: 1 }}>
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
                 ({providerModels.length} models available)
-              </Typography>
+              </span>
             )}
-          </FormLabel>
-          <Stack direction="row" spacing={1}>
-            <Autocomplete
-              placeholder={selectedProvider ? 'Select or search model...' : 'Select a provider first'}
-              value={modelConfig.apiModel}
-              onChange={(_, newValue) => {
-                setModelConfig({ ...modelConfig, apiModel: newValue || '' })
-              }}
-              onInputChange={(_, newValue) => {
-                setModelConfig({ ...modelConfig, apiModel: newValue })
-              }}
-              options={modelOptions}
-              freeSolo
-              disabled={!modelConfig.enableApi || !selectedProvider}
-              loading={apiModelsLoading}
-              sx={{ flex: 1 }}
-              renderOption={(props, option) => {
-                const modelInfo = providerModels.find(m => m.id === option)
-                return (
-                  <AutocompleteOption {...props} key={option}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                      <Typography level="body-sm" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {option}
-                      </Typography>
-                      {modelInfo && (
-                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                          {modelInfo.supportsVision && (
-                            <Chip size="sm" color="success" variant="soft">Vision</Chip>
-                          )}
-                          {modelInfo.maxInputTokens && (
-                            <Chip size="sm" variant="soft">
-                              {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
-                            </Chip>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </AutocompleteOption>
-                )
-              }}
-            />
-            <IconButton
+          </Label>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Combobox
+                options={modelComboboxOptions}
+                value={modelConfig.apiModel}
+                onValueChange={(value) => setModelConfig({ ...modelConfig, apiModel: value })}
+                placeholder={
+                  selectedProvider
+                    ? 'Select or search model...'
+                    : 'Select a provider first'
+                }
+                searchPlaceholder="Search models..."
+                emptyText="No models found"
+                disabled={!modelConfig.enableApi || !selectedProvider}
+                className="w-full"
+              />
+            </div>
+            <Button
               onClick={fetchApiModels}
               disabled={
-                !modelConfig.enableApi || 
-                !selectedProvider || 
-                !modelConfig.apiKey || 
+                !modelConfig.enableApi ||
+                !selectedProvider ||
+                !modelConfig.apiKey ||
                 apiModelsLoading
               }
-              variant="outlined"
-              color="neutral"
+              variant="outline"
+              size="icon"
               title="Fetch models from API"
             >
-              <RefreshIcon />
-            </IconButton>
-          </Stack>
-          <FormHelperText>
-            {!selectedProvider ? (
-              'Select a provider first'
-            ) : apiModelsError ? (
-              <Typography textColor="warning.500">
-                Unable to fetch models from API - showing {providerModels.length} known models
-              </Typography>
-            ) : apiModels.length > 0 ? (
-              `${apiModels.length} models fetched from API`
-            ) : (
-              `Showing ${providerModels.length} known models for ${selectedProvider.name}`
-            )}
-          </FormHelperText>
-        </FormControl>
+              <RefreshCw className={cn('h-4 w-4', apiModelsLoading && 'animate-spin')} />
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {!selectedProvider
+              ? 'Select a provider first'
+              : apiModelsError
+                ? `Unable to fetch models from API - showing ${providerModels.length} known models`
+                : apiModels.length > 0
+                  ? `${apiModels.length} models fetched from API`
+                  : `Showing ${providerModels.length} known models for ${selectedProvider.name}`}
+          </p>
+        </div>
 
         {/* API Models Error (non-critical) */}
         {apiModelsError && (
-          <Alert
-            color="warning"
-            startDecorator={<WarningIcon />}
-            variant="soft"
-          >
-            <Box>
-              <Typography level="title-sm" fontWeight="bold">Model Fetch Warning</Typography>
-              <Typography level="body-sm">
-                {apiModelsError}
-              </Typography>
-              <Typography level="body-sm" sx={{ mt: 0.5 }}>
-                You can still enter a model name manually from the {providerModels.length} known models.
-              </Typography>
-            </Box>
+          <Alert variant="warning">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-semibold">Model Fetch Warning</p>
+                <p className="text-sm">{apiModelsError}</p>
+                <p className="text-sm">
+                  You can still enter a model name manually from the {providerModels.length}{' '}
+                  known models.
+                </p>
+              </div>
+            </AlertDescription>
           </Alert>
         )}
-      </Stack>
-    </>
+      </div>
+    </div>
   )
 
   // Return wrapped or unwrapped based on standalone prop
   if (standalone) {
     return (
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 'md',
-          border: modelConfig.enableApi ? '2px solid' : '1px solid',
-          borderColor: modelConfig.enableApi ? 'primary.500' : 'neutral.outlinedBorder',
-          bgcolor: modelConfig.enableApi ? 'primary.softBg' : 'background.surface',
-          transition: 'all 0.2s ease',
-          '&:hover': {
-            borderColor: modelConfig.enableApi ? 'primary.600' : 'neutral.outlinedHoverBorder',
-          },
-        }}
+      <Card
+        className={cn(
+          'transition-all',
+          modelConfig.enableApi
+            ? 'border-2 border-primary bg-primary/5'
+            : 'border hover:border-primary/50'
+        )}
       >
-        {cardContent}
-      </Sheet>
+        <CardContent className="pt-6">{cardContent}</CardContent>
+      </Card>
     )
   }
 

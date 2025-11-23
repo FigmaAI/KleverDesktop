@@ -1,40 +1,93 @@
 /**
- * Python Runtime Manager (Bundled)
+ * Python Runtime Manager
  *
- * Manages bundled Python runtime for Klever Desktop.
- * Assumes Python is pre-bundled in resources/python during build process.
+ * Manages Python runtime for Klever Desktop.
+ * Python is downloaded at runtime to user data directory.
  *
  * Structure:
- * - resources/python/<platform>/python (executable)
+ * - ~/.klever-desktop/python/<platform>-<arch>/python (downloaded)
+ * - ~/.klever-desktop/python-env (venv for packages)
  * - resources/appagent (scripts)
  */
 
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { app } from 'electron';
 import { spawn, SpawnOptions } from 'child_process';
 
 /**
- * Get the directory where Python is located
- * Prioritizes bundled Python in resources/python
+ * Get the path to the virtual environment in user data directory
+ * This is where we install Python packages from requirements.txt
+ */
+/**
+ * Get the base directory for Klever Desktop data
+ * ~/.klever-desktop
+ */
+export function getKleverDir(): string {
+  return path.join(os.homedir(), '.klever-desktop');
+}
+
+/**
+ * Get the path to the virtual environment in user data directory
+ * This is where we install Python packages from requirements.txt
+ */
+export function getVenvPath(): string {
+  return path.join(getKleverDir(), 'python-env');
+}
+
+/**
+ * Get the Python executable from the virtual environment
+ */
+export function getVenvPythonPath(): string {
+  const venvPath = getVenvPath();
+  const platform = os.platform();
+
+  if (platform === 'win32') {
+    return path.join(venvPath, 'Scripts', 'python.exe');
+  } else {
+    return path.join(venvPath, 'bin', 'python');
+  }
+}
+
+/**
+ * Check if virtual environment exists and is valid
+ * Returns whether venv directory exists and has a valid Python executable
+ */
+export function checkVenvStatus(): {
+  exists: boolean;
+  valid: boolean;
+  path: string;
+  pythonExecutable: string;
+} {
+  const venvPath = getVenvPath();
+  const venvPythonPath = getVenvPythonPath();
+
+  const exists = fs.existsSync(venvPath);
+  const valid = exists && fs.existsSync(venvPythonPath);
+
+  return {
+    exists,
+    valid,
+    path: venvPath,
+    pythonExecutable: venvPythonPath,
+  };
+}
+
+/**
+ * Get the directory where Python is installed
+ * Uses user data directory for runtime downloads
  */
 export function getPythonInstallDir(): string {
   const platform = os.platform();
   const arch = os.arch();
   
-  // Check bundled path first (Production/Standard Build)
-  // Resources/python/<platform>-<arch>/python
-  const bundledPath = path.join(process.resourcesPath, 'python', `${platform}-${arch}`, 'python');
-  if (fs.existsSync(bundledPath)) {
-    return bundledPath;
-  }
-
-  // Fallback for development (if not bundled)
-  // Use local .venv or similar if configured, otherwise system python
-  return 'python'; 
+  // Python is downloaded to ~/.klever-desktop/python/<platform>-<arch>/python
+  return path.join(getKleverDir(), 'python', `${platform}-${arch}`, 'python');
 }
 
+/**
+ * Get Python executable path
+ */
 /**
  * Get Python executable path
  */
@@ -54,12 +107,7 @@ export function getPythonPath(): string {
 
   // Verify existence if it's an absolute path
   if (path.isAbsolute(pythonExe) && !fs.existsSync(pythonExe)) {
-    // In dev mode, we might fall back to system python
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(`Bundled Python not found at ${pythonExe}, falling back to system python`);
-      return 'python3';
-    }
-    throw new Error(`Bundled Python runtime not found at ${pythonExe}`);
+    throw new Error(`Python runtime not found at ${pythonExe}. Please run Setup Wizard to download Python.`);
   }
 
   return pythonExe;
@@ -71,12 +119,6 @@ export function getPythonPath(): string {
 export function isPythonInstalled(): boolean {
   try {
     const pythonPath = getPythonPath();
-    
-    // If using system python fallback, check version
-    if (pythonPath === 'python' || pythonPath === 'python3') {
-      return true; // Assume system python exists for dev
-    }
-
     return fs.existsSync(pythonPath);
   } catch {
     return false;
@@ -131,11 +173,149 @@ export function executePythonScript(
 }
 
 /**
+ * Create a virtual environment using downloaded Python
+ */
+export async function createVirtualEnvironment(
+  onOutput?: (data: string) => void,
+  onError?: (data: string) => void
+): Promise<{ success: boolean; error?: string }> {
+  const bundledPython = getPythonPath();
+  const venvPath = getVenvPath();
+
+  // Remove existing venv if invalid
+  if (fs.existsSync(venvPath)) {
+    fs.rmSync(venvPath, { recursive: true, force: true });
+  }
+
+  // Create parent directory
+  const parentDir = path.dirname(venvPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
+  return new Promise((resolve) => {
+    const venvProcess = spawn(bundledPython, ['-m', 'venv', venvPath], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let errorOutput = '';
+
+    venvProcess.stdout?.on('data', (data) => {
+      const text = data.toString();
+      onOutput?.(text);
+    });
+
+    venvProcess.stderr?.on('data', (data) => {
+      const text = data.toString();
+      errorOutput += text;
+      onError?.(text);
+    });
+
+    venvProcess.on('close', (code) => {
+      if (code === 0) {
+        // Verify venv was created successfully
+        const status = checkVenvStatus();
+        if (status.valid) {
+          resolve({ success: true });
+        } else {
+          console.error('[Python Runtime] Virtual environment created but is invalid');
+          resolve({
+            success: false,
+            error: 'Virtual environment created but validation failed',
+          });
+        }
+      } else {
+        console.error('[Python Runtime] Failed to create virtual environment');
+        resolve({
+          success: false,
+          error: errorOutput || `venv creation failed with code ${code}`,
+        });
+      }
+    });
+
+    venvProcess.on('error', (error) => {
+      console.error('[Python Runtime] Process error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+}
+
+/**
+ * Install packages from requirements.txt into the virtual environment
+ */
+export async function installRequirements(
+  requirementsPath: string,
+  onOutput?: (data: string) => void,
+  _onError?: (data: string) => void
+): Promise<{ success: boolean; error?: string }> {
+  const venvPythonPath = getVenvPythonPath();
+
+  // Verify requirements.txt exists
+  if (!fs.existsSync(requirementsPath)) {
+    return { success: false, error: `requirements.txt not found at ${requirementsPath}` };
+  }
+
+  // Verify venv is valid
+  const status = checkVenvStatus();
+  if (!status.valid) {
+    return { success: false, error: 'Virtual environment is not valid. Please create it first.' };
+  }
+
+  return new Promise((resolve) => {
+    // Install requirements
+    onOutput?.('Installing packages from requirements.txt...\n');
+
+    const installProcess = spawn(venvPythonPath, ['-m', 'pip', 'install', '-r', requirementsPath], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let errorOutput = '';
+
+    installProcess.stdout?.on('data', (data) => {
+      const text = data.toString();
+      onOutput?.(text);
+    });
+
+    installProcess.stderr?.on('data', (data) => {
+      const text = data.toString();
+      errorOutput += text;
+      onOutput?.(text); // pip outputs progress to stderr
+    });
+
+    installProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve({ success: true });
+      } else {
+        console.error('[Python Runtime] Package installation failed');
+        resolve({
+          success: false,
+          error: errorOutput || `Package installation failed with code ${code}`,
+        });
+      }
+    });
+
+    installProcess.on('error', (error) => {
+      console.error('[Python Runtime] Install process error:', error.message);
+      resolve({ success: false, error: error.message });
+    });
+  });
+}
+
+/**
  * Check if Playwright browsers are installed
  */
 export async function checkPlaywrightBrowsers(): Promise<boolean> {
   try {
-    const pythonExe = getPythonPath();
+    // Use venv python to check for installed packages
+    const venvStatus = checkVenvStatus();
+    console.log('[Playwright Check] Venv status:', venvStatus);
+    
+    if (!venvStatus.valid) {
+      console.log('[Playwright Check] Venv invalid, returning false');
+      return false;
+    }
+    const pythonExe = getVenvPythonPath();
+    console.log('[Playwright Check] Using Python executable:', pythonExe);
 
     return new Promise((resolve) => {
       // Check if chromium is installed using python script
@@ -148,11 +328,21 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
       ]);
 
       let output = '';
+      let errorOutput = '';
+
       checkBrowsers.stdout?.on('data', (data) => {
         output += data.toString();
       });
 
+      checkBrowsers.stderr?.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
       checkBrowsers.on('close', (checkCode) => {
+        console.log('[Playwright Check] Process closed with code:', checkCode);
+        console.log('[Playwright Check] Output:', output.trim());
+        if (errorOutput) console.error('[Playwright Check] Stderr:', errorOutput);
+        
         resolve(checkCode === 0 && output.includes('installed'));
       });
 
@@ -174,10 +364,13 @@ export async function installPlaywrightBrowsers(
   onProgress?: (data: string) => void
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const pythonExe = getPythonPath();
+    // Use venv python to access installed packages
+    const pythonExe = getVenvPythonPath();
 
     return new Promise((resolve) => {
       onProgress?.('Installing Playwright browsers (this may take a few minutes)...\n');
+
+      let errorOutput = '';
 
       const proc = spawn(pythonExe, ['-m', 'playwright', 'install', 'chromium']);
 
@@ -188,6 +381,7 @@ export async function installPlaywrightBrowsers(
 
       proc.stderr?.on('data', (data) => {
         const text = data.toString();
+        errorOutput += text;
         onProgress?.(text);
       });
 
@@ -197,7 +391,7 @@ export async function installPlaywrightBrowsers(
         } else {
           resolve({
             success: false,
-            error: `Playwright installation failed with code ${code}`,
+            error: `Playwright installation failed with code ${code}. Details: ${errorOutput}`,
           });
         }
       });
@@ -237,7 +431,7 @@ export function spawnBundledPython(
   args: string[],
   options?: SpawnOptions
 ) {
-  const pythonExe = getPythonPath();
+  const pythonExe = getVenvPythonPath();
   const appagentDir = getAppagentPath();
 
   const env = {

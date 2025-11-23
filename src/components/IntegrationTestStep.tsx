@@ -1,16 +1,12 @@
-import { motion } from 'framer-motion'
-import {
-  Box,
-  Typography,
-  Sheet,
-  Button,
-  Alert,
-} from '@mui/joy'
-import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+import { useRef, useEffect } from 'react'
+import { CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Terminal, AnimatedSpan } from '@/components/ui/terminal'
+import { useTerminal } from '@/hooks/useTerminal'
+import { renderAnsi } from '@/utils/ansiParser'
 
 interface IntegrationTestStepProps {
   integrationTestRunning: boolean
@@ -27,86 +23,117 @@ export function IntegrationTestStep({
   onRunTest,
   onStopTest,
 }: IntegrationTestStepProps) {
+  const { lines } = useTerminal()
+  const outputRef = useRef<HTMLDivElement>(null)
+
+  // Filter lines for integration test
+  const integrationLines = lines.filter((line) => line.source === 'integration')
+
+  // Auto-scroll to bottom when new lines are added
+  useEffect(() => {
+    if (outputRef.current) {
+      outputRef.current.scrollTop = outputRef.current.scrollHeight
+    }
+  }, [integrationLines])
+
   return (
-    <motion.div
-      key="step-2"
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3 }}
-    >
-      <Sheet
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 'md',
-          bgcolor: 'background.surface',
-        }}
-      >
-        <Typography level="h4" fontWeight="bold" sx={{ mb: 1 }}>
-          Final Integration Test
-        </Typography>
-        <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-          Run the integration test to verify your setup
-        </Typography>
+    <BlurFade key="step-2" delay={0.1}>
+      <Card className="h-full min-h-[480px]" >
+        <CardContent className="p-6 h-full">
+          <div className="grid grid-cols-8 gap-6">
+            {/* Left: Title, Description, and Controls */}
+            <div className="col-span-3 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold">Final Integration Test</h3>
+                <p className="text-sm text-muted-foreground">
+                  Run the integration test to verify your setup
+                </p>
+              </div>
 
-        {!integrationTestRunning && !integrationTestComplete && (
-          <Button
-            variant="solid"
-            color="primary"
-            onClick={onRunTest}
-            fullWidth
-            sx={{ mb: 2 }}
-          >
-            Run Integration Test
-          </Button>
-        )}
+              {!integrationTestRunning && !integrationTestComplete && (
+                <Button onClick={onRunTest}>Run Integration Test</Button>
+              )}
 
-        {/* Guide message when test is running */}
-        {integrationTestRunning && (
-          <Alert
-            color="primary"
-            variant="soft"
-            sx={{ mb: 2 }}
-          >
-            <Box>
-              <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                Test in progress...
-              </Typography>
-              <Typography level="body-sm">
-                Please wait while the browser opens and closes.
-                The terminal below will show detailed progress.
-              </Typography>
-            </Box>
-          </Alert>
-        )}
+              {/* Retry/Stop Button */}
+              {(integrationTestRunning || integrationTestComplete) && (
+                <Button
+                  variant={integrationTestRunning ? 'destructive' : 'outline'}
+                  onClick={integrationTestRunning ? onStopTest : onRunTest}
+                >
+                  {integrationTestRunning ? (
+                    'Stop Test'
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Retry Test
+                    </>
+                  )}
+                </Button>
+              )}
 
-        {/* Retry/Stop Button */}
-        {(integrationTestRunning || integrationTestComplete) && (
-          <Button
-            variant="outlined"
-            color={integrationTestRunning ? "danger" : "neutral"}
-            onClick={integrationTestRunning ? onStopTest : onRunTest}
-            fullWidth
-            sx={{ mb: 2 }}
-            startDecorator={integrationTestRunning ? null : <RefreshIcon />}
-          >
-            {integrationTestRunning ? "Stop Test" : "Retry Test"}
-          </Button>
-        )}
+              {/* Guide message when test is running */}
+              {integrationTestRunning && (
+                <Alert>
+                  <AlertDescription>
+                    <p className="font-semibold text-sm mb-1">Test in progress...</p>
+                    <p className="text-sm">
+                      Please wait while the browser opens and closes. The terminal on the right
+                      shows detailed progress.
+                    </p>
+                  </AlertDescription>
+                </Alert>
+              )}
 
-        {integrationTestComplete && integrationTestSuccess && (
-          <Alert color="success" startDecorator={<CheckCircleIcon />} sx={{ mt: 2 }}>
-            Setup complete! All tests passed successfully.
-          </Alert>
-        )}
 
-        {integrationTestComplete && !integrationTestSuccess && (
-          <Alert color="danger" startDecorator={<WarningIcon />} sx={{ mt: 2 }}>
-            Integration test failed. Please review the output and fix any issues.
-          </Alert>
-        )}
-      </Sheet>
-    </motion.div>
+
+              {integrationTestComplete && integrationTestSuccess && (
+                <Alert className="bg-green-500/10 border-green-500/20">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <AlertDescription>
+                    Setup complete! All tests passed successfully.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {integrationTestComplete && !integrationTestSuccess && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Integration test failed. Please review the output and fix any issues.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {/* Right: Terminal Output */}
+            <div className="col-span-5 flex h-full flex-col">
+              <div className="flex h-full overflow-hidden rounded-lg border">
+                <div ref={outputRef} className="h-full min-h-[400px] max-h-[420px] overflow-y-auto">
+                  <Terminal
+                    sequence={false}
+                    className="h-full border-0 rounded-none max-w-none"
+                    title="Terminal Output"
+                  >
+                    {integrationLines.length === 0 ? (
+                      <AnimatedSpan className="text-muted-foreground">
+                        No output yet. Click &quot;Run Integration Test&quot; to start.
+                      </AnimatedSpan>
+                    ) : (
+                      <>
+                        {integrationLines.map((line) => (
+                          <AnimatedSpan key={line.id} className="font-mono text-xs">
+                            {renderAnsi(line.content)}
+                          </AnimatedSpan>
+                        ))}
+                      </>
+                    )}
+                  </Terminal>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </BlurFade>
   )
 }

@@ -1,14 +1,6 @@
-import { motion } from 'framer-motion'
-import {
-  Box,
-  Typography,
-  Stepper,
-  Step,
-  StepIndicator,
-  stepClasses,
-  stepIndicatorClasses,
-} from '@mui/joy'
-import { CheckCircle as CheckCircleIcon } from '@mui/icons-material'
+import { CheckCircle } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { cn } from '@/lib/utils'
 import { StepConfig } from '@/types/setupWizard'
 
 interface SetupStepperProps {
@@ -18,67 +10,74 @@ interface SetupStepperProps {
 
 export function SetupStepper({ steps, currentStep }: SetupStepperProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.3 }}
-      style={{ minWidth: 'fit-content' }}
-    >
-      <Stepper
-        orientation="vertical"
-        sx={(theme) => ({
-          '--Stepper-verticalGap': { xs: '1rem', md: '2rem' },
-          '--StepIndicator-size': { xs: '2rem', md: '2.5rem' },
-          '--Step-gap': { xs: '0.5rem', md: '1rem' },
-          '--Step-connectorInset': '0.5rem',
-          '--Step-connectorRadius': '1rem',
-          '--Step-connectorThickness': '4px',
-          [`& .${stepClasses.completed}`]: {
-            '&::after': { bgcolor: 'primary.solidBg' },
-          },
-          [`& .${stepClasses.active}`]: {
-            [`& .${stepIndicatorClasses.root}`]: {
-              border: '4px solid',
-              borderColor: theme.vars.palette.primary[500],
-              boxShadow: `0 0 0 1px ${theme.vars.palette.primary[200]}`,
-            },
-          },
-          [`& .${stepClasses.disabled} *`]: {
-            color: 'neutral.softDisabledColor',
-          },
-        })}
-      >
+    <BlurFade delay={0.3} className="min-w-fit">
+      <nav aria-label="Progress" className="space-y-4 md:space-y-8">
         {steps.map((step, index) => {
           const isCompleted = index < currentStep
           const isActive = index === currentStep
+          const isDisabled = index > currentStep
 
           return (
-            <Step
-              key={index}
-              completed={isCompleted}
-              active={isActive}
-              disabled={index > currentStep}
-              indicator={
-                <StepIndicator
-                  variant={isCompleted ? 'solid' : isActive ? 'solid' : 'outlined'}
-                  color={isCompleted ? 'primary' : isActive ? 'primary' : 'neutral'}
+            <div key={index} className="relative flex items-start">
+              {/* Connector line */}
+              {index < steps.length - 1 && (
+                <div
+                  className={cn(
+                    'absolute left-3 top-8 md:left-4 md:top-10 h-full w-0.5 rounded-full',
+                    isCompleted ? 'bg-primary' : 'bg-border'
+                  )}
+                  style={{
+                    height: 'calc(100% + 1rem)',
+                  }}
+                />
+              )}
+
+              {/* Step indicator */}
+              <div className="relative z-10 flex-shrink-0">
+                <div
+                  className={cn(
+                    'flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full text-xs font-semibold transition-all',
+                    isCompleted &&
+                      'bg-primary text-primary-foreground',
+                    isActive &&
+                      'bg-primary text-primary-foreground ring-4 ring-primary/20 border-4 border-background',
+                    isDisabled &&
+                      'bg-muted text-muted-foreground border-2 border-border'
+                  )}
                 >
-                  {isCompleted ? <CheckCircleIcon /> : index + 1}
-                </StepIndicator>
-              }
-            >
-              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                <Typography level="body-sm" fontWeight="md">
+                  {isCompleted ? (
+                    <CheckCircle className="h-4 w-4 md:h-5 md:w-5" />
+                  ) : (
+                    index + 1
+                  )}
+                </div>
+              </div>
+
+              {/* Step content */}
+              <div className="ml-3 md:ml-4 min-w-0 flex-1 hidden md:block">
+                <p
+                  className={cn(
+                    'text-sm font-medium',
+                    isActive && 'text-foreground',
+                    isCompleted && 'text-foreground',
+                    isDisabled && 'text-muted-foreground'
+                  )}
+                >
                   {step.label}
-                </Typography>
-                <Typography level="body-xs" textColor="text.secondary">
+                </p>
+                <p
+                  className={cn(
+                    'text-xs mt-0.5',
+                    isDisabled ? 'text-muted-foreground/60' : 'text-muted-foreground'
+                  )}
+                >
                   {step.description}
-                </Typography>
-              </Box>
-            </Step>
+                </p>
+              </div>
+            </div>
           )
         })}
-      </Stepper>
-    </motion.div>
+      </nav>
+    </BlurFade>
   )
 }

@@ -1,14 +1,13 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Slider } from '@/components/ui/slider'
+import { Switch } from '@/components/ui/switch'
 import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  Slider,
-  Switch,
   Tooltip,
-} from '@mui/joy'
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { AgentSettings } from '@/hooks/useSettings'
 
 interface AgentSettingsCardProps {
@@ -18,206 +17,193 @@ interface AgentSettingsCardProps {
 
 export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSettingsCardProps) {
   return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 3,
-        borderRadius: 'md',
-        bgcolor: 'background.surface',
-      }}
-    >
-      <Typography level="title-lg" sx={{ mb: 1 }}>
-        Agent Behavior
-      </Typography>
-      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-        Configure AI agent behavior and performance settings
-      </Typography>
+    <Card>
+      <CardHeader>
+        <CardTitle>Agent Behavior</CardTitle>
+        <CardDescription>Configure AI agent behavior and performance settings</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <TooltipProvider>
+          {/* Max Tokens */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label className="cursor-help">Max Tokens</Label>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Maximum number of tokens the model can generate per response
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-sm font-semibold">{agentSettings.maxTokens}</span>
+            </div>
+            <Slider
+              value={[agentSettings.maxTokens]}
+              onValueChange={(value) =>
+                setAgentSettings({
+                  ...agentSettings,
+                  maxTokens: value[0],
+                })
+              }
+              min={1024}
+              max={8192}
+              step={256}
+              className="w-full"
+            />
+          </div>
 
-      <Stack spacing={3}>
-        {/* Max Tokens */}
-        <FormControl>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <Tooltip title="Maximum number of tokens the model can generate per response" arrow>
-              <FormLabel sx={{ minWidth: 150 }}>Max Tokens</FormLabel>
-            </Tooltip>
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={agentSettings.maxTokens}
-                onChange={(_, value) =>
-                  setAgentSettings({
-                    ...agentSettings,
-                    maxTokens: value as number,
-                  })
-                }
-                min={1024}
-                max={8192}
-                step={256}
-                marks={false}
-                valueLabelDisplay="on"
-                sx={{ flex: 1 }}
-              />
-              <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
-                {agentSettings.maxTokens}
-              </Typography>
-            </Box>
-          </Box>
-        </FormControl>
-
-        {/* Temperature */}
-        <FormControl>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <Tooltip title="Controls randomness: 0 = more focused, 2 = more creative" arrow>
-              <FormLabel sx={{ minWidth: 150 }}>Temperature</FormLabel>
-            </Tooltip>
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={agentSettings.temperature}
-                onChange={(_, value) =>
-                  setAgentSettings({
-                    ...agentSettings,
-                    temperature: value as number,
-                  })
-                }
-                min={0.0}
-                max={2.0}
-                step={0.1}
-                marks={false}
-                valueLabelDisplay="on"
-                sx={{ flex: 1 }}
-              />
-              <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
+          {/* Temperature */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label className="cursor-help">Temperature</Label>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Controls randomness: 0 = more focused, 2 = more creative
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-sm font-semibold">
                 {agentSettings.temperature.toFixed(1)}
-              </Typography>
-            </Box>
-          </Box>
-        </FormControl>
-
-        {/* Request Interval */}
-        <FormControl>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <Tooltip title="Delay between consecutive model requests (to avoid rate limits)" arrow>
-              <FormLabel sx={{ minWidth: 150 }}>Request Interval</FormLabel>
-            </Tooltip>
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={agentSettings.requestInterval}
-                onChange={(_, value) =>
-                  setAgentSettings({
-                    ...agentSettings,
-                    requestInterval: value as number,
-                  })
-                }
-                min={1}
-                max={30}
-                step={1}
-                marks={false}
-                valueLabelDisplay="on"
-                sx={{ flex: 1 }}
-              />
-              <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
-                {agentSettings.requestInterval}s
-              </Typography>
-            </Box>
-          </Box>
-        </FormControl>
-
-        {/* Max Rounds */}
-        <FormControl>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <Tooltip title="Maximum number of exploration rounds before stopping" arrow>
-              <FormLabel sx={{ minWidth: 150 }}>Max Rounds</FormLabel>
-            </Tooltip>
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={agentSettings.maxRounds}
-                onChange={(_, value) =>
-                  setAgentSettings({
-                    ...agentSettings,
-                    maxRounds: value as number,
-                  })
-                }
-                min={5}
-                max={50}
-                step={1}
-                marks={false}
-                valueLabelDisplay="on"
-                sx={{ flex: 1 }}
-              />
-              <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
-                {agentSettings.maxRounds}
-              </Typography>
-            </Box>
-          </Box>
-        </FormControl>
-
-        {/* Min Distance */}
-        <FormControl>
-          <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <Tooltip title="Minimum pixel distance for UI element detection" arrow>
-              <FormLabel sx={{ minWidth: 150 }}>Minimum Distance</FormLabel>
-            </Tooltip>
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Slider
-                value={agentSettings.minDist}
-                onChange={(_, value) =>
-                  setAgentSettings({
-                    ...agentSettings,
-                    minDist: value as number,
-                  })
-                }
-                min={10}
-                max={100}
-                step={5}
-                marks={false}
-                valueLabelDisplay="on"
-                sx={{ flex: 1 }}
-              />
-              <Typography level="body-sm" fontWeight="bold" sx={{ minWidth: 60, textAlign: 'right' }}>
-                {agentSettings.minDist}px
-              </Typography>
-            </Box>
-          </Box>
-        </FormControl>
-
-        {/* Toggle Options */}
-        <Box sx={{ display: 'grid', gap: 2 }}>
-          <FormControl orientation="horizontal" sx={{ justifyContent: 'space-between' }}>
-            <Box>
-              <FormLabel>Document Refine</FormLabel>
-              <Typography level="body-sm" textColor="text.secondary">
-                Enable refinement of generated documentation
-              </Typography>
-            </Box>
-            <Switch
-              checked={agentSettings.docRefine}
-              onChange={(e) =>
+              </span>
+            </div>
+            <Slider
+              value={[agentSettings.temperature]}
+              onValueChange={(value) =>
                 setAgentSettings({
                   ...agentSettings,
-                  docRefine: e.target.checked,
+                  temperature: value[0],
                 })
               }
+              min={0.0}
+              max={2.0}
+              step={0.1}
+              className="w-full"
             />
-          </FormControl>
+          </div>
 
-          <FormControl orientation="horizontal" sx={{ justifyContent: 'space-between' }}>
-            <Box>
-              <FormLabel>Dark Mode (Agent)</FormLabel>
-              <Typography level="body-sm" textColor="text.secondary">
-                Use dark theme for agent-generated outputs
-              </Typography>
-            </Box>
-            <Switch
-              checked={agentSettings.darkMode}
-              onChange={(e) =>
+          {/* Request Interval */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label className="cursor-help">Request Interval</Label>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Delay between consecutive model requests (to avoid rate limits)
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-sm font-semibold">{agentSettings.requestInterval}s</span>
+            </div>
+            <Slider
+              value={[agentSettings.requestInterval]}
+              onValueChange={(value) =>
                 setAgentSettings({
                   ...agentSettings,
-                  darkMode: e.target.checked,
+                  requestInterval: value[0],
                 })
               }
+              min={1}
+              max={30}
+              step={1}
+              className="w-full"
             />
-          </FormControl>
-        </Box>
-      </Stack>
-    </Sheet>
+          </div>
+
+          {/* Max Rounds */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label className="cursor-help">Max Rounds</Label>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Maximum number of exploration rounds before stopping
+                </TooltipContent>
+              </Tooltip>
+              <span className="text-sm font-semibold">{agentSettings.maxRounds}</span>
+            </div>
+            <Slider
+              value={[agentSettings.maxRounds]}
+              onValueChange={(value) =>
+                setAgentSettings({
+                  ...agentSettings,
+                  maxRounds: value[0],
+                })
+              }
+              min={5}
+              max={50}
+              step={1}
+              className="w-full"
+            />
+          </div>
+
+          {/* Min Distance */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label className="cursor-help">Minimum Distance</Label>
+                </TooltipTrigger>
+                <TooltipContent>Minimum pixel distance for UI element detection</TooltipContent>
+              </Tooltip>
+              <span className="text-sm font-semibold">{agentSettings.minDist}px</span>
+            </div>
+            <Slider
+              value={[agentSettings.minDist]}
+              onValueChange={(value) =>
+                setAgentSettings({
+                  ...agentSettings,
+                  minDist: value[0],
+                })
+              }
+              min={10}
+              max={100}
+              step={5}
+              className="w-full"
+            />
+          </div>
+
+          {/* Toggle Options */}
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label>Document Refine</Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable refinement of generated documentation
+                </p>
+              </div>
+              <Switch
+                checked={agentSettings.docRefine}
+                onCheckedChange={(checked) =>
+                  setAgentSettings({
+                    ...agentSettings,
+                    docRefine: checked,
+                  })
+                }
+              />
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label>Dark Mode (Agent)</Label>
+                <p className="text-sm text-muted-foreground">
+                  Use dark theme for agent-generated outputs
+                </p>
+              </div>
+              <Switch
+                checked={agentSettings.darkMode}
+                onCheckedChange={(checked) =>
+                  setAgentSettings({
+                    ...agentSettings,
+                    darkMode: checked,
+                  })
+                }
+              />
+            </div>
+          </div>
+        </TooltipProvider>
+      </CardContent>
+    </Card>
   )
 }

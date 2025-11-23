@@ -4,10 +4,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react'
-import { Box } from '@mui/joy'
 import { useTerminal } from '@/hooks/useTerminal'
 import { TerminalHeader } from './TerminalHeader'
 import { TerminalOutput } from './TerminalOutput'
+import { cn } from '@/lib/utils'
 
 export function UniversalTerminal() {
   const { isOpen, setIsOpen, height, setHeight } = useTerminal()
@@ -70,54 +70,26 @@ export function UniversalTerminal() {
   if (!isOpen) return null
 
   return (
-    <Box
+    <div
       ref={containerRef}
-      sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: `${height}%`,
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.1)',
-        zIndex: 1000,
-        bgcolor: 'background.body',
-      }}
+      className="fixed bottom-0 left-0 right-0 flex flex-col shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-[1000] bg-background"
+      style={{ height: `${height}%` }}
     >
       {/* Resize handle */}
-      <Box
+      <div
         onMouseDown={handleMouseDown}
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          cursor: 'ns-resize',
-          bgcolor: 'transparent',
-          '&:hover': {
-            bgcolor: 'primary.softBg',
-          },
-          '&:active': {
-            bgcolor: 'primary.solidBg',
-          },
-        }}
+        className={cn(
+          'absolute top-0 left-0 right-0 h-1 cursor-ns-resize bg-transparent',
+          'hover:bg-primary/20 active:bg-primary'
+        )}
       />
 
       {/* Terminal content */}
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="flex flex-col h-full overflow-hidden">
         <TerminalHeader />
         <TerminalOutput />
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }
 

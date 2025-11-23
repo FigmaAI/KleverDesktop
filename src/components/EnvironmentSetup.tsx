@@ -1,31 +1,16 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Box,
-  Typography,
-  Sheet,
-  Button,
-  CircularProgress,
-  Alert,
-  LinearProgress,
-} from '@mui/joy'
-import {
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-} from '@mui/icons-material'
-import { ToolStatus } from '@/types/setupWizard'
-
-interface PlatformToolsState {
-  python: ToolStatus
-  pythonEnv: ToolStatus
-  androidStudio: ToolStatus
-  homebrew: ToolStatus
-}
+import React, { useState, useEffect } from 'react'
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
+import { ToolStatus, PlatformToolsState } from '@/types/setupWizard'
+import { useTerminal } from '@/hooks/useTerminal'
 
 interface EnvironmentSetupProps {
   status: ToolStatus
   setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
-  checkPlatformTools: () => void
+  checkPlatformTools: () => Promise<void>
 }
 
 export function EnvironmentSetup({
@@ -34,21 +19,24 @@ export function EnvironmentSetup({
   checkPlatformTools,
 }: EnvironmentSetupProps) {
   const [envSetupProgress, setEnvSetupProgress] = useState(0)
+  const { lines } = useTerminal()
+
+  // Calculate progress based on env log lines
+  useEffect(() => {
+    if (status.installing) {
+      const envLogCount = lines.filter(l => l.source === 'env').length
+      // Estimate progress: cap at 95% until complete
+      const estimated = Math.min(95, envLogCount * 2)
+      setEnvSetupProgress(estimated)
+    }
+  }, [lines, status.installing])
 
   const handleSetupEnvironment = async () => {
-    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true } }))
+    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true, error: undefined } }))
     setEnvSetupProgress(0)
 
     try {
-      let lineCount = 0
-      // Listen for progress to estimate completion
-      window.electronAPI.onEnvProgress(() => {
-        lineCount++
-        // Estimate progress based on typical installation steps
-        const estimatedProgress = Math.min(95, lineCount * 2)
-        setEnvSetupProgress(estimatedProgress)
-      })
-
+      // No need to listen manually, useTerminal handles it via context
       const result = await window.electronAPI.envSetup()
 
       if (result.success) {
@@ -56,96 +44,104 @@ export function EnvironmentSetup({
         // Recheck platform tools
         await checkPlatformTools()
       } else {
-        // Error will be shown in universal terminal
+        // Show error to user
         console.error('[EnvironmentSetup] Setup failed:', result.error)
+        setToolsStatus((prev) => ({
+          ...prev,
+          pythonEnv: {
+            ...prev.pythonEnv,
+            installing: false,
+            error: result.error || 'Setup failed. Check Universal Terminal for details.'
+          }
+        }))
+        return
       }
     } catch (error) {
       console.error('[EnvironmentSetup] Error:', error)
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+      setToolsStatus((prev) => ({
+        ...prev,
+        pythonEnv: {
+          ...prev.pythonEnv,
+          installing: false,
+          error: errorMsg
+        }
+      }))
     } finally {
       setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
     }
   }
 
+  const getColorClass = () => {
+    if (status.checking) return 'bg-muted'
+    return status.installed
+      ? 'bg-green-50 dark:bg-green-950'
+      : 'bg-yellow-50 dark:bg-yellow-950'
+  }
+
+  const getStatusText = () => {
+    if (status.checking) return 'Checking...'
+    if (status.installing) return 'Installing... Check Universal Terminal for details'
+    if (status.installed) return 'Ready'
+    if (status.error) return status.error
+    return 'Virtual environment + packages + Playwright browsers'
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.3 }}
-    >
-      <Sheet
-        variant="soft"
-        color={status.checking ? 'neutral' : status.installed ? 'success' : 'warning'}
-        sx={{
-          p: 2,
-          borderRadius: 'sm',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+    <BlurFade delay={0.3}>
+      <div className={cn('rounded-md p-3', getColorClass())}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             {status.checking ? (
-              <CircularProgress size="sm" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground flex-shrink-0" />
             ) : status.installed ? (
-              <CheckCircleIcon color="success" />
+              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
             ) : (
-              <WarningIcon color="warning" />
+              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
             )}
-            <Box sx={{ flex: 1 }}>
-              <Typography
-                level="body-sm"
-                fontWeight={status.installed ? 'md' : 'normal'}
-                textColor={status.installed ? 'text.primary' : 'text.secondary'}
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  'text-sm font-medium truncate',
+                  status.installed ? 'text-foreground' : 'text-muted-foreground'
+                )}
               >
-                Playwright Browsers
-              </Typography>
-              <Typography level="body-xs" textColor="text.tertiary">
-                Required for web automation (Chromium browser)
-              </Typography>
-            </Box>
-          </Box>
+                Python Environment
+              </p>
+              <p className={cn(
+                'text-xs truncate',
+                status.error ? 'text-destructive' : 'text-muted-foreground'
+              )}>
+                {getStatusText()}
+              </p>
+            </div>
+          </div>
           {!status.installed && !status.checking && (
             <Button
               size="sm"
-              variant="solid"
-              color="primary"
-              loading={status.installing}
               onClick={handleSetupEnvironment}
-              sx={{ minWidth: '100px' }}
+              disabled={status.installing}
+              className="min-w-[100px] flex-shrink-0"
             >
-              Setup
+              {status.installing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Setting up...
+                </>
+              ) : (
+                'Setup'
+              )}
             </Button>
           )}
-        </Box>
+        </div>
 
         {/* Progress bar during installation */}
         {status.installing && (
-          <Box sx={{ width: '100%' }}>
-            <LinearProgress
-              determinate
-              value={envSetupProgress}
-              sx={{ mb: 1 }}
-            />
-            <Typography level="body-xs" textAlign="center" textColor="text.tertiary">
-              {envSetupProgress}%
-            </Typography>
-          </Box>
+          <div className="mt-3">
+            <Progress value={envSetupProgress} className="h-1.5" />
+          </div>
         )}
-
-        {/* Guide message during installation */}
-        {status.installing && (
-          <Alert
-            color="primary"
-            variant="soft"
-            sx={{ mt: 1, mb: 1 }}
-          >
-            <Typography level="body-sm">
-              Installation in progress. Check the Universal Terminal (top right) for detailed progress.
-            </Typography>
-          </Alert>
-        )}
-      </Sheet>
-    </motion.div>
+      </div>
+    </BlurFade>
   )
 }

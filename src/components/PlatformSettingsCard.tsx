@@ -1,22 +1,17 @@
-import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Input,
-  Select,
-  Option,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanel,
-  Button,
-} from '@mui/joy'
 import { useState } from 'react'
-import { Android, Language, FolderOpen } from '@mui/icons-material'
+import { Smartphone, Globe, FolderOpen } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { PlatformSettings } from '@/hooks/useSettings'
 
 interface PlatformSettingsCardProps {
@@ -24,8 +19,11 @@ interface PlatformSettingsCardProps {
   setPlatformSettings: (settings: PlatformSettings) => void
 }
 
-export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: PlatformSettingsCardProps) {
-  const [activeTab, setActiveTab] = useState<number>(0)
+export function PlatformSettingsCard({
+  platformSettings,
+  setPlatformSettings,
+}: PlatformSettingsCardProps) {
+  const [activeTab, setActiveTab] = useState<string>('android')
 
   const handleBrowseSdkPath = async () => {
     const selectedPath = await window.electronAPI.showFolderSelectDialog()
@@ -38,39 +36,29 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
   }
 
   return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 3,
-        borderRadius: 'md',
-        bgcolor: 'background.surface',
-      }}
-    >
-      <Typography level="title-lg" sx={{ mb: 1 }}>
-        Platform Configuration
-      </Typography>
-      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-        Configure Android and Web automation settings
-      </Typography>
+    <Card>
+      <CardHeader>
+        <CardTitle>Platform Configuration</CardTitle>
+        <CardDescription>Configure Android and Web automation settings</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="android" className="gap-2">
+              <Smartphone className="h-4 w-4" />
+              Android
+            </TabsTrigger>
+            <TabsTrigger value="web" className="gap-2">
+              <Globe className="h-4 w-4" />
+              Web
+            </TabsTrigger>
+          </TabsList>
 
-      <Tabs value={activeTab} onChange={(_, value) => setActiveTab(value as number)}>
-        <TabList>
-          <Tab>
-            <Android sx={{ mr: 1 }} />
-            Android
-          </Tab>
-          <Tab>
-            <Language sx={{ mr: 1 }} />
-            Web
-          </Tab>
-        </TabList>
-
-        {/* Android Settings */}
-        <TabPanel value={0}>
-          <Stack spacing={2.5}>
-            <FormControl>
-              <FormLabel>Android SDK Path</FormLabel>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+          {/* Android Settings */}
+          <TabsContent value="android" className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Android SDK Path</Label>
+              <div className="flex gap-2">
                 <Input
                   value={platformSettings.androidSdkPath}
                   onChange={(e) =>
@@ -80,24 +68,20 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                     })
                   }
                   placeholder="/Volumes/Backup/Android-SDK"
-                  sx={{ flex: 1 }}
+                  className="flex-1"
                 />
-                <Button
-                  variant="outlined"
-                  color="neutral"
-                  startDecorator={<FolderOpen />}
-                  onClick={handleBrowseSdkPath}
-                >
+                <Button variant="outline" onClick={handleBrowseSdkPath}>
+                  <FolderOpen className="mr-2 h-4 w-4" />
                   Browse
                 </Button>
-              </Box>
-              <FormHelperText>
+              </div>
+              <p className="text-sm text-muted-foreground">
                 Path to Android SDK directory (contains platform-tools and emulator folders)
-              </FormHelperText>
-            </FormControl>
+              </p>
+            </div>
 
-            <FormControl>
-              <FormLabel>Screenshot Directory</FormLabel>
+            <div className="space-y-2">
+              <Label>Screenshot Directory</Label>
               <Input
                 value={platformSettings.androidScreenshotDir}
                 onChange={(e) =>
@@ -108,13 +92,13 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                 }
                 placeholder="/sdcard/Pictures"
               />
-              <FormHelperText>
+              <p className="text-sm text-muted-foreground">
                 Path on Android device where screenshots will be saved
-              </FormHelperText>
-            </FormControl>
+              </p>
+            </div>
 
-            <FormControl>
-              <FormLabel>XML Directory</FormLabel>
+            <div className="space-y-2">
+              <Label>XML Directory</Label>
               <Input
                 value={platformSettings.androidXmlDir}
                 onChange={(e) =>
@@ -125,79 +109,75 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                 }
                 placeholder="/sdcard/Documents"
               />
-              <FormHelperText>
+              <p className="text-sm text-muted-foreground">
                 Path on Android device where UI hierarchy XML files will be saved
-              </FormHelperText>
-            </FormControl>
+              </p>
+            </div>
 
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 'sm',
-                bgcolor: 'primary.softBg',
-                border: '1px solid',
-                borderColor: 'primary.outlinedBorder',
-              }}
-            >
-              <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                Prerequisites
-              </Typography>
-              <Typography level="body-xs" textColor="text.secondary">
-                • ADB (Android Debug Bridge) must be installed
-                <br />
-                • USB debugging enabled on your Android device
-                <br />
-                • Device connected via USB or network
-              </Typography>
-            </Box>
-          </Stack>
-        </TabPanel>
+            <div className="rounded-md border border-primary/50 bg-primary/5 p-4">
+              <p className="mb-2 text-sm font-semibold">Prerequisites</p>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>• ADB (Android Debug Bridge) must be installed</li>
+                <li>• USB debugging enabled on your Android device</li>
+                <li>• Device connected via USB or network</li>
+              </ul>
+            </div>
+          </TabsContent>
 
-        {/* Web Settings */}
-        <TabPanel value={1}>
-          <Stack spacing={2.5}>
-            <FormControl>
-              <FormLabel>Browser Type</FormLabel>
+          {/* Web Settings */}
+          <TabsContent value="web" className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Browser Type</Label>
               <Select
                 value={platformSettings.webBrowserType}
-                onChange={(_, value) =>
+                onValueChange={(value) =>
                   setPlatformSettings({
                     ...platformSettings,
                     webBrowserType: value as 'chromium' | 'firefox' | 'webkit',
                   })
                 }
               >
-                <Option value="chromium">Chromium</Option>
-                <Option value="firefox">Firefox</Option>
-                <Option value="webkit">WebKit (Safari)</Option>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="chromium">Chromium</SelectItem>
+                  <SelectItem value="firefox">Firefox</SelectItem>
+                  <SelectItem value="webkit">WebKit (Safari)</SelectItem>
+                </SelectContent>
               </Select>
-              <FormHelperText>
+              <p className="text-sm text-muted-foreground">
                 Playwright browser engine to use for web automation
-              </FormHelperText>
-            </FormControl>
+              </p>
+            </div>
 
-            <FormControl>
-              <FormLabel>Headless Mode</FormLabel>
+            <div className="space-y-2">
+              <Label>Headless Mode</Label>
               <Select
                 value={platformSettings.webHeadless ? 'true' : 'false'}
-                onChange={(_, value) =>
+                onValueChange={(value) =>
                   setPlatformSettings({
                     ...platformSettings,
                     webHeadless: value === 'true',
                   })
                 }
               >
-                <Option value="false">Disabled (Show browser window)</Option>
-                <Option value="true">Enabled (Run in background)</Option>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="false">Disabled (Show browser window)</SelectItem>
+                  <SelectItem value="true">Enabled (Run in background)</SelectItem>
+                </SelectContent>
               </Select>
-              <FormHelperText>
+              <p className="text-sm text-muted-foreground">
                 Whether to run browser in headless mode (no visible window)
-              </FormHelperText>
-            </FormControl>
+              </p>
+            </div>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <FormControl>
-                <FormLabel>Viewport Width</FormLabel>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Viewport Width</Label>
                 <Input
                   type="number"
                   value={platformSettings.webViewportWidth}
@@ -207,18 +187,14 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                       webViewportWidth: parseInt(e.target.value) || 1280,
                     })
                   }
-                  slotProps={{
-                    input: {
-                      min: 320,
-                      max: 3840,
-                    },
-                  }}
+                  min={320}
+                  max={3840}
                 />
-                <FormHelperText>320-3840 pixels</FormHelperText>
-              </FormControl>
+                <p className="text-sm text-muted-foreground">320-3840 pixels</p>
+              </div>
 
-              <FormControl>
-                <FormLabel>Viewport Height</FormLabel>
+              <div className="space-y-2">
+                <Label>Viewport Height</Label>
                 <Input
                   type="number"
                   value={platformSettings.webViewportHeight}
@@ -228,39 +204,24 @@ export function PlatformSettingsCard({ platformSettings, setPlatformSettings }: 
                       webViewportHeight: parseInt(e.target.value) || 720,
                     })
                   }
-                  slotProps={{
-                    input: {
-                      min: 240,
-                      max: 2160,
-                    },
-                  }}
+                  min={240}
+                  max={2160}
                 />
-                <FormHelperText>240-2160 pixels</FormHelperText>
-              </FormControl>
-            </Box>
+                <p className="text-sm text-muted-foreground">240-2160 pixels</p>
+              </div>
+            </div>
 
-            <Box
-              sx={{
-                p: 2,
-                borderRadius: 'sm',
-                bgcolor: 'primary.softBg',
-                border: '1px solid',
-                borderColor: 'primary.outlinedBorder',
-              }}
-            >
-              <Typography level="body-sm" fontWeight="bold" sx={{ mb: 0.5 }}>
-                Prerequisites
-              </Typography>
-              <Typography level="body-xs" textColor="text.secondary">
-                • Playwright must be installed (playwright install)
-                <br />
-                • Browser binaries for selected browser type
-                <br />• Network access for web automation tasks
-              </Typography>
-            </Box>
-          </Stack>
-        </TabPanel>
-      </Tabs>
-    </Sheet>
+            <div className="rounded-md border border-primary/50 bg-primary/5 p-4">
+              <p className="mb-2 text-sm font-semibold">Prerequisites</p>
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                <li>• Playwright must be installed (playwright install)</li>
+                <li>• Browser binaries for selected browser type</li>
+                <li>• Network access for web automation tasks</li>
+              </ul>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   )
 }

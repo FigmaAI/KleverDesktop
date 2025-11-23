@@ -1,23 +1,19 @@
 import { useState, useCallback, useEffect } from 'react'
+import { RefreshCw } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
 import {
-  Box,
-  Typography,
-  Sheet,
-  Stack,
-  FormControl,
-  FormLabel,
-  FormHelperText,
-  Alert,
   Select,
-  Option,
-  IconButton,
-  CircularProgress,
-  Divider,
-} from '@mui/joy'
-import Checkbox from '@mui/joy/Checkbox'
-import {
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import { ModelConfig } from '@/types/setupWizard'
 import { ApiModelCard } from './ApiModelCard'
 
@@ -48,12 +44,9 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
 
       if (result.success && result.running && result.models) {
         const modelNames = result.models.map((model: { name?: string } | string) =>
-          typeof model === 'string' ? model : (model.name || '')
+          typeof model === 'string' ? model : model.name || ''
         )
         setOllamaModels(modelNames)
-
-        // Auto-select first model if none selected (only on manual refresh)
-        // Don't auto-select to avoid triggering Settings auto-save
       } else {
         setOllamaError('Ollama is not running or no models found')
         setOllamaModels([])
@@ -65,9 +58,9 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     } finally {
       setOllamaLoading(false)
     }
-  }, []) // Remove modelConfig and setModelConfig from dependencies
+  }, [])
 
-  // Fetch API models from provider (legacy support)
+  // Fetch API models from provider
   const fetchApiModels = useCallback(async () => {
     if (!modelConfig.apiBaseUrl && !modelConfig.apiProvider) {
       setApiModelsError('Please select a provider first')
@@ -104,136 +97,131 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
     }
   }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiProvider])
 
-  // Auto-fetch Ollama models when enabled (only once on mount if enabled)
+  // Auto-fetch Ollama models when enabled
   useEffect(() => {
     if (modelConfig.enableLocal) {
       fetchOllamaModels()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelConfig.enableLocal]) // Only re-fetch if enableLocal changes
+  }, [modelConfig.enableLocal])
 
   return (
-    <Sheet
-      variant="outlined"
-      sx={{
-        p: 3,
-        borderRadius: 'md',
-        bgcolor: 'background.surface',
-      }}
-    >
-      <Typography level="title-lg" sx={{ mb: 1 }}>
-        Model Configuration
-      </Typography>
-      <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 3 }}>
-        Configure AI model providers for automation tasks
-      </Typography>
-
-      <Stack spacing={3}>
+    <Card>
+      <CardHeader>
+        <CardTitle>Model Configuration</CardTitle>
+        <CardDescription>Configure AI model providers for automation tasks</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
         {/* Local Model (Ollama) Section */}
-        <Box
-          sx={{
-            p: 2.5,
-            borderRadius: 'md',
-            border: '2px solid',
-            borderColor: modelConfig.enableLocal ? 'primary.500' : 'neutral.outlinedBorder',
-            bgcolor: modelConfig.enableLocal ? 'primary.softBg' : 'background.surface',
-            transition: 'all 0.2s ease',
-          }}
+        <div
+          className={cn(
+            'rounded-lg border-2 p-4 transition-all',
+            modelConfig.enableLocal
+              ? 'border-primary bg-primary/5'
+              : 'border-border bg-background'
+          )}
         >
-          <Box sx={{ mb: 2 }}>
-            <Checkbox
-              label={
-                <Typography level="title-md" fontWeight="bold">
-                  Local Model (Ollama)
-                </Typography>
-              }
-              checked={modelConfig.enableLocal}
-              onChange={(e) =>
-                setModelConfig({ ...modelConfig, enableLocal: e.target.checked })
-              }
-              sx={{ mb: 0.5 }}
-            />
-            <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
+          <div className="mb-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="enable-local"
+                checked={modelConfig.enableLocal}
+                onCheckedChange={(checked) =>
+                  setModelConfig({ ...modelConfig, enableLocal: checked as boolean })
+                }
+              />
+              <Label htmlFor="enable-local" className="text-base font-semibold">
+                Local Model (Ollama)
+              </Label>
+            </div>
+            <p className="ml-6 mt-1 text-sm text-muted-foreground">
               Use locally hosted Ollama models for privacy and offline access
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
-          <Stack spacing={2}>
-            <FormControl>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                <FormLabel>Select Model</FormLabel>
-                <IconButton
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Select Model</Label>
+                <Button
                   size="sm"
-                  variant="plain"
-                  color="primary"
+                  variant="ghost"
                   onClick={fetchOllamaModels}
                   disabled={!modelConfig.enableLocal || ollamaLoading}
                 >
-                  <RefreshIcon />
-                </IconButton>
-              </Box>
+                  <RefreshCw className={cn('h-4 w-4', ollamaLoading && 'animate-spin')} />
+                </Button>
+              </div>
+
               {ollamaLoading ? (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5 }}>
-                  <CircularProgress size="sm" />
-                  <Typography level="body-sm">Loading models...</Typography>
-                </Box>
+                <div className="flex items-center gap-2 rounded-md bg-muted p-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="text-sm">Loading models...</span>
+                </div>
               ) : ollamaError ? (
-                <Alert color="warning" variant="soft" size="sm">
-                  {ollamaError}
+                <Alert variant="warning">
+                  <AlertDescription>{ollamaError}</AlertDescription>
                 </Alert>
               ) : (
                 <Select
                   value={modelConfig.localModel}
-                  onChange={(_, value) => setModelConfig({ ...modelConfig, localModel: value || '' })}
+                  onValueChange={(value) => setModelConfig({ ...modelConfig, localModel: value })}
                   disabled={!modelConfig.enableLocal || ollamaModels.length === 0}
-                  placeholder={ollamaModels.length === 0 ? 'No models found' : 'Select a model'}
                 >
-                  {ollamaModels.map((model) => (
-                    <Option key={model} value={model}>
-                      {model}
-                    </Option>
-                  ))}
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        ollamaModels.length === 0 ? 'No models found' : 'Select a model'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ollamaModels.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               )}
-              <FormHelperText>
+
+              <p className="text-sm text-muted-foreground">
                 {ollamaModels.length > 0
                   ? `${ollamaModels.length} model(s) available`
                   : 'Install models using: ollama pull <model-name>'}
-              </FormHelperText>
-            </FormControl>
-          </Stack>
-        </Box>
+              </p>
+            </div>
+          </div>
+        </div>
 
-        <Divider />
+        <Separator />
 
-        {/* API Model Section - Use ApiModelCard with custom styling */}
-        <Box
-          sx={{
-            p: 2.5,
-            borderRadius: 'md',
-            border: '2px solid',
-            borderColor: modelConfig.enableApi ? 'primary.500' : 'neutral.outlinedBorder',
-            bgcolor: modelConfig.enableApi ? 'primary.softBg' : 'background.surface',
-            transition: 'all 0.2s ease',
-          }}
+        {/* API Model Section */}
+        <div
+          className={cn(
+            'rounded-lg border-2 p-4 transition-all',
+            modelConfig.enableApi
+              ? 'border-primary bg-primary/5'
+              : 'border-border bg-background'
+          )}
         >
-          <Box sx={{ mb: 2 }}>
-            <Checkbox
-              label={
-                <Typography level="title-md" fontWeight="bold">
-                  API Model (Cloud Services)
-                </Typography>
-              }
-              checked={modelConfig.enableApi}
-              onChange={(e) =>
-                setModelConfig({ ...modelConfig, enableApi: e.target.checked })
-              }
-              sx={{ mb: 0.5 }}
-            />
-            <Typography level="body-sm" textColor="text.secondary" sx={{ ml: 4 }}>
+          <div className="mb-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="enable-api"
+                checked={modelConfig.enableApi}
+                onCheckedChange={(checked) =>
+                  setModelConfig({ ...modelConfig, enableApi: checked as boolean })
+                }
+              />
+              <Label htmlFor="enable-api" className="text-base font-semibold">
+                API Model (Cloud Services)
+              </Label>
+            </div>
+            <p className="ml-6 mt-1 text-sm text-muted-foreground">
               100+ models from OpenAI, Anthropic, Google, and more
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           <ApiModelCard
             modelConfig={modelConfig}
@@ -246,8 +234,8 @@ export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettings
             showCheckbox={false}
             standalone={false}
           />
-        </Box>
-      </Stack>
-    </Sheet>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

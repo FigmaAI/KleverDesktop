@@ -1,5 +1,4 @@
 export { ProjectList } from './ProjectList'
 export { ProjectDetail } from './ProjectDetail'
-export { ProjectCreate } from './ProjectCreate'
 export { Settings } from './Settings'
 export { SetupWizard } from './SetupWizard'

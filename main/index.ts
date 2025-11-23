@@ -6,7 +6,7 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./vite-env.d.ts" />
 
-import { app, BrowserWindow, ipcMain, crashReporter } from 'electron';
+import { app, BrowserWindow, ipcMain, crashReporter, session } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
 
@@ -105,6 +105,35 @@ function getMainWindow(): BrowserWindow | null {
  * App lifecycle
  */
 app.whenReady().then(() => {
+  // Set Content Security Policy
+  // In development mode, we need 'unsafe-eval' for Vite HMR
+  // In production, we use a stricter policy
+  // Note: GitHub API is called via IPC, not direct fetch, so no need to allow it in CSP
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const isDev = !app.isPackaged;
+
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          isDev
+            ? // Development CSP - allows Vite HMR
+              "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* ws://localhost:*; " +
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; " +
+              "style-src 'self' 'unsafe-inline' http://localhost:*; " +
+              "img-src 'self' data: http://localhost:*; " +
+              "connect-src 'self' http://localhost:* ws://localhost:*;"
+            : // Production CSP - stricter policy
+              "default-src 'self'; " +
+              "script-src 'self' 'unsafe-inline'; " +
+              "style-src 'self' 'unsafe-inline'; " +
+              "img-src 'self' data:; " +
+              "connect-src 'self';"
+        ]
+      }
+    });
+  });
+
   createWindow();
   registerAllHandlers(ipcMain, getMainWindow);
 });

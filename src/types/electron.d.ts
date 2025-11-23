@@ -212,6 +212,10 @@ declare global {
         localModel: string;
       }) => Promise<{ success: boolean }>;
       stopIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
+      cleanupIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
+
+      // GitHub API
+      fetchGitHubStars: (repo: string) => Promise<{ success: boolean; stars?: number; error?: string }>;
 
       // Event listeners
       onEnvProgress: (callback: (data: string) => void) => void;

@@ -8,6 +8,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { app } from 'electron';
 import { AppConfig, DEFAULT_CONFIG } from '../types/config';
 
@@ -103,30 +104,107 @@ export function configExists(): boolean {
 }
 
 /**
- * Hard reset: Delete entire ~/.klever-desktop/ directory
+ * Hard reset: Delete entire user data directory and all project workspaces
  * WARNING: This will remove ALL user data including:
  * - config.json (settings)
  * - projects.json (all projects and tasks)
- * - python/ (bundled Python runtime)
+ * - All project workspace directories in ~/Documents
+ * - python/ (Downloaded Python runtime)
+ * - python-env/ (Python virtual environment)
  * - Any other data stored in user directory
  *
  * This action cannot be undone!
  */
 export function hardResetUserData(): void {
   const userDataPath = app.getPath('userData');
+  const homeDir = os.homedir();
+  const legacyPath = path.join(homeDir, '.klever-desktop');
 
-  console.log('[config-storage] Attempting HARD RESET of user data directory:', userDataPath);
+  console.log('[config-storage] ===== HARD RESET STARTING =====');
+  console.log('[config-storage] Primary user data path:', userDataPath);
 
-  if (fs.existsSync(userDataPath)) {
+  let deletedCount = 0;
+
+  // 1. Delete all project workspace directories first
+  const projectsJsonPath = path.join(userDataPath, 'projects.json');
+  if (fs.existsSync(projectsJsonPath)) {
     try {
-      // Recursively delete the entire directory
-      fs.rmSync(userDataPath, { recursive: true, force: true });
-      console.log('[config-storage] User data directory successfully deleted:', userDataPath);
+      const projectsData = JSON.parse(fs.readFileSync(projectsJsonPath, 'utf8'));
+      if (projectsData.projects && Array.isArray(projectsData.projects)) {
+        console.log('[config-storage] Found', projectsData.projects.length, 'projects to clean up');
+
+        for (const project of projectsData.projects) {
+          if (project.workspaceDir && fs.existsSync(project.workspaceDir)) {
+            try {
+              console.log('[config-storage] Deleting project workspace:', project.workspaceDir);
+              fs.rmSync(project.workspaceDir, { recursive: true, force: true });
+              console.log('[config-storage] ✓ Successfully deleted workspace for:', project.name);
+              deletedCount++;
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Unknown error';
+              console.error('[config-storage] ✗ Failed to delete workspace for:', project.name, 'Error:', message);
+            }
+          }
+        }
+      }
     } catch (error) {
-      console.error('[config-storage] Failed to delete user data directory:', error);
-      throw error;
+      console.error('[config-storage] Failed to read projects.json:', error);
     }
   }
+
+  // 2. Delete specific items in userDataPath (safer than deleting the whole directory while running)
+  const itemsToDelete = [
+    'config.json',
+    'projects.json',
+    'python',  // Downloaded Python runtime
+    'python-env',  // Legacy Python venv
+    'logs',
+    'blob_storage',
+    'Session Storage',
+    'Code Cache',
+    'DawnGraphiteCache',
+    'DawnWebGPUCache',
+    'GPUCache',
+    'Network Persistent State',
+    'Shared Dictionary',
+    'SharedStorage',
+    'Trust Tokens',
+    'Trust Tokens-journal'
+    // Note: We intentionally avoid deleting 'Local Storage' and 'Cookies' here
+    // as they are better handled by the renderer process or require a full restart
+  ];
+
+  if (fs.existsSync(userDataPath)) {
+    for (const item of itemsToDelete) {
+      const itemPath = path.join(userDataPath, item);
+      if (fs.existsSync(itemPath)) {
+        try {
+          console.log('[config-storage] Deleting:', itemPath);
+          fs.rmSync(itemPath, { recursive: true, force: true });
+          console.log('[config-storage] ✓ Successfully deleted:', item);
+          deletedCount++;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[config-storage] ✗ Failed to delete:', item, 'Error:', message);
+        }
+      }
+    }
+  }
+
+  // 3. Delete legacy path if it exists (this is safe to delete entirely)
+  if (fs.existsSync(legacyPath)) {
+    try {
+      console.log('[config-storage] Deleting legacy path:', legacyPath);
+      fs.rmSync(legacyPath, { recursive: true, force: true });
+      console.log('[config-storage] ✓ Successfully deleted legacy path');
+      deletedCount++;
+    } catch (error) {
+      console.error('[config-storage] Failed to delete legacy path:', error);
+    }
+  }
+
+  console.log('[config-storage] ===== HARD RESET COMPLETE =====');
+  console.log('[config-storage] Deleted', deletedCount, 'items');
 }
 
 /**

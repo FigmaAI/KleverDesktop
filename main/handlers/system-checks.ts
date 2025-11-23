@@ -80,29 +80,40 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
     });
   });
 
-  // Check ADB/Android SDK
+  // Check ADB (Android Debug Bridge)
   ipcMain.handle('check:androidStudio', async () => {
     return new Promise((resolve) => {
-      // Method 1: Check if adb command is available (most reliable)
-      exec('adb --version', { timeout: 5000 }, (error, stdout, stderr) => {
+      // Fix PATH for macOS to include Homebrew locations
+      const env = { ...process.env };
+      if (process.platform === 'darwin') {
+        env.PATH = `${env.PATH}:/usr/local/bin:/opt/homebrew/bin`;
+      }
+
+      // Method 1: Check if adb command is available in PATH
+      exec('adb --version', { timeout: 5000, env }, (error, stdout, stderr) => {
         if (!error) {
-          // adb is available in PATH
+          // adb is available
           const output = stdout || stderr;
           const versionMatch = output.match(/Android Debug Bridge version ([\d.]+)/);
           const version = versionMatch ? versionMatch[1] : 'unknown';
 
           // Try to find SDK path from adb location
-          exec('which adb', { timeout: 2000 }, (whichError, whichStdout) => {
+          exec('which adb', { timeout: 2000, env }, (whichError, whichStdout) => {
             let sdkPath = '';
             if (!whichError && whichStdout) {
-              // adb path: /path/to/sdk/platform-tools/adb -> extract /path/to/sdk
               const adbFullPath = whichStdout.trim();
               const platformToolsIndex = adbFullPath.indexOf('/platform-tools/');
               if (platformToolsIndex !== -1) {
                 sdkPath = adbFullPath.substring(0, platformToolsIndex);
               }
             }
-            resolve({ success: true, version: version, method: 'adb_command', path: sdkPath });
+            
+            resolve({ 
+              success: true, 
+              version: version, 
+              method: 'adb_command', 
+              path: sdkPath 
+            });
           });
           return;
         }
@@ -114,7 +125,12 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            resolve({ success: true, version: 'installed', method: 'env_variable', path: androidHome });
+            resolve({ 
+              success: true, 
+              version: 'installed', 
+              method: 'env_variable', 
+              path: androidHome 
+            });
             return;
           }
         }
@@ -123,47 +139,27 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
         const commonPaths = [
           path.join(process.env.HOME || '/root', 'Library', 'Android', 'sdk'), // macOS
           path.join(process.env.HOME || '/root', 'Android', 'Sdk'), // Linux
-          '/Volumes/Backup/Android-SDK', // External volume (user's case)
           'C:\\Users\\' + (process.env.USERNAME || 'user') + '\\AppData\\Local\\Android\\Sdk', // Windows
         ];
 
-        for (const sdkPath of commonPaths) {
-          const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
+        for (const checkSdkPath of commonPaths) {
+          const adbPath = path.join(checkSdkPath, 'platform-tools', 'adb');
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            resolve({ success: true, version: 'installed', method: 'common_path', path: sdkPath });
+            resolve({ 
+              success: true, 
+              version: 'installed', 
+              method: 'common_path', 
+              path: checkSdkPath 
+            });
             return;
-          }
-        }
-
-        // Method 4: Search in /Volumes for external drives (macOS)
-        if (process.platform === 'darwin') {
-          try {
-            const volumes = fs.readdirSync('/Volumes');
-            for (const volume of volumes) {
-              const possiblePaths = [
-                path.join('/Volumes', volume, 'Android-SDK'),
-                path.join('/Volumes', volume, 'AndroidSDK'),
-                path.join('/Volumes', volume, 'Android', 'Sdk'),
-              ];
-
-              for (const sdkPath of possiblePaths) {
-                const adbPath = path.join(sdkPath, 'platform-tools', 'adb');
-                if (fs.existsSync(adbPath)) {
-                  resolve({ success: true, version: 'installed', method: 'external_volume', path: sdkPath });
-                  return;
-                }
-              }
-            }
-          } catch (e: unknown) {
-            // Silently continue
           }
         }
 
         resolve({
           success: false,
-          error: 'Android SDK not found. Please install Android Studio or set ANDROID_HOME environment variable.',
+          error: 'Android Debug Bridge is not found.',
         });
       });
     });

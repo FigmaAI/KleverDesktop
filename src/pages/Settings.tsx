@@ -1,88 +1,87 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useToast } from '@/components/ui/toast'
+import { useNavigate } from 'react-router-dom'
 import {
-  Box,
-  Button,
-  Sheet,
-  Typography,
-  Stack,
-  Modal,
-  ModalDialog,
-  ModalClose,
-  Divider,
-  Alert,
-  ToggleButtonGroup,
-  useColorScheme,
-  CircularProgress,
-  List,
-  ListItemButton,
-  ListItemDecorator,
-  ListItemContent,
-  IconButton,
-  Drawer,
-} from '@mui/joy'
-import {
-  Warning as WarningIcon,
-  Error as ErrorIcon,
-  DarkMode,
-  LightMode,
-  Contrast,
-  Save as SaveIcon,
-  CheckCircle as CheckCircleIcon,
-  Palette as PaletteIcon,
-  SmartToy as ModelIcon,
-  Devices as PlatformIcon,
-  Psychology as AgentIcon,
+  Save,
+  Brain,
+  Smartphone,
+  Sparkles,
   Image as ImageIcon,
-  Info as InfoIcon,
-  Menu as MenuIcon,
-} from '@mui/icons-material'
+  Menu,
+  AlertTriangle,
+  AlertCircle,
+  ArrowLeft,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { BlurFade } from '@/components/magicui/blur-fade'
+import { PageHeader } from '@/components/PageHeader'
+import { LoadingScreen } from '@/components/LoadingScreen'
+import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { ModelSettingsCard } from '@/components/ModelSettingsCard'
 import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
 import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
-import { SystemInfoCard } from '@/components/SystemInfoCard'
 
-type SettingsSection = 'appearance' | 'model' | 'platform' | 'agent' | 'image' | 'system' | 'danger'
+type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'danger'
 
 interface MenuItem {
   id: SettingsSection
   label: string
-  icon: React.ReactElement
+  icon: React.ElementType
 }
 
 export function Settings() {
+  const navigate = useNavigate()
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [hardResetDialogOpen, setHardResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isHardResetting, setIsHardResetting] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [hardResetErrorMessage, setHardResetErrorMessage] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<SettingsSection>('appearance')
+  const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { mode, setMode } = useColorScheme()
+  const { toast } = useToast()
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<SettingsSection, HTMLDivElement | null>>({
-    appearance: null,
     model: null,
     platform: null,
     agent: null,
     image: null,
-    system: null,
     danger: null,
   })
 
   // Menu items
-  const menuItems: MenuItem[] = useMemo(() => [
-    { id: 'appearance', label: 'Appearance', icon: <PaletteIcon /> },
-    { id: 'model', label: 'Model', icon: <ModelIcon /> },
-    { id: 'platform', label: 'Platform', icon: <PlatformIcon /> },
-    { id: 'agent', label: 'Agent', icon: <AgentIcon /> },
-    { id: 'image', label: 'Image', icon: <ImageIcon /> },
-    { id: 'system', label: 'System Info', icon: <InfoIcon /> },
-    { id: 'danger', label: 'Danger Zone', icon: <WarningIcon /> },
-  ], [])
+  const menuItems: MenuItem[] = useMemo(
+    () => [
+      { id: 'model', label: 'Model', icon: Brain },
+      { id: 'platform', label: 'Platform', icon: Smartphone },
+      { id: 'agent', label: 'Agent', icon: Sparkles },
+      { id: 'image', label: 'Image', icon: ImageIcon },
+      { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+    ],
+    []
+  )
 
   // Use the settings hook
   const {
@@ -94,7 +93,6 @@ export function Settings() {
     setAgentSettings,
     imageSettings,
     setImageSettings,
-    systemInfo,
     loading,
     saving,
     saveError,
@@ -110,7 +108,6 @@ export function Settings() {
   // Mark initial load as complete and save snapshot
   useEffect(() => {
     if (!loading && isInitialLoad.current) {
-      // Save initial settings snapshot
       settingsSnapshot.current = JSON.stringify({
         modelConfig,
         platformSettings,
@@ -121,10 +118,22 @@ export function Settings() {
     }
   }, [loading, modelConfig, platformSettings, agentSettings, imageSettings])
 
+  // Show toast on save success or error
+  useEffect(() => {
+    if (saveSuccess) {
+      toast({ description: 'Your configuration has been updated successfully.' })
+    }
+  }, [saveSuccess, toast])
+
+  useEffect(() => {
+    if (saveError) {
+      toast({ title: 'Save Failed', description: saveError })
+    }
+  }, [saveError, toast])
+
   // Mark as changed whenever settings update (after initial load)
   useEffect(() => {
     if (!loading && !isInitialLoad.current) {
-      // Compare current settings with snapshot
       const currentSnapshot = JSON.stringify({
         modelConfig,
         platformSettings,
@@ -133,7 +142,6 @@ export function Settings() {
       })
 
       if (currentSnapshot !== settingsSnapshot.current) {
-        // Use setTimeout to avoid synchronous setState in effect
         const timeoutId = setTimeout(() => {
           setHasChanges(true)
         }, 0)
@@ -147,7 +155,6 @@ export function Settings() {
     if (hasChanges && !loading) {
       const timeoutId = window.setTimeout(() => {
         saveSettings()
-        // Update snapshot after save
         settingsSnapshot.current = JSON.stringify({
           modelConfig,
           platformSettings,
@@ -189,24 +196,38 @@ export function Settings() {
     setIsHardResetting(true)
     setHardResetErrorMessage(null)
 
+    // Show loading screen
+    setShowLoading(true)
+
     try {
+      // 1. Call backend to delete files (config, projects, python-env)
       const result = await window.electronAPI.configHardReset()
 
       if (result.success) {
-        // Restart the entire app to re-check setup status
-        await window.electronAPI.appRestart()
-        // Note: App will quit and relaunch, so no code after this will execute
+        console.log('[Settings] Hard reset successful, clearing local storage and navigating...')
+
+        // 2. Clear client-side storage
+        localStorage.clear()
+        sessionStorage.clear()
+
+        // 3. Wait a bit to show the loading screen (UX)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+        // 4. Navigate to setup wizard
+        navigate('/setup')
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[Settings] Failed to perform hard reset:', errorMsg)
         setHardResetErrorMessage(`Failed to perform hard reset: ${errorMsg}`)
         setIsHardResetting(false)
+        setShowLoading(false)
       }
     } catch (error) {
       console.error('[Settings] Error performing hard reset:', error)
       const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
       setHardResetErrorMessage(`An error occurred while performing hard reset: ${errorMsg}`)
       setIsHardResetting(false)
+      setShowLoading(false)
     }
   }
 
@@ -217,7 +238,7 @@ export function Settings() {
 
   const scrollToSection = useCallback((section: SettingsSection) => {
     setActiveSection(section)
-    setSidebarOpen(false) // Close drawer after selection
+    setSidebarOpen(false)
     const element = sectionRefs.current[section]
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -225,315 +246,216 @@ export function Settings() {
   }, [])
 
   // Sidebar menu component (reusable for both desktop and mobile)
-  const SidebarMenu = useMemo(() => (
-    <List sx={{ p: 2, gap: 0.5 }}>
-      {menuItems.map((item) => (
-        <ListItemButton
-          key={item.id}
-          selected={activeSection === item.id}
-          onClick={() => scrollToSection(item.id)}
-          color={item.id === 'danger' ? 'danger' : 'neutral'}
-          sx={{
-            borderRadius: 'sm',
-            '&.Joy-selected': {
-              bgcolor: item.id === 'danger' ? 'danger.softBg' : 'primary.softBg',
-            },
-          }}
-        >
-          <ListItemDecorator>{item.icon}</ListItemDecorator>
-          <ListItemContent>{item.label}</ListItemContent>
-        </ListItemButton>
-      ))}
-    </List>
-  ), [menuItems, activeSection, scrollToSection])
+  const SidebarMenu = useMemo(
+    () => (
+      <nav className="space-y-1 p-4">
+        {menuItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              onClick={() => scrollToSection(item.id)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                activeSection === item.id
+                  ? item.id === 'danger'
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          )
+        })}
+      </nav>
+    ),
+    [menuItems, activeSection, scrollToSection]
+  )
 
   if (loading) {
     return (
-      <Box
-        sx={{
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'background.body',
-        }}
-      >
-        <Stack spacing={2} alignItems="center">
-          <CircularProgress size="lg" />
-          <Typography level="body-md" textColor="text.secondary">
-            Loading settings...
-          </Typography>
-        </Stack>
-      </Box>
+      <div className="flex h-full items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
     )
   }
 
+  if (showLoading) {
+    return <LoadingScreen />
+  }
+
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.body' }}>
-      {/* Header with Save Button */}
-      <Box
-        sx={{
-          p: 3,
-          pb: 2,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.surface',
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {/* Mobile menu button */}
-          <IconButton
-            variant="outlined"
-            color="neutral"
-            onClick={() => setSidebarOpen(true)}
-            sx={{ display: { xs: 'flex', md: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Box>
-            <Typography level="h2" fontWeight="bold">
-              Settings
-            </Typography>
-            <Typography level="body-md" textColor="text.secondary">
-              Configure your application preferences
-            </Typography>
-          </Box>
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          {saveSuccess && (
-            <Alert
-              color="success"
-              variant="soft"
-              size="sm"
-              startDecorator={<CheckCircleIcon />}
-            >
-              Saved!
-            </Alert>
-          )}
-          {saveError && (
-            <Alert
-              color="danger"
-              variant="soft"
-              size="sm"
-              startDecorator={<ErrorIcon />}
-            >
-              {saveError}
-            </Alert>
-          )}
-          <Button
-            color="primary"
-            startDecorator={<SaveIcon />}
-            onClick={handleManualSave}
-            loading={saving}
-            disabled={!hasChanges || saving}
-          >
-            {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
+    <div className="flex h-full flex-col">
+      <PageHeader
+        title="Settings"
+        backButton={
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-        </Stack>
-      </Box>
-
-      {/* Main Content Area with Sidebar */}
-      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Desktop Sidebar Menu */}
-        <Box
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            width: 240,
-            borderRight: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.surface',
-            overflow: 'auto',
-          }}
-        >
-          {SidebarMenu}
-        </Box>
-
-        {/* Mobile Drawer Menu */}
-        <Drawer open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
-          <Box sx={{ width: 240 }}>
-            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Typography level="title-lg" fontWeight="bold">
-                Settings Menu
-              </Typography>
-            </Box>
-            {SidebarMenu}
-          </Box>
-        </Drawer>
-
-        {/* Settings Content */}
-        <Box sx={{ flex: 1, overflow: 'auto', p: 4 }}>
-          <Stack spacing={4}>
-            {/* Appearance */}
-            <Sheet
-              ref={(el) => (sectionRefs.current.appearance = el)}
-              variant="outlined"
-              sx={{
-                p: 3,
-                borderRadius: 'md',
-                bgcolor: 'background.surface',
-                scrollMarginTop: '20px',
-              }}
+        }
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setSidebarOpen(true)}
             >
-              <Typography level="title-lg" sx={{ mb: 1 }}>
-                Appearance
-              </Typography>
-              <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-                Choose your preferred color theme
-              </Typography>
-              <ToggleButtonGroup
-                value={mode}
-                onChange={(_, newValue) => {
-                  if (newValue !== null) {
-                    setMode(newValue as 'system' | 'light' | 'dark')
-                  }
-                }}
-                sx={{ width: { xs: '100%', sm: 'auto' } }}
-              >
-                <Button value="system" startDecorator={<Contrast />} sx={{ flex: { xs: 1, sm: 'none' } }}>
-                  System
-                </Button>
-                <Button value="light" startDecorator={<LightMode />} sx={{ flex: { xs: 1, sm: 'none' } }}>
-                  Light
-                </Button>
-                <Button value="dark" startDecorator={<DarkMode />} sx={{ flex: { xs: 1, sm: 'none' } }}>
-                  Dark
-                </Button>
-              </ToggleButtonGroup>
-            </Sheet>
+              <Menu className="h-4 w-4" />
+            </Button>
+            <Button size="sm" onClick={handleManualSave} disabled={!hasChanges || saving}>
+              <Save className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">{saving ? 'Saving...' : hasChanges ? 'Save' : 'Saved'}</span>
+            </Button>
+          </>
+        }
+      />
 
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        <aside className="hidden w-64 border-r bg-background md:block">
+          {SidebarMenu}
+        </aside>
+
+        {/* Mobile Sheet */}
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent side="left">
+            <SheetHeader>
+              <SheetTitle>Settings Menu</SheetTitle>
+              <SheetDescription>Navigate to different settings sections</SheetDescription>
+            </SheetHeader>
+            {SidebarMenu}
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-6">
+          <div className="mx-auto max-w-4xl space-y-6">
             {/* Model Configuration */}
-            <Box ref={(el: HTMLDivElement | null) => (sectionRefs.current.model = el)} sx={{ scrollMarginTop: '20px' }}>
-              <ModelSettingsCard modelConfig={modelConfig} setModelConfig={setModelConfig} />
-            </Box>
+            <BlurFade delay={0.1}>
+              <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
+                <ModelSettingsCard modelConfig={modelConfig} setModelConfig={setModelConfig} />
+              </div>
+            </BlurFade>
 
             {/* Platform Configuration */}
-            <Box ref={(el: HTMLDivElement | null) => (sectionRefs.current.platform = el)} sx={{ scrollMarginTop: '20px' }}>
-              <PlatformSettingsCard
-                platformSettings={platformSettings}
-                setPlatformSettings={setPlatformSettings}
-              />
-            </Box>
+            <BlurFade delay={0.2}>
+              <div ref={(el) => (sectionRefs.current.platform = el)} className="scroll-mt-6">
+                <PlatformSettingsCard
+                  platformSettings={platformSettings}
+                  setPlatformSettings={setPlatformSettings}
+                />
+              </div>
+            </BlurFade>
 
             {/* Agent Behavior */}
-            <Box ref={(el: HTMLDivElement | null) => (sectionRefs.current.agent = el)} sx={{ scrollMarginTop: '20px' }}>
-              <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
-            </Box>
+            <BlurFade delay={0.3}>
+              <div ref={(el) => (sectionRefs.current.agent = el)} className="scroll-mt-6">
+                <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
+              </div>
+            </BlurFade>
 
             {/* Image Optimization */}
-            <Box ref={(el: HTMLDivElement | null) => (sectionRefs.current.image = el)} sx={{ scrollMarginTop: '20px' }}>
-              <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
-            </Box>
+            <BlurFade delay={0.4}>
+              <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
+                <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
+              </div>
+            </BlurFade>
 
-            {/* System Information */}
-            <Box ref={(el: HTMLDivElement | null) => (sectionRefs.current.system = el)} sx={{ scrollMarginTop: '20px' }}>
-              <SystemInfoCard systemInfo={systemInfo} />
-            </Box>
+            {/* Danger Zone */}
+            <BlurFade delay={0.6}>
+              <Card
+                ref={(el) => (sectionRefs.current.danger = el)}
+                className="scroll-mt-6 border-destructive/50"
+              >
+                <CardHeader>
+                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Reset Configuration */}
+                  <div>
+                    <h3 className="mb-1 text-base font-semibold">Reset Configuration</h3>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      Delete configuration file and return to setup wizard
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onClick={() => setResetDialogOpen(true)}
+                    >
+                      <AlertTriangle className="mr-2 h-4 w-4" />
+                      Reset Configuration
+                    </Button>
+                  </div>
 
-            {/* Reset Configuration Section */}
-            <Sheet
-              ref={(el) => (sectionRefs.current.danger = el)}
-              variant="outlined"
-              sx={{
-                p: 3,
-                borderRadius: 'md',
-                bgcolor: 'background.surface',
-                borderColor: 'danger.outlinedBorder',
-                scrollMarginTop: '20px',
-              }}
-            >
-              <Typography level="title-lg" sx={{ mb: 1 }} textColor="danger.plainColor">
-                Danger Zone
-              </Typography>
+                  <Separator />
 
-              {/* Reset Configuration */}
-              <Box sx={{ mb: 3 }}>
-                <Typography level="title-md" sx={{ mb: 1 }}>
-                  Reset Configuration
-                </Typography>
-                <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-                  Delete configuration file and return to setup wizard
-                </Typography>
-                <Button
-                  color="danger"
-                  variant="outlined"
-                  startDecorator={<WarningIcon />}
-                  onClick={() => setResetDialogOpen(true)}
-                >
-                  Reset Configuration
-                </Button>
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              {/* Hard Reset */}
-              <Box>
-                <Typography level="title-md" sx={{ mb: 1 }} textColor="danger.plainColor">
-                  Hard Reset (Delete All Data)
-                </Typography>
-                <Typography level="body-sm" textColor="text.secondary" sx={{ mb: 2 }}>
-                  Delete entire user data directory including all projects, settings, and Python runtime
-                </Typography>
-                <Button
-                  color="danger"
-                  variant="solid"
-                  startDecorator={<ErrorIcon />}
-                  onClick={() => setHardResetDialogOpen(true)}
-                >
-                  Hard Reset All Data
-                </Button>
-              </Box>
-            </Sheet>
-          </Stack>
-        </Box>
-      </Box>
+                  {/* Hard Reset */}
+                  <div>
+                    <h3 className="mb-1 text-base font-semibold text-destructive">
+                      Hard Reset (Delete All Data)
+                    </h3>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      Delete entire user data directory including all projects, settings, and Python
+                      runtime
+                    </p>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setHardResetDialogOpen(true)}
+                    >
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      Hard Reset All Data
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </BlurFade>
+          </div>
+        </main>
+      </div>
 
       {/* Reset Confirmation Dialog */}
-      <Modal open={resetDialogOpen} onClose={() => !isResetting && setResetDialogOpen(false)}>
-        <ModalDialog variant="outlined" role="alertdialog" sx={{ maxWidth: 500 }}>
-          {!isResetting && <ModalClose />}
-          <Typography level="h4" startDecorator={<WarningIcon color="warning" />}>
-            Reset Configuration?
-          </Typography>
-          <Divider />
+      <Dialog open={resetDialogOpen} onOpenChange={(open) => !isResetting && setResetDialogOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Reset Configuration?
+            </DialogTitle>
+            <DialogDescription>
+              This will delete all your settings and redirect you to the setup wizard.
+            </DialogDescription>
+          </DialogHeader>
 
           {errorMessage && (
-            <Alert color="danger" variant="soft" startDecorator={<ErrorIcon />} sx={{ mt: 2 }}>
-              <Box>
-                <Typography level="title-sm" fontWeight="bold">
-                  Error
-                </Typography>
-                <Typography level="body-sm">{errorMessage}</Typography>
-              </Box>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
 
-          <Typography level="body-md" sx={{ mt: errorMessage ? 2 : 1 }}>
-            This will delete all your settings including:
-          </Typography>
-          <Box component="ul" sx={{ pl: 3, mt: 1 }}>
-            <Typography component="li" level="body-sm">
-              AI model configuration
-            </Typography>
-            <Typography component="li" level="body-sm">
-              API keys and endpoints
-            </Typography>
-            <Typography component="li" level="body-sm">
-              All other preferences
-            </Typography>
-          </Box>
-          <Typography level="body-md" sx={{ mt: 2, fontWeight: 'bold' }}>
-            You will be redirected to the setup wizard to reconfigure everything.
-          </Typography>
-          <Typography level="body-sm" textColor="text.secondary" sx={{ mt: 1 }}>
-            This action cannot be undone.
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 2 }}>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">This will delete:</p>
+            <ul className="list-disc space-y-1 pl-6 text-sm text-muted-foreground">
+              <li>AI model configuration</li>
+              <li>API keys and endpoints</li>
+              <li>All other preferences</li>
+            </ul>
+            <p className="text-sm font-semibold">
+              You will be redirected to the setup wizard to reconfigure everything.
+            </p>
+            <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+          </div>
+
+          <DialogFooter>
             <Button
-              variant="plain"
-              color="neutral"
+              variant="outline"
               onClick={() => {
                 setResetDialogOpen(false)
                 setErrorMessage(null)
@@ -543,78 +465,68 @@ export function Settings() {
               Cancel
             </Button>
             <Button
-              variant="solid"
-              color="danger"
-              loading={isResetting}
+              variant="destructive"
               onClick={handleResetConfig}
               disabled={isResetting}
             >
-              Yes, Reset Configuration
+              {isResetting ? 'Resetting...' : 'Yes, Reset Configuration'}
             </Button>
-          </Box>
-        </ModalDialog>
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Hard Reset Confirmation Dialog */}
-      <Modal open={hardResetDialogOpen} onClose={() => !isHardResetting && setHardResetDialogOpen(false)}>
-        <ModalDialog variant="outlined" role="alertdialog" sx={{ maxWidth: 500 }}>
-          {!isHardResetting && <ModalClose />}
-          <Typography level="h4" startDecorator={<ErrorIcon color="error" />}>
-            Hard Reset All Data?
-          </Typography>
-          <Divider />
+      <Dialog
+        open={hardResetDialogOpen}
+        onOpenChange={(open) => !isHardResetting && setHardResetDialogOpen(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Hard Reset All Data?
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete EVERYTHING in your user data directory.
+            </DialogDescription>
+          </DialogHeader>
 
           {hardResetErrorMessage && (
-            <Alert color="danger" variant="soft" startDecorator={<ErrorIcon />} sx={{ mt: 2 }}>
-              <Box>
-                <Typography level="title-sm" fontWeight="bold">
-                  Error
-                </Typography>
-                <Typography level="body-sm">{hardResetErrorMessage}</Typography>
-              </Box>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{hardResetErrorMessage}</AlertDescription>
             </Alert>
           )}
 
-          <Alert color="danger" variant="soft" sx={{ mt: hardResetErrorMessage ? 2 : 1 }}>
-            <Box>
-              <Typography level="title-sm" fontWeight="bold" textColor="danger.plainColor">
-                ⚠️ WARNING: This will delete EVERYTHING!
-              </Typography>
-              <Typography level="body-sm" sx={{ mt: 1 }}>
-                This operation will permanently delete the entire <code>~/.klever-desktop/</code> directory.
-              </Typography>
-            </Box>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>⚠️ WARNING: This will delete EVERYTHING!</AlertTitle>
+            <AlertDescription>
+              This operation will permanently delete all application data and all project workspaces.
+            </AlertDescription>
           </Alert>
 
-          <Typography level="body-md" sx={{ mt: 2 }}>
-            This will permanently delete:
-          </Typography>
-          <Box component="ul" sx={{ pl: 3, mt: 1 }}>
-            <Typography component="li" level="body-sm" fontWeight="bold">
-              All projects and tasks
-            </Typography>
-            <Typography component="li" level="body-sm" fontWeight="bold">
-              All configuration and settings
-            </Typography>
-            <Typography component="li" level="body-sm" fontWeight="bold">
-              Python runtime and installed packages
-            </Typography>
-            <Typography component="li" level="body-sm" fontWeight="bold">
-              All other application data
-            </Typography>
-          </Box>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">This will permanently delete:</p>
+            <ul className="list-disc space-y-1 pl-6 text-sm font-semibold text-muted-foreground">
+              <li>All projects and tasks (metadata)</li>
+              <li>All project workspace directories in <code>~/Documents</code></li>
+              <li>All configuration and settings</li>
+              <li>Python runtime and installed packages</li>
+              <li>All application cache and data</li>
+            </ul>
+            <p className="text-sm font-bold text-destructive">
+              This action is IRREVERSIBLE and cannot be undone!
+            </p>
+            <p className="text-sm">
+              You will need to go through the complete setup process again from scratch.
+            </p>
+          </div>
 
-          <Typography level="body-md" sx={{ mt: 2, fontWeight: 'bold', color: 'danger.plainColor' }}>
-            This action is IRREVERSIBLE and cannot be undone!
-          </Typography>
-          <Typography level="body-md" sx={{ mt: 1 }}>
-            You will need to go through the complete setup process again from scratch.
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', pt: 2 }}>
+          <DialogFooter>
             <Button
-              variant="plain"
-              color="neutral"
+              variant="outline"
               onClick={() => {
                 setHardResetDialogOpen(false)
                 setHardResetErrorMessage(null)
@@ -624,17 +536,15 @@ export function Settings() {
               Cancel
             </Button>
             <Button
-              variant="solid"
-              color="danger"
-              loading={isHardResetting}
+              variant="destructive"
               onClick={handleHardReset}
               disabled={isHardResetting}
             >
-              Yes, Delete Everything
+              {isHardResetting ? 'Resetting...' : 'Yes, Delete Everything'}
             </Button>
-          </Box>
-        </ModalDialog>
-      </Modal>
-    </Box>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
