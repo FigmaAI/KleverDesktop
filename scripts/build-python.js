@@ -75,20 +75,46 @@ function exec(command, opts = {}) {
   }
 }
 
-function getLatestReleaseTag() {
+function fetchJSON(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, {
+      headers: { 'User-Agent': 'Node.js' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
+
+async function getLatestReleaseTag() {
   console.log('🔎 Fetching latest release tag for Python 3.11 from GitHub...');
-  // Find a release that contains a CPython 3.11 build for macOS aarch64
-  const command = "curl -sL https://api.github.com/repos/astral-sh/python-build-standalone/releases | jq -r '[.[] | select(.assets[]?.name | contains(\"cpython-3.11\") and contains(\"aarch64-apple-darwin\")))] | .[0].tag_name'";
+  const fallbackTag = '20240814';
+
   try {
-    const tagName = exec(command, { silent: true }).trim();
-    if (!tagName || tagName === "null") {
-      throw new Error('Could not find a release with Python 3.11 for macOS aarch64.');
+    const releases = await fetchJSON('https://api.github.com/repos/astral-sh/python-build-standalone/releases');
+
+    // Find a release that contains a CPython 3.11 build for macOS aarch64
+    const arch = options.arch === 'arm64' ? 'aarch64' : 'x86_64';
+    for (const release of releases) {
+      if (release.assets && release.assets.some(asset =>
+        asset.name.includes('cpython-3.11') &&
+        asset.name.includes(`${arch}-apple-darwin`)
+      )) {
+        console.log(`✓ Found best release tag: ${release.tag_name}`);
+        return release.tag_name;
+      }
     }
-    console.log(`✓ Found best release tag: ${tagName}`);
-    return tagName;
+
+    throw new Error('Could not find a release with Python 3.11 for the target architecture.');
   } catch (error) {
     console.error('❌ Failed to fetch latest release tag.', error.message);
-    const fallbackTag = '20240814';
     console.warn(`⚠️ Using fallback release tag: ${fallbackTag}`);
     return fallbackTag;
   }
@@ -108,7 +134,7 @@ function checkIfExists() {
   return fs.existsSync(pythonExe);
 }
 
-function downloadPython() {
+async function downloadPython() {
   const platformKey = `${options.platform}-${options.arch}`;
   const downloadUrl = PYTHON_URLS[platformKey];
 
@@ -153,13 +179,13 @@ function downloadPython() {
       // Alternative: Download standalone Python build
       let standalonePath;
       try {
-        const releaseDate = getLatestReleaseTag();
+        const releaseDate = await getLatestReleaseTag();
         standalonePath = path.join(tempDir, 'python-standalone.tar.gz');
         const standaloneUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${releaseDate}/cpython-${PYTHON_VERSION}+${releaseDate}-${options.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin-install_only.tar.gz`;
-        
+
         console.log(`URL: ${standaloneUrl}`);
         exec(`curl -L -f -o "${standalonePath}" "${standaloneUrl}"`);
-        
+
         const stats = fs.statSync(standalonePath);
         if (stats.size < 1000000) {
           throw new Error('Downloaded file is too small. Download failed.');
@@ -172,7 +198,7 @@ function downloadPython() {
         const fallbackTag = '20240814';
         standalonePath = path.join(tempDir, 'python-standalone.tar.gz');
         const standaloneUrl = `https://github.com/astral-sh/python-build-standalone/releases/download/${fallbackTag}/cpython-${PYTHON_VERSION}+${fallbackTag}-${options.arch === 'arm64' ? 'aarch64' : 'x86_64'}-apple-darwin-install_only.tar.gz`;
-        
+
         console.log(`Fallback URL: ${standaloneUrl}`);
         exec(`curl -L -f -o "${standalonePath}" "${standaloneUrl}"`);
       }
@@ -327,7 +353,7 @@ async function main() {
   }
 
   // Download Python
-  downloadPython();
+  await downloadPython();
 
   // Install dependencies
   if (!options.dryRun) {
