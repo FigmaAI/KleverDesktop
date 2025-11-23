@@ -517,8 +517,6 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 
 ## Documentation
 
-### Build & Deployment
-
 - **[docs/GITHUB_RELEASE_GUIDE.md](docs/GITHUB_RELEASE_GUIDE.md)** - Complete GitHub Releases guide
   - Developer ID signing and notarization (macOS)
   - Code signing options (Windows)
@@ -526,17 +524,9 @@ getMainWindow()?.webContents.send('task:output', outputLine)
 
 - **[docs/GITHUB_RELEASE_GUIDE_KR.md](docs/GITHUB_RELEASE_GUIDE_KR.md)** - 한국어 GitHub 릴리즈 가이드
 
-- **[docs/BUILD_ICONS.md](docs/BUILD_ICONS.md)** - Icon generation guide
-  - Platform-specific formats (ICNS, ICO)
-  - Size requirements
-  - Asset generation tools
-
-### Technical Docs
-
-- **[docs/BUILD_13_FIX_SUMMARY.md](docs/BUILD_13_FIX_SUMMARY.md)** - Build 13 fixes summary
-- **[docs/CRASH_ANALYSIS.md](docs/CRASH_ANALYSIS.md)** - Crash debugging guide
-
-### Main Docs
+- **[docs/export-compliance-automation.md](docs/export-compliance-automation.md)** - App Store Connect export compliance automation
+  - ITSAppUsesNonExemptEncryption configuration
+  - TestFlight upload automation
 
 - **[README.md](README.md)** - User-facing documentation
 - **[PRIVACY.md](PRIVACY.md)** - Privacy policy
