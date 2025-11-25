@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { PythonInstallCard } from './PythonInstallCard'
 import { EnvironmentSetup } from './EnvironmentSetup'
 import { ToolStatusCard } from './ToolStatusCard'
@@ -8,6 +10,7 @@ import { Terminal, AnimatedSpan } from '@/components/ui/terminal'
 import { useTerminal } from '@/hooks/useTerminal'
 import { PlatformToolsState } from '@/types/setupWizard'
 import { renderAnsi } from '@/utils/ansiParser'
+import { cn } from '@/lib/utils'
 
 interface PlatformToolsStepProps {
   toolsStatus: PlatformToolsState
@@ -57,6 +60,7 @@ export function PlatformToolsStep({
   }
 
   const isMac = window.navigator.platform.toLowerCase().includes('mac')
+  const isWindows = window.navigator.platform.toLowerCase().includes('win')
 
   return (
     <BlurFade key="step-1" delay={0.1}>
@@ -65,11 +69,52 @@ export function PlatformToolsStep({
           <div className="grid grid-cols-8 gap-6 h-full">
             {/* Left: Tools List */}
             <div className="col-span-3 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold">Platform Tools</h3>
-                <p className="text-sm text-muted-foreground">
-                  Install required tools for Klever Desktop
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Platform Tools</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Install required tools for Klever Desktop
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {/* Recheck Button */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={checkPlatformTools}
+                    disabled={toolsStatus.pythonEnv.checking || toolsStatus.pythonEnv.installing}
+                    title="Recheck Environment"
+                  >
+                    <RefreshCw className={cn("h-4 w-4", toolsStatus.pythonEnv.checking && "animate-spin")} />
+                  </Button>
+
+                  {/* Hard Reset Button */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={async () => {
+                      if (confirm('This will delete the entire ~/.klever-desktop directory and reinstall everything. Continue?')) {
+                        try {
+                          const result = await window.electronAPI.envReset();
+                          if (result && result.success) {
+                            await checkPlatformTools();
+                          } else {
+                            console.error('[Hard Reset] Failed:', result?.error);
+                            alert(`Failed to reset environment: ${result?.error || 'Unknown error'}`);
+                          }
+                        } catch (error) {
+                          console.error('[Hard Reset] Error:', error);
+                          alert(`Error during reset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                        }
+                      }
+                    }}
+                    disabled={toolsStatus.pythonEnv.checking || toolsStatus.pythonEnv.installing}
+                    title="Hard Reset (Delete & Reinstall)"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -80,6 +125,17 @@ export function PlatformToolsStep({
                     status={toolsStatus.homebrew}
                     delay={0.1}
                     onInstall={() => window.electronAPI.openExternal('https://brew.sh')}
+                    installLabel="Install Guide"
+                  />
+                )}
+
+                {/* Chocolatey (Windows only) */}
+                {isWindows && (
+                  <ToolStatusCard
+                    name="Chocolatey (Optional)"
+                    status={toolsStatus.chocolatey}
+                    delay={0.1}
+                    onInstall={() => window.electronAPI.openExternal('https://chocolatey.org/install')}
                     installLabel="Install Guide"
                   />
                 )}

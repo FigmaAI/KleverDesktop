@@ -87,10 +87,23 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       const mainWindow = getMainWindow();
 
       // 1. Check if Python is downloaded
+      // 1. Check if Python is downloaded
       if (!isPythonInstalled()) {
-        const errorMsg = 'Python is not installed yet. Please install Python first.';
-        mainWindow?.webContents.send('env:progress', `❌ ${errorMsg}\n`);
-        return { success: false, error: errorMsg };
+        mainWindow?.webContents.send('env:progress', '📦 Python runtime not found. Downloading...\n');
+        
+        const onProgress = (message: string) => {
+          mainWindow?.webContents.send('env:progress', message);
+        };
+
+        const downloadResult = await downloadPython(onProgress);
+        
+        if (!downloadResult.success) {
+          const errorMsg = `Failed to download Python: ${downloadResult.error}`;
+          mainWindow?.webContents.send('env:progress', `❌ ${errorMsg}\n`);
+          return { success: false, error: errorMsg };
+        }
+        
+        mainWindow?.webContents.send('env:progress', '✓ Python runtime downloaded\n');
       }
 
       mainWindow?.webContents.send('env:progress', '✓ Python runtime found\n');
@@ -151,6 +164,24 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[Environment Setup] ❌ Error:', message);
       getMainWindow()?.webContents.send('env:progress', `\n❌ Error: ${message}\n`);
+      return { success: false, error: message };
+    }
+  });
+
+  // Reset environment (delete .klever-desktop)
+  ipcMain.handle('env:reset', async () => {
+    try {
+      const kleverDir = path.join(require('os').homedir(), '.klever-desktop');
+      const fs = require('fs');
+      
+      if (fs.existsSync(kleverDir)) {
+        fs.rmSync(kleverDir, { recursive: true, force: true });
+      }
+      
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[env:reset] Error:', message);
       return { success: false, error: message };
     }
   });

@@ -82,6 +82,7 @@ declare global {
         error?: string;
       }>;
       envSetup: () => Promise<{ success: boolean; error?: string }>;
+      envReset: () => Promise<{ success: boolean; error?: string }>;
 
       // Python Runtime Management (Post-Install Download)
       pythonCheckInstalled: () => Promise<{
@@ -109,6 +110,7 @@ declare global {
       installAndroidStudio: () => Promise<{ success: boolean; output?: string; error?: string }>;
       installPython: () => Promise<{ success: boolean; output?: string; error?: string }>;
       checkHomebrew: () => Promise<{ success: boolean; version?: string; error?: string }>;
+      checkChocolatey: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
       checkAndroidStudio: () => Promise<{ success: boolean; version?: string; path?: string; method?: string; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;

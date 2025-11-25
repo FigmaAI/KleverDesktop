@@ -7,6 +7,7 @@ export function usePlatformTools() {
     pythonEnv: { checking: false, installed: false, installing: false },
     androidStudio: { checking: true, installed: false, installing: false },
     homebrew: { checking: true, installed: false, installing: false },
+    chocolatey: { checking: true, installed: false, installing: false },
   })
 
   const [androidSdkPath, setAndroidSdkPath] = useState<string>('')
@@ -14,6 +15,8 @@ export function usePlatformTools() {
   const checkPlatformTools = useCallback(async () => {
     // Check Homebrew (macOS only)
     const isMac = window.navigator.platform.toLowerCase().includes('mac')
+    const isWindows = window.navigator.platform.toLowerCase().includes('win')
+
     if (isMac) {
       setToolsStatus((prev) => ({ ...prev, homebrew: { ...prev.homebrew, checking: true } }))
       try {
@@ -28,6 +31,23 @@ export function usePlatformTools() {
     } else {
       // Not macOS, skip Homebrew check
       setToolsStatus((prev) => ({ ...prev, homebrew: { checking: false, installed: true, installing: false } }))
+    }
+
+    // Check Chocolatey (Windows only)
+    if (isWindows) {
+      setToolsStatus((prev) => ({ ...prev, chocolatey: { ...prev.chocolatey, checking: true } }))
+      try {
+        const result = await window.electronAPI.checkChocolatey()
+        setToolsStatus((prev) => ({
+          ...prev,
+          chocolatey: { checking: false, installed: result.success, version: result.version, installing: false },
+        }))
+      } catch {
+        setToolsStatus((prev) => ({ ...prev, chocolatey: { checking: false, installed: false, installing: false } }))
+      }
+    } else {
+      // Not Windows, skip Chocolatey check
+      setToolsStatus((prev) => ({ ...prev, chocolatey: { checking: false, installed: true, installing: false } }))
     }
 
     // Check Python (post-install download to user data directory)

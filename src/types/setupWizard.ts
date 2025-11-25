@@ -28,6 +28,7 @@ export interface PlatformToolsState {
   pythonEnv: ToolStatus
   androidStudio: ToolStatus
   homebrew: ToolStatus
+  chocolatey: ToolStatus
 }
 
 export interface StepConfig {

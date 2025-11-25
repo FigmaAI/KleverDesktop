@@ -202,4 +202,25 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
       });
     });
   });
+
+  // Check Chocolatey (Windows only)
+  ipcMain.handle('check:chocolatey', async () => {
+    return new Promise((resolve) => {
+      if (process.platform !== 'win32') {
+        resolve({ success: false, error: 'Chocolatey is only available on Windows' });
+        return;
+      }
+
+      exec('choco --version', { timeout: 5000 }, (error, stdout) => {
+        if (error) {
+          resolve({ success: false, error: 'Chocolatey not installed' });
+          return;
+        }
+
+        const versionMatch = stdout.match(/Chocolatey v([\d.]+)/);
+        const version = versionMatch ? versionMatch[1] : 'unknown';
+        resolve({ success: true, version });
+      });
+    });
+  });
 }

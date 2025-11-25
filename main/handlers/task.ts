@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -190,6 +190,16 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const task = project.tasks.find((t) => t.id === taskId);
       if (!task) {
         return { success: false, error: 'Task not found' };
+      }
+
+      // Check if Python environment is valid
+      if (!isPythonInstalled()) {
+        return { success: false, error: 'Python runtime not found. Please run the Setup Wizard.' };
+      }
+
+      const venvStatus = checkVenvStatus();
+      if (!venvStatus.valid) {
+        return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
       }
 
       // Sanitize app name (remove spaces) to match learn.py behavior

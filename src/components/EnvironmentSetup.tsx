@@ -39,19 +39,19 @@ export function EnvironmentSetup({
       // No need to listen manually, useTerminal handles it via context
       const result = await window.electronAPI.envSetup()
 
-      if (result.success) {
+      if (result && result.success) {
         setEnvSetupProgress(100)
         // Recheck platform tools
         await checkPlatformTools()
       } else {
         // Show error to user
-        console.error('[EnvironmentSetup] Setup failed:', result.error)
+        console.error('[EnvironmentSetup] Setup failed:', result?.error)
         setToolsStatus((prev) => ({
           ...prev,
           pythonEnv: {
             ...prev.pythonEnv,
             installing: false,
-            error: result.error || 'Setup failed. Check Universal Terminal for details.'
+            error: result?.error || 'Setup failed. Check Universal Terminal for details.'
           }
         }))
         return

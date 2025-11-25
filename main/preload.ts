@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // NEW: Unified Environment Setup
   envCheck: () => ipcRenderer.invoke('env:check'),
   envSetup: () => ipcRenderer.invoke('env:setup'),
+  envReset: () => ipcRenderer.invoke('env:reset'),
 
   // Python Runtime Management (Post-Install Download)
   pythonCheckInstalled: () => ipcRenderer.invoke('python:checkInstalled'),
@@ -28,6 +29,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkAndroidStudio: () => ipcRenderer.invoke('check:androidStudio'),
   checkPlaywright: () => ipcRenderer.invoke('check:playwright'),
   checkHomebrew: () => ipcRenderer.invoke('check:homebrew'),
+  checkChocolatey: () => ipcRenderer.invoke('check:chocolatey'),
 
   // Ollama operations
   ollamaList: () => ipcRenderer.invoke('ollama:list'),
