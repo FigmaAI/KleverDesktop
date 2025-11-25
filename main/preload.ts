@@ -53,6 +53,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showFolderSelectDialog: () => ipcRenderer.invoke('dialog:showFolderSelect'),
   openFolder: (folderPath: string) => ipcRenderer.invoke('dialog:openFolder', folderPath),
 
+  // Clipboard operations
+  clipboardWriteText: (text: string) => ipcRenderer.invoke('clipboard:writeText', text),
+
   // File operations
   fileRead: (filePath: string) => ipcRenderer.invoke('file:read', filePath),
   fileExists: (filePath: string) => ipcRenderer.invoke('file:exists', filePath),

@@ -141,6 +141,10 @@ declare global {
       openPath: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
       showFolderSelectDialog: () => Promise<string | null>;
 
+      // Clipboard operations
+      clipboardWriteText: (text: string) => Promise<{ success: boolean; error?: string }>;
+
+
       // File operations
       fileRead: (filePath: string) => Promise<{ success: boolean; content?: string; error?: string }>;
       fileExists: (filePath: string) => Promise<{ success: boolean; exists?: boolean; error?: string }>;
