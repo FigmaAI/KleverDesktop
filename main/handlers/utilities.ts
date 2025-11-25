@@ -3,7 +3,7 @@
  * Handles shell operations and system info
  */
 
-import { IpcMain, shell } from 'electron';
+import { IpcMain, shell, clipboard } from 'electron';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -87,6 +87,16 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
                        ext === 'webp' ? 'image/webp' :
                        ext === 'svg' ? 'image/svg+xml' : 'image/png';
       return { success: true, dataUrl: `data:${mimeType};base64,${base64}` };
+    } catch (error: unknown) {
+      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+    }
+  });
+
+  // Write text to clipboard
+  ipcMain.handle('clipboard:writeText', async (_event, text: string) => {
+    try {
+      clipboard.writeText(text);
+      return { success: true };
     } catch (error: unknown) {
       return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
     }

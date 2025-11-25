@@ -19,23 +19,21 @@ export function TerminalHeader() {
     }
   }
 
-  const handleCopy = () => {
-    const text = lines.map((line) => line.content).join('\n')
-
-    // Use textarea method for better Electron compatibility
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
+  const handleCopy = async () => {
+    // Copy last 100 lines only
+    const lastLines = lines.slice(-100)
+    const text = lastLines.map((line) => line.content).join('\n')
 
     try {
-      document.execCommand('copy')
+      // Use Electron clipboard API
+      const result = await window.electronAPI.clipboardWriteText(text)
+      if (result.success) {
+        console.log(`[Terminal] Copied ${lastLines.length} lines to clipboard`)
+      } else {
+        console.error('[Terminal] Failed to copy:', result.error)
+      }
     } catch (err) {
       console.error('[Terminal] Failed to copy:', err)
-    } finally {
-      document.body.removeChild(textarea)
     }
   }
 
