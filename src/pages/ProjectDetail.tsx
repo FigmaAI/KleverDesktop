@@ -42,7 +42,7 @@ export function ProjectDetail() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'status'>('latest')
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest'>('latest')
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
 
   const loadProject = useCallback(async () => {
@@ -213,14 +213,9 @@ export function ProjectDetail() {
     const sorted = [...project.tasks]
     switch (sortBy) {
       case 'latest':
-        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      case 'oldest':
         return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      case 'status': {
-        // Sort by status priority: running > pending > completed > failed > cancelled
-        const statusPriority: Record<string, number> = { running: 0, pending: 1, completed: 2, failed: 3, cancelled: 4 }
-        return sorted.sort((a, b) => (statusPriority[a.status] ?? 99) - (statusPriority[b.status] ?? 99))
-      }
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       default:
         return sorted
     }
@@ -356,14 +351,13 @@ export function ProjectDetail() {
           <>
             {/* Filter and Add Task Button */}
             <div className="flex items-center justify-between mb-4">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'latest' | 'oldest' | 'status')}>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as 'latest' | 'oldest')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="latest">Latest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
+                  <SelectItem value="latest">Latest</SelectItem>
+                  <SelectItem value="oldest">Oldest</SelectItem>
                 </SelectContent>
               </Select>
 

@@ -116,9 +116,9 @@ export function ProjectList() {
 
     switch (sortBy) {
       case 'latest':
-        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      case 'oldest':
         return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       case 'a-z':
         return sorted.sort((a, b) => a.name.localeCompare(b.name))
       case 'z-a':
@@ -233,8 +233,8 @@ export function ProjectList() {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="latest">Latest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="latest">Latest</SelectItem>
+                  <SelectItem value="oldest">Oldest</SelectItem>
                   <SelectItem value="a-z">Name (A-Z)</SelectItem>
                   <SelectItem value="z-a">Name (Z-A)</SelectItem>
                 </SelectContent>

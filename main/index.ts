@@ -45,7 +45,7 @@ let mainWindow: BrowserWindow | null = null;
  * Create the browser window
  */
 function createWindow(): void {
-  // Debug logging for troubleshooting MAS vs darwin builds
+  // Debug logging for startup
   console.log('=== Klever Desktop Starting ===');
   console.log('App Version:', app.getVersion());
   console.log('Electron Version:', process.versions.electron);
@@ -55,7 +55,6 @@ function createWindow(): void {
   console.log('Exe Path:', app.getPath('exe'));
   console.log('Resources Path:', process.resourcesPath);
   console.log('User Data:', app.getPath('userData'));
-  console.log('Is MAS Build:', process.mas === true);
   console.log('Is Packaged:', app.isPackaged);
   console.log('================================');
 

@@ -23,7 +23,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
   SheetContent,
@@ -33,7 +32,6 @@ import {
 } from '@/components/ui/sheet'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { PageHeader } from '@/components/PageHeader'
-import { LoadingScreen } from '@/components/LoadingScreen'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { ModelSettingsCard } from '@/components/ModelSettingsCard'
@@ -52,12 +50,8 @@ interface MenuItem {
 export function Settings() {
   const navigate = useNavigate()
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
-  const [hardResetDialogOpen, setHardResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
-  const [isHardResetting, setIsHardResetting] = useState(false)
-  const [showLoading, setShowLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [hardResetErrorMessage, setHardResetErrorMessage] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const { toast } = useToast()
@@ -192,44 +186,7 @@ export function Settings() {
     }
   }
 
-  const handleHardReset = async () => {
-    setIsHardResetting(true)
-    setHardResetErrorMessage(null)
 
-    // Show loading screen
-    setShowLoading(true)
-
-    try {
-      // 1. Call backend to delete files (config, projects, python-env)
-      const result = await window.electronAPI.configHardReset()
-
-      if (result.success) {
-        console.log('[Settings] Hard reset successful, clearing local storage and navigating...')
-
-        // 2. Clear client-side storage
-        localStorage.clear()
-        sessionStorage.clear()
-
-        // 3. Wait a bit to show the loading screen (UX)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        // 4. Navigate to setup wizard
-        navigate('/setup')
-      } else {
-        const errorMsg = result.error || 'Unknown error occurred'
-        console.error('[Settings] Failed to perform hard reset:', errorMsg)
-        setHardResetErrorMessage(`Failed to perform hard reset: ${errorMsg}`)
-        setIsHardResetting(false)
-        setShowLoading(false)
-      }
-    } catch (error) {
-      console.error('[Settings] Error performing hard reset:', error)
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
-      setHardResetErrorMessage(`An error occurred while performing hard reset: ${errorMsg}`)
-      setIsHardResetting(false)
-      setShowLoading(false)
-    }
-  }
 
   const handleManualSave = async () => {
     await saveSettings()
@@ -285,9 +242,7 @@ export function Settings() {
     )
   }
 
-  if (showLoading) {
-    return <LoadingScreen />
-  }
+
 
   return (
     <div className="flex h-full flex-col">
@@ -392,26 +347,6 @@ export function Settings() {
                       Reset Configuration
                     </Button>
                   </div>
-
-                  <Separator />
-
-                  {/* Hard Reset */}
-                  <div>
-                    <h3 className="mb-1 text-base font-semibold text-destructive">
-                      Hard Reset (Delete All Data)
-                    </h3>
-                    <p className="mb-3 text-sm text-muted-foreground">
-                      Delete entire user data directory including all projects, settings, and Python
-                      runtime
-                    </p>
-                    <Button
-                      variant="destructive"
-                      onClick={() => setHardResetDialogOpen(true)}
-                    >
-                      <AlertCircle className="mr-2 h-4 w-4" />
-                      Hard Reset All Data
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </BlurFade>
@@ -475,76 +410,7 @@ export function Settings() {
         </DialogContent>
       </Dialog>
 
-      {/* Hard Reset Confirmation Dialog */}
-      <Dialog
-        open={hardResetDialogOpen}
-        onOpenChange={(open) => !isHardResetting && setHardResetDialogOpen(open)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Hard Reset All Data?
-            </DialogTitle>
-            <DialogDescription>
-              This will permanently delete EVERYTHING in your user data directory.
-            </DialogDescription>
-          </DialogHeader>
 
-          {hardResetErrorMessage && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{hardResetErrorMessage}</AlertDescription>
-            </Alert>
-          )}
-
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>⚠️ WARNING: This will delete EVERYTHING!</AlertTitle>
-            <AlertDescription>
-              This operation will permanently delete all application data and all project workspaces.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">This will permanently delete:</p>
-            <ul className="list-disc space-y-1 pl-6 text-sm font-semibold text-muted-foreground">
-              <li>All projects and tasks (metadata)</li>
-              <li>All project workspace directories in <code>~/Documents</code></li>
-              <li>All configuration and settings</li>
-              <li>Python runtime and installed packages</li>
-              <li>All application cache and data</li>
-            </ul>
-            <p className="text-sm font-bold text-destructive">
-              This action is IRREVERSIBLE and cannot be undone!
-            </p>
-            <p className="text-sm">
-              You will need to go through the complete setup process again from scratch.
-            </p>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setHardResetDialogOpen(false)
-                setHardResetErrorMessage(null)
-              }}
-              disabled={isHardResetting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleHardReset}
-              disabled={isHardResetting}
-            >
-              {isHardResetting ? 'Resetting...' : 'Yes, Delete Everything'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
