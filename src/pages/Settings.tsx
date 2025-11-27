@@ -22,6 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Sheet,
@@ -55,6 +65,8 @@ export function Settings() {
   const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [modelConfigValid, setModelConfigValid] = useState(true) // Track model config validation
+  const [unsavedAlertOpen, setUnsavedAlertOpen] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<number | null>(null)
   const { toast } = useToast()
 
   // Section refs for scrolling
@@ -142,13 +154,13 @@ export function Settings() {
   // Manual save handler
   const handleManualSave = useCallback(async () => {
     if (!modelConfigValid) {
-      toast({ 
-        title: 'Cannot Save', 
-        description: 'Please test your API connection before saving.' 
+      toast({
+        title: 'Cannot Save',
+        description: 'Please test your API connection before saving.'
       })
       return
     }
-    
+
     await saveSettings()
     // Update snapshot after successful save
     settingsSnapshot.current = JSON.stringify({
@@ -170,7 +182,7 @@ export function Settings() {
         }
       }
     }
-    
+
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [hasChanges, modelConfigValid, saving, handleManualSave])
@@ -255,7 +267,14 @@ export function Settings() {
       <PageHeader
         title="Settings"
         backButton={
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="sm" onClick={() => {
+            if (hasChanges) {
+              setUnsavedAlertOpen(true)
+              setPendingNavigation(-1)
+            } else {
+              navigate(-1)
+            }
+          }}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
         }
@@ -269,9 +288,9 @@ export function Settings() {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <Button 
-              size="sm" 
-              onClick={handleManualSave} 
+            <Button
+              size="sm"
+              onClick={handleManualSave}
               disabled={!hasChanges || saving || !modelConfigValid}
               variant={hasChanges ? 'default' : 'outline'}
             >
@@ -312,8 +331,8 @@ export function Settings() {
             {/* Model Configuration */}
             <BlurFade delay={0.1}>
               <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
-                <ModelSettingsCard 
-                  modelConfig={modelConfig} 
+                <ModelSettingsCard
+                  modelConfig={modelConfig}
                   setModelConfig={setModelConfig}
                   onValidationChange={setModelConfigValid}
                 />
@@ -432,6 +451,39 @@ export function Settings() {
         </DialogContent>
       </Dialog>
 
+      {/* Unsaved Changes Alert */}
+      <AlertDialog open={unsavedAlertOpen} onOpenChange={setUnsavedAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+              Unsaved Changes
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. If you leave now, all changes will be lost. Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setPendingNavigation(null)
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingNavigation !== null) {
+                  navigate(pendingNavigation)
+                }
+                setUnsavedAlertOpen(false)
+                setPendingNavigation(null)
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   )
