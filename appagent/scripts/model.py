@@ -4,7 +4,6 @@ from abc import abstractmethod
 from typing import List
 
 import requests
-import ollama
 
 try:
     from litellm import completion
@@ -52,6 +51,7 @@ class OpenAIModel(BaseModel):
     Universal Model API using LiteLLM.
 
     Supports 100+ model providers including:
+    - Ollama (ollama/llama3.2-vision, ollama/qwen3-vl:8b) - Local models
     - OpenAI (gpt-4o, gpt-4-turbo, gpt-4o-mini)
     - Anthropic Claude (claude-sonnet-4-5-20250929, claude-opus-4, etc.)
     - xAI Grok (grok-beta, grok-vision-beta)
@@ -63,6 +63,8 @@ class OpenAIModel(BaseModel):
 
     The implementation automatically detects the provider from the model name
     and handles the appropriate API format.
+    
+    For Ollama models, use the format: ollama/model-name (e.g., ollama/llama3.2-vision)
     """
     def __init__(self, base_url: str, api_key: str, model: str, temperature: float, max_tokens: int):
         super().__init__()
@@ -86,7 +88,9 @@ class OpenAIModel(BaseModel):
 
     def _detect_provider(self, model: str) -> str:
         """Detect the provider from the model name."""
-        if model.startswith("openrouter/"):
+        if model.startswith("ollama/"):
+            return "Ollama"
+        elif model.startswith("openrouter/"):
             return "OpenRouter"
         elif model.startswith("claude-") or model.startswith("anthropic/"):
             return "Anthropic"
@@ -352,157 +356,6 @@ class OpenAIModel(BaseModel):
 
         return True, content, metadata
 
-
-class OllamaModel(BaseModel):
-    """
-    Ollama Model using native Ollama SDK for optimal performance.
-    Uses file paths directly instead of base64 encoding.
-    """
-    def __init__(self, model: str, temperature: float, max_tokens: int):
-        super().__init__()
-        self.model = model
-        # Ensure temperature is a float and max_tokens is an integer (correct types for Ollama)
-        self.temperature = float(temperature)
-        self.max_tokens = int(max_tokens)
-        print_with_color(f"✓ Ollama Model initialized: {model}", "green")
-
-    def get_model_response(self, prompt: str, images: List[str]) -> tuple[bool, str, dict]:
-        """
-        Get model response using Ollama SDK with file paths.
-
-        Args:
-            prompt: Text prompt
-            images: List of file paths (NOT base64!)
-
-        Returns:
-            (success, response_text, metadata)
-        """
-        start_time = time.time()
-
-        # Measure initial resource usage if psutil is available
-        cpu_before = 0
-        mem_before = 0
-        if PSUTIL_AVAILABLE:
-            cpu_before = psutil.cpu_percent(interval=0.1)
-            mem_before = psutil.virtual_memory().percent
-
-        # Optimize images before sending to model
-        optimized_images = []
-        for img_path in images:
-            optimized_path = optimize_image(img_path)
-            optimized_images.append(optimized_path)
-
-        # Debug logging
-        print_with_color(f"[DEBUG] Prompt length: {len(prompt)} chars", "cyan")
-        print_with_color(f"[DEBUG] Images: {len(optimized_images)} files", "cyan")
-        print_with_color(f"[DEBUG] Max tokens: {self.max_tokens}", "cyan")
-        for i, img_path in enumerate(optimized_images):
-            import os
-            if os.path.exists(img_path):
-                size_kb = os.path.getsize(img_path) / 1024
-                print_with_color(f"[DEBUG] Image {i+1}: {size_kb:.1f}KB - {img_path}", "cyan")
-            else:
-                print_with_color(f"[DEBUG] Image {i+1}: NOT FOUND - {img_path}", "red")
-
-        try:
-            # Ollama SDK accepts file paths directly!
-            print_with_color(f"[DEBUG] Calling ollama.chat with model={self.model}", "cyan")
-            # Add system message to prevent thinking mode
-            messages = [
-                {
-                    'role': 'system',
-                    'content': 'You are a helpful assistant. Provide direct, concise responses without showing your reasoning process.'
-                },
-                {
-                    'role': 'user',
-                    'content': prompt,
-                    'images': optimized_images  # Use optimized images
-                }
-            ]
-
-            response = ollama.chat(
-                model=self.model,
-                messages=messages,
-                options={
-                    'temperature': self.temperature,
-                    'num_predict': self.max_tokens,
-                    'num_ctx': 8192,  # Set context window explicitly
-                    'top_p': 0.9,  # Reduce randomness
-                    'repeat_penalty': 1.5  # Prevent infinite loops in thinking mode
-                }
-            )
-            print_with_color(f"[DEBUG] ollama.chat completed", "cyan")
-
-            # Calculate response time
-            response_time = time.time() - start_time
-
-            # Debug: Print response structure (ChatResponse object, not dict)
-            print_with_color(f"[DEBUG] Response type: {type(response)}", "cyan")
-            print_with_color(f"[DEBUG] Response model: {response.model}", "cyan")
-
-            # Extract content from ChatResponse object
-            content = response.message.content
-
-            # If content is empty, try to use thinking field (qwen3-vl:4b sometimes uses this)
-            if not content or len(content.strip()) == 0:
-                cpu_after = psutil.cpu_percent(interval=0.1) if PSUTIL_AVAILABLE else 0
-                mem_after = psutil.virtual_memory().percent if PSUTIL_AVAILABLE else 0
-                cpu_avg = (cpu_before + cpu_after) / 2 if PSUTIL_AVAILABLE else 0
-                mem_avg = (mem_before + mem_after) / 2 if PSUTIL_AVAILABLE else 0
-                metadata = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "response_time": response_time, "provider": "Ollama", "model": self.model, "cpu_usage": cpu_avg, "memory_usage": mem_avg}
-                if hasattr(response.message, 'thinking') and response.message.thinking:
-                    print_with_color("WARNING: Content empty, using thinking field", "yellow")
-                    # Thinking field might be too verbose, skip it
-                    print_with_color(f"[DEBUG] Thinking length: {len(response.message.thinking)} chars", "yellow")
-                    return False, "Model returned empty content (only thinking field available)", metadata
-                else:
-                    print_with_color("WARNING: Model returned empty content", "yellow")
-                    print_with_color(f"[DEBUG] Full message: {response.message}", "red")
-                    return False, "Model returned empty response", metadata
-
-            # Measure final resource usage
-            cpu_after = 0
-            mem_after = 0
-            cpu_avg = 0
-            mem_avg = 0
-
-            if PSUTIL_AVAILABLE:
-                cpu_after = psutil.cpu_percent(interval=0.1)
-                mem_after = psutil.virtual_memory().percent
-                cpu_avg = (cpu_before + cpu_after) / 2
-                mem_avg = (mem_before + mem_after) / 2
-
-            # Print summary
-            print_with_color(f"Response time: {response_time:.2f}s", "yellow")
-            print_with_color(f"Response length: {len(content)} chars", "yellow")
-            print_with_color(f"Images sent: {len(images)} file paths (no base64 encoding)", "cyan")
-
-            if PSUTIL_AVAILABLE:
-                print_with_color(f"Resource usage - CPU: {cpu_avg:.1f}%, Memory: {mem_avg:.1f}%", "yellow")
-
-            # Ollama metadata includes resource usage instead of token counts
-            metadata = {
-                "prompt_tokens": 0,  # Not applicable for Ollama
-                "completion_tokens": 0,  # Not applicable for Ollama
-                "total_tokens": 0,  # Not applicable for Ollama
-                "response_time": response_time,
-                "provider": "Ollama",
-                "model": self.model,
-                "cpu_usage": cpu_avg if PSUTIL_AVAILABLE else 0,
-                "memory_usage": mem_avg if PSUTIL_AVAILABLE else 0
-            }
-
-            return True, content, metadata
-
-        except Exception as e:
-            response_time = time.time() - start_time
-            cpu_after = psutil.cpu_percent(interval=0.1) if PSUTIL_AVAILABLE else 0
-            mem_after = psutil.virtual_memory().percent if PSUTIL_AVAILABLE else 0
-            cpu_avg = (cpu_before + cpu_after) / 2 if PSUTIL_AVAILABLE else 0
-            mem_avg = (mem_before + mem_after) / 2 if PSUTIL_AVAILABLE else 0
-            print_with_color(f"ERROR: Ollama request failed after {response_time:.2f}s: {e}", "red")
-            metadata = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "response_time": response_time, "provider": "Ollama", "model": self.model, "cpu_usage": cpu_avg, "memory_usage": mem_avg}
-            return False, f"Ollama request failed: {str(e)}", metadata
 
 def parse_explore_rsp(rsp):
     try:

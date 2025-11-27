@@ -82,8 +82,8 @@ export function TaskCreateDialog({
         name: `Task ${new Date().toLocaleString()}`,
         goal: taskGoal,
         url: platform === 'web' ? url.trim() : undefined,
-        // Include model configuration if user has selected a specific model
-        modelProvider: selectedModel?.provider,
+        // Include model name if user has selected a specific model
+        // modelName contains full identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
         modelName: selectedModel?.model,
       }
 

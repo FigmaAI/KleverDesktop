@@ -252,10 +252,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         args.push('--url', task.url);
       }
 
-      // Model override (optional) - passed as CLI parameters
-      if (task.modelProvider) {
-        args.push('--model', task.modelProvider);
-      }
+      // Model override (optional) - passed as CLI parameter
+      // modelName now contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
       if (task.modelName) {
         args.push('--model_name', task.modelName);
       }

@@ -516,7 +516,6 @@ export function ProjectDetail() {
           workspaceDir={project.workspaceDir}
           taskResultPath={selectedTask.resultPath}
           taskName={selectedTask.name || selectedTask.goal}
-          taskStatus={selectedTask.status}
         />
       )}
     </div>

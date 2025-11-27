@@ -14,10 +14,11 @@ export interface Task {
   goal: string; // Task goal/objective (passed as --task_desc CLI parameter)
   status: TaskStatus;
   // Model override (optional) - if not specified, uses config.json defaults
-  modelProvider?: 'api' | 'local'; // Passed as --model CLI parameter
-  modelName?: string; // Passed as --model_name CLI parameter (e.g., "gpt-4o", "qwen3-vl:4b")
-  // Legacy field (deprecated, use modelProvider + modelName instead)
-  model?: string;
+  // modelName contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
+  modelName?: string; // Passed as --model_name CLI parameter
+  // Legacy fields (deprecated)
+  modelProvider?: string; // [DEPRECATED] No longer used
+  model?: string; // [DEPRECATED] No longer used
   output?: string;
   resultPath?: string; // Task result directory path (e.g., {workspaceDir}/apps/{app}/demos/self_explore_{timestamp})
   createdAt: string;
@@ -61,8 +62,7 @@ export interface CreateTaskInput {
   name: string;
   description?: string;
   goal: string;
-  modelProvider?: 'api' | 'local';
-  modelName?: string;
+  modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
   url?: string;
 }
 

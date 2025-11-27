@@ -12,7 +12,6 @@ interface TaskMarkdownDialogProps {
   taskName: string
   workspaceDir: string
   taskResultPath?: string // Task-specific directory path
-  taskStatus?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' // Task status for real-time updates
 }
 
 // Component to load and display images from file system
@@ -90,7 +89,6 @@ export function TaskMarkdownDialog({
   taskName,
   workspaceDir,
   taskResultPath,
-  taskStatus = 'pending',
 }: TaskMarkdownDialogProps) {
   const [content, setContent] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -126,13 +124,8 @@ export function TaskMarkdownDialog({
       const existsResult = await window.electronAPI.fileExists(mdPath)
 
       if (!existsResult.success || !existsResult.exists) {
-        if (taskStatus === 'running') {
-          setError('Report is being generated... This view will auto-refresh.')
-          setContent('')
-        } else {
-          setError('Markdown file not found. The task may not have generated output yet.')
-          setContent('')
-        }
+        setError('Markdown file not found. The task may not have generated output yet. Press ⌘R to refresh.')
+        setContent('')
       } else {
         const readResult = await window.electronAPI.fileRead(mdPath)
 
@@ -151,7 +144,7 @@ export function TaskMarkdownDialog({
     } finally {
       setLoading(false)
     }
-  }, [taskName, workspaceDir, taskResultPath, taskStatus])
+  }, [taskName, workspaceDir, taskResultPath])
 
   useEffect(() => {
     if (open) {
@@ -159,23 +152,22 @@ export function TaskMarkdownDialog({
     }
   }, [open, loadMarkdown])
 
-  // Auto-refresh when task is running
+  // Keyboard shortcut: Cmd/Ctrl + R to refresh
   useEffect(() => {
-    if (open && taskStatus === 'running') {
-      const interval = setInterval(() => {
-        loadMarkdown()
-      }, 2000)
+    if (!open) return
 
-      return () => clearInterval(interval)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+        e.preventDefault()
+        if (!loading) {
+          loadMarkdown()
+        }
+      }
     }
-  }, [open, taskStatus, loadMarkdown])
 
-  // Auto-scroll to bottom when content updates
-  useEffect(() => {
-    if (content && contentBoxRef.current) {
-      contentBoxRef.current.scrollTop = contentBoxRef.current.scrollHeight
-    }
-  }, [content])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [open, loading, loadMarkdown])
 
   const handleOpenFolder = async () => {
     try {
@@ -242,7 +234,7 @@ export function TaskMarkdownDialog({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Refresh</p>
+                  <p>Refresh <kbd className="ml-1 text-xs opacity-60">⌘R</kbd></p>
                 </TooltipContent>
               </Tooltip>
 

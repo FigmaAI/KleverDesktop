@@ -8,7 +8,7 @@ import time
 
 import prompts
 from config import load_config
-from model import OpenAIModel, OllamaModel
+from model import OpenAIModel
 from utils import print_with_color
 
 arg_desc = "AppAgent - Human Demonstration"
@@ -20,21 +20,23 @@ args = vars(parser.parse_args())
 
 configs = load_config()
 
-if configs["MODEL"] == "api":
-    # API Model: Supports 100+ providers via LiteLLM (OpenAI, Claude, Grok, Gemini, etc.)
-    mllm = OpenAIModel(base_url=configs["API_BASE_URL"],
-                       api_key=configs["API_KEY"],
-                       model=configs["API_MODEL"],
-                       temperature=configs["TEMPERATURE"],
-                       max_tokens=configs["MAX_TOKENS"])
-elif configs["MODEL"] == "local":
-    # Ollama: Local models
-    mllm = OllamaModel(model=configs["LOCAL_MODEL"],
-                       temperature=configs["TEMPERATURE"],
-                       max_tokens=configs["MAX_TOKENS"])
-else:
-    print_with_color(f"ERROR: Unsupported model type {configs['MODEL']}! Use 'api' or 'local'.", "red")
-    sys.exit()
+# Unified model initialization - all providers use OpenAIModel via LiteLLM
+# LiteLLM supports: ollama/*, openai/*, anthropic/*, etc.
+model_name = configs.get("MODEL_NAME", configs.get("API_MODEL", "gpt-4o"))
+api_key = configs.get("API_KEY", "")
+base_url = configs.get("API_BASE_URL", "")
+
+# For Ollama, ensure base_url is set
+if model_name.startswith("ollama/") and not base_url:
+    base_url = "http://localhost:11434"
+
+mllm = OpenAIModel(
+    base_url=base_url,
+    api_key=api_key,
+    model=model_name,
+    temperature=configs["TEMPERATURE"],
+    max_tokens=configs["MAX_TOKENS"]
+)
 
 root_dir = args["root_dir"]
 work_dir = os.path.join(root_dir, "apps")
