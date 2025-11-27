@@ -14,9 +14,9 @@
     "publish": "electron-forge publish",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "appagent:fetch": "node scripts/fetch-appagent.js",
-    "python:build": "node scripts/build-python.js",
-    "python:verify": "node scripts/verify-bundle.js"
+    "python:verify": "node scripts/verify-bundle.js",
+    "python:sync": "node scripts/python-sync.js",
+    "python:sync:all": "node scripts/python-refresh.js"
   },
   "keywords": [
     "electron",

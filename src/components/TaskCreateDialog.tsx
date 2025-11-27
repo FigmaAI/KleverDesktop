@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
 import { ModelSelector, ModelSelection } from './ModelSelector'
-import { LanguageSelector } from './LanguageSelector'
 import type { Platform, Task } from '../types/project'
 
 interface TaskCreateDialogProps {
@@ -34,7 +33,6 @@ export function TaskCreateDialog({
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
-  const [language, setLanguage] = useState('en')
   const [selectedModel, setSelectedModel] = useState<ModelSelection | undefined>()
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -73,11 +71,24 @@ export function TaskCreateDialog({
 
     setLoading(true)
     try {
+      // Always attempt to translate to English (if already English, translator returns as-is)
+      let finalGoal = goal.trim()
+      console.log('[TaskCreateDialog] Original goal:', finalGoal)
+
+      // Attempt translation to English
+      const translateResult = await window.electronAPI.translateText(finalGoal, 'en')
+      if (translateResult.success && translateResult.translatedText) {
+        finalGoal = translateResult.translatedText
+        console.log('[TaskCreateDialog] Translated goal:', finalGoal)
+      } else {
+        console.warn('[TaskCreateDialog] Translation failed, using original text:', translateResult.error)
+      }
+
       // For Android, prepend instruction to search and open the app first
       const taskGoal =
         platform === 'android'
-          ? `Search and open ${projectName} app and follow the prompt below:\n\n${goal.trim()}`
-          : goal.trim()
+          ? `Search and open ${projectName} app and follow the prompt below:\n\n${finalGoal}`
+          : finalGoal
 
       const taskInput = {
         projectId,
@@ -87,7 +98,6 @@ export function TaskCreateDialog({
         // Include model name if user has selected a specific model
         // modelName contains full identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
         modelName: selectedModel?.model,
-        language,
       }
 
       const result = await window.electronAPI.taskCreate(taskInput)
@@ -120,7 +130,6 @@ export function TaskCreateDialog({
   const handleClose = () => {
     setGoal('')
     setUrl('')
-    setLanguage('en')
     setRunImmediately(true)
     onClose()
   }
@@ -152,14 +161,6 @@ export function TaskCreateDialog({
             </div>
           )}
 
-          {/* Language Selection */}
-          <LanguageSelector
-            value={language}
-            onChange={setLanguage}
-            label="Output Language"
-            description="The language for AI analysis and results"
-          />
-
           {/* Task Description */}
           <div className="space-y-2">
             <Label>Task Description</Label>
@@ -179,8 +180,8 @@ export function TaskCreateDialog({
 
           {/* Bottom Controls */}
           <div className="flex items-center justify-between pt-2">
-            {/* Left: Model Selection */}
-            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+            {/* Left: Model Selection (Read-only - displays config setting) */}
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled />
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-2">
