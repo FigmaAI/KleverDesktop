@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { ModelConfig } from '@/types/setupWizard'
+import { MultiProviderModelSettings } from '@/types/setupWizard'
 
 export interface PlatformSettings {
   // Android settings
@@ -32,12 +32,20 @@ export interface ImageSettings {
 }
 
 export function useSettings() {
-  // Unified model configuration
-  const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'ollama',
-    model: 'ollama/llama3.2-vision',
-    apiKey: '',
-    baseUrl: 'http://localhost:11434',
+  // Multi-provider model configuration
+  const [modelConfig, setModelConfig] = useState<MultiProviderModelSettings>({
+    providers: [
+      {
+        id: 'ollama',
+        apiKey: '',
+        preferredModel: 'ollama/llama3.2-vision',
+        baseUrl: 'http://localhost:11434',
+      },
+    ],
+    lastUsed: {
+      provider: 'ollama',
+      model: 'ollama/llama3.2-vision',
+    },
   })
 
   // Platform settings
@@ -88,12 +96,20 @@ export function useSettings() {
         const config = result.config
         console.log('[useSettings] Loaded model config from file:', JSON.stringify(config.model, null, 2))
 
-        // Load unified model config
-        const loadedModelConfig = {
-          provider: config.model?.provider || 'ollama',
-          model: config.model?.model || 'ollama/llama3.2-vision',
-          apiKey: config.model?.apiKey || '',
-          baseUrl: config.model?.baseUrl || 'http://localhost:11434',
+        // Load multi-provider model config
+        const loadedModelConfig: MultiProviderModelSettings = {
+          providers: config.model?.providers || [
+            {
+              id: 'ollama',
+              apiKey: '',
+              preferredModel: 'ollama/llama3.2-vision',
+              baseUrl: 'http://localhost:11434',
+            },
+          ],
+          lastUsed: config.model?.lastUsed || {
+            provider: 'ollama',
+            model: 'ollama/llama3.2-vision',
+          },
         }
         console.log('[useSettings] Setting modelConfig to:', JSON.stringify(loadedModelConfig, null, 2))
         setModelConfig(loadedModelConfig)
@@ -144,14 +160,12 @@ export function useSettings() {
     setSaveSuccess(false)
 
     try {
-      // Build config with unified model format
+      // Build config with multi-provider model format
       const config = {
-        version: '2.0',
+        version: '3.0',
         model: {
-          provider: modelConfig.provider,
-          model: modelConfig.model,
-          apiKey: modelConfig.apiKey,
-          baseUrl: modelConfig.baseUrl,
+          providers: modelConfig.providers,
+          lastUsed: modelConfig.lastUsed,
         },
         execution: {
           maxTokens: agentSettings.maxTokens,

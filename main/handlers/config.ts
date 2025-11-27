@@ -9,7 +9,7 @@
 import { IpcMain, app } from 'electron';
 import { loadAppConfig, saveAppConfig, resetAppConfig, configExists, hardResetUserData } from '../utils/config-storage';
 import { checkPythonRuntime } from '../utils/python-runtime';
-import { AppConfig } from '../types/config';
+import { AppConfig, LastUsedModel } from '../types/config';
 
 /**
  * Register all config handlers
@@ -17,15 +17,15 @@ import { AppConfig } from '../types/config';
 export function registerConfigHandlers(ipcMain: IpcMain): void {
   // Load config from config.json
   ipcMain.handle('config:load', async () => {
-    console.log('[config:load] === LOAD CONFIG START ===');
+    // console.log('[config:load] === LOAD CONFIG START ===');
     try {
       const config = loadAppConfig();
-      console.log('[config:load] Loaded model config:', JSON.stringify(config.model, null, 2));
-      console.log('[config:load] === LOAD CONFIG SUCCESS ===');
+      // console.log('[config:load] Loaded model config:', JSON.stringify(config.model, null, 2));
+      // console.log('[config:load] === LOAD CONFIG SUCCESS ===');
       return { success: true, config };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[config:load] === LOAD CONFIG FAILED ===', message);
+      // console.error('[config:load] === LOAD CONFIG FAILED ===', message);
       return { success: false, error: message };
     }
   });
@@ -60,15 +60,17 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       try {
         const config = loadAppConfig();
 
-        // New unified format: check if provider and model are set
-        if (config.model.provider && config.model.model) {
-          // For Ollama, no API key required
-          if (config.model.provider === 'ollama') {
-            hasValidConfig = true;
-          } else {
-            // For other providers, API key is typically required
-            hasValidConfig = !!config.model.apiKey;
-          }
+        // Multi-provider format: check if at least one provider is configured
+        if (config.model.providers && config.model.providers.length > 0) {
+          // Check if at least one provider has a valid configuration
+          hasValidConfig = config.model.providers.some(provider => {
+            // For Ollama, no API key required
+            if (provider.id === 'ollama') {
+              return !!provider.preferredModel;
+            }
+            // For other providers, API key is required
+            return !!provider.apiKey && !!provider.preferredModel;
+          });
         }
       } catch {
         hasValidConfig = false;
@@ -97,17 +99,16 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
 
       const config = loadAppConfig();
 
-      // Check if model is configured (unified format)
+      // Multi-provider format: check if at least one provider is configured
       let isConfigured = false;
 
-      if (config.model.provider && config.model.model) {
-        // For Ollama, no API key required
-        if (config.model.provider === 'ollama') {
-          isConfigured = true;
-        } else {
-          // For other providers, API key is typically required
-          isConfigured = !!config.model.apiKey;
-        }
+      if (config.model.providers && config.model.providers.length > 0) {
+        isConfigured = config.model.providers.some(provider => {
+          if (provider.id === 'ollama') {
+            return !!provider.preferredModel;
+          }
+          return !!provider.apiKey && !!provider.preferredModel;
+        });
       }
 
       return {
@@ -117,6 +118,22 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
     } catch {
       // If config doesn't exist or error loading, setup is not complete
       return { success: true, setupComplete: false };
+    }
+  });
+
+  // Update last used model selection (called after task creation)
+  ipcMain.handle('config:updateLastUsed', async (_event, lastUsed: LastUsedModel) => {
+    console.log('[config:updateLastUsed] Updating lastUsed:', lastUsed);
+    try {
+      const config = loadAppConfig();
+      config.model.lastUsed = lastUsed;
+      saveAppConfig(config);
+      console.log('[config:updateLastUsed] Success');
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[config:updateLastUsed] Error:', message);
+      return { success: false, error: message };
     }
   });
 

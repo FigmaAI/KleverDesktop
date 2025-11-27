@@ -89,6 +89,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         name: taskInput.name,
         description: taskInput.description,
         goal: taskInput.goal,
+        modelProvider: taskInput.modelProvider,
         modelName: taskInput.modelName,
         language: taskInput.language,
         url: taskInput.url,
@@ -223,8 +224,11 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       // Load global config from config.json
       const appConfig = loadAppConfig();
 
-      // Build 24 environment variables from config.json
-      const configEnvVars = buildEnvFromConfig(appConfig);
+      // Build environment variables from config.json with task-specific model selection
+      const taskModel = task.modelProvider && task.modelName
+        ? { provider: task.modelProvider, model: task.modelName }
+        : undefined;
+      const configEnvVars = buildEnvFromConfig(appConfig, taskModel);
 
       // Start Python process
       const appagentDir = getAppagentPath();

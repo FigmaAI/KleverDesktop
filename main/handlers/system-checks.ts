@@ -62,20 +62,41 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
     });
   });
 
-  // Check Ollama
+  // Check Ollama (CLI installation + server running status)
   ipcMain.handle('check:ollama', async () => {
     return new Promise((resolve) => {
-      exec('curl -s http://localhost:11434/api/tags', { timeout: 5000 }, (error, stdout) => {
-        if (error) {
-          resolve({ success: false, running: false, error: 'Ollama not running' });
+      // Fix PATH for macOS to include Homebrew locations
+      const env = { ...process.env };
+      if (process.platform === 'darwin') {
+        env.PATH = `${env.PATH}:/usr/local/bin:/opt/homebrew/bin`;
+      }
+
+      // First check if Ollama CLI is installed
+      exec('ollama --version', { timeout: 5000, env }, (versionError, versionStdout) => {
+        if (versionError) {
+          // Ollama CLI not installed
+          resolve({ success: false, installed: false, running: false, error: 'Ollama not installed' });
           return;
         }
-        try {
-          const data = JSON.parse(stdout);
-          resolve({ success: true, running: true, models: data.models || [] });
-        } catch {
-          resolve({ success: false, running: false, error: 'Failed to parse Ollama response' });
-        }
+
+        // Parse version from output (e.g., "ollama version is 0.1.32")
+        const versionMatch = versionStdout.match(/(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : 'unknown';
+
+        // CLI is installed, now check if server is running
+        exec('curl -s http://localhost:11434/api/tags', { timeout: 5000 }, (serverError, serverStdout) => {
+          if (serverError) {
+            // Installed but server not running
+            resolve({ success: true, installed: true, running: false, version, error: 'Ollama server not running' });
+            return;
+          }
+          try {
+            const data = JSON.parse(serverStdout);
+            resolve({ success: true, installed: true, running: true, version, models: data.models || [] });
+          } catch {
+            resolve({ success: true, installed: true, running: false, version, error: 'Failed to parse Ollama response' });
+          }
+        });
       });
     });
   });

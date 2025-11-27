@@ -9,16 +9,32 @@ interface OllamaModel {
 }
 
 /**
- * Unified AppConfig - no more local/api distinction
- * All providers (including Ollama) are treated equally via LiteLLM
+ * Provider configuration for multi-provider model settings
+ */
+interface ProviderConfig {
+  id: string;              // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  apiKey: string;          // API key (empty for Ollama)
+  preferredModel: string;  // Preferred model for this provider
+  baseUrl?: string;        // Base URL (required for Ollama)
+}
+
+/**
+ * Last used model selection
+ */
+interface LastUsedModel {
+  provider: string;
+  model: string;
+}
+
+/**
+ * Multi-provider AppConfig
+ * Supports multiple registered providers with individual API keys
  */
 interface AppConfig {
   version: string;
   model: {
-    provider: string;     // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
-    model: string;        // Model name for LiteLLM (e.g., 'ollama/llama3.2-vision', 'gpt-4o')
-    apiKey: string;       // API key (empty for Ollama)
-    baseUrl: string;      // Base URL (required for Ollama: http://localhost:11434)
+    providers: ProviderConfig[];  // Registered providers with API keys
+    lastUsed?: LastUsedModel;     // Last used provider/model for task creation
   };
   execution: {
     maxTokens: number;
@@ -51,7 +67,7 @@ interface AppConfig {
 }
 
 /**
- * Unified ModelConfig for IPC calls
+ * ModelConfig for IPC calls (single provider selection)
  */
 interface ModelConfig {
   provider: string;
@@ -117,7 +133,7 @@ declare global {
       installPython: () => Promise<{ success: boolean; output?: string; error?: string }>;
       checkHomebrew: () => Promise<{ success: boolean; version?: string; error?: string }>;
       checkChocolatey: () => Promise<{ success: boolean; version?: string; error?: string }>;
-      checkOllama: () => Promise<{ success: boolean; running?: boolean; models?: OllamaModel[]; error?: string }>;
+      checkOllama: () => Promise<{ success: boolean; installed?: boolean; running?: boolean; version?: string; models?: OllamaModel[]; error?: string }>;
       checkAndroidStudio: () => Promise<{ success: boolean; version?: string; path?: string; method?: string; error?: string }>;
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
@@ -130,6 +146,7 @@ declare global {
       configSave: (config: AppConfig) => Promise<{ success: boolean; error?: string }>;
       configReset: () => Promise<{ success: boolean; error?: string }>;
       configHardReset: () => Promise<{ success: boolean; error?: string }>;
+      configUpdateLastUsed: (lastUsed: LastUsedModel) => Promise<{ success: boolean; error?: string }>;
       appRestart: () => Promise<{ success: boolean; error?: string }>;
       checkSetup: () => Promise<{ success: boolean; setupComplete: boolean }>;
 

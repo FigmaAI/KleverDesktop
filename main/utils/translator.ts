@@ -101,14 +101,32 @@ export async function translateText(
     // Load config to get model settings
     const config = await loadAppConfig();
 
-    if (!config || !config.model) {
+    if (!config || !config.model || !config.model.providers || config.model.providers.length === 0) {
       return {
         success: false,
         error: 'Model configuration not found',
       };
     }
 
-    const { provider, model, apiKey, baseUrl } = config.model;
+    // Get the last used provider/model, or fall back to first provider
+    let provider: string;
+    let model: string;
+    let apiKey: string;
+    let baseUrl: string | undefined;
+
+    if (config.model.lastUsed) {
+      provider = config.model.lastUsed.provider;
+      model = config.model.lastUsed.model;
+      const providerConfig = config.model.providers.find(p => p.id === provider);
+      apiKey = providerConfig?.apiKey || '';
+      baseUrl = providerConfig?.baseUrl;
+    } else {
+      const firstProvider = config.model.providers[0];
+      provider = firstProvider.id;
+      model = firstProvider.preferredModel;
+      apiKey = firstProvider.apiKey;
+      baseUrl = firstProvider.baseUrl;
+    }
 
     if (!provider || !model) {
       return {
@@ -124,8 +142,8 @@ export async function translateText(
 Text to translate:
 ${text}`;
 
-    // Construct model name for LiteLLM
-    const modelName = provider === 'ollama' ? `ollama/${model}` : model;
+    // Model is already in LiteLLM format (e.g., "ollama/llama3.2-vision", "gpt-4o")
+    const modelName = model;
 
     // Determine API endpoint based on provider
     // Use config baseUrl if provided, otherwise use provider's default

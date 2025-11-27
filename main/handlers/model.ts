@@ -127,13 +127,32 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
       const appConfig = loadAppConfig();
       console.log('[model:saveConfig] Loaded current config, model section:', JSON.stringify(appConfig.model, null, 2));
 
-      // Update model configuration
-      appConfig.model = {
+      // Update or add provider configuration
+      const existingProviderIndex = appConfig.model.providers.findIndex(
+        p => p.id === config.provider
+      );
+      
+      const newProviderConfig = {
+        id: config.provider,
+        apiKey: config.apiKey,
+        preferredModel: config.model,
+        baseUrl: config.baseUrl || undefined,
+      };
+
+      if (existingProviderIndex >= 0) {
+        // Update existing provider
+        appConfig.model.providers[existingProviderIndex] = newProviderConfig;
+      } else {
+        // Add new provider
+        appConfig.model.providers.push(newProviderConfig);
+      }
+
+      // Update lastUsed
+      appConfig.model.lastUsed = {
         provider: config.provider,
         model: config.model,
-        apiKey: config.apiKey,
-        baseUrl: config.baseUrl,
       };
+      
       console.log('[model:saveConfig] Updated model config:', JSON.stringify(appConfig.model, null, 2));
 
       // Save updated config to config.json

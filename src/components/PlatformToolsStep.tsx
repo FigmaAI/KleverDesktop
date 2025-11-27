@@ -118,33 +118,13 @@ export function PlatformToolsStep({
               </div>
 
               <div className="space-y-3">
-                {/* Homebrew (macOS only) */}
-                {isMac && (
-                  <ToolStatusCard
-                    name="Homebrew (Optional)"
-                    status={toolsStatus.homebrew}
-                    delay={0.1}
-                    onInstall={() => window.electronAPI.openExternal('https://brew.sh')}
-                    installLabel="Install Guide"
-                  />
-                )}
-
-                {/* Chocolatey (Windows only) */}
-                {isWindows && (
-                  <ToolStatusCard
-                    name="Chocolatey (Optional)"
-                    status={toolsStatus.chocolatey}
-                    delay={0.1}
-                    onInstall={() => window.electronAPI.openExternal('https://chocolatey.org/install')}
-                    installLabel="Install Guide"
-                  />
-                )}
-
+                {/* ===== Required Tools ===== */}
+                
                 {/* Python 3.11.9 (Post-Install Download) */}
                 <PythonInstallCard
                   status={toolsStatus.python}
                   onInstall={downloadPython}
-                  delay={0.2}
+                  delay={0.1}
                 />
 
                 {/* Playwright Browsers (Chromium for web automation) */}
@@ -159,9 +139,50 @@ export function PlatformToolsStep({
                   name="Android SDK"
                   subtitle="ADB & Emulator"
                   status={toolsStatus.androidStudio}
-                  delay={0.4}
+                  delay={0.3}
                   onInstall={() => window.electronAPI.installAndroidStudio()}
                   installLabel="Install"
+                />
+
+                {/* ===== Optional Tools Divider ===== */}
+                <div className="flex items-center gap-2 pt-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">Optional</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                {/* Homebrew (macOS only) */}
+                {isMac && (
+                  <ToolStatusCard
+                    name="Homebrew"
+                    subtitle="Package Manager"
+                    status={toolsStatus.homebrew}
+                    delay={0.4}
+                    onInstall={() => window.electronAPI.openExternal('https://brew.sh')}
+                    installLabel="Install Guide"
+                  />
+                )}
+
+                {/* Chocolatey (Windows only) */}
+                {isWindows && (
+                  <ToolStatusCard
+                    name="Chocolatey"
+                    subtitle="Package Manager"
+                    status={toolsStatus.chocolatey}
+                    delay={0.4}
+                    onInstall={() => window.electronAPI.openExternal('https://chocolatey.org/install')}
+                    installLabel="Install Guide"
+                  />
+                )}
+
+                {/* Ollama (Local AI) */}
+                <ToolStatusCard
+                  name="Ollama"
+                  subtitle="Local AI Runtime"
+                  status={toolsStatus.ollama}
+                  delay={0.5}
+                  onInstall={() => window.electronAPI.openExternal('https://ollama.com/download')}
+                  installLabel="Download"
                 />
               </div>
             </div>

@@ -59,19 +59,19 @@ function MarkdownImage({ src, alt, baseDir }: { src?: string; alt?: string; base
 
   if (loading) {
     return (
-      <div className="inline-flex items-center gap-2 my-4">
+      <span className="inline-flex items-center gap-2 my-4">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm text-muted-foreground">Loading image...</span>
-      </div>
+      </span>
     )
   }
 
   if (error && !imageSrc) {
     return (
-      <div className="p-4 border border-destructive rounded-md my-4">
-        <p className="text-sm text-destructive">{error}</p>
-        <p className="text-xs text-muted-foreground mt-1">{src}</p>
-      </div>
+      <span className="inline-block p-4 border border-destructive rounded-md my-4">
+        <span className="block text-sm text-destructive">{error}</span>
+        <span className="block text-xs text-muted-foreground mt-1">{src}</span>
+      </span>
     )
   }
 

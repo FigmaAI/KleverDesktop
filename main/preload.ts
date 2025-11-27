@@ -40,6 +40,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   configSave: (config: Record<string, unknown>) => ipcRenderer.invoke('config:save', config),
   configReset: () => ipcRenderer.invoke('config:reset'),
   configHardReset: () => ipcRenderer.invoke('config:hardReset'),
+  configUpdateLastUsed: (lastUsed: { provider: string; model: string }) =>
+    ipcRenderer.invoke('config:updateLastUsed', lastUsed),
   appRestart: () => ipcRenderer.invoke('app:restart'),
   checkSetup: () => ipcRenderer.invoke('config:checkSetup'),
 

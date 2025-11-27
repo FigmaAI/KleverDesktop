@@ -34,18 +34,32 @@ export function TaskCreateDialog({
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
   const [selectedModel, setSelectedModel] = useState<ModelSelection | undefined>()
+  const [registeredProviders, setRegisteredProviders] = useState<string[]>([])
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
 
-  // Load saved model configuration as default
+  // Load saved model configuration (multi-provider format)
   useEffect(() => {
     const loadSavedConfig = async () => {
       try {
         const result = await window.electronAPI.configLoad()
         if (result.success && result.config?.model) {
-          const { provider, model } = result.config.model
-          if (provider && model) {
-            setSelectedModel({ provider, model })
+          const { providers, lastUsed } = result.config.model
+          
+          // Set registered providers for filtering
+          if (providers && providers.length > 0) {
+            setRegisteredProviders(providers.map(p => p.id))
+            
+            // Use lastUsed if available, otherwise use first provider
+            if (lastUsed?.provider && lastUsed?.model) {
+              setSelectedModel({ provider: lastUsed.provider, model: lastUsed.model })
+            } else {
+              const firstProvider = providers[0]
+              setSelectedModel({ 
+                provider: firstProvider.id, 
+                model: firstProvider.preferredModel 
+              })
+            }
           }
         }
       } catch (error) {
@@ -66,6 +80,11 @@ export function TaskCreateDialog({
 
     if (platform === 'web' && !url.trim()) {
       alert('Please enter a URL for web automation')
+      return
+    }
+
+    if (!selectedModel?.provider || !selectedModel?.model) {
+      alert('Please select a model')
       return
     }
 
@@ -95,14 +114,24 @@ export function TaskCreateDialog({
         name: `Task ${new Date().toLocaleString()}`,
         goal: taskGoal,
         url: platform === 'web' ? url.trim() : undefined,
-        // Include model name if user has selected a specific model
-        // modelName contains full identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-        modelName: selectedModel?.model,
+        // Include provider and model for task execution
+        modelProvider: selectedModel.provider,
+        modelName: selectedModel.model,
       }
 
       const result = await window.electronAPI.taskCreate(taskInput)
 
       if (result.success && result.task) {
+        // Update lastUsed in config
+        try {
+          await window.electronAPI.configUpdateLastUsed({
+            provider: selectedModel.provider,
+            model: selectedModel.model,
+          })
+        } catch (error) {
+          console.warn('[TaskCreateDialog] Failed to update lastUsed:', error)
+        }
+
         // If "Run immediately" is checked, start the task
         if (runImmediately) {
           await window.electronAPI.taskStart(projectId, result.task.id)
@@ -134,7 +163,7 @@ export function TaskCreateDialog({
     onClose()
   }
 
-  const isEligible = goal.trim() && (platform === 'android' || url.trim())
+  const isEligible = goal.trim() && (platform === 'android' || url.trim()) && selectedModel?.model
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
@@ -180,8 +209,12 @@ export function TaskCreateDialog({
 
           {/* Bottom Controls */}
           <div className="flex items-center justify-between pt-2">
-            {/* Left: Model Selection (Read-only - displays config setting) */}
-            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled />
+            {/* Left: Model Selection - now editable with registered providers filter */}
+            <ModelSelector 
+              value={selectedModel} 
+              onChange={setSelectedModel}
+              registeredProviders={registeredProviders.length > 0 ? registeredProviders : undefined}
+            />
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-2">

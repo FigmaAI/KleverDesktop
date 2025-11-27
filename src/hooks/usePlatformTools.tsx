@@ -8,6 +8,7 @@ export function usePlatformTools() {
     androidStudio: { checking: true, installed: false, installing: false },
     homebrew: { checking: true, installed: false, installing: false },
     chocolatey: { checking: true, installed: false, installing: false },
+    ollama: { checking: true, installed: false, installing: false },
   })
 
   const [androidSdkPath, setAndroidSdkPath] = useState<string>('')
@@ -113,6 +114,24 @@ export function usePlatformTools() {
       }
     } catch {
       setToolsStatus((prev) => ({ ...prev, androidStudio: { checking: false, installed: false, installing: false } }))
+    }
+
+    // Check Ollama (optional - for local AI)
+    setToolsStatus((prev) => ({ ...prev, ollama: { ...prev.ollama, checking: true } }))
+    try {
+      const result = await window.electronAPI.checkOllama()
+      setToolsStatus((prev) => ({
+        ...prev,
+        ollama: { 
+          checking: false, 
+          installed: result.installed || false, 
+          version: result.version,
+          error: result.installed ? undefined : 'Ollama not installed',
+          installing: false 
+        },
+      }))
+    } catch {
+      setToolsStatus((prev) => ({ ...prev, ollama: { checking: false, installed: false, installing: false } }))
     }
   }, [])
 

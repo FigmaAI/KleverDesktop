@@ -4,8 +4,27 @@
  */
 
 /**
- * Unified model settings - no more local/api distinction
- * All providers (including Ollama) are treated equally via LiteLLM
+ * Individual provider configuration
+ * Each provider type can have one registered configuration
+ */
+export interface ProviderConfig {
+  id: string;              // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  apiKey: string;          // API key (empty for Ollama)
+  preferredModel: string;  // Preferred model for this provider (e.g., 'gpt-4o', 'ollama/llama3.2-vision')
+  baseUrl?: string;        // Base URL (required for Ollama: http://localhost:11434)
+}
+
+/**
+ * Last used model selection for task creation
+ */
+export interface LastUsedModel {
+  provider: string;
+  model: string;
+}
+
+/**
+ * Multi-provider model settings
+ * Supports multiple registered providers with individual API keys
  * 
  * Reference: https://docs.litellm.ai/docs/providers/ollama
  * - Ollama models use format: "ollama/model_name" (e.g., "ollama/llama3.2-vision")
@@ -13,6 +32,15 @@
  * - Ollama does not require API key
  */
 export interface ModelSettings {
+  providers: ProviderConfig[];  // Registered providers with API keys
+  lastUsed?: LastUsedModel;     // Last used provider/model for task creation
+}
+
+/**
+ * Legacy single-provider model settings (for migration)
+ * @deprecated Use ModelSettings with providers array instead
+ */
+export interface SingleProviderModelSettings {
   provider: string;     // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
   model: string;        // Model name for LiteLLM (e.g., 'ollama/llama3.2-vision', 'gpt-4o')
   apiKey: string;       // API key (empty for Ollama)
@@ -115,7 +143,7 @@ export interface LegacyAppConfig {
 }
 
 /**
- * Check if config uses legacy format
+ * Check if config uses very old legacy format (enableLocal/enableApi)
  */
 export function isLegacyConfig(config: unknown): config is LegacyAppConfig {
   if (!config || typeof config !== 'object') return false;
@@ -125,40 +153,72 @@ export function isLegacyConfig(config: unknown): config is LegacyAppConfig {
 }
 
 /**
- * Migrate legacy config to new format
+ * Check if config uses single-provider format (needs migration to multi-provider)
+ */
+export function isSingleProviderConfig(config: unknown): boolean {
+  if (!config || typeof config !== 'object') return false;
+  const modelConfig = (config as Record<string, unknown>).model;
+  if (!modelConfig || typeof modelConfig !== 'object') return false;
+  // Single-provider format has 'provider' field directly, not 'providers' array
+  return 'provider' in modelConfig && !('providers' in modelConfig);
+}
+
+/**
+ * Migrate very old legacy config (enableLocal/enableApi) to multi-provider format
  */
 export function migrateConfig(legacy: LegacyAppConfig): AppConfig {
   const legacyModel = legacy.model;
+  const providers: ProviderConfig[] = [];
+  let lastUsedProvider = 'ollama';
+  let lastUsedModel = 'ollama/llama3.2-vision';
   
-  // Determine which model settings to use
-  let provider: string;
-  let model: string;
-  let apiKey: string;
-  let baseUrl: string;
+  // Add Ollama if local was enabled
+  if (legacyModel.local?.model) {
+    const localModel = legacyModel.local.model;
+    const ollamaModel = localModel.startsWith('ollama/') ? localModel : `ollama/${localModel}`;
+    providers.push({
+      id: 'ollama',
+      apiKey: '',
+      preferredModel: ollamaModel,
+      baseUrl: 'http://localhost:11434',
+    });
+    if (!legacyModel.enableApi) {
+      lastUsedProvider = 'ollama';
+      lastUsedModel = ollamaModel;
+    }
+  }
   
+  // Add API provider if enabled
   if (legacyModel.enableApi && legacyModel.api?.model) {
-    // Use API settings
-    provider = legacyModel.api.provider || 'openai';
-    model = legacyModel.api.model;
-    apiKey = legacyModel.api.key || '';
-    baseUrl = legacyModel.api.baseUrl || '';
-  } else {
-    // Use local (Ollama) settings
-    provider = 'ollama';
-    // Convert to LiteLLM format: ollama/model_name
-    const localModel = legacyModel.local?.model || 'llama3.2-vision';
-    model = localModel.startsWith('ollama/') ? localModel : `ollama/${localModel}`;
-    apiKey = '';
-    baseUrl = 'http://localhost:11434';
+    const provider = legacyModel.api.provider || 'openai';
+    providers.push({
+      id: provider,
+      apiKey: legacyModel.api.key || '',
+      preferredModel: legacyModel.api.model,
+      baseUrl: legacyModel.api.baseUrl || undefined,
+    });
+    lastUsedProvider = provider;
+    lastUsedModel = legacyModel.api.model;
+  }
+  
+  // Ensure at least Ollama is present
+  if (providers.length === 0) {
+    providers.push({
+      id: 'ollama',
+      apiKey: '',
+      preferredModel: 'ollama/llama3.2-vision',
+      baseUrl: 'http://localhost:11434',
+    });
   }
   
   return {
-    version: legacy.version || '2.0',
+    version: '3.0',
     model: {
-      provider,
-      model,
-      apiKey,
-      baseUrl,
+      providers,
+      lastUsed: {
+        provider: lastUsedProvider,
+        model: lastUsedModel,
+      },
     },
     execution: legacy.execution,
     android: legacy.android,
@@ -169,15 +229,59 @@ export function migrateConfig(legacy: LegacyAppConfig): AppConfig {
 }
 
 /**
+ * Migrate single-provider config to multi-provider format
+ */
+export function migrateSingleProviderConfig(config: {
+  version: string;
+  model: SingleProviderModelSettings;
+  execution: ExecutionConfig;
+  android: AndroidConfig;
+  web: WebConfig;
+  image: ImageConfig;
+  preferences: PreferencesConfig;
+}): AppConfig {
+  const { provider, model, apiKey, baseUrl } = config.model;
+  
+  return {
+    version: '3.0',
+    model: {
+      providers: [{
+        id: provider,
+        apiKey: apiKey,
+        preferredModel: model,
+        baseUrl: baseUrl || undefined,
+      }],
+      lastUsed: {
+        provider,
+        model,
+      },
+    },
+    execution: config.execution,
+    android: config.android,
+    web: config.web,
+    image: config.image,
+    preferences: config.preferences,
+  };
+}
+
+/**
  * Default configuration values
  */
 export const DEFAULT_CONFIG: AppConfig = {
-  version: '2.0',
+  version: '3.0',
   model: {
-    provider: 'ollama',
-    model: 'ollama/llama3.2-vision',  // LiteLLM format
-    apiKey: '',
-    baseUrl: 'http://localhost:11434',  // Required for Ollama
+    providers: [
+      {
+        id: 'ollama',
+        apiKey: '',
+        preferredModel: 'ollama/llama3.2-vision',
+        baseUrl: 'http://localhost:11434',
+      },
+    ],
+    lastUsed: {
+      provider: 'ollama',
+      model: 'ollama/llama3.2-vision',
+    },
   },
   execution: {
     maxTokens: 4096,

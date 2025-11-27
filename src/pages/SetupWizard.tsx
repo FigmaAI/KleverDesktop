@@ -95,14 +95,22 @@ export function SetupWizard() {
 
   const handleSaveConfig = async () => {
     try {
-      // Build complete config.json with unified model format
+      // Build complete config.json with multi-provider model format
       const config = {
-        version: '2.0',
+        version: '3.0',
         model: {
-          provider: modelConfig.provider,
-          model: modelConfig.model,
-          apiKey: modelConfig.apiKey,
-          baseUrl: modelConfig.baseUrl,
+          providers: [
+            {
+              id: modelConfig.provider,
+              apiKey: modelConfig.apiKey,
+              preferredModel: modelConfig.model,
+              baseUrl: modelConfig.baseUrl || undefined,
+            },
+          ],
+          lastUsed: {
+            provider: modelConfig.provider,
+            model: modelConfig.model,
+          },
         },
         execution: {
           maxTokens: 4096,

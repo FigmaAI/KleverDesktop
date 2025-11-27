@@ -55,7 +55,8 @@ mllm = OpenAIModel(
     api_key=api_key,
     model=model_name,
     temperature=configs["TEMPERATURE"],
-    max_tokens=configs["MAX_TOKENS"]
+    max_tokens=configs["MAX_TOKENS"],
+    configs=configs
 )
 
 app = args["app"]

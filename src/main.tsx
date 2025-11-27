@@ -66,12 +66,20 @@ if (!window.electronAPI) {
     configLoad: async () => ({
       success: true,
       config: {
-        version: '2.0',
+        version: '3.0',
         model: {
-          provider: 'ollama',
-          model: 'ollama/llama3.2-vision',
-          apiKey: '',
-          baseUrl: 'http://localhost:11434',
+          providers: [
+            {
+              id: 'ollama',
+              apiKey: '',
+              preferredModel: 'ollama/llama3.2-vision',
+              baseUrl: 'http://localhost:11434',
+            },
+          ],
+          lastUsed: {
+            provider: 'ollama',
+            model: 'ollama/llama3.2-vision',
+          },
         },
         execution: { maxTokens: 4096, temperature: 0.0, requestInterval: 10, maxRounds: 20 },
         android: { screenshotDir: '/sdcard/Pictures', xmlDir: '/sdcard/Documents', sdkPath: '' },
@@ -83,6 +91,7 @@ if (!window.electronAPI) {
     configSave: async () => ({ success: true }),
     configReset: async () => ({ success: true }),
     configHardReset: async () => ({ success: true }),
+    configUpdateLastUsed: async () => ({ success: true }),
     appRestart: async () => {
       console.log('[Mock] App restart requested - reloading page...');
       window.location.reload();

@@ -9,25 +9,64 @@
  * - Ollama requires api_base: "http://localhost:11434"
  */
 
-import { AppConfig } from '../types/config';
+import { AppConfig, ProviderConfig } from '../types/config';
+
+/**
+ * Model selection for task execution
+ */
+export interface TaskModelSelection {
+  provider: string;
+  model: string;
+}
 
 /**
  * Build environment variables from AppConfig
  * Returns environment variables for Python appagent scripts
  *
  * @param config - Application configuration from config.json
+ * @param taskModel - Optional model selection for this specific task
  * @returns Environment variables object
  */
-export function buildEnvFromConfig(config: AppConfig): Record<string, string> {
+export function buildEnvFromConfig(
+  config: AppConfig,
+  taskModel?: TaskModelSelection
+): Record<string, string> {
+  // Determine which provider/model to use
+  let selectedProvider: string;
+  let selectedModel: string;
+  let providerConfig: ProviderConfig | undefined;
+
+  if (taskModel) {
+    // Use task-specific model selection
+    selectedProvider = taskModel.provider;
+    selectedModel = taskModel.model;
+    providerConfig = config.model.providers.find(p => p.id === selectedProvider);
+  } else if (config.model.lastUsed) {
+    // Fall back to last used
+    selectedProvider = config.model.lastUsed.provider;
+    selectedModel = config.model.lastUsed.model;
+    providerConfig = config.model.providers.find(p => p.id === selectedProvider);
+  } else if (config.model.providers.length > 0) {
+    // Fall back to first registered provider
+    providerConfig = config.model.providers[0];
+    selectedProvider = providerConfig.id;
+    selectedModel = providerConfig.preferredModel;
+  } else {
+    // Ultimate fallback to Ollama
+    selectedProvider = 'ollama';
+    selectedModel = 'ollama/llama3.2-vision';
+    providerConfig = undefined;
+  }
+
   return {
     // ========================================
     // Model Configuration (4 variables - unified)
     // ========================================
     // LiteLLM uses model name directly (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    MODEL_PROVIDER: config.model.provider,
-    MODEL_NAME: config.model.model,
-    API_KEY: config.model.apiKey,
-    API_BASE_URL: config.model.baseUrl,
+    MODEL_PROVIDER: selectedProvider,
+    MODEL_NAME: selectedModel,
+    API_KEY: providerConfig?.apiKey || '',
+    API_BASE_URL: providerConfig?.baseUrl || '',
 
     // ========================================
     // Execution Configuration (4 variables)

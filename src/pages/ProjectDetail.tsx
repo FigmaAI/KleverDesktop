@@ -44,6 +44,7 @@ export function ProjectDetail() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [sortBy, setSortBy] = useState<'latest' | 'oldest'>('latest')
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
+  const [hasAnimated, setHasAnimated] = useState(false)
 
   const loadProject = useCallback(async () => {
     if (!id) return
@@ -64,6 +65,13 @@ export function ProjectDetail() {
   useEffect(() => {
     loadProject()
   }, [id, loadProject])
+
+  // Mark animation as shown after initial load
+  useEffect(() => {
+    if (!loading && project && project.tasks.length > 0 && !hasAnimated) {
+      setHasAnimated(true)
+    }
+  }, [loading, project, hasAnimated])
 
   // Keyboard shortcut for creating task (Cmd+T or Ctrl+T)
   useEffect(() => {
@@ -213,9 +221,9 @@ export function ProjectDetail() {
     const sorted = [...project.tasks]
     switch (sortBy) {
       case 'latest':
-        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      case 'oldest':
         return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       default:
         return sorted
     }
@@ -371,124 +379,233 @@ export function ProjectDetail() {
               </RainbowButton>
             </div>
 
-            <AnimatedList delay={100}>
-              {sortedTasks.map((task, index) => {
-                const statusConfig = getStatusConfig(task.status)
-                const StatusIcon = statusConfig.icon
-                const isSelected = index === selectedTaskIndex
+            {hasAnimated ? (
+              // Static list (no animation after initial load)
+              <div className="grid gap-3">
+                {sortedTasks.map((task, index) => {
+                  const statusConfig = getStatusConfig(task.status)
+                  const StatusIcon = statusConfig.icon
+                  const isSelected = index === selectedTaskIndex
 
-                return (
-                  <div
-                    key={task.id}
-                    tabIndex={0}
-                    onClick={(e) => {
-                      // Don't trigger if clicking on buttons
-                      if ((e.target as HTMLElement).closest('button')) return
-                      handleViewMarkdown(task, e)
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                  return (
+                    <div
+                      key={task.id}
+                      tabIndex={0}
+                      onClick={(e) => {
                         if ((e.target as HTMLElement).closest('button')) return
                         handleViewMarkdown(task, e)
-                      }
-                    }}
-                    className={cn(
-                      'group relative flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
-                      'hover:shadow-lg hover:border-primary/30',
-                      'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                      isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                    )}
-                  >
-                    {task.status === 'running' && (
-                      <ShineBorder
-                        className="rounded-lg"
-                        shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]}
-                      />
-                    )}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if ((e.target as HTMLElement).closest('button')) return
+                          handleViewMarkdown(task, e)
+                        }
+                      }}
+                      className={cn(
+                        'group relative flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                        'hover:shadow-lg hover:border-primary/30',
+                        'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                      )}
+                    >
+                      {task.status === 'running' && (
+                        <ShineBorder
+                          className="rounded-lg"
+                          shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]}
+                        />
+                      )}
 
-                    {/* Status Icon */}
-                    <div className="flex-shrink-0 mt-1 z-10">
-                      <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 space-y-2 z-10">
-                      {/* Description/Goal */}
-                      <p className="text-sm leading-relaxed">
-                        {task.goal || task.description || 'No description'}
-                      </p>
-
-                      {/* Status & Model */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
-                          {statusConfig.label}
-                        </Badge>
-                        {task.model && (
-                          <Badge variant="outline" className="text-xs">
-                            {task.model}
-                          </Badge>
-                        )}
+                      <div className="flex-shrink-0 mt-1 z-10">
+                        <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
                       </div>
 
-                      {/* Timestamp */}
-                      <p className="text-xs text-muted-foreground">
-                        {task.startedAt
-                          ? `Started ${new Date(task.startedAt).toLocaleString()}`
-                          : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
-                      </p>
-                    </div>
+                      <div className="flex-1 min-w-0 space-y-2 z-10">
+                        <p className="text-sm leading-relaxed">
+                          {task.goal || task.description || 'No description'}
+                        </p>
 
-                    {/* Actions */}
-                    <div className="flex gap-1 z-10">
-                      {task.status === 'pending' && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
+                            {statusConfig.label}
+                          </Badge>
+                          {task.model && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.model}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                          {task.startedAt
+                            ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                            : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-1 z-10">
+                        {task.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={(e) => handleStartTask(task, e)}
+                            className="h-8"
+                          >
+                            <Play className="mr-1 h-3 w-3" />
+                            Start
+                          </Button>
+                        )}
+
+                        {task.status === 'running' && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => handleStopTask(task, e)}
+                            className="h-8"
+                          >
+                            <StopCircle className="mr-1 h-3 w-3" />
+                            Stop
+                          </Button>
+                        )}
+
                         <Button
-                          size="sm"
-                          onClick={(e) => handleStartTask(task, e)}
-                          className="h-8"
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleViewMarkdown(task, e)}
+                          disabled={!task.resultPath}
+                          title="View Results"
+                          className="h-8 w-8"
                         >
-                          <Play className="mr-1 h-3 w-3" />
-                          Start
+                          <FileText className="h-4 w-4" />
                         </Button>
-                      )}
 
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleDeleteTask(task, e)}
+                          disabled={task.status === 'running'}
+                          title="Delete Task"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              // Animated list (first load only)
+              <AnimatedList delay={100}>
+                {sortedTasks.map((task, index) => {
+                  const statusConfig = getStatusConfig(task.status)
+                  const StatusIcon = statusConfig.icon
+                  const isSelected = index === selectedTaskIndex
+
+                  return (
+                    <div
+                      key={task.id}
+                      tabIndex={0}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('button')) return
+                        handleViewMarkdown(task, e)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if ((e.target as HTMLElement).closest('button')) return
+                          handleViewMarkdown(task, e)
+                        }
+                      }}
+                      className={cn(
+                        'group relative flex items-start gap-4 rounded-lg border bg-card p-4 transition-all duration-200',
+                        'hover:shadow-lg hover:border-primary/30',
+                        'cursor-pointer outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        isSelected && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                      )}
+                    >
                       {task.status === 'running' && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={(e) => handleStopTask(task, e)}
-                          className="h-8"
-                        >
-                          <StopCircle className="mr-1 h-3 w-3" />
-                          Stop
-                        </Button>
+                        <ShineBorder
+                          className="rounded-lg"
+                          shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]}
+                        />
                       )}
 
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => handleViewMarkdown(task, e)}
-                        disabled={!task.resultPath}
-                        title="View Results"
-                        className="h-8 w-8"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
+                      <div className="flex-shrink-0 mt-1 z-10">
+                        <StatusIcon className={cn('h-5 w-5', statusConfig.color)} />
+                      </div>
 
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={(e) => handleDeleteTask(task, e)}
-                        disabled={task.status === 'running'}
-                        title="Delete Task"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex-1 min-w-0 space-y-2 z-10">
+                        <p className="text-sm leading-relaxed">
+                          {task.goal || task.description || 'No description'}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={statusConfig.variant} className="flex items-center gap-1 text-xs">
+                            {statusConfig.label}
+                          </Badge>
+                          {task.model && (
+                            <Badge variant="outline" className="text-xs">
+                              {task.model}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <p className="text-xs text-muted-foreground">
+                          {task.startedAt
+                            ? `Started ${new Date(task.startedAt).toLocaleString()}`
+                            : `Created ${new Date(task.createdAt).toLocaleDateString()}`}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-1 z-10">
+                        {task.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={(e) => handleStartTask(task, e)}
+                            className="h-8"
+                          >
+                            <Play className="mr-1 h-3 w-3" />
+                            Start
+                          </Button>
+                        )}
+
+                        {task.status === 'running' && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => handleStopTask(task, e)}
+                            className="h-8"
+                          >
+                            <StopCircle className="mr-1 h-3 w-3" />
+                            Stop
+                          </Button>
+                        )}
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleViewMarkdown(task, e)}
+                          disabled={!task.resultPath}
+                          title="View Results"
+                          className="h-8 w-8"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={(e) => handleDeleteTask(task, e)}
+                          disabled={task.status === 'running'}
+                          title="Delete Task"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </AnimatedList>
+                  )
+                })}
+              </AnimatedList>
+            )}
           </>
         )}
       </div>

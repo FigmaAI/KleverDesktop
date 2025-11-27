@@ -9,6 +9,7 @@ import {
 import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 import { Badge } from '@/components/ui/badge'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
+import { Monitor, Cloud } from 'lucide-react'
 
 export interface ModelSelection {
   provider: string   // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
@@ -20,12 +21,18 @@ interface ModelSelectorProps {
   value?: ModelSelection
   onChange?: (value: ModelSelection) => void
   disabled?: boolean
+  /**
+   * If provided, only show these providers in the dropdown.
+   * This is used in TaskCreateDialog to only show registered providers.
+   */
+  registeredProviders?: string[]
 }
 
 export function ModelSelector({
   value,
   onChange,
   disabled = false,
+  registeredProviders,
 }: ModelSelectorProps) {
   const [provider, setProvider] = useState(value?.provider || '')
   const [model, setModel] = useState(value?.model || '')
@@ -39,22 +46,31 @@ export function ModelSelector({
 
   // Add Ollama to providers list if not already present
   const allProviders = useMemo(() => {
+    let providerList = providers
     const hasOllama = providers.some(p => p.id === 'ollama')
-    if (hasOllama) return providers
+    
+    if (!hasOllama) {
+      // Add Ollama as first provider
+      providerList = [
+        {
+          id: 'ollama',
+          name: 'Ollama (Local)',
+          requiresBaseUrl: false,
+          apiKeyUrl: 'https://ollama.ai/',
+          models: [],
+          description: 'Run models locally via Ollama - no API key required',
+        },
+        ...providers,
+      ]
+    }
 
-    // Add Ollama as first provider
-    return [
-      {
-        id: 'ollama',
-        name: 'Ollama (Local)',
-        requiresBaseUrl: false,
-        apiKeyUrl: 'https://ollama.ai/',
-        models: [],
-        description: 'Run models locally via Ollama - no API key required',
-      },
-      ...providers,
-    ]
-  }, [providers])
+    // Filter by registered providers if provided
+    if (registeredProviders && registeredProviders.length > 0) {
+      providerList = providerList.filter(p => registeredProviders.includes(p.id))
+    }
+
+    return providerList
+  }, [providers, registeredProviders])
 
   // Fetch Ollama models when Ollama provider is selected
   const fetchOllamaModels = useCallback(async () => {
@@ -188,7 +204,14 @@ export function ModelSelector({
           ) : (
             allProviders.map((p) => (
               <SelectItem key={p.id} value={p.id}>
-                {p.id === 'ollama' ? '🖥️ ' : '☁️ '}{p.name}
+                <span className="flex items-center gap-1.5">
+                  {p.id === 'ollama' ? (
+                    <Monitor className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : (
+                    <Cloud className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  {p.name}
+                </span>
               </SelectItem>
             ))
           )}

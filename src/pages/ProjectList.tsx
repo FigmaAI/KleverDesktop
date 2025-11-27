@@ -116,9 +116,9 @@ export function ProjectList() {
 
     switch (sortBy) {
       case 'latest':
-        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      case 'oldest':
         return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      case 'oldest':
+        return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
       case 'a-z':
         return sorted.sort((a, b) => a.name.localeCompare(b.name))
       case 'z-a':

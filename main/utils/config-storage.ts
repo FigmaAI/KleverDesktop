@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { app } from 'electron';
-import { AppConfig, DEFAULT_CONFIG, isLegacyConfig, migrateConfig } from '../types/config';
+import { AppConfig, DEFAULT_CONFIG, isLegacyConfig, isSingleProviderConfig, migrateConfig, migrateSingleProviderConfig } from '../types/config';
 
 /**
  * Get the path to config.json in user data directory
@@ -29,39 +29,36 @@ export function getConfigJsonPath(): string {
  */
 export function loadAppConfig(): AppConfig {
   const configPath = getConfigJsonPath();
-  console.log('[config-storage] loadAppConfig called');
-  console.log('[config-storage] Config path:', configPath);
 
   if (!fs.existsSync(configPath)) {
-    console.log('[config-storage] Config file does not exist, returning defaults');
+    console.log('[config-storage] Config not found, using defaults');
     return { ...DEFAULT_CONFIG };
   }
 
   try {
     const fileContents = fs.readFileSync(configPath, 'utf8');
     const rawConfig = JSON.parse(fileContents);
-    console.log('[config-storage] Loaded model config from file:', JSON.stringify(rawConfig.model, null, 2));
 
-    // Check if this is a legacy config and migrate if needed
+    // Check if this is a very old legacy config (enableLocal/enableApi) and migrate
     if (isLegacyConfig(rawConfig)) {
-      console.log('[config-storage] Detected legacy config format, migrating...');
+      console.log('[config-storage] Migrating legacy config...');
       const migratedConfig = migrateConfig(rawConfig);
-      
-      // Save the migrated config
       saveAppConfig(migratedConfig);
-      console.log('[config-storage] Config migration complete');
-      
       return migratedConfig;
     }
 
-    const config = rawConfig as AppConfig;
+    // Check if this is a single-provider config and migrate to multi-provider
+    if (isSingleProviderConfig(rawConfig)) {
+      console.log('[config-storage] Migrating single-provider to multi-provider...');
+      const migratedConfig = migrateSingleProviderConfig(rawConfig);
+      saveAppConfig(migratedConfig);
+      return migratedConfig;
+    }
 
     // Merge with defaults to ensure all fields exist (for version upgrades)
-    const mergedConfig = mergeWithDefaults(config, DEFAULT_CONFIG);
-    console.log('[config-storage] Returning merged config, model section:', JSON.stringify(mergedConfig.model, null, 2));
-    return mergedConfig;
+    return mergeWithDefaults(rawConfig as AppConfig, DEFAULT_CONFIG);
   } catch (error) {
-    console.error('[config-storage] Error loading config.json:', error);
+    console.error('[config-storage] Error loading config:', error);
     return { ...DEFAULT_CONFIG };
   }
 }
@@ -72,29 +69,18 @@ export function loadAppConfig(): AppConfig {
  */
 export function saveAppConfig(config: AppConfig): void {
   const configPath = getConfigJsonPath();
-  console.log('[config-storage] saveAppConfig called');
-  console.log('[config-storage] Config path:', configPath);
 
   // Ensure parent directory exists
   const parentDir = path.dirname(configPath);
   if (!fs.existsSync(parentDir)) {
-    console.log('[config-storage] Creating parent directory:', parentDir);
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
   try {
     const jsonStr = JSON.stringify(config, null, 2);
-    console.log('[config-storage] Writing config to file...');
-    console.log('[config-storage] Model section being saved:', JSON.stringify(config.model, null, 2));
     fs.writeFileSync(configPath, jsonStr, 'utf8');
-    console.log('[config-storage] Config saved successfully to:', configPath);
-    
-    // Verify the save by reading back
-    const savedContent = fs.readFileSync(configPath, 'utf8');
-    const savedConfig = JSON.parse(savedContent);
-    console.log('[config-storage] Verified saved model config:', JSON.stringify(savedConfig.model, null, 2));
   } catch (error) {
-    console.error('[config-storage] Error saving config.json:', error);
+    console.error('[config-storage] Error saving config:', error);
     throw error;
   }
 }
@@ -152,10 +138,7 @@ export function hardResetUserData(): void {
   const homeDir = os.homedir();
   const legacyPath = path.join(homeDir, '.klever-desktop');
 
-  console.log('[config-storage] ===== HARD RESET STARTING =====');
-  console.log('[config-storage] Primary user data path:', userDataPath);
-
-  let deletedCount = 0;
+  console.log('[config-storage] Hard reset starting...');
 
   // 1. Delete all project workspace directories first
   const projectsJsonPath = path.join(userDataPath, 'projects.json');
@@ -163,33 +146,27 @@ export function hardResetUserData(): void {
     try {
       const projectsData = JSON.parse(fs.readFileSync(projectsJsonPath, 'utf8'));
       if (projectsData.projects && Array.isArray(projectsData.projects)) {
-        console.log('[config-storage] Found', projectsData.projects.length, 'projects to clean up');
-
         for (const project of projectsData.projects) {
           if (project.workspaceDir && fs.existsSync(project.workspaceDir)) {
             try {
-              console.log('[config-storage] Deleting project workspace:', project.workspaceDir);
               fs.rmSync(project.workspaceDir, { recursive: true, force: true });
-              console.log('[config-storage] ✓ Successfully deleted workspace for:', project.name);
-              deletedCount++;
-            } catch (error) {
-              const message = error instanceof Error ? error.message : 'Unknown error';
-              console.error('[config-storage] ✗ Failed to delete workspace for:', project.name, 'Error:', message);
+            } catch {
+              // Ignore deletion errors for workspaces
             }
           }
         }
       }
-    } catch (error) {
-      console.error('[config-storage] Failed to read projects.json:', error);
+    } catch {
+      // Ignore projects.json read errors
     }
   }
 
-  // 2. Delete specific items in userDataPath (safer than deleting the whole directory while running)
+  // 2. Delete specific items in userDataPath
   const itemsToDelete = [
     'config.json',
     'projects.json',
-    'python',  // Downloaded Python runtime
-    'python-env',  // Legacy Python venv
+    'python',
+    'python-env',
     'logs',
     'blob_storage',
     'Session Storage',
@@ -202,8 +179,6 @@ export function hardResetUserData(): void {
     'SharedStorage',
     'Trust Tokens',
     'Trust Tokens-journal'
-    // Note: We intentionally avoid deleting 'Local Storage' and 'Cookies' here
-    // as they are better handled by the renderer process or require a full restart
   ];
 
   if (fs.existsSync(userDataPath)) {
@@ -211,32 +186,24 @@ export function hardResetUserData(): void {
       const itemPath = path.join(userDataPath, item);
       if (fs.existsSync(itemPath)) {
         try {
-          console.log('[config-storage] Deleting:', itemPath);
           fs.rmSync(itemPath, { recursive: true, force: true });
-          console.log('[config-storage] ✓ Successfully deleted:', item);
-          deletedCount++;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          console.error('[config-storage] ✗ Failed to delete:', item, 'Error:', message);
+        } catch {
+          // Ignore deletion errors
         }
       }
     }
   }
 
-  // 3. Delete legacy path if it exists (this is safe to delete entirely)
+  // 3. Delete legacy path if it exists
   if (fs.existsSync(legacyPath)) {
     try {
-      console.log('[config-storage] Deleting legacy path:', legacyPath);
       fs.rmSync(legacyPath, { recursive: true, force: true });
-      console.log('[config-storage] ✓ Successfully deleted legacy path');
-      deletedCount++;
-    } catch (error) {
-      console.error('[config-storage] Failed to delete legacy path:', error);
+    } catch {
+      // Ignore deletion errors
     }
   }
 
-  console.log('[config-storage] ===== HARD RESET COMPLETE =====');
-  console.log('[config-storage] Deleted', deletedCount, 'items');
+  console.log('[config-storage] Hard reset complete');
 }
 
 /**

@@ -264,6 +264,147 @@ def wait_for_device(timeout=120):
     return False
 
 
+def find_app_package(app_name):
+    """
+    Find app package name by searching installed packages
+    
+    Args:
+        app_name: App name to search for (e.g., 'youtube', 'instagram')
+    
+    Returns:
+        Package name if found, None otherwise
+    """
+    # Normalize app name for search
+    search_term = app_name.lower().strip()
+    
+    # Get list of all installed packages
+    result = execute_adb("adb shell pm list packages")
+    if result == "ERROR":
+        print_with_color("ERROR: Failed to list packages", "red")
+        return None
+    
+    # Parse package list and search
+    packages = result.strip().split('\n')
+    matching_packages = []
+    
+    for pkg in packages:
+        # Format: "package:com.example.app"
+        if pkg.startswith('package:'):
+            package_name = pkg.replace('package:', '').strip()
+            if search_term in package_name.lower():
+                matching_packages.append(package_name)
+    
+    if not matching_packages:
+        print_with_color(f"No packages found matching '{app_name}'", "yellow")
+        return None
+    
+    # If multiple matches, prefer exact matches or most relevant
+    # Priority: exact match > contains search term at end > first match
+    for pkg in matching_packages:
+        pkg_lower = pkg.lower()
+        # Exact match in package name (e.g., com.google.android.youtube)
+        if pkg_lower.endswith('.' + search_term) or pkg_lower.endswith(search_term):
+            print_with_color(f"Found app package: {pkg}", "green")
+            return pkg
+    
+    # Return first match
+    best_match = matching_packages[0]
+    print_with_color(f"Found app package: {best_match} (from {len(matching_packages)} matches)", "green")
+    return best_match
+
+
+def launch_app(package_name, device_serial=None):
+    """
+    Launch an app by package name
+    
+    Args:
+        package_name: Full package name (e.g., 'com.google.android.youtube')
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    import time
+    
+    if not package_name:
+        print_with_color("ERROR: No package name provided", "red")
+        return False
+    
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            print_with_color("ERROR: No devices connected", "red")
+            return False
+        device_serial = devices[0]
+    
+    print_with_color(f"Launching app: {package_name}...", "yellow")
+    
+    # Use monkey to launch app (simpler, doesn't require activity name)
+    adb_command = f"adb -s {device_serial} shell monkey -p {package_name} -c android.intent.category.LAUNCHER 1"
+    result = execute_adb(adb_command)
+    
+    if result != "ERROR" and "No activities found" not in result:
+        print_with_color(f"✓ App launched: {package_name}", "green")
+        time.sleep(2)  # Wait for app to start
+        return True
+    
+    # Fallback: try to find and launch main activity
+    print_with_color("Trying alternative launch method...", "yellow")
+    
+    # Get main activity
+    dump_cmd = f"adb -s {device_serial} shell dumpsys package {package_name} | grep -A 1 'android.intent.action.MAIN'"
+    result = execute_adb(dump_cmd)
+    
+    if result != "ERROR" and result:
+        # Try to extract activity name
+        lines = result.strip().split('\n')
+        for line in lines:
+            if '/' in line and package_name in line:
+                # Extract activity: com.example/.MainActivity
+                parts = line.strip().split()
+                for part in parts:
+                    if package_name in part and '/' in part:
+                        activity = part.strip()
+                        am_cmd = f"adb -s {device_serial} shell am start -n {activity}"
+                        result = execute_adb(am_cmd)
+                        if result != "ERROR":
+                            print_with_color(f"✓ App launched via activity: {activity}", "green")
+                            time.sleep(2)
+                            return True
+    
+    print_with_color(f"Failed to launch app: {package_name}", "red")
+    return False
+
+
+def start_emulator_with_app(avd_name=None, app_name=None, wait_for_boot=True):
+    """
+    Start emulator and optionally launch an app
+    
+    Args:
+        avd_name: Name of AVD to start (if None, uses first available)
+        app_name: App name to launch after boot (e.g., 'youtube')
+        wait_for_boot: Wait for emulator to fully boot
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    # Start emulator
+    if not start_emulator(avd_name, wait_for_boot):
+        return False
+    
+    # Launch app if specified
+    if app_name:
+        package_name = find_app_package(app_name)
+        if package_name:
+            return launch_app(package_name)
+        else:
+            print_with_color(f"App '{app_name}' not found, but device is ready", "yellow")
+            return True  # Device is ready, just app not found
+    
+    return True
+
+
 def stop_emulator(device_serial=None):
     """
     Stop a running Android emulator

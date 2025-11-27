@@ -15,7 +15,7 @@ import cv2
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import prompts
 from config import load_config
-from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, list_available_emulators, stop_emulator
+from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
 from web_controller import WebController
 from model import parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel
 from utils import print_with_color, draw_bbox_multi, append_to_log, append_images_as_table, draw_grid
@@ -129,7 +129,8 @@ if args["model_name"]:
 
 # Unified model initialization - all providers use OpenAIModel via LiteLLM
 # LiteLLM supports: ollama/*, openai/*, anthropic/*, etc.
-model_name = configs.get("MODEL_NAME", configs.get("API_MODEL", "gpt-4o"))
+# Priority: MODEL_NAME (env) > API_MODEL (env) > MODEL_NAME (config.yaml)
+model_name = configs.get("MODEL_NAME", configs.get("API_MODEL", "ollama/llama3.2-vision"))
 api_key = configs.get("API_KEY", "")
 base_url = configs.get("API_BASE_URL", "")
 
@@ -142,7 +143,8 @@ mllm = OpenAIModel(
     api_key=api_key,
     model=model_name,
     temperature=configs["TEMPERATURE"],
-    max_tokens=configs["MAX_TOKENS"]
+    max_tokens=configs["MAX_TOKENS"],
+    configs=configs
 )
 
 app = args["app"]
@@ -189,11 +191,12 @@ report_log_path = os.path.join(task_dir, f"log_report_{task_name}.md")
 # Initialize controller based on platform
 if platform == "android":
     device_list = list_all_devices()
+    
     if not device_list:
         print_with_color("No Android device found.", "yellow")
         print_with_color("Attempting to start emulator...", "green")
 
-        # Try to start emulator
+        # Try to start emulator (without app - app will be launched after controller init)
         if start_emulator():
             # Mark that we started an emulator (for cleanup on exit)
             _emulator_started_by_script = True
@@ -231,6 +234,15 @@ if platform == "android":
         print_with_color("ERROR: Invalid device size!", "red")
         sys.exit()
     print_with_color(f"Screen resolution of {device}: {width}x{height}", "yellow")
+    
+    # Launch app AFTER controller initialization (unlock completes first)
+    if app:
+        print_with_color(f"Launching app '{app}'...", "yellow")
+        package_name = find_app_package(app)
+        if package_name:
+            launch_app(package_name, device)
+        else:
+            print_with_color(f"App '{app}' not found on device, continuing anyway", "yellow")
 else:  # web
     # Get URL from CLI argument or prompt
     url = args["url"]

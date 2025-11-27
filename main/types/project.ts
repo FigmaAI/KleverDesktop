@@ -13,11 +13,10 @@ export interface Task {
   description?: string;
   goal: string; // Task goal/objective (passed as --task_desc CLI parameter)
   status: TaskStatus;
-  // Model override (optional) - if not specified, uses config.json defaults
-  // modelName contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-  modelName?: string; // Passed as --model_name CLI parameter
+  // Model selection for this task
+  modelProvider?: string; // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
   // Legacy fields (deprecated)
-  modelProvider?: string; // [DEPRECATED] No longer used
   model?: string; // [DEPRECATED] No longer used
   language?: string; // Output language preference (e.g., 'en', 'ko', 'ja')
   output?: string;
@@ -63,6 +62,7 @@ export interface CreateTaskInput {
   name: string;
   description?: string;
   goal: string;
+  modelProvider?: string; // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
   modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
   language?: string; // Output language preference (e.g., 'en', 'ko', 'ja')
   url?: string;
