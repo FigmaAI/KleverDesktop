@@ -15,6 +15,8 @@ import { Separator } from '@/components/ui/separator'
 import {
   Drawer,
   DrawerContent,
+  DrawerTitle,
+  DrawerDescription,
 } from '@/components/ui/drawer'
 import { TerminalHeader } from '@/components/UniversalTerminal/TerminalHeader'
 import { TerminalOutput } from '@/components/UniversalTerminal/TerminalOutput'
@@ -28,7 +30,7 @@ export function Layout() {
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
 
   // Detect platform for keyboard shortcuts
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+  const isMac = typeof window !== 'undefined' && window.navigator.platform.toUpperCase().indexOf('MAC') >= 0
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -138,6 +140,8 @@ export function Layout() {
       {/* Terminal Drawer */}
       <Drawer open={terminalOpen} onOpenChange={setTerminalOpen}>
         <DrawerContent className="max-h-[85vh]">
+          <DrawerTitle className="sr-only">Universal Terminal</DrawerTitle>
+          <DrawerDescription className="sr-only">View and manage terminal output from running tasks and operations</DrawerDescription>
           <div className="flex flex-col h-full min-h-[60vh] overflow-hidden">
             <TerminalHeader />
             <TerminalOutput />

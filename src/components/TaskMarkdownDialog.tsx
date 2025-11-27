@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { FolderOpen, RefreshCw, ExternalLink, Loader2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { LanguageSelector } from './LanguageSelector'
@@ -251,6 +251,7 @@ export function TaskMarkdownDialog({
       <DialogContent className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
         <DialogHeader>
           <DialogTitle>Task Result</DialogTitle>
+          <DialogDescription className="sr-only">View the generated markdown output and screenshots from the completed task</DialogDescription>
 
           {/* Toolbar: Language selector on left, Action buttons on right */}
           <div className="flex items-center justify-between mt-4">
