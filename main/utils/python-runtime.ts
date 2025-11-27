@@ -174,6 +174,7 @@ export function executePythonScript(
 
 /**
  * Create a virtual environment using downloaded Python
+ * For Windows embedded Python, uses virtualenv package instead of venv module
  */
 export async function createVirtualEnvironment(
   onOutput?: (data: string) => void,
@@ -181,6 +182,7 @@ export async function createVirtualEnvironment(
 ): Promise<{ success: boolean; error?: string }> {
   const bundledPython = getPythonPath();
   const venvPath = getVenvPath();
+  const platform = os.platform();
 
   // Remove existing venv if invalid
   if (fs.existsSync(venvPath)) {
@@ -193,51 +195,139 @@ export async function createVirtualEnvironment(
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
-  return new Promise((resolve) => {
-    const venvProcess = spawn(bundledPython, ['-m', 'venv', venvPath], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+  // Windows embedded Python doesn't include venv module, use virtualenv instead
+  if (platform === 'win32') {
+    return new Promise((resolve) => {
+      // First install virtualenv
+      onOutput?.('Installing virtualenv package...\n');
 
-    let errorOutput = '';
+      const installVirtualenv = spawn(bundledPython, ['-m', 'pip', 'install', 'virtualenv'], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
 
-    venvProcess.stdout?.on('data', (data) => {
-      const text = data.toString();
-      onOutput?.(text);
-    });
+      let errorOutput = '';
 
-    venvProcess.stderr?.on('data', (data) => {
-      const text = data.toString();
-      errorOutput += text;
-      onError?.(text);
-    });
+      installVirtualenv.stdout?.on('data', (data) => {
+        const text = data.toString();
+        onOutput?.(text);
+      });
 
-    venvProcess.on('close', (code) => {
-      if (code === 0) {
-        // Verify venv was created successfully
-        const status = checkVenvStatus();
-        if (status.valid) {
-          resolve({ success: true });
-        } else {
-          console.error('[Python Runtime] Virtual environment created but is invalid');
+      installVirtualenv.stderr?.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+        onOutput?.(text); // pip outputs progress to stderr
+      });
+
+      installVirtualenv.on('close', (code) => {
+        if (code !== 0) {
+          console.error('[Python Runtime] Failed to install virtualenv');
           resolve({
             success: false,
-            error: 'Virtual environment created but validation failed',
+            error: errorOutput || `virtualenv installation failed with code ${code}`,
+          });
+          return;
+        }
+
+        // Now create venv using virtualenv
+        onOutput?.('Creating virtual environment...\n');
+        errorOutput = '';
+
+        const venvProcess = spawn(bundledPython, ['-m', 'virtualenv', venvPath], {
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        venvProcess.stdout?.on('data', (data) => {
+          const text = data.toString();
+          onOutput?.(text);
+        });
+
+        venvProcess.stderr?.on('data', (data) => {
+          const text = data.toString();
+          errorOutput += text;
+          onError?.(text);
+        });
+
+        venvProcess.on('close', (code) => {
+          if (code === 0) {
+            // Verify venv was created successfully
+            const status = checkVenvStatus();
+            if (status.valid) {
+              resolve({ success: true });
+            } else {
+              console.error('[Python Runtime] Virtual environment created but is invalid');
+              resolve({
+                success: false,
+                error: 'Virtual environment created but validation failed',
+              });
+            }
+          } else {
+            console.error('[Python Runtime] Failed to create virtual environment');
+            resolve({
+              success: false,
+              error: errorOutput || `venv creation failed with code ${code}`,
+            });
+          }
+        });
+
+        venvProcess.on('error', (error) => {
+          console.error('[Python Runtime] Process error:', error.message);
+          resolve({ success: false, error: error.message });
+        });
+      });
+
+      installVirtualenv.on('error', (error) => {
+        console.error('[Python Runtime] virtualenv install error:', error.message);
+        resolve({ success: false, error: `Failed to install virtualenv: ${error.message}` });
+      });
+    });
+  } else {
+    // macOS/Linux: use built-in venv module
+    return new Promise((resolve) => {
+      const venvProcess = spawn(bundledPython, ['-m', 'venv', venvPath], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let errorOutput = '';
+
+      venvProcess.stdout?.on('data', (data) => {
+        const text = data.toString();
+        onOutput?.(text);
+      });
+
+      venvProcess.stderr?.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+        onError?.(text);
+      });
+
+      venvProcess.on('close', (code) => {
+        if (code === 0) {
+          // Verify venv was created successfully
+          const status = checkVenvStatus();
+          if (status.valid) {
+            resolve({ success: true });
+          } else {
+            console.error('[Python Runtime] Virtual environment created but is invalid');
+            resolve({
+              success: false,
+              error: 'Virtual environment created but validation failed',
+            });
+          }
+        } else {
+          console.error('[Python Runtime] Failed to create virtual environment');
+          resolve({
+            success: false,
+            error: errorOutput || `venv creation failed with code ${code}`,
           });
         }
-      } else {
-        console.error('[Python Runtime] Failed to create virtual environment');
-        resolve({
-          success: false,
-          error: errorOutput || `venv creation failed with code ${code}`,
-        });
-      }
-    });
+      });
 
-    venvProcess.on('error', (error) => {
-      console.error('[Python Runtime] Process error:', error.message);
-      resolve({ success: false, error: error.message });
+      venvProcess.on('error', (error) => {
+        console.error('[Python Runtime] Process error:', error.message);
+        resolve({ success: false, error: error.message });
+      });
     });
-  });
+  }
 }
 
 /**

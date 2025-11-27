@@ -3,6 +3,7 @@ import { Calendar, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -175,6 +176,9 @@ export function TaskCreateDialog({
       >
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
+          <DialogDescription>
+            Define an automation task for {platform === 'web' ? 'web browsing' : 'Android device'}. The task will be executed using AI-powered automation.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
