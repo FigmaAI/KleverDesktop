@@ -105,16 +105,46 @@ export async function downloadPython(
         maxBuffer: 200 * 1024 * 1024
       });
     } else if (platform === 'win32') {
-      // Extract zip
-      await execAsync(`unzip -q "${downloadPath}" -d "${targetDir}"`);
-      
-      // Install pip for Windows embedded Python
+      // Extract zip using PowerShell (built-in on Windows)
+      const psCommand = `powershell -Command "Expand-Archive -Path '${downloadPath}' -DestinationPath '${targetDir}' -Force"`;
+      await execAsync(psCommand, {
+        maxBuffer: 200 * 1024 * 1024
+      });
+
+      // Configure Windows embedded Python for pip
+      // 1. Uncomment import site in python311._pth file
+      const pythonVersion = PYTHON_VERSION.split('.').slice(0, 2).join('');
+      const pthFile = path.join(targetDir, `python${pythonVersion}._pth`);
+
+      if (fs.existsSync(pthFile)) {
+        onProgress?.('Configuring Python environment...\n');
+        let pthContent = fs.readFileSync(pthFile, 'utf8');
+        // Uncomment 'import site' line
+        pthContent = pthContent.replace(/#\s*import\s+site/gi, 'import site');
+        // Add Lib/site-packages to the path if not present
+        if (!pthContent.includes('Lib\\site-packages')) {
+          pthContent += '\nLib\\site-packages\n';
+        }
+        fs.writeFileSync(pthFile, pthContent);
+      }
+
+      // 2. Install pip for Windows embedded Python
+      onProgress?.('Installing pip...\n');
       const getPipUrl = 'https://bootstrap.pypa.io/get-pip.py';
       const getPipPath = path.join(targetDir, 'get-pip.py');
       await execAsync(`curl -L -o "${getPipPath}" "${getPipUrl}"`);
-      
+
       const pythonExe = path.join(targetDir, 'python.exe');
-      await execAsync(`"${pythonExe}" "${getPipPath}"`);
+      await execAsync(`"${pythonExe}" "${getPipPath}"`, {
+        maxBuffer: 200 * 1024 * 1024
+      });
+
+      // Verify pip installation
+      const pipExe = path.join(targetDir, 'Scripts', 'pip.exe');
+      if (!fs.existsSync(pipExe)) {
+        throw new Error('pip installation failed - pip.exe not found');
+      }
+      onProgress?.('✓ pip installed successfully\n');
     }
 
     onProgress?.('✓ Extraction complete\n');
