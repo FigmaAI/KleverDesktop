@@ -8,6 +8,7 @@ import * as http from 'http';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as os from 'os';
+import { Buffer } from 'buffer';
 import { loadAppConfig } from './config-storage';
 
 const execAsync = promisify(exec);
@@ -226,7 +227,7 @@ ${text}`;
                   translatedText,
                 });
               }
-            } catch (parseError) {
+            } catch {
               resolve({
                 success: false,
                 error: 'Failed to parse translation response',
