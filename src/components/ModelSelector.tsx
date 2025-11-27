@@ -13,6 +13,7 @@ import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
 export interface ModelSelection {
   provider: string   // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
   model: string      // Model name (e.g., 'llama3.2-vision', 'gpt-4o')
+  baseUrl?: string   // Provider's default base URL (optional)
 }
 
 interface ModelSelectorProps {
@@ -28,7 +29,7 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [provider, setProvider] = useState(value?.provider || '')
   const [model, setModel] = useState(value?.model || '')
-  
+
   // Ollama-specific state
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaLoading, setOllamaLoading] = useState(false)
@@ -40,7 +41,7 @@ export function ModelSelector({
   const allProviders = useMemo(() => {
     const hasOllama = providers.some(p => p.id === 'ollama')
     if (hasOllama) return providers
-    
+
     // Add Ollama as first provider
     return [
       {
@@ -88,7 +89,7 @@ export function ModelSelector({
     if (value?.model !== undefined && value.model !== model) {
       setModel(value.model)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value?.provider, value?.model]) // Only depend on value properties, not internal state (intentional)
 
   // Get models for current provider
@@ -110,16 +111,24 @@ export function ModelSelector({
   // Notify parent of changes - only when user makes a selection (not on sync)
   const notifyChange = useCallback((p: string, m: string) => {
     if (onChange && p && m) {
-      onChange({ provider: p, model: m })
+      // Get provider info to include baseUrl
+      const providerInfo = allProviders.find(pr => pr.id === p);
+      const baseUrl = providerInfo?.defaultBaseUrl;
+
+      onChange({
+        provider: p,
+        model: m,
+        baseUrl: baseUrl || undefined,
+      });
     }
-  }, [onChange])
+  }, [onChange, allProviders]);
 
   // Prepare combobox options for models with badges in dropdown
   const modelOptions: ComboboxOption[] = useMemo(() => {
     return currentModels.map((m) => {
-      const modelInfo = getModelInfo(m)
-      const hasBadges = modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens)
-      
+      const modelInfo = getModelInfo(m);
+      const hasBadges = modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens);
+
       return {
         value: m,
         label: m, // Simple label for selected display
@@ -138,25 +147,25 @@ export function ModelSelector({
             </div>
           </div>
         ) : m, // Just the model name if no badges
-      }
-    })
-  }, [currentModels, getModelInfo])
+      };
+    });
+  }, [currentModels, getModelInfo]);
 
   // Handle provider change
   const handleProviderChange = (newProvider: string) => {
-    setProvider(newProvider)
-    setModel('') // Reset model when provider changes
+    setProvider(newProvider);
+    setModel(''); // Reset model when provider changes
     // Don't notify yet - wait for model selection
-  }
+  };
 
   // Handle model change
   const handleModelChange = (newModel: string) => {
-    setModel(newModel)
+    setModel(newModel);
     // Notify parent when model is selected
     if (provider && newModel) {
-      notifyChange(provider, newModel)
+      notifyChange(provider, newModel);
     }
-  }
+  };
 
   return (
     <div className="flex items-center gap-2 w-full">

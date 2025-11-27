@@ -204,15 +204,13 @@ function verify() {
 
     if (failedFiles.some(f => f.startsWith('appagent/'))) {
       console.log('   Initialize appagent submodule:');
-      console.log('   $ yarn submodule:init');
-      console.log('   or fetch latest:');
-      console.log('   $ yarn appagent:fetch');
+      console.log('   $ git submodule update --init --recursive');
       console.log();
     }
 
     if (failedFiles.some(f => f.includes('python') || f.includes('site-packages'))) {
-      console.log('   Download Python runtime:');
-      console.log('   $ node scripts/build-python.js');
+      console.log('   Missing Python runtime or dependencies in resources/python/');
+      console.log('   Please ensure the Python runtime is correctly placed.');
       console.log();
       console.log('   Or skip Python verification for testing:');
       console.log('   $ node scripts/verify-bundle.js --skip-python');

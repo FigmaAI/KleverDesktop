@@ -69,24 +69,28 @@ const PROVIDER_METADATA: Record<string, Partial<LiteLLMProvider>> = {
   openai: {
     name: 'OpenAI',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKeyUrl: 'https://platform.openai.com/api-keys',
     description: 'GPT-4, GPT-4o, and other OpenAI models',
   },
   anthropic: {
     name: 'Anthropic Claude',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.anthropic.com/v1/messages',
     apiKeyUrl: 'https://console.anthropic.com/',
     description: 'Claude Opus, Sonnet, and Haiku models',
   },
   xai: {
     name: 'xAI Grok',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.x.ai/v1/chat/completions',
     apiKeyUrl: 'https://console.x.ai/',
     description: 'Grok and Grok Vision models',
   },
   gemini: {
     name: 'Google Gemini',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
     apiKeyUrl: 'https://aistudio.google.com/app/apikey',
     description: 'Gemini 2.0 Flash, Pro, and Vision models',
   },
@@ -100,12 +104,14 @@ const PROVIDER_METADATA: Record<string, Partial<LiteLLMProvider>> = {
   mistral: {
     name: 'Mistral AI',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.mistral.ai/v1/chat/completions',
     apiKeyUrl: 'https://console.mistral.ai/',
     description: 'Mistral Large and Pixtral models',
   },
   deepseek: {
     name: 'DeepSeek',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.deepseek.com/v1/chat/completions',
     apiKeyUrl: 'https://platform.deepseek.com/',
     description: 'DeepSeek Chat and Reasoner models',
   },
@@ -164,6 +170,7 @@ const BUNDLED_PROVIDERS: LiteLLMProvider[] = [
     id: 'openai',
     name: 'OpenAI',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.openai.com/v1/chat/completions',
     apiKeyUrl: 'https://platform.openai.com/api-keys',
     description: 'GPT-4, GPT-4o, and other OpenAI models',
     models: [
@@ -180,6 +187,7 @@ const BUNDLED_PROVIDERS: LiteLLMProvider[] = [
     id: 'anthropic',
     name: 'Anthropic Claude',
     requiresBaseUrl: false,
+    defaultBaseUrl: 'https://api.anthropic.com/v1/messages',
     apiKeyUrl: 'https://console.anthropic.com/',
     description: 'Claude Opus, Sonnet, and Haiku models',
     models: [

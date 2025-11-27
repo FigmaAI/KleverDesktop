@@ -141,4 +141,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onTaskComplete: (callback: (data: unknown) => void) => {
     ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
+
+  // ============================================
+  // Translation
+  // ============================================
+  translateText: (text: string, targetLang: string) => ipcRenderer.invoke('translator:translateText', text, targetLang),
+  translateMarkdown: (markdown: string, targetLang: string) => ipcRenderer.invoke('translator:translateMarkdown', markdown, targetLang),
 });

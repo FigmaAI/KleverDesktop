@@ -19,6 +19,7 @@ export interface Task {
   // Legacy fields (deprecated)
   modelProvider?: string; // [DEPRECATED] No longer used
   model?: string; // [DEPRECATED] No longer used
+  language?: string; // Output language preference (e.g., 'en', 'ko', 'ja')
   output?: string;
   resultPath?: string; // Task result directory path (e.g., {workspaceDir}/apps/{app}/demos/self_explore_{timestamp})
   createdAt: string;
@@ -63,6 +64,7 @@ export interface CreateTaskInput {
   description?: string;
   goal: string;
   modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
+  language?: string; // Output language preference (e.g., 'en', 'ko', 'ja')
   url?: string;
 }
 

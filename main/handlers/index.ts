@@ -14,6 +14,7 @@ import { registerProjectHandlers, cleanupProjectProcesses } from './project';
 import { registerTaskHandlers, cleanupTaskProcesses } from './task';
 import { registerDialogHandlers } from './dialogs';
 import { registerGitHubHandlers } from './github';
+import { registerTranslatorHandlers } from './translator';
 
 /**
  * Register all IPC handlers
@@ -32,6 +33,7 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
   registerTaskHandlers(ipcMain, getMainWindow);
   registerDialogHandlers(ipcMain, getMainWindow);
   registerGitHubHandlers(ipcMain);
+  registerTranslatorHandlers(ipcMain);
 }
 
 /**

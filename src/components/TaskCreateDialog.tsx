@@ -71,11 +71,24 @@ export function TaskCreateDialog({
 
     setLoading(true)
     try {
+      // Always attempt to translate to English (if already English, translator returns as-is)
+      let finalGoal = goal.trim()
+      console.log('[TaskCreateDialog] Original goal:', finalGoal)
+
+      // Attempt translation to English
+      const translateResult = await window.electronAPI.translateText(finalGoal, 'en')
+      if (translateResult.success && translateResult.translatedText) {
+        finalGoal = translateResult.translatedText
+        console.log('[TaskCreateDialog] Translated goal:', finalGoal)
+      } else {
+        console.warn('[TaskCreateDialog] Translation failed, using original text:', translateResult.error)
+      }
+
       // For Android, prepend instruction to search and open the app first
       const taskGoal =
         platform === 'android'
-          ? `Search and open ${projectName} app and follow the prompt below:\n\n${goal.trim()}`
-          : goal.trim()
+          ? `Search and open ${projectName} app and follow the prompt below:\n\n${finalGoal}`
+          : finalGoal
 
       const taskInput = {
         projectId,
@@ -167,8 +180,8 @@ export function TaskCreateDialog({
 
           {/* Bottom Controls */}
           <div className="flex items-center justify-between pt-2">
-            {/* Left: Model Selection */}
-            <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+            {/* Left: Model Selection (Read-only - displays config setting) */}
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled />
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-2">

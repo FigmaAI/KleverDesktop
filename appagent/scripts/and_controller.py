@@ -390,8 +390,67 @@ class AndroidController:
         self.device = device
         self.screenshot_dir = configs["ANDROID_SCREENSHOT_DIR"]
         self.xml_dir = configs["ANDROID_XML_DIR"]
-        self.width, self.height = self.get_device_size()
         self.backslash = "\\"
+        self.width, self.height = self.get_device_size()
+        self.setup_device()
+
+    def setup_device(self):
+        """Setup device: unlock and prepare for automation"""
+        # Disable screen lock completely
+        self.disable_screen_lock()
+        # Unlock device
+        self.unlock()
+    
+    def disable_screen_lock(self):
+        """Disable screen lock on the device"""
+        print_with_color("Disabling screen lock...", "yellow")
+        
+        # Disable lock screen
+        execute_adb(f"adb -s {self.device} shell locksettings set-disabled true")
+        
+        # Set screen timeout to maximum (30 minutes)
+        execute_adb(f"adb -s {self.device} shell settings put system screen_off_timeout 1800000")
+        
+        # Stay awake while charging (useful for emulators)
+        execute_adb(f"adb -s {self.device} shell settings put global stay_on_while_plugged_in 7")
+        
+        print_with_color("Screen lock disabled", "green")
+
+    def unlock(self):
+        """Unlock the device by waking it up and dismissing lock screen"""
+        import time
+        
+        print_with_color("Unlocking device...", "yellow")
+        
+        # Wake up
+        execute_adb(f"adb -s {self.device} shell input keyevent KEYCODE_WAKEUP")
+        time.sleep(0.5)
+        
+        # Swipe up to unlock (works for swipe lock)
+        x = self.width // 2
+        y_start = int(self.height * 0.85)
+        y_end = int(self.height * 0.2)
+        execute_adb(f"adb -s {self.device} shell input swipe {x} {y_start} {x} {y_end} 500")
+        time.sleep(0.3)
+        
+        # Press Back to dismiss any lock screen
+        execute_adb(f"adb -s {self.device} shell input keyevent KEYCODE_BACK")
+        time.sleep(0.3)
+        
+        # Press Menu key (alternative unlock method)
+        execute_adb(f"adb -s {self.device} shell input keyevent KEYCODE_MENU")
+        time.sleep(0.3)
+        
+        # Press Home to go to home screen
+        execute_adb(f"adb -s {self.device} shell input keyevent KEYCODE_HOME")
+        time.sleep(0.5)
+        
+        # Verify unlock by checking if we can access home screen
+        result = execute_adb(f"adb -s {self.device} shell dumpsys window | grep mCurrentFocus")
+        if result != "ERROR":
+            print_with_color(f"Current focus: {result}", "blue")
+        
+        print_with_color("Device unlocked and ready", "green")
 
     def get_device_size(self):
         adb_command = f"adb -s {self.device} shell wm size"
