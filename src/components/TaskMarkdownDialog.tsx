@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, ExternalLink, X, Loader2 } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { FolderOpen, RefreshCw, ExternalLink, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { LanguageSelector } from './LanguageSelector'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -91,6 +92,9 @@ export function TaskMarkdownDialog({
   taskResultPath,
 }: TaskMarkdownDialogProps) {
   const [content, setContent] = useState<string>('')
+  const [translatedContent, setTranslatedContent] = useState<string>('')
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
+  const [isTranslating, setIsTranslating] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
@@ -146,9 +150,37 @@ export function TaskMarkdownDialog({
     }
   }, [taskName, workspaceDir, taskResultPath])
 
+  // Translate markdown content when language changes
+  const handleLanguageChange = useCallback(async (lang: string) => {
+    setSelectedLanguage(lang)
+
+    if (lang === 'en' || !content) {
+      setTranslatedContent('')
+      return
+    }
+
+    setIsTranslating(true)
+    try {
+      const result = await window.electronAPI.translateMarkdown(content, lang)
+      if (result.success && result.translatedText) {
+        setTranslatedContent(result.translatedText)
+      } else {
+        console.error('Translation failed:', result.error)
+        setTranslatedContent('')
+      }
+    } catch (err) {
+      console.error('Translation error:', err)
+      setTranslatedContent('')
+    } finally {
+      setIsTranslating(false)
+    }
+  }, [content])
+
   useEffect(() => {
     if (open) {
       loadMarkdown()
+      setSelectedLanguage('en')
+      setTranslatedContent('')
     }
   }, [open, loadMarkdown])
 
@@ -216,68 +248,65 @@ export function TaskMarkdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent showClose={false} className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Task Result</h2>
-          <TooltipProvider>
-            <div className="flex gap-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={loadMarkdown}
-                    disabled={loading}
-                  >
-                    <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh <kbd className="ml-1 text-xs opacity-60">⌘R</kbd></p>
-                </TooltipContent>
-              </Tooltip>
+      <DialogContent className="w-[95vw] h-[95vh] max-w-none flex flex-col p-6">
+        <DialogHeader>
+          <DialogTitle>Task Result</DialogTitle>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleOpenInEditor}
-                    disabled={!markdownPath || loading}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Open in Editor</p>
-                </TooltipContent>
-              </Tooltip>
+          {/* Toolbar: Language selector on left, Action buttons on right */}
+          <div className="flex items-center justify-between mt-4">
+            <LanguageSelector
+              value={selectedLanguage}
+              onChange={handleLanguageChange}
+            />
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" onClick={handleOpenFolder}>
-                    <FolderOpen className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Open Folder</p>
-                </TooltipContent>
-              </Tooltip>
+            <TooltipProvider>
+              <div className="flex gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={loadMarkdown}
+                      disabled={loading}
+                    >
+                      <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Refresh <kbd className="ml-1 text-xs opacity-60">⌘R</kbd></p>
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" onClick={onClose}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Close</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
-        </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleOpenInEditor}
+                      disabled={!markdownPath || loading}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open in Editor</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="sm" variant="outline" onClick={handleOpenFolder}>
+                      <FolderOpen className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Open Folder</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
+          </div>
+        </DialogHeader>
 
         {/* Content */}
         <div
@@ -287,6 +316,11 @@ export function TaskMarkdownDialog({
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : isTranslating ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-3 text-sm text-muted-foreground">Translating...</span>
             </div>
           ) : error ? (
             <div className="p-8 text-center">
@@ -329,7 +363,7 @@ export function TaskMarkdownDialog({
                   img: ({ src, alt }) => <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />,
                 }}
               >
-                {content}
+                {selectedLanguage === 'en' ? content : (translatedContent || content)}
               </ReactMarkdown>
             </div>
           ) : (

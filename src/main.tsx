@@ -345,6 +345,16 @@ if (!window.electronAPI) {
     removeAllListeners: (channel) => {
       delete mockCallbacks[channel]
     },
+
+    // Translation (mock)
+    translateText: async (text: string, targetLang: string) => ({
+      success: true,
+      translatedText: `[Mock translation to ${targetLang}]: ${text}`,
+    }),
+    translateMarkdown: async (markdown: string, targetLang: string) => ({
+      success: true,
+      translatedText: `[Mock markdown translation to ${targetLang}]:\n${markdown}`,
+    }),
   }
 }
 

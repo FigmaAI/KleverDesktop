@@ -243,6 +243,12 @@ declare global {
       onTaskOutput: (callback: (data: { projectId: string; taskId: string; output: string }) => void) => void;
       onTaskError: (callback: (data: { projectId: string; taskId: string; error: string }) => void) => void;
       onTaskComplete: (callback: (data: { projectId: string; taskId: string; code: number }) => void) => void;
+
+      // ============================================
+      // Translation
+      // ============================================
+      translateText: (text: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
+      translateMarkdown: (markdown: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
     };
   }
 }

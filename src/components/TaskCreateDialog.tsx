@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
 import { ModelSelector, ModelSelection } from './ModelSelector'
+import { LanguageSelector } from './LanguageSelector'
 import type { Platform, Task } from '../types/project'
 
 interface TaskCreateDialogProps {
@@ -33,6 +34,7 @@ export function TaskCreateDialog({
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
+  const [language, setLanguage] = useState('en')
   const [selectedModel, setSelectedModel] = useState<ModelSelection | undefined>()
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -85,6 +87,7 @@ export function TaskCreateDialog({
         // Include model name if user has selected a specific model
         // modelName contains full identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
         modelName: selectedModel?.model,
+        language,
       }
 
       const result = await window.electronAPI.taskCreate(taskInput)
@@ -117,6 +120,7 @@ export function TaskCreateDialog({
   const handleClose = () => {
     setGoal('')
     setUrl('')
+    setLanguage('en')
     setRunImmediately(true)
     onClose()
   }
@@ -147,6 +151,14 @@ export function TaskCreateDialog({
               />
             </div>
           )}
+
+          {/* Language Selection */}
+          <LanguageSelector
+            value={language}
+            onChange={setLanguage}
+            label="Output Language"
+            description="The language for AI analysis and results"
+          />
 
           {/* Task Description */}
           <div className="space-y-2">
