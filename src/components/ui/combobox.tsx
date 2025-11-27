@@ -20,6 +20,7 @@ import {
 export interface ComboboxOption {
   value: string
   label: string
+  itemLabel?: React.ReactNode  // Custom label for dropdown item (defaults to label)
 }
 
 interface ComboboxProps {
@@ -84,7 +85,7 @@ export function Combobox({
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  {option.itemLabel ?? option.label}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -1,241 +1,255 @@
-import { useState, useCallback, useEffect } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
+import { ExternalLink, RefreshCw, Eye, EyeOff, Brain, Zap, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { ModelSelector, ModelSelection } from './ModelSelector'
 import { ModelConfig } from '@/types/setupWizard'
-import { ApiModelCard } from './ApiModelCard'
+import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
+import { useState, useEffect, useCallback } from 'react'
 
 interface ModelSettingsCardProps {
   modelConfig: ModelConfig
   setModelConfig: (config: ModelConfig) => void
+  onValidationChange?: (isValid: boolean) => void
 }
 
-export function ModelSettingsCard({ modelConfig, setModelConfig }: ModelSettingsCardProps) {
-  // Ollama models state
+export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationChange }: ModelSettingsCardProps) {
+  const { getProvider } = useLiteLLMProviders()
+  const [showApiKey, setShowApiKey] = useState(false)
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaLoading, setOllamaLoading] = useState(false)
-  const [ollamaError, setOllamaError] = useState<string>('')
+  
+  // Connection test state
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [apiKeyValidated, setApiKeyValidated] = useState(false)
 
-  // API models state (for ApiModelCard)
-  const [apiModels, setApiModels] = useState<string[]>([])
-  const [apiModelsLoading, setApiModelsLoading] = useState(false)
-  const [apiModelsError, setApiModelsError] = useState<string>('')
-  const [detectedProvider, setDetectedProvider] = useState<string>('')
+  // Get provider info for API key URL
+  const providerInfo = getProvider(modelConfig.provider)
+  const isOllama = modelConfig.provider === 'ollama'
+
+  // Determine if model config is valid for saving
+  // Ollama: always valid if model is selected
+  // Other providers: valid only after successful API test
+  const isValidForSave = isOllama 
+    ? Boolean(modelConfig.model) 
+    : Boolean(modelConfig.model && modelConfig.apiKey && apiKeyValidated)
+
+  // Notify parent of validation state changes
+  useEffect(() => {
+    onValidationChange?.(isValidForSave)
+  }, [isValidForSave, onValidationChange])
 
   // Fetch Ollama models
   const fetchOllamaModels = useCallback(async () => {
     setOllamaLoading(true)
-    setOllamaError('')
-
     try {
-      const result = await window.electronAPI.checkOllama()
-
-      if (result.success && result.running && result.models) {
-        const modelNames = result.models.map((model: { name?: string } | string) =>
-          typeof model === 'string' ? model : model.name || ''
-        )
-        setOllamaModels(modelNames)
+      const result = await window.electronAPI.ollamaList()
+      if (result.success && result.models) {
+        setOllamaModels(result.models)
       } else {
-        setOllamaError('Ollama is not running or no models found')
         setOllamaModels([])
       }
     } catch (error) {
-      console.error('Error fetching Ollama models:', error)
-      setOllamaError(error instanceof Error ? error.message : 'Failed to fetch models')
+      console.error('Failed to fetch Ollama models:', error)
       setOllamaModels([])
     } finally {
       setOllamaLoading(false)
     }
   }, [])
 
-  // Fetch API models from provider
-  const fetchApiModels = useCallback(async () => {
-    if (!modelConfig.apiBaseUrl && !modelConfig.apiProvider) {
-      setApiModelsError('Please select a provider first')
-      return
-    }
-
-    if (!modelConfig.apiKey) {
-      setApiModelsError('Please enter API Key first')
-      return
-    }
-
-    setApiModelsLoading(true)
-    setApiModelsError('')
-    setApiModels([])
-
-    try {
-      const result = await window.electronAPI.fetchApiModels({
-        apiBaseUrl: modelConfig.apiBaseUrl || '',
-        apiKey: modelConfig.apiKey,
-      })
-
-      if (result.success && result.models) {
-        setApiModels(result.models)
-        setDetectedProvider(result.provider || 'unknown')
-      } else {
-        setApiModelsError(result.error || 'Failed to fetch models')
-        setDetectedProvider(result.provider || 'unknown')
-      }
-    } catch (error) {
-      console.error('Error fetching API models:', error)
-      setApiModelsError(error instanceof Error ? error.message : 'Failed to fetch models')
-    } finally {
-      setApiModelsLoading(false)
-    }
-  }, [modelConfig.apiBaseUrl, modelConfig.apiKey, modelConfig.apiProvider])
-
-  // Auto-fetch Ollama models when enabled
+  // Fetch Ollama models when provider is Ollama
   useEffect(() => {
-    if (modelConfig.enableLocal) {
+    if (isOllama) {
       fetchOllamaModels()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelConfig.enableLocal])
+  }, [isOllama, fetchOllamaModels])
+
+  // Handle model selection change
+  const handleModelChange = (selection: ModelSelection) => {
+    const newProvider = selection.provider
+    const newModel = selection.model
+
+    // Clear test result and validation when model changes
+    setTestResult(null)
+    setApiKeyValidated(false)
+
+    // Update config based on provider
+    if (newProvider === 'ollama') {
+      setModelConfig({
+        ...modelConfig,
+        provider: newProvider,
+        model: newModel, // Already includes 'ollama/' prefix from ModelSelector
+        apiKey: '',
+        baseUrl: 'http://localhost:11434',
+      })
+    } else {
+      const selectedProviderInfo = getProvider(newProvider)
+      setModelConfig({
+        ...modelConfig,
+        provider: newProvider,
+        model: newModel,
+        baseUrl: selectedProviderInfo?.defaultBaseUrl || '',
+      })
+    }
+  }
+
+  // Test API connection
+  const handleTestConnection = useCallback(async () => {
+    if (!modelConfig.provider || !modelConfig.model) {
+      setTestResult({ success: false, message: 'Please select a provider and model first' })
+      return
+    }
+
+    if (!isOllama && !modelConfig.apiKey) {
+      setTestResult({ success: false, message: 'Please enter an API key' })
+      return
+    }
+
+    setTesting(true)
+    setTestResult(null)
+
+    try {
+      const result = await window.electronAPI.testModelConnection(modelConfig)
+      const success = result.success
+      setTestResult({ 
+        success, 
+        message: result.message || (success ? 'Connection successful!' : 'Connection failed') 
+      })
+      // Mark API key as validated on success
+      if (success) {
+        setApiKeyValidated(true)
+      }
+    } catch (error) {
+      setTestResult({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Connection test failed' 
+      })
+    } finally {
+      setTesting(false)
+    }
+  }, [modelConfig, isOllama])
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Model Configuration</CardTitle>
-        <CardDescription>Configure AI model providers for automation tasks</CardDescription>
+        <CardTitle className="flex items-center gap-2">
+          <Brain className="h-5 w-5" />
+          Model Configuration
+        </CardTitle>
+        <CardDescription>
+          Configure your AI model provider. Ollama runs locally (free), or use cloud APIs.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Local Model (Ollama) Section */}
-        <div
-          className={cn(
-            'rounded-lg border-2 p-4 transition-all',
-            modelConfig.enableLocal
-              ? 'border-primary bg-primary/5'
-              : 'border-border bg-background'
-          )}
-        >
-          <div className="mb-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="enable-local"
-                checked={modelConfig.enableLocal}
-                onCheckedChange={(checked) =>
-                  setModelConfig({ ...modelConfig, enableLocal: checked as boolean })
-                }
+        {/* Model Selector */}
+        <div className="space-y-2">
+          <Label>Model Provider & Model</Label>
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1">
+              <ModelSelector
+                value={{ provider: modelConfig.provider, model: modelConfig.model }}
+                onChange={handleModelChange}
               />
-              <Label htmlFor="enable-local" className="text-base font-semibold">
-                Local Model (Ollama)
-              </Label>
             </div>
-            <p className="ml-6 mt-1 text-sm text-muted-foreground">
-              Use locally hosted Ollama models for privacy and offline access
-            </p>
+            {isOllama && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchOllamaModels}
+                disabled={ollamaLoading}
+                className="shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${ollamaLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            )}
           </div>
+          {isOllama && ollamaModels.length === 0 && !ollamaLoading && (
+            <p className="text-sm text-muted-foreground">
+              No Ollama models found. Run: <code className="bg-muted px-1 rounded">ollama pull llama3.2-vision</code>
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Select Model</Label>
+        {/* API Key (only for non-Ollama providers) */}
+        {!isOllama && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>API Key</Label>
+              {providerInfo?.apiKeyUrl && (
                 <Button
+                  variant="link"
                   size="sm"
-                  variant="ghost"
-                  onClick={fetchOllamaModels}
-                  disabled={!modelConfig.enableLocal || ollamaLoading}
+                  className="h-auto p-0 text-xs"
+                  onClick={() => window.electronAPI.openExternal(providerInfo.apiKeyUrl)}
                 >
-                  <RefreshCw className={cn('h-4 w-4', ollamaLoading && 'animate-spin')} />
+                  Get API Key <ExternalLink className="ml-1 h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Input
+                  type={showApiKey ? 'text' : 'password'}
+                  placeholder="Enter your API key"
+                  value={modelConfig.apiKey}
+                  onChange={(e) => {
+                    setModelConfig({ ...modelConfig, apiKey: e.target.value })
+                    setTestResult(null) // Clear test result when API key changes
+                    setApiKeyValidated(false) // Require re-validation
+                  }}
+                  className="pr-10"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                >
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-
-              {ollamaLoading ? (
-                <div className="flex items-center gap-2 rounded-md bg-muted p-3">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  <span className="text-sm">Loading models...</span>
-                </div>
-              ) : ollamaError ? (
-                <Alert variant="warning">
-                  <AlertDescription>{ollamaError}</AlertDescription>
-                </Alert>
-              ) : (
-                <Select
-                  value={modelConfig.localModel}
-                  onValueChange={(value) => setModelConfig({ ...modelConfig, localModel: value })}
-                  disabled={!modelConfig.enableLocal || ollamaModels.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        ollamaModels.length === 0 ? 'No models found' : 'Select a model'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ollamaModels.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              <p className="text-sm text-muted-foreground">
-                {ollamaModels.length > 0
-                  ? `${ollamaModels.length} model(s) available`
-                  : 'Install models using: ollama pull <model-name>'}
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleTestConnection}
+                disabled={testing || !modelConfig.apiKey || !modelConfig.model}
+                className="shrink-0"
+              >
+                {testing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : testResult?.success ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : testResult?.success === false ? (
+                  <XCircle className="h-4 w-4 text-destructive" />
+                ) : (
+                  <Zap className="h-4 w-4" />
+                )}
+                <span className="ml-1">Test</span>
+              </Button>
+            </div>
+            {testResult && (
+              <p className={`text-sm ${testResult.success ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
+                {testResult.message}
               </p>
-            </div>
+            )}
           </div>
-        </div>
+        )}
 
-        <Separator />
-
-        {/* API Model Section */}
-        <div
-          className={cn(
-            'rounded-lg border-2 p-4 transition-all',
-            modelConfig.enableApi
-              ? 'border-primary bg-primary/5'
-              : 'border-border bg-background'
-          )}
-        >
-          <div className="mb-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="enable-api"
-                checked={modelConfig.enableApi}
-                onCheckedChange={(checked) =>
-                  setModelConfig({ ...modelConfig, enableApi: checked as boolean })
-                }
-              />
-              <Label htmlFor="enable-api" className="text-base font-semibold">
-                API Model (Cloud Services)
-              </Label>
-            </div>
-            <p className="ml-6 mt-1 text-sm text-muted-foreground">
-              100+ models from OpenAI, Anthropic, Google, and more
-            </p>
+        {/* Custom Base URL (optional, for OpenRouter etc.) */}
+        {providerInfo?.requiresBaseUrl && (
+          <div className="space-y-2">
+            <Label>Base URL</Label>
+            <Input
+              placeholder={providerInfo.defaultBaseUrl || 'https://api.example.com/v1'}
+              value={modelConfig.baseUrl}
+              onChange={(e) => setModelConfig({ ...modelConfig, baseUrl: e.target.value })}
+            />
           </div>
-
-          <ApiModelCard
-            modelConfig={modelConfig}
-            setModelConfig={setModelConfig}
-            apiModels={apiModels}
-            apiModelsLoading={apiModelsLoading}
-            apiModelsError={apiModelsError}
-            detectedProvider={detectedProvider}
-            fetchApiModels={fetchApiModels}
-            showCheckbox={false}
-            standalone={false}
-          />
-        </div>
+        )}
       </CardContent>
     </Card>
   )
 }
+

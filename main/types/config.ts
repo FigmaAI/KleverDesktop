@@ -4,24 +4,34 @@
  */
 
 /**
- * Model settings in AppConfig (nested structure)
- * Note: This is different from main/types/model.ts ModelConfig (flat structure)
- * The flat ModelConfig is used by renderer, and handlers convert it to this structure
+ * Unified model settings - no more local/api distinction
+ * All providers (including Ollama) are treated equally via LiteLLM
+ * 
+ * Reference: https://docs.litellm.ai/docs/providers/ollama
+ * - Ollama models use format: "ollama/model_name" (e.g., "ollama/llama3.2-vision")
+ * - Ollama requires api_base: "http://localhost:11434"
+ * - Ollama does not require API key
  */
 export interface ModelSettings {
-  // Dual mode support: both can be enabled simultaneously
+  provider: string;     // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  model: string;        // Model name for LiteLLM (e.g., 'ollama/llama3.2-vision', 'gpt-4o')
+  apiKey: string;       // API key (empty for Ollama)
+  baseUrl: string;      // Base URL (required for Ollama: http://localhost:11434)
+}
+
+/**
+ * Legacy model settings for backward compatibility
+ * @deprecated Will be removed in future versions
+ */
+export interface LegacyModelSettings {
   enableLocal: boolean;
   enableApi: boolean;
-
-  // API model configuration
   api: {
-    provider?: string;  // Provider ID (e.g., 'openai', 'anthropic', 'openrouter')
+    provider?: string;
     baseUrl: string;
     key: string;
     model: string;
   };
-
-  // Local model configuration (Ollama)
   local: {
     baseUrl: string;
     model: string;
@@ -91,23 +101,83 @@ export interface AppConfig {
 }
 
 /**
+ * Legacy AppConfig for migration support
+ * @deprecated Use AppConfig instead
+ */
+export interface LegacyAppConfig {
+  version: string;
+  model: LegacyModelSettings;
+  execution: ExecutionConfig;
+  android: AndroidConfig;
+  web: WebConfig;
+  image: ImageConfig;
+  preferences: PreferencesConfig;
+}
+
+/**
+ * Check if config uses legacy format
+ */
+export function isLegacyConfig(config: unknown): config is LegacyAppConfig {
+  if (!config || typeof config !== 'object') return false;
+  const modelConfig = (config as Record<string, unknown>).model;
+  if (!modelConfig || typeof modelConfig !== 'object') return false;
+  return 'enableLocal' in modelConfig || 'enableApi' in modelConfig;
+}
+
+/**
+ * Migrate legacy config to new format
+ */
+export function migrateConfig(legacy: LegacyAppConfig): AppConfig {
+  const legacyModel = legacy.model;
+  
+  // Determine which model settings to use
+  let provider: string;
+  let model: string;
+  let apiKey: string;
+  let baseUrl: string;
+  
+  if (legacyModel.enableApi && legacyModel.api?.model) {
+    // Use API settings
+    provider = legacyModel.api.provider || 'openai';
+    model = legacyModel.api.model;
+    apiKey = legacyModel.api.key || '';
+    baseUrl = legacyModel.api.baseUrl || '';
+  } else {
+    // Use local (Ollama) settings
+    provider = 'ollama';
+    // Convert to LiteLLM format: ollama/model_name
+    const localModel = legacyModel.local?.model || 'llama3.2-vision';
+    model = localModel.startsWith('ollama/') ? localModel : `ollama/${localModel}`;
+    apiKey = '';
+    baseUrl = 'http://localhost:11434';
+  }
+  
+  return {
+    version: legacy.version || '2.0',
+    model: {
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+    },
+    execution: legacy.execution,
+    android: legacy.android,
+    web: legacy.web,
+    image: legacy.image,
+    preferences: legacy.preferences,
+  };
+}
+
+/**
  * Default configuration values
  */
 export const DEFAULT_CONFIG: AppConfig = {
-  version: '1.0',
+  version: '2.0',
   model: {
-    enableLocal: true,
-    enableApi: false,
-    api: {
-      provider: 'openai',
-      baseUrl: 'https://api.openai.com/v1/chat/completions',
-      key: '',
-      model: 'gpt-4o',
-    },
-    local: {
-      baseUrl: 'http://localhost:11434/v1/chat/completions',
-      model: 'qwen3-vl:4b',
-    },
+    provider: 'ollama',
+    model: 'ollama/llama3.2-vision',  // LiteLLM format
+    apiKey: '',
+    baseUrl: 'http://localhost:11434',  // Required for Ollama
   },
   execution: {
     maxTokens: 4096,
@@ -116,9 +186,9 @@ export const DEFAULT_CONFIG: AppConfig = {
     maxRounds: 20,
   },
   android: {
-    screenshotDir: '/sdcard/Pictures',  // Android API 29+ Scoped Storage: use public Pictures directory
-    xmlDir: '/sdcard/Documents',        // Android API 29+ Scoped Storage: use public Documents directory for XML files
-    sdkPath: '',                         // Android SDK path (auto-detected or set by user in SetupWizard/Settings)
+    screenshotDir: '/sdcard/Pictures',
+    xmlDir: '/sdcard/Documents',
+    sdkPath: '',
   },
   web: {
     browserType: 'chromium',
@@ -144,14 +214,11 @@ export const DEFAULT_CONFIG: AppConfig = {
  * Maps config.json paths to environment variable names
  */
 export const ENV_VAR_MAPPING = {
-  // Model configuration (7 variables)
-  MODEL: 'MODEL', // Computed from enableLocal/enableApi
-  API_PROVIDER: 'model.api.provider',
-  API_BASE_URL: 'model.api.baseUrl',
-  API_KEY: 'model.api.key',
-  API_MODEL: 'model.api.model',
-  LOCAL_BASE_URL: 'model.local.baseUrl',
-  LOCAL_MODEL: 'model.local.model',
+  // Model configuration (4 variables - simplified)
+  MODEL_PROVIDER: 'model.provider',
+  MODEL_NAME: 'model.model',
+  API_KEY: 'model.apiKey',
+  API_BASE_URL: 'model.baseUrl',
 
   // Execution configuration (4 variables)
   MAX_TOKENS: 'execution.maxTokens',

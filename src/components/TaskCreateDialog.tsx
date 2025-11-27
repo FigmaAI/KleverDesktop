@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Calendar, Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
-import { ModelSelector } from './ModelSelector'
+import { ModelSelector, ModelSelection } from './ModelSelector'
 import type { Platform, Task } from '../types/project'
 
 interface TaskCreateDialogProps {
@@ -33,11 +33,30 @@ export function TaskCreateDialog({
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
-  const [selectedModel, setSelectedModel] = useState<
-    { type: 'local' | 'api'; model: string } | undefined
-  >()
+  const [selectedModel, setSelectedModel] = useState<ModelSelection | undefined>()
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
+
+  // Load saved model configuration as default
+  useEffect(() => {
+    const loadSavedConfig = async () => {
+      try {
+        const result = await window.electronAPI.configLoad()
+        if (result.success && result.config?.model) {
+          const { provider, model } = result.config.model
+          if (provider && model) {
+            setSelectedModel({ provider, model })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load saved model config:', error)
+      }
+    }
+    
+    if (open) {
+      loadSavedConfig()
+    }
+  }, [open])
 
   const handleSubmit = async () => {
     if (!goal.trim()) {
@@ -64,7 +83,7 @@ export function TaskCreateDialog({
         goal: taskGoal,
         url: platform === 'web' ? url.trim() : undefined,
         // Include model configuration if user has selected a specific model
-        modelProvider: selectedModel?.type,
+        modelProvider: selectedModel?.provider,
         modelName: selectedModel?.model,
       }
 

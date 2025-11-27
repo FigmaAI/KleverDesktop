@@ -9,7 +9,7 @@ import { IpcMain } from 'electron';
 import * as https from 'https';
 import * as http from 'http';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
-import { ModelConfig } from '../types';
+import { ModelConfig, isLegacyModelConfig, migrateLegacyModelConfig } from '../types/model';
 import { fetchLiteLLMModels } from '../utils/litellm-providers';
 
 /**
@@ -19,21 +19,44 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
   // Test model connection
   ipcMain.handle('model:testConnection', async (_event, config: ModelConfig) => {
     try {
-      // Support both old (modelType) and new (enableLocal/enableApi) formats
-      const configWithType = config as ModelConfig & { modelType?: string };
-      const isLocal = configWithType.modelType === 'local' || config.enableLocal;
-      const url = isLocal ? config.localBaseUrl : config.apiBaseUrl;
-      const model = isLocal ? config.localModel : config.apiModel;
+      // Handle legacy config format
+      let modelConfig: ModelConfig;
+      if (isLegacyModelConfig(config)) {
+        modelConfig = migrateLegacyModelConfig(config);
+      } else {
+        modelConfig = config;
+      }
+
+      // Determine the endpoint URL
+      let url: string;
+      if (modelConfig.provider === 'ollama') {
+        // Ollama uses local endpoint
+        url = modelConfig.baseUrl || 'http://localhost:11434';
+        // Ollama API endpoint for chat
+        url = url.replace(/\/$/, '') + '/api/chat';
+      } else {
+        // For other providers, use the base URL or default OpenAI
+        url = modelConfig.baseUrl || 'https://api.openai.com/v1/chat/completions';
+      }
 
       const urlObj = new globalThis.URL(url);
       const protocol = urlObj.protocol === 'https:' ? https : http;
 
       return new Promise<{ success: boolean; message?: string }>((resolve) => {
-        const postData = JSON.stringify({
-          model: model,
-          messages: [{ role: 'user', content: 'Hello' }],
-          max_tokens: 50,
-        });
+        const isOllama = modelConfig.provider === 'ollama';
+        
+        // Build request payload based on provider
+        const postData = isOllama 
+          ? JSON.stringify({
+              model: modelConfig.model.replace('ollama/', ''),  // Remove prefix for Ollama API
+              messages: [{ role: 'user', content: 'Hello' }],
+              stream: false,
+            })
+          : JSON.stringify({
+              model: modelConfig.model,
+              messages: [{ role: 'user', content: 'Hello' }],
+              max_tokens: 50,
+            });
 
         const options: http.RequestOptions = {
           hostname: urlObj.hostname,
@@ -47,8 +70,9 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
           timeout: 10000,
         };
 
-        if (!isLocal && config.apiKey) {
-          (options.headers as Record<string, string>)['Authorization'] = `Bearer ${config.apiKey}`;
+        // Add authorization header for non-Ollama providers
+        if (!isOllama && modelConfig.apiKey) {
+          (options.headers as Record<string, string>)['Authorization'] = `Bearer ${modelConfig.apiKey}`;
         }
 
         const req = protocol.request(options, (res) => {
@@ -85,27 +109,41 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
 
   // Save model configuration to config.json
   ipcMain.handle('model:saveConfig', async (_event, modelConfig: ModelConfig) => {
+    console.log('[model:saveConfig] === SAVE MODEL CONFIG START ===');
+    console.log('[model:saveConfig] Received config:', JSON.stringify(modelConfig, null, 2));
+    
     try {
+      // Handle legacy config format
+      let config: ModelConfig;
+      if (isLegacyModelConfig(modelConfig)) {
+        console.log('[model:saveConfig] Detected legacy config, migrating...');
+        config = migrateLegacyModelConfig(modelConfig);
+      } else {
+        config = modelConfig;
+      }
+      console.log('[model:saveConfig] Config to save:', JSON.stringify(config, null, 2));
+
       // Load current config (or defaults)
       const appConfig = loadAppConfig();
+      console.log('[model:saveConfig] Loaded current config, model section:', JSON.stringify(appConfig.model, null, 2));
 
-      // Update model configuration from the received ModelConfig
-      // Note: ModelConfig from renderer has flat structure (enableLocal, localBaseUrl, etc.)
-      // We need to convert it to nested structure for AppConfig
-      appConfig.model.enableLocal = modelConfig.enableLocal;
-      appConfig.model.enableApi = modelConfig.enableApi;
-      appConfig.model.local.baseUrl = modelConfig.localBaseUrl;
-      appConfig.model.local.model = modelConfig.localModel;
-      appConfig.model.api.baseUrl = modelConfig.apiBaseUrl;
-      appConfig.model.api.key = modelConfig.apiKey;
-      appConfig.model.api.model = modelConfig.apiModel;
+      // Update model configuration
+      appConfig.model = {
+        provider: config.provider,
+        model: config.model,
+        apiKey: config.apiKey,
+        baseUrl: config.baseUrl,
+      };
+      console.log('[model:saveConfig] Updated model config:', JSON.stringify(appConfig.model, null, 2));
 
       // Save updated config to config.json
       saveAppConfig(appConfig);
+      console.log('[model:saveConfig] === SAVE MODEL CONFIG SUCCESS ===');
 
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[model:saveConfig] === SAVE MODEL CONFIG FAILED ===');
       console.error('[model:saveConfig] Error:', message);
       return { success: false, error: message };
     }

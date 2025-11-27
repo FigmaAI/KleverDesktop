@@ -6,7 +6,6 @@ import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
 import { IntegrationTestStep } from '@/components/IntegrationTestStep'
 import { PageHeader } from '@/components/PageHeader'
-// import { DotPattern } from '@/components/magicui/dot-pattern'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
 import { useModelConfig } from '@/hooks/useModelConfig'
 import { useIntegrationTest } from '@/hooks/useIntegrationTest'
@@ -27,7 +26,7 @@ export function SetupWizard() {
   // Platform tools hook
   const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
 
-  // Model configuration hook
+  // Model configuration hook (simplified)
   const {
     modelConfig,
     setModelConfig,
@@ -35,11 +34,6 @@ export function SetupWizard() {
     ollamaLoading,
     ollamaError,
     fetchOllamaModels,
-    apiModels,
-    apiModelsLoading,
-    apiModelsError,
-    detectedProvider,
-    fetchApiModels,
   } = useModelConfig(currentStep)
 
   // Integration test hook
@@ -101,22 +95,14 @@ export function SetupWizard() {
 
   const handleSaveConfig = async () => {
     try {
-      // Build complete config.json with all settings
+      // Build complete config.json with unified model format
       const config = {
-        version: '1.0',
+        version: '2.0',
         model: {
-          enableLocal: modelConfig.enableLocal,
-          enableApi: modelConfig.enableApi,
-          api: {
-            provider: modelConfig.apiProvider,
-            baseUrl: modelConfig.apiBaseUrl,
-            key: modelConfig.apiKey,
-            model: modelConfig.apiModel,
-          },
-          local: {
-            baseUrl: modelConfig.localBaseUrl,
-            model: modelConfig.localModel,
-          },
+          provider: modelConfig.provider,
+          model: modelConfig.model,
+          apiKey: modelConfig.apiKey,
+          baseUrl: modelConfig.baseUrl,
         },
         execution: {
           maxTokens: 4096,
@@ -169,8 +155,6 @@ export function SetupWizard() {
       toolsStatus.python.installed &&
       toolsStatus.pythonEnv.installed &&
       toolsStatus.androidStudio.installed
-      // Homebrew is now optional
-      // (!isMac || toolsStatus.homebrew.installed)
     )
   }
 
@@ -180,14 +164,11 @@ export function SetupWizard() {
   }
 
   const canProceedFromStep2 = () => {
-    // At least one provider must be enabled
-    if (!modelConfig.enableLocal && !modelConfig.enableApi) return false
+    // Must have provider and model selected
+    if (!modelConfig.provider || !modelConfig.model) return false
 
-    // If local is enabled, must have a model selected
-    if (modelConfig.enableLocal && !modelConfig.localModel) return false
-
-    // If API is enabled, must have provider, key, and model
-    if (modelConfig.enableApi && (!modelConfig.apiProvider || !modelConfig.apiKey || !modelConfig.apiModel)) return false
+    // For non-Ollama providers, API key is required
+    if (modelConfig.provider !== 'ollama' && !modelConfig.apiKey) return false
 
     return true
   }
@@ -247,7 +228,7 @@ export function SetupWizard() {
         </div>
 
         {/* Step Content */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-6">{/* Added flex flex-col */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-6">
           <div className="flex-1 overflow-auto">
             <BlurFade delay={0.1} inView>
               {/* Step 0: Platform Tools Check */}
@@ -276,11 +257,6 @@ export function SetupWizard() {
                   ollamaLoading={ollamaLoading}
                   ollamaError={ollamaError}
                   fetchOllamaModels={fetchOllamaModels}
-                  apiModels={apiModels}
-                  apiModelsLoading={apiModelsLoading}
-                  apiModelsError={apiModelsError}
-                  detectedProvider={detectedProvider}
-                  fetchApiModels={fetchApiModels}
                 />
               )}
 

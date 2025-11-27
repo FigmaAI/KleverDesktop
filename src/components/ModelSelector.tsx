@@ -10,14 +10,14 @@ import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 import { Badge } from '@/components/ui/badge'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
 
+export interface ModelSelection {
+  provider: string   // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  model: string      // Model name (e.g., 'llama3.2-vision', 'gpt-4o')
+}
+
 interface ModelSelectorProps {
-  value?: {
-    type: 'local' | 'api'
-    model: string
-    provider?: string  // For API models, store provider ID
-  }
-  onChange?: (value: { type: 'local' | 'api'; model: string; provider?: string }) => void
-  size?: 'sm' | 'md' | 'lg'
+  value?: ModelSelection
+  onChange?: (value: ModelSelection) => void
   disabled?: boolean
 }
 
@@ -26,213 +26,192 @@ export function ModelSelector({
   onChange,
   disabled = false,
 }: ModelSelectorProps) {
-  const [modelType, setModelType] = useState<'local' | 'api'>(value?.type || 'local')
-  const [localModel, setLocalModel] = useState(value?.type === 'local' ? value.model : '')
-  const [apiModel, setApiModel] = useState(value?.type === 'api' ? value.model : '')
-  const [apiProvider, setApiProvider] = useState(value?.provider || '')
-  const [localModels, setLocalModels] = useState<string[]>([])
-  const [hasLocal, setHasLocal] = useState(false)
-  const [hasApi, setHasApi] = useState(false)
+  const [provider, setProvider] = useState(value?.provider || '')
+  const [model, setModel] = useState(value?.model || '')
+  
+  // Ollama-specific state
+  const [ollamaModels, setOllamaModels] = useState<string[]>([])
+  const [ollamaLoading, setOllamaLoading] = useState(false)
 
-  // Use LiteLLM providers hook for API models
-  const { providers, getProviderModels } = useLiteLLMProviders()
+  // Use LiteLLM providers hook for API providers
+  const { providers, loading: providersLoading, error: providersError, getProviderModels } = useLiteLLMProviders()
 
-  // Get models for selected API provider
-  const providerModels = useMemo(() => {
-    if (!apiProvider) return []
-    return getProviderModels(apiProvider)
-  }, [apiProvider, getProviderModels])
+  // Add Ollama to providers list if not already present
+  const allProviders = useMemo(() => {
+    const hasOllama = providers.some(p => p.id === 'ollama')
+    if (hasOllama) return providers
+    
+    // Add Ollama as first provider
+    return [
+      {
+        id: 'ollama',
+        name: 'Ollama (Local)',
+        requiresBaseUrl: false,
+        apiKeyUrl: 'https://ollama.ai/',
+        models: [],
+        description: 'Run models locally via Ollama - no API key required',
+      },
+      ...providers,
+    ]
+  }, [providers])
 
-  // Model options for API autocomplete
-  const apiModelOptions = useMemo(() => {
-    return providerModels.map(m => m.id).sort()
-  }, [providerModels])
-
-  // Helper to detect provider from model name
-  const detectProviderFromModel = useCallback((modelName: string): string => {
-    if (modelName.startsWith('gpt-')) return 'openai'
-    if (modelName.startsWith('claude-') || modelName.startsWith('anthropic/')) return 'anthropic'
-    if (modelName.startsWith('grok')) return 'xai'
-    if (modelName.startsWith('gemini/')) return 'gemini'
-    if (modelName.startsWith('openrouter/')) return 'openrouter'
-    if (modelName.startsWith('mistral/')) return 'mistral'
-    if (modelName.startsWith('deepseek/')) return 'deepseek'
-    return 'openai' // Default to OpenAI
+  // Fetch Ollama models when Ollama provider is selected
+  const fetchOllamaModels = useCallback(async () => {
+    setOllamaLoading(true)
+    try {
+      const result = await window.electronAPI.ollamaList()
+      if (result.success && result.models) {
+        // Add 'ollama/' prefix to match LiteLLM format
+        setOllamaModels(result.models.map(m => `ollama/${m}`))
+      } else {
+        setOllamaModels([])
+      }
+    } catch {
+      setOllamaModels([])
+    } finally {
+      setOllamaLoading(false)
+    }
   }, [])
 
-  const loadModels = useCallback(async () => {
-    try {
-      // Load config to see what's enabled
-      const configResult = await window.electronAPI.configLoad()
-      if (configResult.success && configResult.config) {
-        const config = configResult.config
-
-        // Check if local is enabled (config.json uses nested camelCase structure)
-        if (config.model?.enableLocal && config.model?.local?.model) {
-          setHasLocal(true)
-          setLocalModel(config.model.local.model)
-
-          // Try to fetch Ollama models
-          const ollamaResult = await window.electronAPI.ollamaList()
-          if (ollamaResult.success && ollamaResult.models) {
-            setLocalModels(ollamaResult.models)
-          } else {
-            setLocalModels([config.model.local.model])
-          }
-        }
-
-        // Check if API is enabled
-        if (config.model?.enableApi && config.model?.api?.model) {
-          setHasApi(true)
-          setApiModel(config.model.api.model)
-
-          // Try to detect provider from model name
-          const modelName = config.model.api.model
-          const detectedProvider = detectProviderFromModel(modelName)
-          if (detectedProvider) {
-            setApiProvider(detectedProvider)
-          }
-        }
-
-        // Set default model type: API first if available, otherwise Local
-        if (config.model?.enableApi && config.model?.api?.model) {
-          setModelType('api')
-        } else if (config.model?.enableLocal && config.model?.local?.model) {
-          setModelType('local')
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load models:', error)
-    }
-  }, [detectProviderFromModel])
-
-  // Load available models from config
+  // Fetch Ollama models when provider changes to 'ollama'
   useEffect(() => {
-    // Initial data loading is a valid use case for setState in effect
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadModels()
-  }, [loadModels])
-
-  // Notify parent of changes
-  useEffect(() => {
-    if (onChange) {
-      if (modelType === 'local' && localModel) {
-        onChange({ type: 'local', model: localModel })
-      } else if (modelType === 'api' && apiModel) {
-        onChange({ type: 'api', model: apiModel, provider: apiProvider })
-      }
+    if (provider === 'ollama') {
+      fetchOllamaModels()
     }
-  }, [modelType, localModel, apiModel, apiProvider, onChange])
+  }, [provider, fetchOllamaModels])
 
-  // Prepare combobox options for API models with badges
-  const apiComboboxOptions: ComboboxOption[] = useMemo(() => {
-    return apiModelOptions.map((option) => ({
-      value: option,
-      label: option,
-    }))
-  }, [apiModelOptions])
+  // Sync with external value changes
+  useEffect(() => {
+    if (value?.provider !== undefined && value.provider !== provider) {
+      setProvider(value.provider)
+    }
+    if (value?.model !== undefined && value.model !== model) {
+      setModel(value.model)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value?.provider, value?.model]) // Only depend on value properties, not internal state (intentional)
+
+  // Get models for current provider
+  const currentModels = useMemo(() => {
+    if (!provider) return []
+    if (provider === 'ollama') {
+      return ollamaModels
+    }
+    return getProviderModels(provider).map(m => m.id)
+  }, [provider, ollamaModels, getProviderModels])
+
+  // Get model info for badges (API providers only)
+  const getModelInfo = useCallback((modelId: string) => {
+    if (provider === 'ollama') return null
+    const models = getProviderModels(provider)
+    return models.find(m => m.id === modelId)
+  }, [provider, getProviderModels])
+
+  // Notify parent of changes - only when user makes a selection (not on sync)
+  const notifyChange = useCallback((p: string, m: string) => {
+    if (onChange && p && m) {
+      onChange({ provider: p, model: m })
+    }
+  }, [onChange])
+
+  // Prepare combobox options for models with badges in dropdown
+  const modelOptions: ComboboxOption[] = useMemo(() => {
+    return currentModels.map((m) => {
+      const modelInfo = getModelInfo(m)
+      const hasBadges = modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens)
+      
+      return {
+        value: m,
+        label: m, // Simple label for selected display
+        itemLabel: hasBadges ? (
+          <div className="flex items-center justify-between w-full gap-2">
+            <span className="truncate">{m}</span>
+            <div className="flex gap-1 shrink-0">
+              {modelInfo?.supportsVision && (
+                <Badge variant="default" className="text-xs px-1 py-0">Vision</Badge>
+              )}
+              {modelInfo?.maxInputTokens && (
+                <Badge variant="secondary" className="text-xs px-1 py-0">
+                  {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
+                </Badge>
+              )}
+            </div>
+          </div>
+        ) : m, // Just the model name if no badges
+      }
+    })
+  }, [currentModels, getModelInfo])
+
+  // Handle provider change
+  const handleProviderChange = (newProvider: string) => {
+    setProvider(newProvider)
+    setModel('') // Reset model when provider changes
+    // Don't notify yet - wait for model selection
+  }
+
+  // Handle model change
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel)
+    // Notify parent when model is selected
+    if (provider && newModel) {
+      notifyChange(provider, newModel)
+    }
+  }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Model Type Selection */}
-      {(hasLocal || hasApi) && (
-        <Select
-          value={modelType}
-          onValueChange={(value) => setModelType(value as 'local' | 'api')}
-          disabled={disabled}
-        >
-          <SelectTrigger className="w-[104px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {hasLocal && (
-              <SelectItem value="local">🖥️ Local</SelectItem>
-            )}
-            {hasApi && (
-              <SelectItem value="api">☁️ API</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-      )}
-
-      {/* Local Model Selection */}
-      {modelType === 'local' && localModels.length > 0 && (
-        <Select
-          value={localModel}
-          onValueChange={(value) => setLocalModel(value || '')}
-          disabled={disabled}
-        >
-          <SelectTrigger className="relative w-[200px]">
-            <SelectValue placeholder="Select model" />
-          </SelectTrigger>
-          <SelectContent>
-            {localModels.map((m) => (
-              <SelectItem key={m} value={m}>
-                {m}
+    <div className="flex items-center gap-2 w-full">
+      {/* Provider Selection */}
+      <Select
+        value={provider}
+        onValueChange={handleProviderChange}
+        disabled={disabled}
+      >
+        <SelectTrigger className="w-[120px] shrink-0">
+          <SelectValue placeholder="Select provider" />
+        </SelectTrigger>
+        <SelectContent>
+          {providersLoading ? (
+            <SelectItem value="_loading" disabled>Loading providers...</SelectItem>
+          ) : providersError ? (
+            <SelectItem value="_error" disabled>Error: {providersError}</SelectItem>
+          ) : allProviders.length === 0 ? (
+            <SelectItem value="_empty" disabled>No providers available</SelectItem>
+          ) : (
+            allProviders.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.id === 'ollama' ? '🖥️ ' : '☁️ '}{p.name}
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+            ))
+          )}
+        </SelectContent>
+      </Select>
 
-      {/* API Model Selection - Provider + Model */}
-      {modelType === 'api' && hasApi && (
-        <>
-          {/* Provider Selection */}
-          <Select
-            value={apiProvider}
-            onValueChange={(value) => {
-              setApiProvider(value || '')
-              setApiModel('') // Reset model when provider changes
-            }}
-            disabled={disabled}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Provider" />
-            </SelectTrigger>
-            <SelectContent>
-              {providers.map((provider) => (
-                <SelectItem key={provider.id} value={provider.id}>
-                  {provider.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Model Selection with Combobox */}
-          {apiProvider && (
-            <div className="relative w-[200px]">
-              <Combobox
-                options={apiComboboxOptions}
-                value={apiModel}
-                onValueChange={(value) => setApiModel(value)}
-                placeholder="Model"
-                searchPlaceholder="Search models..."
-                emptyText="No models found"
-                disabled={disabled}
-                className="w-full"
-              />
-              {/* Show badges for selected model */}
-              {apiModel && (() => {
-                const modelInfo = providerModels.find(m => m.id === apiModel)
-                return modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens) ? (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
-                    {modelInfo.supportsVision && (
-                      <Badge variant="default" className="text-xs">
-                        Vision
-                      </Badge>
-                    )}
-                    {modelInfo.maxInputTokens && (
-                      <Badge variant="secondary" className="text-xs">
-                        {(modelInfo.maxInputTokens / 1000).toFixed(0)}K
-                      </Badge>
-                    )}
-                  </div>
-                ) : null
-              })()}
+      {/* Model Selection */}
+      {provider && (
+        <div className="min-w-[220px]">
+          {ollamaLoading ? (
+            <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
+              <span className="text-sm text-muted-foreground">Loading models...</span>
+            </div>
+          ) : currentModels.length > 0 ? (
+            <Combobox
+              options={modelOptions}
+              value={model}
+              onValueChange={handleModelChange}
+              placeholder="Select model"
+              searchPlaceholder="Search models..."
+              emptyText={provider === 'ollama' ? 'No Ollama models found. Run: ollama pull llama3.2-vision' : 'No models found'}
+              disabled={disabled}
+              className="w-full"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
+              <span className="text-sm text-muted-foreground">
+                {provider === 'ollama' ? 'No models installed' : 'No models available'}
+              </span>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   )

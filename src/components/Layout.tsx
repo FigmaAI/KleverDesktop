@@ -87,6 +87,11 @@ export function Layout() {
     return () => document.removeEventListener('keydown', down)
   }, [navigate, setTerminalOpen])
 
+  // Debug: log location changes
+  useEffect(() => {
+    console.log('[Layout] Location changed:', location.pathname, location.hash)
+  }, [location.pathname, location.hash])
+
   const dockItems = [
     {
       icon: Home,
@@ -150,7 +155,9 @@ export function Layout() {
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => {
+                        console.log('[Layout] Button clicked:', item.label, 'current:', location.pathname, 'target:', item.path)
                         if (item.path) {
+                          console.log('[Layout] Calling navigate to:', item.path)
                           navigate(item.path)
                         } else if (item.onClick) {
                           item.onClick()

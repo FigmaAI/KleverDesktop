@@ -54,6 +54,7 @@ export function Settings() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<SettingsSection>('model')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [modelConfigValid, setModelConfigValid] = useState(true) // Track model config validation
   const { toast } = useToast()
 
   // Section refs for scrolling
@@ -94,7 +95,7 @@ export function Settings() {
     saveSettings,
   } = useSettings()
 
-  // Auto-save with debounce
+  // Track unsaved changes
   const [hasChanges, setHasChanges] = useState(false)
   const isInitialLoad = useRef(true)
   const settingsSnapshot = useRef<string>('')
@@ -125,7 +126,7 @@ export function Settings() {
     }
   }, [saveError, toast])
 
-  // Mark as changed whenever settings update (after initial load)
+  // Detect changes (compare with saved snapshot)
   useEffect(() => {
     if (!loading && !isInitialLoad.current) {
       const currentSnapshot = JSON.stringify({
@@ -134,33 +135,45 @@ export function Settings() {
         agentSettings,
         imageSettings,
       })
-
-      if (currentSnapshot !== settingsSnapshot.current) {
-        const timeoutId = setTimeout(() => {
-          setHasChanges(true)
-        }, 0)
-        return () => clearTimeout(timeoutId)
-      }
+      setHasChanges(currentSnapshot !== settingsSnapshot.current)
     }
   }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
 
-  // Auto-save after changes
-  useEffect(() => {
-    if (hasChanges && !loading) {
-      const timeoutId = window.setTimeout(() => {
-        saveSettings()
-        settingsSnapshot.current = JSON.stringify({
-          modelConfig,
-          platformSettings,
-          agentSettings,
-          imageSettings,
-        })
-        setHasChanges(false)
-      }, 1000) // Auto-save after 1 second of no changes
-
-      return () => window.clearTimeout(timeoutId)
+  // Manual save handler
+  const handleManualSave = useCallback(async () => {
+    if (!modelConfigValid) {
+      toast({ 
+        title: 'Cannot Save', 
+        description: 'Please test your API connection before saving.' 
+      })
+      return
     }
-  }, [hasChanges, loading, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings])
+    
+    await saveSettings()
+    // Update snapshot after successful save
+    settingsSnapshot.current = JSON.stringify({
+      modelConfig,
+      platformSettings,
+      agentSettings,
+      imageSettings,
+    })
+    setHasChanges(false)
+  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, toast])
+
+  // Keyboard shortcut: Cmd/Ctrl + S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (hasChanges && modelConfigValid && !saving) {
+          handleManualSave()
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [hasChanges, modelConfigValid, saving, handleManualSave])
 
   const handleResetConfig = async () => {
     setIsResetting(true)
@@ -184,13 +197,6 @@ export function Settings() {
       setErrorMessage(`An error occurred while resetting configuration: ${errorMsg}`)
       setIsResetting(false)
     }
-  }
-
-
-
-  const handleManualSave = async () => {
-    await saveSettings()
-    setHasChanges(false)
   }
 
   const scrollToSection = useCallback((section: SettingsSection) => {
@@ -263,9 +269,21 @@ export function Settings() {
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <Button size="sm" onClick={handleManualSave} disabled={!hasChanges || saving}>
+            <Button 
+              size="sm" 
+              onClick={handleManualSave} 
+              disabled={!hasChanges || saving || !modelConfigValid}
+              variant={hasChanges ? 'default' : 'outline'}
+            >
               <Save className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">{saving ? 'Saving...' : hasChanges ? 'Save' : 'Saved'}</span>
+              <span className="hidden sm:inline ml-2">
+                {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
+              </span>
+              {hasChanges && (
+                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-70">
+                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>S
+                </kbd>
+              )}
             </Button>
           </>
         }
@@ -294,7 +312,11 @@ export function Settings() {
             {/* Model Configuration */}
             <BlurFade delay={0.1}>
               <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
-                <ModelSettingsCard modelConfig={modelConfig} setModelConfig={setModelConfig} />
+                <ModelSettingsCard 
+                  modelConfig={modelConfig} 
+                  setModelConfig={setModelConfig}
+                  onValidationChange={setModelConfigValid}
+                />
               </div>
             </BlurFade>
 

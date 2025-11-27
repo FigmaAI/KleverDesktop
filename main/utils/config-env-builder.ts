@@ -1,43 +1,33 @@
 /**
  * Environment variable builder from AppConfig
  *
- * Converts config.json to 23 environment variables for appagent Python scripts
+ * Converts config.json to environment variables for appagent Python scripts
  * These env vars serve as default values that can be overridden by CLI parameters
+ * 
+ * Reference: https://docs.litellm.ai/docs/providers/ollama
+ * - Ollama models use format: "ollama/model_name"
+ * - Ollama requires api_base: "http://localhost:11434"
  */
 
 import { AppConfig } from '../types/config';
 
 /**
  * Build environment variables from AppConfig
- * Returns a Record of 23 environment variable key-value pairs
+ * Returns environment variables for Python appagent scripts
  *
  * @param config - Application configuration from config.json
- * @returns Environment variables object (23 variables)
+ * @returns Environment variables object
  */
 export function buildEnvFromConfig(config: AppConfig): Record<string, string> {
-  // Determine MODEL value based on enabled flags
-  // If both enabled, API takes precedence
-  // If neither enabled, default to 'local'
-  let modelProvider: string;
-  if (config.model.enableApi) {
-    modelProvider = 'api';
-  } else if (config.model.enableLocal) {
-    modelProvider = 'local';
-  } else {
-    // Fallback: if neither is enabled, default to local
-    modelProvider = 'local';
-  }
-
   return {
     // ========================================
-    // Model Configuration (6 variables)
+    // Model Configuration (4 variables - unified)
     // ========================================
-    MODEL: modelProvider,
-    API_BASE_URL: config.model.api.baseUrl,
-    API_KEY: config.model.api.key,
-    API_MODEL: config.model.api.model,
-    LOCAL_BASE_URL: config.model.local.baseUrl,
-    LOCAL_MODEL: config.model.local.model,
+    // LiteLLM uses model name directly (e.g., "ollama/llama3.2-vision", "gpt-4o")
+    MODEL_PROVIDER: config.model.provider,
+    MODEL_NAME: config.model.model,
+    API_KEY: config.model.apiKey,
+    API_BASE_URL: config.model.baseUrl,
 
     // ========================================
     // Execution Configuration (4 variables)
@@ -91,24 +81,22 @@ export function logEnvVars(envVars: Record<string, string>): void {
     masked.API_KEY = masked.API_KEY.slice(0, 8) + '...';
   }
 
-  console.log('[config-env-builder] Environment variables (23 total):');
+  console.log('[config-env-builder] Environment variables:');
   console.log(JSON.stringify(masked, null, 2));
 }
 
 /**
- * Validate that all 23 required environment variables are present
+ * Validate that all required environment variables are present
  * @param envVars - Environment variables object
- * @returns true if all 23 variables exist
+ * @returns true if all required variables exist
  */
 export function validateEnvVars(envVars: Record<string, string>): boolean {
   const requiredVars = [
-    // Model (6)
-    'MODEL',
-    'API_BASE_URL',
+    // Model (4)
+    'MODEL_PROVIDER',
+    'MODEL_NAME',
     'API_KEY',
-    'API_MODEL',
-    'LOCAL_BASE_URL',
-    'LOCAL_MODEL',
+    'API_BASE_URL',
     // Execution (4)
     'MAX_TOKENS',
     'TEMPERATURE',

@@ -1,9 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { ModelConfig } from '@/types/setupWizard'
 
-// AppConfig type from electron.d.ts (available globally, but we reference it for type annotations)
-type AppConfig = Parameters<typeof window.electronAPI.configSave>[0]
-
 export interface PlatformSettings {
   // Android settings
   androidScreenshotDir: string
@@ -34,26 +31,20 @@ export interface ImageSettings {
   imageQuality: number
 }
 
-
-
 export function useSettings() {
-  // Model configuration
+  // Unified model configuration
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    enableLocal: true,
-    enableApi: false,
-    apiProvider: '',
-    apiBaseUrl: 'https://api.openai.com/v1/chat/completions',
+    provider: 'ollama',
+    model: 'ollama/llama3.2-vision',
     apiKey: '',
-    apiModel: '',
-    localBaseUrl: 'http://localhost:11434/v1/chat/completions',
-    localModel: 'qwen3-vl:4b',
+    baseUrl: 'http://localhost:11434',
   })
 
   // Platform settings
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
     androidScreenshotDir: '/sdcard/Pictures',
     androidXmlDir: '/sdcard/Documents',
-    androidSdkPath: '/Volumes/Backup/Android-SDK',
+    androidSdkPath: '',
     webBrowserType: 'chromium',
     webHeadless: false,
     webViewportWidth: 1280,
@@ -79,8 +70,6 @@ export function useSettings() {
     imageQuality: 85,
   })
 
-
-
   // Loading states
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -89,30 +78,31 @@ export function useSettings() {
 
   // Load all settings from config
   const loadSettings = useCallback(async () => {
+    console.log('[useSettings] === LOADING SETTINGS ===')
     setLoading(true)
     try {
       const result = await window.electronAPI.configLoad()
+      console.log('[useSettings] configLoad result:', result.success)
 
       if (result.success && result.config) {
         const config = result.config
+        console.log('[useSettings] Loaded model config from file:', JSON.stringify(config.model, null, 2))
 
-        // Load model config
-        setModelConfig({
-          enableLocal: config.model?.enableLocal ?? true,
-          enableApi: config.model?.enableApi ?? false,
-          apiProvider: config.model?.api?.provider || '',
-          apiBaseUrl: config.model?.api?.baseUrl || 'https://api.openai.com/v1/chat/completions',
-          apiKey: config.model?.api?.key || '',
-          apiModel: config.model?.api?.model || '',
-          localBaseUrl: config.model?.local?.baseUrl || 'http://localhost:11434/v1/chat/completions',
-          localModel: config.model?.local?.model || 'qwen3-vl:4b',
-        })
+        // Load unified model config
+        const loadedModelConfig = {
+          provider: config.model?.provider || 'ollama',
+          model: config.model?.model || 'ollama/llama3.2-vision',
+          apiKey: config.model?.apiKey || '',
+          baseUrl: config.model?.baseUrl || 'http://localhost:11434',
+        }
+        console.log('[useSettings] Setting modelConfig to:', JSON.stringify(loadedModelConfig, null, 2))
+        setModelConfig(loadedModelConfig)
 
         // Load platform settings
         setPlatformSettings({
           androidScreenshotDir: config.android?.screenshotDir || '/sdcard/Pictures',
           androidXmlDir: config.android?.xmlDir || '/sdcard/Documents',
-          androidSdkPath: config.android?.sdkPath || '/Volumes/Backup/Android-SDK',
+          androidSdkPath: config.android?.sdkPath || '',
           webBrowserType: config.web?.browserType || 'chromium',
           webHeadless: config.web?.headless ?? false,
           webViewportWidth: config.web?.viewportWidth || 1280,
@@ -145,84 +135,64 @@ export function useSettings() {
     }
   }, [])
 
-
-
   // Save all settings to config
   const saveSettings = useCallback(async () => {
+    console.log('[useSettings] === SAVING SETTINGS ===')
+    console.log('[useSettings] Current modelConfig:', JSON.stringify(modelConfig, null, 2))
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
 
     try {
-      // IMPORTANT: Load current config first to preserve all existing fields
-      // This prevents overwriting fields that aren't in our React state
-      const currentResult = await window.electronAPI.configLoad()
-      const currentConfig: Partial<AppConfig> = currentResult.success && currentResult.config
-        ? currentResult.config
-        : { version: '1.0' }
-
-      // Build updated config by merging with current config
+      // Build config with unified model format
       const config = {
-        ...currentConfig, // Preserve any existing fields
-        version: '1.0',
+        version: '2.0',
         model: {
-          ...(currentConfig.model || {}), // Preserve existing model fields (e.g., MODEL)
-          enableLocal: modelConfig.enableLocal,
-          enableApi: modelConfig.enableApi,
-          api: {
-            ...(currentConfig.model?.api || {}), // Preserve existing API fields
-            provider: modelConfig.apiProvider,
-            baseUrl: modelConfig.apiBaseUrl,
-            key: modelConfig.apiKey,
-            model: modelConfig.apiModel,
-          },
-          local: {
-            ...(currentConfig.model?.local || {}), // Preserve existing local fields
-            baseUrl: modelConfig.localBaseUrl,
-            model: modelConfig.localModel,
-          },
+          provider: modelConfig.provider,
+          model: modelConfig.model,
+          apiKey: modelConfig.apiKey,
+          baseUrl: modelConfig.baseUrl,
         },
         execution: {
-          ...(currentConfig.execution || {}), // Preserve existing execution fields
           maxTokens: agentSettings.maxTokens,
           temperature: agentSettings.temperature,
           requestInterval: agentSettings.requestInterval,
           maxRounds: agentSettings.maxRounds,
         },
         android: {
-          ...(currentConfig.android || {}), // Preserve existing android fields
           screenshotDir: platformSettings.androidScreenshotDir,
           xmlDir: platformSettings.androidXmlDir,
           sdkPath: platformSettings.androidSdkPath,
         },
         web: {
-          ...(currentConfig.web || {}), // Preserve existing web fields
           browserType: platformSettings.webBrowserType,
           headless: platformSettings.webHeadless,
           viewportWidth: platformSettings.webViewportWidth,
           viewportHeight: platformSettings.webViewportHeight,
         },
         image: {
-          ...(currentConfig.image || {}), // Preserve existing image fields
           maxWidth: imageSettings.imageMaxWidth,
           maxHeight: imageSettings.imageMaxHeight,
           quality: imageSettings.imageQuality,
           optimize: imageSettings.optimizeImages,
         },
         preferences: {
-          ...(currentConfig.preferences || {}), // Preserve existing preferences fields
           darkMode: agentSettings.darkMode,
           minDist: agentSettings.minDist,
           docRefine: agentSettings.docRefine,
         },
       }
 
+      console.log('[useSettings] Calling configSave with model:', JSON.stringify(config.model, null, 2))
       const result = await window.electronAPI.configSave(config)
+      console.log('[useSettings] configSave result:', result)
 
       if (result.success) {
+        console.log('[useSettings] === SAVE SUCCESS ===')
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 3000) // Clear success message after 3s
       } else {
+        console.error('[useSettings] === SAVE FAILED ===', result.error)
         setSaveError(result.error || 'Failed to save settings')
       }
     } catch (error) {

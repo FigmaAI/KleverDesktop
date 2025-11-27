@@ -32,6 +32,7 @@ if (!window.electronAPI) {
       await new Promise((resolve) => setTimeout(resolve, 2000))
       return { success: true }
     },
+    envReset: async () => ({ success: true }),
 
     // Python Runtime Management (Post-Install Download)
     pythonCheckInstalled: async () => ({
@@ -56,6 +57,7 @@ if (!window.electronAPI) {
     installAndroidStudio: async () => ({ success: true }),
     installPython: async () => ({ success: true }),
     checkHomebrew: async () => ({ success: true, version: '4.0.0' }),
+    checkChocolatey: async () => ({ success: true, version: '2.0.0' }),
     checkOllama: async () => ({ success: true, running: true, models: [] }),
     checkAndroidStudio: async () => ({ success: true, version: 'installed' }),
     checkPlaywright: async () => ({ success: true }),
@@ -64,12 +66,12 @@ if (!window.electronAPI) {
     configLoad: async () => ({
       success: true,
       config: {
-        version: '1.0',
+        version: '2.0',
         model: {
-          enableLocal: true,
-          enableApi: false,
-          api: { baseUrl: 'https://api.openai.com/v1/chat/completions', key: '', model: 'gpt-4o' },
-          local: { baseUrl: 'http://localhost:11434/v1/chat/completions', model: 'qwen3-vl:4b' },
+          provider: 'ollama',
+          model: 'ollama/llama3.2-vision',
+          apiKey: '',
+          baseUrl: 'http://localhost:11434',
         },
         execution: { maxTokens: 4096, temperature: 0.0, requestInterval: 10, maxRounds: 20 },
         android: { screenshotDir: '/sdcard/Pictures', xmlDir: '/sdcard/Documents', sdkPath: '' },
@@ -96,6 +98,7 @@ if (!window.electronAPI) {
     },
     openFolder: async () => ({ success: true }),
     openPath: async () => ({ success: true }),
+    clipboardWriteText: async () => ({ success: true }),
     fileRead: async () => ({ success: true, content: '' }),
     fileExists: async () => ({ success: true, exists: true }),
     fileReadImage: async (_filePath: string, _baseDir?: string) => ({ success: true, dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' }),

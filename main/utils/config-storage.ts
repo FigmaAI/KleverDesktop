@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { app } from 'electron';
-import { AppConfig, DEFAULT_CONFIG } from '../types/config';
+import { AppConfig, DEFAULT_CONFIG, isLegacyConfig, migrateConfig } from '../types/config';
 
 /**
  * Get the path to config.json in user data directory
@@ -24,21 +24,42 @@ export function getConfigJsonPath(): string {
 /**
  * Load application configuration from config.json
  * If file doesn't exist, returns default configuration
+ * Automatically migrates legacy configs to new format
  * @returns Parsed config object
  */
 export function loadAppConfig(): AppConfig {
   const configPath = getConfigJsonPath();
+  console.log('[config-storage] loadAppConfig called');
+  console.log('[config-storage] Config path:', configPath);
 
   if (!fs.existsSync(configPath)) {
+    console.log('[config-storage] Config file does not exist, returning defaults');
     return { ...DEFAULT_CONFIG };
   }
 
   try {
     const fileContents = fs.readFileSync(configPath, 'utf8');
-    const config = JSON.parse(fileContents) as AppConfig;
+    const rawConfig = JSON.parse(fileContents);
+    console.log('[config-storage] Loaded model config from file:', JSON.stringify(rawConfig.model, null, 2));
+
+    // Check if this is a legacy config and migrate if needed
+    if (isLegacyConfig(rawConfig)) {
+      console.log('[config-storage] Detected legacy config format, migrating...');
+      const migratedConfig = migrateConfig(rawConfig);
+      
+      // Save the migrated config
+      saveAppConfig(migratedConfig);
+      console.log('[config-storage] Config migration complete');
+      
+      return migratedConfig;
+    }
+
+    const config = rawConfig as AppConfig;
 
     // Merge with defaults to ensure all fields exist (for version upgrades)
-    return mergeWithDefaults(config, DEFAULT_CONFIG);
+    const mergedConfig = mergeWithDefaults(config, DEFAULT_CONFIG);
+    console.log('[config-storage] Returning merged config, model section:', JSON.stringify(mergedConfig.model, null, 2));
+    return mergedConfig;
   } catch (error) {
     console.error('[config-storage] Error loading config.json:', error);
     return { ...DEFAULT_CONFIG };
@@ -51,16 +72,27 @@ export function loadAppConfig(): AppConfig {
  */
 export function saveAppConfig(config: AppConfig): void {
   const configPath = getConfigJsonPath();
+  console.log('[config-storage] saveAppConfig called');
+  console.log('[config-storage] Config path:', configPath);
 
   // Ensure parent directory exists
   const parentDir = path.dirname(configPath);
   if (!fs.existsSync(parentDir)) {
+    console.log('[config-storage] Creating parent directory:', parentDir);
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
   try {
     const jsonStr = JSON.stringify(config, null, 2);
+    console.log('[config-storage] Writing config to file...');
+    console.log('[config-storage] Model section being saved:', JSON.stringify(config.model, null, 2));
     fs.writeFileSync(configPath, jsonStr, 'utf8');
+    console.log('[config-storage] Config saved successfully to:', configPath);
+    
+    // Verify the save by reading back
+    const savedContent = fs.readFileSync(configPath, 'utf8');
+    const savedConfig = JSON.parse(savedContent);
+    console.log('[config-storage] Verified saved model config:', JSON.stringify(savedConfig.model, null, 2));
   } catch (error) {
     console.error('[config-storage] Error saving config.json:', error);
     throw error;

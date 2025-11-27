@@ -17,22 +17,30 @@ import { AppConfig } from '../types/config';
 export function registerConfigHandlers(ipcMain: IpcMain): void {
   // Load config from config.json
   ipcMain.handle('config:load', async () => {
+    console.log('[config:load] === LOAD CONFIG START ===');
     try {
       const config = loadAppConfig();
+      console.log('[config:load] Loaded model config:', JSON.stringify(config.model, null, 2));
+      console.log('[config:load] === LOAD CONFIG SUCCESS ===');
       return { success: true, config };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[config:load] === LOAD CONFIG FAILED ===', message);
       return { success: false, error: message };
     }
   });
 
   // Save config to config.json
   ipcMain.handle('config:save', async (_event, config: AppConfig) => {
+    console.log('[config:save] === SAVE CONFIG START ===');
+    console.log('[config:save] Received model config:', JSON.stringify(config.model, null, 2));
     try {
       saveAppConfig(config);
+      console.log('[config:save] === SAVE CONFIG SUCCESS ===');
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[config:save] === SAVE CONFIG FAILED ===', message);
       return { success: false, error: message };
     }
   });
@@ -52,12 +60,15 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
       try {
         const config = loadAppConfig();
 
-        // Check if at least one model is configured
-        if (config.model.enableLocal && config.model.local.baseUrl && config.model.local.model) {
-          hasValidConfig = true;
-        }
-        if (config.model.enableApi && config.model.api.baseUrl && config.model.api.key && config.model.api.model) {
-          hasValidConfig = true;
+        // New unified format: check if provider and model are set
+        if (config.model.provider && config.model.model) {
+          // For Ollama, no API key required
+          if (config.model.provider === 'ollama') {
+            hasValidConfig = true;
+          } else {
+            // For other providers, API key is typically required
+            hasValidConfig = !!config.model.apiKey;
+          }
         }
       } catch {
         hasValidConfig = false;
@@ -86,17 +97,17 @@ export function registerConfigHandlers(ipcMain: IpcMain): void {
 
       const config = loadAppConfig();
 
-      // Check if at least one model is configured
+      // Check if model is configured (unified format)
       let isConfigured = false;
 
-      // Local model: requires baseUrl and model
-      if (config.model.enableLocal && config.model.local.baseUrl && config.model.local.model) {
-        isConfigured = true;
-      }
-
-      // API model: requires key and model (baseUrl is optional for most providers)
-      if (config.model.enableApi && config.model.api.key && config.model.api.model) {
-        isConfigured = true;
+      if (config.model.provider && config.model.model) {
+        // For Ollama, no API key required
+        if (config.model.provider === 'ollama') {
+          isConfigured = true;
+        } else {
+          // For other providers, API key is typically required
+          isConfigured = !!config.model.apiKey;
+        }
       }
 
       return {

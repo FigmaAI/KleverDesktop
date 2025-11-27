@@ -8,21 +8,17 @@ interface OllamaModel {
   modified?: string;
 }
 
+/**
+ * Unified AppConfig - no more local/api distinction
+ * All providers (including Ollama) are treated equally via LiteLLM
+ */
 interface AppConfig {
   version: string;
   model: {
-    enableLocal: boolean;
-    enableApi: boolean;
-    api: {
-      provider?: string;
-      baseUrl: string;
-      key: string;
-      model: string;
-    };
-    local: {
-      baseUrl: string;
-      model: string;
-    };
+    provider: string;     // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+    model: string;        // Model name for LiteLLM (e.g., 'ollama/llama3.2-vision', 'gpt-4o')
+    apiKey: string;       // API key (empty for Ollama)
+    baseUrl: string;      // Base URL (required for Ollama: http://localhost:11434)
   };
   execution: {
     maxTokens: number;
@@ -52,6 +48,16 @@ interface AppConfig {
     minDist: number;
     docRefine: boolean;
   };
+}
+
+/**
+ * Unified ModelConfig for IPC calls
+ */
+interface ModelConfig {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseUrl: string;
 }
 
 declare global {
@@ -159,25 +165,9 @@ declare global {
         freeMemory: number;
       }>;
 
-      // Model configuration and testing
-      testModelConnection: (config: {
-        enableLocal: boolean;
-        enableApi: boolean;
-        apiBaseUrl: string;
-        apiKey: string;
-        apiModel: string;
-        localBaseUrl: string;
-        localModel: string;
-      }) => Promise<{ success: boolean; message?: string }>;
-      saveModelConfig: (config: {
-        enableLocal: boolean;
-        enableApi: boolean;
-        apiBaseUrl: string;
-        apiKey: string;
-        apiModel: string;
-        localBaseUrl: string;
-        localModel: string;
-      }) => Promise<{ success: boolean; error?: string }>;
+      // Model configuration and testing (unified format)
+      testModelConnection: (config: ModelConfig) => Promise<{ success: boolean; message?: string }>;
+      saveModelConfig: (config: ModelConfig) => Promise<{ success: boolean; error?: string }>;
       fetchApiModels: (config: {
         apiBaseUrl: string;
         apiKey: string;
@@ -205,18 +195,11 @@ declare global {
           description?: string;
         }>;
         error?: string;
+        source?: 'network' | 'cache' | 'bundled';
       }>;
 
-      // Integration test
-      runIntegrationTest: (config: {
-        enableLocal: boolean;
-        enableApi: boolean;
-        apiBaseUrl: string;
-        apiKey: string;
-        apiModel: string;
-        localBaseUrl: string;
-        localModel: string;
-      }) => Promise<{ success: boolean }>;
+      // Integration test (unified format)
+      runIntegrationTest: (config: ModelConfig) => Promise<{ success: boolean }>;
       stopIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
       cleanupIntegrationTest: () => Promise<{ success: boolean; error?: string }>;
 

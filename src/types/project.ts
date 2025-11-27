@@ -20,8 +20,8 @@ export interface Task {
   goal: string // Task goal/objective (passed as --task_desc CLI parameter)
   status: TaskStatus
   // Model override (optional) - if not specified, uses config.json defaults
-  modelProvider?: 'api' | 'local' // Passed as --model CLI parameter
-  modelName?: string // Passed as --model_name CLI parameter (e.g., "gpt-4o", "qwen3-vl:4b")
+  modelProvider?: string // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  modelName?: string // Model name for LiteLLM (e.g., "ollama/llama3.2-vision", "gpt-4o")
   // Legacy field (deprecated, use modelProvider + modelName instead)
   model?: string
   createdAt: string
@@ -60,8 +60,8 @@ export interface TaskCreateInput {
   name: string
   description?: string
   goal: string
-  modelProvider?: 'api' | 'local'
-  modelName?: string
+  modelProvider?: string  // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
+  modelName?: string      // Model name for LiteLLM
   url?: string
 }
 

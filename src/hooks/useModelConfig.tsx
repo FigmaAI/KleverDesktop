@@ -3,26 +3,16 @@ import { ModelConfig } from '@/types/setupWizard'
 
 export function useModelConfig(currentStep: number) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    enableLocal: false,
-    enableApi: false,
-    apiProvider: '',        // No provider selected by default
-    apiBaseUrl: '',         // Empty - will be set when provider is selected
+    provider: '',  // No default provider - user must select
+    model: '',     // No default model - user must select
     apiKey: '',
-    apiModel: '',
-    localBaseUrl: 'http://localhost:11434/v1/chat/completions',
-    localModel: 'qwen3-vl:4b',
+    baseUrl: '',
   })
 
   // Ollama models state
   const [ollamaModels, setOllamaModels] = useState<string[]>([])
   const [ollamaLoading, setOllamaLoading] = useState(false)
   const [ollamaError, setOllamaError] = useState<string>('')
-
-  // API models state
-  const [apiModels, setApiModels] = useState<string[]>([])
-  const [apiModelsLoading, setApiModelsLoading] = useState(false)
-  const [apiModelsError, setApiModelsError] = useState<string>('')
-  const [detectedProvider, setDetectedProvider] = useState<string>('')
 
   // Fetch Ollama models
   const fetchOllamaModels = useCallback(async () => {
@@ -38,9 +28,13 @@ export function useModelConfig(currentStep: number) {
         )
         setOllamaModels(modelNames)
 
-        // Auto-select first model if none selected
-        if (modelNames.length > 0 && !modelConfig.localModel) {
-          setModelConfig((prev) => ({ ...prev, localModel: modelNames[0] }))
+        // Auto-select first model if provider is Ollama and no model selected
+        if (modelNames.length > 0 && modelConfig.provider === 'ollama' && !modelConfig.model) {
+          const firstModel = modelNames[0]
+          setModelConfig((prev) => ({
+            ...prev,
+            model: firstModel.startsWith('ollama/') ? firstModel : `ollama/${firstModel}`,
+          }))
         }
       } else {
         setOllamaError('Ollama is not running or no models found')
@@ -53,74 +47,56 @@ export function useModelConfig(currentStep: number) {
     } finally {
       setOllamaLoading(false)
     }
-  }, [modelConfig.localModel])
+  }, [modelConfig.provider, modelConfig.model])
 
-  // Auto-fetch Ollama models when local model is enabled
+  // Auto-fetch Ollama models when provider is Ollama
   useEffect(() => {
-    if (modelConfig.enableLocal && currentStep === 2) {
+    if (modelConfig.provider === 'ollama' && currentStep === 2) {
       fetchOllamaModels()
     }
-  }, [modelConfig.enableLocal, currentStep, fetchOllamaModels])
+  }, [modelConfig.provider, currentStep, fetchOllamaModels])
 
-  // Fetch API models from provider
-  const fetchApiModels = useCallback(async () => {
-    if (!modelConfig.apiBaseUrl) {
-      setApiModelsError('Please enter API Base URL first')
-      return
-    }
-
-    if (!modelConfig.apiKey) {
-      setApiModelsError('Please enter API Key first')
-      return
-    }
-
-    setApiModelsLoading(true)
-    setApiModelsError('')
-    setApiModels([])
-
-    try {
-      const result = await window.electronAPI.fetchApiModels({
-        apiBaseUrl: modelConfig.apiBaseUrl,
-        apiKey: modelConfig.apiKey,
-      })
-
-      if (result.success && result.models) {
-        setApiModels(result.models)
-        setDetectedProvider(result.provider || 'unknown')
-      } else {
-        setApiModelsError(result.error || 'Failed to fetch models')
-        setDetectedProvider(result.provider || 'unknown')
-      }
-    } catch (error) {
-      console.error('Error fetching API models:', error)
-      setApiModelsError(error instanceof Error ? error.message : 'Failed to fetch models')
-    } finally {
-      setApiModelsLoading(false)
-    }
-  }, [modelConfig.apiBaseUrl, modelConfig.apiKey])
-
-  // Auto-fetch API models when URL or key changes
+  // Set base URL when provider changes
   useEffect(() => {
-    if (modelConfig.enableApi && modelConfig.apiBaseUrl && currentStep === 2) {
-      const timeoutId = window.setTimeout(() => {
-        fetchApiModels()
-      }, 500) // Debounce API calls
-
-      return () => window.clearTimeout(timeoutId)
+    if (modelConfig.provider === 'ollama') {
+      setModelConfig(prev => ({
+        ...prev,
+        baseUrl: 'http://localhost:11434',
+        apiKey: '', // Ollama doesn't need API key
+      }))
     }
-  }, [modelConfig.enableApi, modelConfig.apiBaseUrl, modelConfig.apiKey, currentStep, fetchApiModels])
+  }, [modelConfig.provider])
+
+  // Helper to update provider and reset model
+  const setProvider = useCallback((provider: string) => {
+    setModelConfig(prev => ({
+      ...prev,
+      provider,
+      model: '', // Reset model when provider changes
+      apiKey: provider === 'ollama' ? '' : prev.apiKey,
+      baseUrl: provider === 'ollama' ? 'http://localhost:11434' : '',
+    }))
+  }, [])
+
+  // Helper to update model (converts to LiteLLM format for Ollama)
+  const setModel = useCallback((model: string) => {
+    setModelConfig(prev => {
+      // For Ollama, ensure model name has prefix
+      if (prev.provider === 'ollama' && !model.startsWith('ollama/')) {
+        model = `ollama/${model}`
+      }
+      return { ...prev, model }
+    })
+  }, [])
 
   return {
     modelConfig,
     setModelConfig,
+    setProvider,
+    setModel,
     ollamaModels,
     ollamaLoading,
     ollamaError,
     fetchOllamaModels,
-    apiModels,
-    apiModelsLoading,
-    apiModelsError,
-    detectedProvider,
-    fetchApiModels,
   }
 }

@@ -46,14 +46,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       configEnvVars.MAX_ROUNDS = '2';
 
       // Determine model provider for display
-      let modelProvider = 'local';
-      if (config.enableApi && config.enableLocal) {
-        modelProvider = 'api';
-      } else if (config.enableApi) {
-        modelProvider = 'api';
-      } else if (config.enableLocal) {
-        modelProvider = 'local';
-      }
+      // In unified model config, Ollama is 'local', everything else is 'api'
+      const modelProvider = config.provider === 'ollama' ? 'local' : 'api';
 
       // Prepare environment variables (merge with venv environment)
       const venvEnv = getPythonEnv();

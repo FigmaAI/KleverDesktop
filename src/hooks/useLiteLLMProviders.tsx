@@ -2,7 +2,7 @@
  * Hook to fetch and manage LiteLLM providers and models
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface LiteLLMModel {
   id: string;
@@ -27,7 +27,7 @@ export function useLiteLLMProviders() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     setLoading(true);
     setError('');
     
@@ -44,32 +44,32 @@ export function useLiteLLMProviders() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Auto-fetch on mount
-  useEffect(() => {
-    fetchProviders();
   }, []);
 
-  /**
-   * Get provider by ID
-   */
-  const getProvider = (providerId: string): LiteLLMProvider | undefined => {
-    return providers.find(p => p.id === providerId);
-  };
+  // Auto-fetch on mount (only once)
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
 
   /**
-   * Get models for a specific provider
+   * Get provider by ID - memoized to prevent infinite loops
    */
-  const getProviderModels = (providerId: string): LiteLLMModel[] => {
-    const provider = getProvider(providerId);
+  const getProvider = useCallback((providerId: string): LiteLLMProvider | undefined => {
+    return providers.find(p => p.id === providerId);
+  }, [providers]);
+
+  /**
+   * Get models for a specific provider - memoized to prevent infinite loops
+   */
+  const getProviderModels = useCallback((providerId: string): LiteLLMModel[] => {
+    const provider = providers.find(p => p.id === providerId);
     return provider?.models || [];
-  };
+  }, [providers]);
 
   /**
    * Search models across all providers
    */
-  const searchModels = (query: string): Array<LiteLLMModel & { providerId: string; providerName: string }> => {
+  const searchModels = useCallback((query: string): Array<LiteLLMModel & { providerId: string; providerName: string }> => {
     const results: Array<LiteLLMModel & { providerId: string; providerName: string }> = [];
     const lowerQuery = query.toLowerCase();
 
@@ -86,7 +86,7 @@ export function useLiteLLMProviders() {
     }
 
     return results;
-  };
+  }, [providers]);
 
   return {
     providers,
@@ -98,4 +98,3 @@ export function useLiteLLMProviders() {
     searchModels,
   };
 }
-
