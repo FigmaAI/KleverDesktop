@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, UseInViewOptions } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ interface BlurFadeProps {
   delay?: number;
   yOffset?: number;
   inView?: boolean;
-  inViewMargin?: string;
+  inViewMargin?: UseInViewOptions["margin"];
   blur?: string;
 }
 
@@ -30,7 +30,7 @@ export function BlurFade({
   blur = "6px",
 }: BlurFadeProps) {
   const ref = useRef(null);
-  const inViewResult = useInView(ref, { once: true, margin: inViewMargin as any });
+  const inViewResult = useInView(ref, { once: true, margin: inViewMargin });
   const isInView = !inView || inViewResult;
   const defaultVariants = {
     hidden: { y: yOffset, opacity: 0, filter: `blur(${blur})` },

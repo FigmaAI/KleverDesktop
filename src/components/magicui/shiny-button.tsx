@@ -5,8 +5,8 @@ import { motion, MotionProps } from "framer-motion";
 import React from "react";
 
 const animationProps = {
-  initial: { "--x": "100%", scale: 0.8 } as any,
-  animate: { "--x": "-100%", scale: 1 } as any,
+  initial: { "--x": "100%", scale: 0.8 } as Record<string, string | number>,
+  animate: { "--x": "-100%", scale: 1 } as Record<string, string | number>,
   whileTap: { scale: 0.95 },
   transition: {
     repeat: Infinity,
@@ -27,7 +27,7 @@ const animationProps = {
 
 interface ShinyButtonProps
   extends Omit<React.HTMLAttributes<HTMLElement>, keyof MotionProps>,
-    MotionProps {
+  MotionProps {
   children: React.ReactNode;
   className?: string;
 }

@@ -58,6 +58,7 @@ module.exports = {
       config: {
         icon: path.join(__dirname, 'build/icon.icns'),
         format: 'ULFO',
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         name: `klever-desktop-${require('./package.json').version}`,
       },
       platforms: ['darwin'],

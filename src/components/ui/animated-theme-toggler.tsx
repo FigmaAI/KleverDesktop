@@ -67,8 +67,7 @@ export const AnimatedThemeToggler = ({
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
       console.log('[ThemeToggler] Using View Transition API')
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (document as any).startViewTransition(() => {
+        await document.startViewTransition(() => {
           flushSync(() => {
             setIsDark(newTheme)
           })

@@ -8,7 +8,8 @@ import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/proj
 // Mock Electron API for browser testing
 if (!window.electronAPI) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mockCallbacks: Record<string, any[]> = {}
+  type MockCallback = (...args: any[]) => void;
+  const mockCallbacks: Record<string, MockCallback[]> = {}
 
   // Mock data storage
   let mockProjects: Project[] = []

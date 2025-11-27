@@ -39,10 +39,10 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
     const [dockElement, setDockElement] = useState<HTMLDivElement | null>(null);
 
     // Get all focusable dock items (buttons)
-    const getDockItems = () => {
+    const getDockItems = React.useCallback(() => {
       if (!dockElement) return [];
       return Array.from(dockElement.querySelectorAll('button')) as HTMLButtonElement[];
-    };
+    }, [dockElement]);
 
     // Keyboard navigation for dock (left/right arrows)
     useEffect(() => {
@@ -85,7 +85,7 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
 
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [dockElement]);
+    }, [dockElement, getDockItems]);
 
     // Update selected index when an item receives focus (e.g. via Tab)
     const handleFocus = (e: React.FocusEvent) => {

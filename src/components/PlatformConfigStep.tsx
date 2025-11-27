@@ -75,7 +75,7 @@ export function PlatformConfigStep({
                     <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
                       <li>Open Android Studio → Settings (or Preferences on macOS)</li>
                       <li>Navigate to: Appearance & Behavior → System Settings → Android SDK</li>
-                      <li>Copy the "Android SDK Location" path shown at the top</li>
+                      <li>Copy the &quot;Android SDK Location&quot; path shown at the top</li>
                     </ul>
                   </AccordionContent>
                 </AccordionItem>
@@ -115,11 +115,11 @@ export function PlatformConfigStep({
 
                 <AccordionItem value="no-sdk">
                   <AccordionTrigger className="text-sm">
-                    If you don't have Android SDK
+                    If you don&apos;t have Android SDK
                   </AccordionTrigger>
                   <AccordionContent>
                     <p className="text-sm text-muted-foreground">
-                      The SDK was already checked in the previous step. If it's not installed,
+                      The SDK was already checked in the previous step. If it&apos;s not installed,
                       you can skip this for now and install it later when needed for Android automation.
                     </p>
                   </AccordionContent>

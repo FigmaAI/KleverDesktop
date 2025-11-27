@@ -37,7 +37,7 @@ export function registerGitHubHandlers(ipcMain: IpcMain): void {
             } else {
               resolve({ success: false, error: 'No stargazers_count in response' });
             }
-          } catch (_error) {
+          } catch {
             resolve({ success: false, error: 'Failed to parse response' });
           }
         });

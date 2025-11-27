@@ -54,7 +54,8 @@ export const AnimatedSpan = ({
     if (!sequence.sequenceStarted) return
     if (hasStarted) return
     if (sequence.activeIndex === itemIndex) {
-      setHasStarted(true)
+      const timer = setTimeout(() => setHasStarted(true), 0)
+      return () => clearTimeout(timer)
     }
   }, [sequence, hasStarted, itemIndex])
 
