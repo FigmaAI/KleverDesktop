@@ -11,135 +11,152 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
   [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
 
-  [Download](#-download--install) • [Quick Start](#-quick-start) • [For Developers](#%EF%B8%8F-for-developers) • [Documentation](CLAUDE.md)
+  [Download](#-download) • [Quick Start](#-quick-start) • [For Developers](#-for-developers) • [Documentation](CLAUDE.md)
 
 </div>
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **Klever Desktop** is a cross-platform desktop application that brings AI-powered automation to Android apps and web applications. Built on Electron and powered by local AI models (Ollama) or cloud APIs, it provides an intuitive interface for automated UI testing and exploration.
 
-### ✨ Key Features
+### Key Features
 
-- 🤖 **Local-First AI** - Run completely offline using Ollama (no API costs, no data sharing)
-- 🎯 **Multi-Platform** - Automate Android devices (ADB) and web browsers (Playwright)
-- 📊 **Real-Time Insights** - Live logs, screenshots, and system monitoring
-- 📝 **Auto Reports** - Generated markdown reports with screenshots and action history
-- 🎨 **Modern UI** - Built with React, shadcn/ui, and Tailwind CSS
-- 🔧 **Developer-Friendly** - Full TypeScript support, modular architecture
+- **Local-First AI** - Run completely offline using Ollama (no API costs, no data sharing)
+- **Multi-Platform** - Automate Android devices (ADB) and web browsers (Playwright)
+- **Multi-Provider AI** - Support for Ollama, OpenAI, Anthropic, OpenRouter, Grok, and more
+- **Real-Time Monitoring** - Live logs, screenshots, and execution progress
+- **Auto-Generated Reports** - Markdown reports with screenshots and action history
+- **Modern UI** - Built with React 18, shadcn/ui, and Tailwind CSS
+- **Developer-Friendly** - Full TypeScript support, modular architecture, comprehensive docs
 
 ---
 
-## 📥 Download & Install
+## Download
 
-### Download from GitHub Releases
+### Latest Release
 
-**Get the latest version from our [Releases page](https://github.com/FigmaAI/KleverDesktop/releases):**
-
-<div align="center">
+Download the latest version from our [Releases page](https://github.com/FigmaAI/KleverDesktop/releases):
 
 | Platform | File | Note |
 |----------|------|------|
-| **macOS** | `Klever.Desktop.dmg` | Universal build that supports both Intel and Apple Silicon Mac |
-| **Windows** | `Klever.Desktop-2.0.0.Setup.exe` | No certification yet |
+| **macOS** | `Klever.Desktop-{version}-arm64.dmg` | Universal binary (Intel + Apple Silicon) |
+| **Windows** | `klever-desktop-{version} Setup.exe` | No certification yet (SmartScreen warning) |
 
-</div>
+### Installation
 
-### Installation Guide
+#### macOS
 
-#### macOS Installation
-
-1. **Download** the `.dmg` file from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
-2. **Open** the DMG file
-3. **Drag** Klever Desktop to your Applications folder
-4. **Launch** the app from your Applications folder
-   - The app is **signed with Developer ID and notarized by Apple**, so it should open without issues
-   - On first launch, you may see a confirmation dialog asking if you want to open the app
+1. Download the `.dmg` file from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
+2. Open the DMG file
+3. Drag **Klever Desktop** to your Applications folder
+4. Launch from Applications
+   - The app is **signed with Developer ID and notarized by Apple**
+   - On first launch, you may see a confirmation dialog
    - Click **"Open"** to proceed
 
-> **Note**: All macOS builds are signed with Developer ID and notarized by Apple for security. Gatekeeper will verify the app automatically.
+> **Note**: All macOS builds are signed and notarized for security. Gatekeeper will verify the app automatically.
 
-#### Windows Installation
+#### Windows
 
-1. **Download** `klever-desktop-{version} Setup.exe` from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
-2. **Run** the Setup executable
+1. Download `klever-desktop-{version} Setup.exe` from [Releases](https://github.com/FigmaAI/KleverDesktop/releases)
+2. Run the Setup executable
 3. **SmartScreen Warning**: If you see "Windows protected your PC":
    - Click **"More info"**
    - Click **"Run anyway"**
 4. Follow the installation wizard
-5. Launch **Klever Desktop** from your Start Menu
+5. Launch from Start Menu
 
 > **Note**: We don't currently sign Windows builds with an EV certificate, so SmartScreen warnings are expected.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. First Launch - Setup Wizard
 
 When you launch Klever Desktop for the first time, a setup wizard will guide you through configuration:
 
-#### **Platform Tools Check**
+#### Environment Setup
 
-The app automatically verifies required tools:
-- ✅ Python 3.11+ (downloaded automatically to `~/.klever-desktop/`)
-- ✅ Playwright (auto-installed for web automation)
-- ✅ ADB (install [Android Studio](https://developer.android.com/studio) for Android automation)
+The app automatically verifies and installs required tools:
+- Python 3.11+ (downloaded automatically to `~/.klever-desktop/`)
+- Playwright (auto-installed for web automation)
+- ADB (install [Android Studio](https://developer.android.com/studio) for Android automation)
 
-#### **Model Configuration**
+#### Model Configuration
 
 Choose your AI provider:
 
 **Option A: Local Model (Recommended)**
 1. Install [Ollama](https://ollama.com/download)
-2. Pull a model: `ollama pull qwen3-vl:4b` (16GB RAM) or `qwen2.5-vl:7b` (24GB+ RAM)
-3. Enable "Local Model" in setup wizard
+2. Pull a vision model:
+   ```bash
+   ollama pull llama3.2-vision  # Fastest, 16GB RAM
+   # or
+   ollama pull qwen2.5-vl:7b    # Best quality, 24GB+ RAM
+   ```
+3. Enable in setup wizard
 4. Test connection
 
 **Option B: Cloud API**
 1. Enable "API Model" in setup wizard
-2. Enter your API endpoint and key (OpenAI, OpenRouter, etc.)
-3. Test connection
+2. Select provider (OpenAI, Anthropic, OpenRouter, etc.)
+3. Enter your API key
+4. Test connection
 
-> You can enable both! The app will use API when both are enabled.
+> You can configure multiple providers! Switch between them in Settings.
 
-#### **Integration Test**
+#### Integration Test
 
-Run a quick test to verify everything works. Click "Run Integration Test" and wait ~30 seconds.
+Run a quick test (~30 seconds) to verify everything works:
+- Creates a test web automation
+- Verifies Python, Playwright, and AI model
+- Shows real-time execution logs
 
 ### 2. Create Your First Project
 
 1. Click **"New Project"**
 2. Choose platform:
    - **Android**: Select your device (enable USB debugging first)
-   - **Web**: Enter target URL
-3. Click **"Create Project"**
+   - **Web**: Enter target URL (e.g., `https://example.com`)
+3. Enter project name
+4. Click **"Create Project"**
 
-### 3. Run a Task
+### 3. Create and Run a Task
 
 1. Open your project
 2. Click **"New Task"**
-3. Enter a clear description (e.g., "Navigate to login page and enter test credentials")
+3. Enter task details:
+   - **Name**: Short description (e.g., "Login test")
+   - **Goal**: Clear objective (e.g., "Navigate to login page, enter credentials, and verify success")
+   - **Model** (optional): Override project model
+   - **Language** (optional): Output language (English, Korean, Japanese)
 4. Click **"Start Task"**
-5. Monitor real-time logs and screenshots
-6. View the generated report when complete
+5. Monitor execution:
+   - Real-time logs in terminal
+   - Screenshots as they're captured
+   - Progress updates
+6. View generated report when complete
 
 ### Tips for Success
 
-**Write Clear Task Descriptions:**
-- ✅ "Find search button, enter 'laptop', verify results appear"
-- ❌ "Test the app" (too vague)
+**Write Clear Task Goals:**
+- **Good**: "Find the search button, enter 'laptop', click search, and verify results appear"
+- **Bad**: "Test the app" (too vague)
+- **Good**: "Navigate to settings, toggle dark mode, and verify UI changes"
+- **Bad**: "Check settings" (unclear objective)
 
 **Troubleshooting:**
-- **Task fails**: Verify device/URL is accessible, check ADB connection (`adb devices`)
-- **Wrong AI decisions**: Be more specific, reduce temperature in settings
-- **Slow performance**: Use local models, reduce max rounds in settings
+- **Task fails**: Verify device/URL is accessible, check model connection
+- **Wrong AI decisions**: Be more specific in task goal, adjust temperature (Settings → Execution)
+- **Slow performance**: Use local models, reduce max rounds in Settings
+- **ADB issues**: Run `adb devices` to verify connection
 
 ---
 
-## 🖥️ System Requirements
+## System Requirements
 
 | Component | Minimum | Recommended |
 |-----------|---------|-------------|
@@ -151,16 +168,17 @@ Run a quick test to verify everything works. Click "Run Integration Test" and wa
 **Additional Requirements:**
 - **Android Automation**: [Android Studio](https://developer.android.com/studio) (for ADB), USB debugging enabled
 - **Web Automation**: No additional requirements (Playwright auto-installs Chromium)
+- **Local AI**: [Ollama](https://ollama.com/download) + vision model (llama3.2-vision or qwen2.5-vl)
 
 ---
 
-## 🛠️ For Developers
+## For Developers
 
 ### Prerequisites
 
 - **Node.js** 18+ ([Download](https://nodejs.org/))
 - **Git** ([Download](https://git-scm.com/))
-- **Python** 3.11+ (optional for development, app downloads automatically)
+- **Python** 3.11+ (optional for dev - app downloads automatically)
 
 ### Setup
 
@@ -172,11 +190,11 @@ cd KleverDesktop
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server with hot reload
 npm run start
 ```
 
-The app launches with hot reload enabled! 🎉
+The app launches with hot reload enabled!
 
 ### Development Commands
 
@@ -184,24 +202,16 @@ The app launches with hot reload enabled! 🎉
 npm run start          # Electron + Vite dev server with hot reload
 npm run dev            # Vite dev server only (browser testing)
 npm run typecheck      # TypeScript type checking
-npm run lint           # ESLint check
+npm run lint           # ESLint validation
 npm run lint:fix       # Auto-fix linting errors
 ```
 
 ### Build Commands
 
 ```bash
-npm run package        # Package app (unsigned) → out/klever-desktop-{platform}/
-npm run make           # Create distributable (DMG/Setup.exe) → out/make/
+npm run package        # Package app (unsigned)
+npm run make           # Create distributable (DMG/Setup.exe)
 npm run publish        # Build and publish to GitHub Releases
-```
-
-### Python Management
-
-```bash
-npm run python:build   # Download Python 3.11 to ~/.klever-desktop/
-npm run python:verify  # Verify all required files before packaging
-npm run appagent:fetch # Update appagent code from GitHub
 ```
 
 ### Tech Stack
@@ -212,34 +222,40 @@ npm run appagent:fetch # Update appagent code from GitHub
 | **Desktop** | Electron 33 • Vite 5 • Electron Forge 7 |
 | **Backend** | Python 3.11+ • AppAgent |
 | **Automation** | ADB (Android) • Playwright (Web) |
-| **AI** | Ollama (local) • OpenAI API • OpenRouter |
+| **AI** | Ollama • LiteLLM • OpenAI • Anthropic • OpenRouter |
 
 ### Architecture
 
 Three-layer Electron architecture:
-- **Renderer** (`src/`): React UI with shadcn/ui components
-- **Main** (`main/`): IPC handlers, window management, Python subprocess control
+- **Renderer** (`src/`): React UI with 73+ components, 6 custom hooks
+- **Main** (`main/`): 12 IPC handler modules, 70+ IPC methods
 - **Backend** (`appagent/`): Python automation scripts
 
-Communication: `React UI` ↔️ `IPC (preload.ts)` ↔️ `Handlers (main/handlers/)` ↔️ `Python (appagent/)`
+Communication flow:
+```
+React UI ↔️ IPC (preload.ts) ↔️ Handlers (main/handlers/) ↔️ Python (appagent/)
+```
 
-> For detailed architecture, see [CLAUDE.md](CLAUDE.md)
+> For detailed architecture, development workflow, and best practices, see [CLAUDE.md](CLAUDE.md)
 
 ### Project Structure
 
 ```
 KleverDesktop/
 ├── src/              # React frontend (renderer)
-│   ├── components/   # shadcn/ui components
-│   ├── pages/        # SetupWizard, ProjectList, ProjectDetail, Settings
-│   ├── hooks/        # Custom React hooks
+│   ├── components/   # 73+ UI components (30+ shadcn/ui)
+│   ├── pages/        # 5 main pages (Setup, Projects, Settings)
+│   ├── hooks/        # 6 custom React hooks
 │   └── types/        # TypeScript definitions
 ├── main/             # Electron main process
-│   ├── handlers/     # IPC handlers (task, project, model, config, etc.)
-│   └── utils/        # Config, storage, Python runtime management
+│   ├── handlers/     # 12 IPC handler modules (2,195 lines)
+│   ├── utils/        # Utility modules (5,158 lines)
+│   └── types/        # Main process types
 ├── appagent/         # Python automation backend
-│   └── scripts/      # self_explorer.py, and_controller.py, web_controller.py
-├── scripts/          # Build utilities (build-python.js, verify-bundle.js)
+│   └── scripts/      # 12 Python scripts (automation, controllers, AI)
+├── build/            # Build assets (icons, entitlements)
+├── scripts/          # Build utilities
+├── .github/          # CI/CD workflows
 ├── forge.config.js   # Electron Forge configuration
 └── vite.config.ts    # Vite configuration
 ```
@@ -256,38 +272,63 @@ Contributions are welcome! Here's how:
 6. **Push** and open a Pull Request
 
 **Important for IPC changes:**
+
 When adding IPC handlers, update all three files:
 1. `main/handlers/*.ts` - Handler implementation
 2. `main/preload.ts` - Context bridge exposure
 3. `src/types/electron.d.ts` - TypeScript definitions
 
-See [CLAUDE.md](CLAUDE.md) for detailed development guidelines.
+**Development Checklist:**
+- [ ] Run `npm run typecheck` before committing
+- [ ] Run `npm run lint:fix` for formatting
+- [ ] Test in both dev and production builds
+- [ ] Update TypeScript types when adding IPC handlers
+- [ ] Add JSDoc comments for complex functions
+- [ ] Update CLAUDE.md if architecture changes
+
+See [CLAUDE.md](CLAUDE.md) for detailed development guidelines, IPC patterns, and best practices.
 
 ### Configuration
 
 **User Data** (`~/.klever-desktop/` on macOS/Linux, `%APPDATA%\klever-desktop\` on Windows):
-- `projects.json` - Project and task data
-- `config.yaml` - Runtime configuration (model, platform settings)
+- `config.json` - Application configuration (models, execution, platform settings)
+- `projects.json` - Project and task database
 - `python/` - Downloaded Python runtime
+- `python-env/` - Python virtual environment
 
-**Runtime Config** (`appagent/config.yaml`):
-- Model settings (local/API, endpoints, keys)
-- Platform settings (ADB, Playwright)
-- Agent parameters (max rounds, reflection, etc.)
+**Runtime Config:**
+- Model settings (providers, API keys, endpoints)
+- Execution settings (tokens, temperature, rounds)
+- Platform settings (ADB, Playwright, browser config)
+- Image optimization settings
 
 ---
 
-## 📄 License
+## Documentation
+
+- **[CLAUDE.md](CLAUDE.md)** - Comprehensive developer guide
+  - Complete architecture overview
+  - IPC communication patterns
+  - Step-by-step development workflow
+  - Build and distribution guide
+  - Troubleshooting and best practices
+
+- **[PRIVACY.md](PRIVACY.md)** - Privacy policy
+
+---
+
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built with:
 - **[AppAgent](https://github.com/FigmaAI/appagent)** - Python automation engine
 - **[Ollama](https://ollama.com/)** - Local AI models
+- **[LiteLLM](https://docs.litellm.ai/)** - Multi-provider AI abstraction
 - **[Electron](https://www.electronjs.org/)** - Cross-platform desktop framework
 - **[React](https://react.dev/)** & **[TypeScript](https://www.typescriptlang.org/)** - Frontend
 - **[shadcn/ui](https://ui.shadcn.com/)** - UI components
