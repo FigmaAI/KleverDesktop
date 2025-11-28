@@ -183,12 +183,21 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
     }
 
     let newProviders: ProviderConfig[]
-    
+
     if (editingProvider) {
       // Update existing provider
-      newProviders = modelConfig.providers.map(p => 
-        p.id === editingProvider.id ? newProvider : p
-      )
+      // Remove the original provider first
+      newProviders = modelConfig.providers.filter(p => p.id !== editingProvider.id)
+
+      // Check if the new provider ID already exists (in case user changed the provider)
+      const existingIndex = newProviders.findIndex(p => p.id === formProvider)
+      if (existingIndex >= 0) {
+        // Replace existing provider with same ID
+        newProviders[existingIndex] = newProvider
+      } else {
+        // Add as new provider
+        newProviders.push(newProvider)
+      }
     } else {
       // Check if provider already exists
       const existingIndex = modelConfig.providers.findIndex(p => p.id === formProvider)
@@ -346,7 +355,6 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
               <ModelSelector
                 value={formProvider && formModel ? { provider: formProvider, model: formModel } : undefined}
                 onChange={handleModelChange}
-                disabled={!!editingProvider}
               />
             </div>
 

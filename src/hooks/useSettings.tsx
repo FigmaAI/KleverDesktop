@@ -50,8 +50,8 @@ export function useSettings() {
 
   // Platform settings
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>({
-    androidScreenshotDir: '/sdcard/Pictures',
-    androidXmlDir: '/sdcard/Documents',
+    androidScreenshotDir: '/sdcard',
+    androidXmlDir: '/sdcard',
     androidSdkPath: '',
     webBrowserType: 'chromium',
     webHeadless: false,
@@ -116,8 +116,8 @@ export function useSettings() {
 
         // Load platform settings
         setPlatformSettings({
-          androidScreenshotDir: config.android?.screenshotDir || '/sdcard/Pictures',
-          androidXmlDir: config.android?.xmlDir || '/sdcard/Documents',
+          androidScreenshotDir: config.android?.screenshotDir || '/sdcard',
+          androidXmlDir: config.android?.xmlDir || '/sdcard',
           androidSdkPath: config.android?.sdkPath || '',
           webBrowserType: config.web?.browserType || 'chromium',
           webHeadless: config.web?.headless ?? false,

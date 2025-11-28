@@ -82,7 +82,7 @@ if (!window.electronAPI) {
           },
         },
         execution: { maxTokens: 4096, temperature: 0.0, requestInterval: 10, maxRounds: 20 },
-        android: { screenshotDir: '/sdcard/Pictures', xmlDir: '/sdcard/Documents', sdkPath: '' },
+        android: { screenshotDir: '/sdcard', xmlDir: '/sdcard', sdkPath: '' },
         web: { browserType: 'chromium' as const, headless: false, viewportWidth: 1280, viewportHeight: 720 },
         image: { maxWidth: 512, maxHeight: 512, quality: 85, optimize: true },
         preferences: { darkMode: false, minDist: 30, docRefine: false },
