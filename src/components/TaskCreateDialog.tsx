@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Loader2 } from 'lucide-react'
+import { Calendar, Loader2, Plus, Smartphone, Globe } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -7,30 +7,37 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
 import { ModelSelector, ModelSelection } from './ModelSelector'
-import type { Platform, Task } from '../types/project'
+import type { Task, Project } from '../types/project'
 
 interface TaskCreateDialogProps {
   open: boolean
   onClose: () => void
-  projectId: string
-  projectName: string
-  platform: Platform
+  projects: Project[]
+  selectedProjectId?: string
   onTaskCreated?: (task: Task) => void
+  onCreateProject?: () => void
 }
 
 export function TaskCreateDialog({
   open,
   onClose,
-  projectId,
-  projectName,
-  platform,
+  projects,
+  selectedProjectId,
   onTaskCreated,
+  onCreateProject,
 }: TaskCreateDialogProps) {
   const [goal, setGoal] = useState('')
   const [url, setUrl] = useState('')
@@ -38,6 +45,19 @@ export function TaskCreateDialog({
   const [registeredProviders, setRegisteredProviders] = useState<string[]>([])
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(selectedProjectId)
+
+  // Get current project
+  const currentProject = projects.find(p => p.id === currentProjectId)
+  const platform = currentProject?.platform || 'android'
+  const projectName = currentProject?.name || ''
+
+  // Update currentProjectId when selectedProjectId changes (only if provided)
+  useEffect(() => {
+    if (selectedProjectId) {
+      setCurrentProjectId(selectedProjectId)
+    }
+  }, [selectedProjectId])
 
   // Load saved model configuration (multi-provider format)
   useEffect(() => {
@@ -74,6 +94,11 @@ export function TaskCreateDialog({
   }, [open])
 
   const handleSubmit = async () => {
+    if (!currentProjectId) {
+      alert('Please select a project')
+      return
+    }
+
     if (!goal.trim()) {
       alert('Please enter a task description')
       return
@@ -111,7 +136,7 @@ export function TaskCreateDialog({
           : finalGoal
 
       const taskInput = {
-        projectId,
+        projectId: currentProjectId,
         name: `Task ${new Date().toLocaleString()}`,
         goal: taskGoal,
         url: platform === 'web' ? url.trim() : undefined,
@@ -135,7 +160,7 @@ export function TaskCreateDialog({
 
         // If "Run immediately" is checked, start the task
         if (runImmediately) {
-          await window.electronAPI.taskStart(projectId, result.task.id)
+          await window.electronAPI.taskStart(currentProjectId, result.task.id)
         }
 
         onTaskCreated?.(result.task)
@@ -164,7 +189,7 @@ export function TaskCreateDialog({
     onClose()
   }
 
-  const isEligible = goal.trim() && (platform === 'android' || url.trim()) && selectedModel?.model
+  const isEligible = currentProjectId && goal.trim() && (platform === 'android' || url.trim()) && selectedModel?.model
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
@@ -176,12 +201,52 @@ export function TaskCreateDialog({
       >
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
-          <DialogDescription>
-            Define an automation task for {platform === 'web' ? 'web browsing' : 'Android device'}. The task will be executed using AI-powered automation.
+          <DialogDescription className="sr-only">
+            Create a new automation task for your project. Select a project, enter a task description, and choose a model to run the task.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Project Selection */}
+          <div className="space-y-2">
+            <Label>Project</Label>
+            <Select value={currentProjectId || ''} onValueChange={(value) => {
+              if (value === '__create_new__') {
+                onCreateProject?.()
+              } else {
+                setCurrentProjectId(value)
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => {
+                  const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
+                  return (
+                    <SelectItem key={project.id} value={project.id}>
+                      <span className="flex items-center gap-2">
+                        <PlatformIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span>{project.name}</span>
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+                {onCreateProject && (
+                  <>
+                    {projects.length > 0 && <div className="h-px bg-border my-1" />}
+                    <SelectItem value="__create_new__" className="text-primary">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-3 w-3" />
+                        Create new project
+                      </span>
+                    </SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* URL Input (Web Platform Only) */}
           {platform === 'web' && (
             <div className="space-y-2">

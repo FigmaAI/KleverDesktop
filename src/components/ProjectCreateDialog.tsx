@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useToast } from '@/components/ui/toast'
+import { toast } from 'sonner'
 import { FolderOpen, Smartphone, Globe } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -29,8 +30,6 @@ export function ProjectCreateDialog({
   const [platform, setPlatform] = useState<Platform>('android')
   const [projectName, setProjectName] = useState('')
   const [workspaceDir, setWorkspaceDir] = useState('')
-  const { toast } = useToast()
-
   const canCreate = () => {
     return projectName.trim() !== ''
   }
@@ -55,15 +54,15 @@ export function ProjectCreateDialog({
 
       if (result.success && result.project) {
         const message = result.message || `Project created at ${result.project.workspaceDir}`
-        toast({ title: 'Project Created', description: message })
+        toast.success('Project Created', { description: message })
         onProjectCreated?.(result.project)
         handleClose()
       } else {
-        toast({ title: 'Error', description: `Failed to create project: ${result.error}` })
+        toast.error('Error', { description: `Failed to create project: ${result.error}` })
       }
     } catch (error) {
       console.error('Error creating project:', error)
-      toast({ title: 'Error', description: 'Failed to create project. Please try again.' })
+      toast.error('Error', { description: 'Failed to create project. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -87,6 +86,9 @@ export function ProjectCreateDialog({
       <DialogContent className="max-w-2xl" showClose={false} onKeyDown={handleKeyDown}>
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a new automation project. Enter a project name, optionally select a workspace directory, and choose a platform (Android or Web).
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
