@@ -290,8 +290,8 @@ export const DEFAULT_CONFIG: AppConfig = {
     maxRounds: 20,
   },
   android: {
-    screenshotDir: '/sdcard/Pictures',
-    xmlDir: '/sdcard/Documents',
+    screenshotDir: '/sdcard',
+    xmlDir: '/sdcard',
     sdkPath: '',
   },
   web: {

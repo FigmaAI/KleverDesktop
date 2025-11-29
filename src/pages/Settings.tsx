@@ -1,17 +1,6 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useToast } from '@/components/ui/toast'
-import { useNavigate } from 'react-router-dom'
-import {
-  Save,
-  Brain,
-  Smartphone,
-  Sparkles,
-  Image as ImageIcon,
-  Menu,
-  AlertTriangle,
-  AlertCircle,
-  ArrowLeft,
-} from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { toast } from 'sonner'
+import { AlertTriangle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -22,52 +11,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { BlurFade } from '@/components/magicui/blur-fade'
-import { PageHeader } from '@/components/PageHeader'
-import { cn } from '@/lib/utils'
 import { useSettings } from '@/hooks/useSettings'
 import { ModelSettingsCard } from '@/components/ModelSettingsCard'
 import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
 import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
+import type { SettingsSection } from '@/components/app-sidebar'
 
-type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'danger'
-
-interface MenuItem {
-  id: SettingsSection
-  label: string
-  icon: React.ElementType
+interface SettingsProps {
+  activeSection: SettingsSection
+  onSaveRefChange: (saveRef: (() => Promise<void>) | null) => void
+  onHasChangesChange: (hasChanges: boolean) => void
+  onSavingChange: (saving: boolean) => void
+  onCanSaveChange: (canSave: boolean) => void
 }
 
-export function Settings() {
-  const navigate = useNavigate()
+export function Settings({
+  activeSection,
+  onSaveRefChange,
+  onHasChangesChange,
+  onSavingChange,
+  onCanSaveChange,
+}: SettingsProps) {
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState<SettingsSection>('model')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [modelConfigValid, setModelConfigValid] = useState(true) // Track model config validation
-  const [unsavedAlertOpen, setUnsavedAlertOpen] = useState(false)
-  const [pendingNavigation, setPendingNavigation] = useState<number | null>(null)
-  const { toast } = useToast()
+  const [modelConfigValid, setModelConfigValid] = useState(true)
 
   // Section refs for scrolling
   const sectionRefs = useRef<Record<SettingsSection, HTMLDivElement | null>>({
@@ -77,18 +48,6 @@ export function Settings() {
     image: null,
     danger: null,
   })
-
-  // Menu items
-  const menuItems: MenuItem[] = useMemo(
-    () => [
-      { id: 'model', label: 'Model', icon: Brain },
-      { id: 'platform', label: 'Platform', icon: Smartphone },
-      { id: 'agent', label: 'Agent', icon: Sparkles },
-      { id: 'image', label: 'Image', icon: ImageIcon },
-      { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
-    ],
-    []
-  )
 
   // Use the settings hook
   const {
@@ -108,7 +67,6 @@ export function Settings() {
   } = useSettings()
 
   // Track unsaved changes
-  const [hasChanges, setHasChanges] = useState(false)
   const isInitialLoad = useRef(true)
   const settingsSnapshot = useRef<string>('')
 
@@ -128,15 +86,15 @@ export function Settings() {
   // Show toast on save success or error
   useEffect(() => {
     if (saveSuccess) {
-      toast({ description: 'Your configuration has been updated successfully.' })
+      toast.success('Your configuration has been updated successfully.')
     }
-  }, [saveSuccess, toast])
+  }, [saveSuccess])
 
   useEffect(() => {
     if (saveError) {
-      toast({ title: 'Save Failed', description: saveError })
+      toast.error('Save Failed', { description: saveError })
     }
-  }, [saveError, toast])
+  }, [saveError])
 
   // Detect changes (compare with saved snapshot)
   useEffect(() => {
@@ -147,15 +105,25 @@ export function Settings() {
         agentSettings,
         imageSettings,
       })
-      setHasChanges(currentSnapshot !== settingsSnapshot.current)
+      const changed = currentSnapshot !== settingsSnapshot.current
+      onHasChangesChange(changed)
     }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading])
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading, onHasChangesChange])
+
+  // Update saving state
+  useEffect(() => {
+    onSavingChange(saving)
+  }, [saving, onSavingChange])
+
+  // Update can save state
+  useEffect(() => {
+    onCanSaveChange(modelConfigValid)
+  }, [modelConfigValid, onCanSaveChange])
 
   // Manual save handler
   const handleManualSave = useCallback(async () => {
     if (!modelConfigValid) {
-      toast({
-        title: 'Cannot Save',
+      toast.warning('Cannot Save', {
         description: 'Please test your API connection before saving.'
       })
       return
@@ -169,23 +137,14 @@ export function Settings() {
       agentSettings,
       imageSettings,
     })
-    setHasChanges(false)
-  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, toast])
+    onHasChangesChange(false)
+  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, onHasChangesChange])
 
-  // Keyboard shortcut: Cmd/Ctrl + S to save
+  // Expose save function to parent
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        if (hasChanges && modelConfigValid && !saving) {
-          handleManualSave()
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasChanges, modelConfigValid, saving, handleManualSave])
+    onSaveRefChange(handleManualSave)
+    return () => onSaveRefChange(null)
+  }, [handleManualSave, onSaveRefChange])
 
   const handleResetConfig = async () => {
     setIsResetting(true)
@@ -195,7 +154,6 @@ export function Settings() {
       const result = await window.electronAPI.configReset()
 
       if (result.success) {
-        // Reload to re-check setup status
         window.location.reload()
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
@@ -211,43 +169,13 @@ export function Settings() {
     }
   }
 
-  const scrollToSection = useCallback((section: SettingsSection) => {
-    setActiveSection(section)
-    setSidebarOpen(false)
-    const element = sectionRefs.current[section]
+  // Scroll to active section when it changes
+  useEffect(() => {
+    const element = sectionRefs.current[activeSection]
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
-  }, [])
-
-  // Sidebar menu component (reusable for both desktop and mobile)
-  const SidebarMenu = useMemo(
-    () => (
-      <nav className="space-y-1 p-4">
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          return (
-            <button
-              key={item.id}
-              onClick={() => scrollToSection(item.id)}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                activeSection === item.id
-                  ? item.id === 'danger'
-                    ? 'bg-destructive/10 text-destructive'
-                    : 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          )
-        })}
-      </nav>
-    ),
-    [menuItems, activeSection, scrollToSection]
-  )
+  }, [activeSection])
 
   if (loading) {
     return (
@@ -260,140 +188,74 @@ export function Settings() {
     )
   }
 
-
-
   return (
     <div className="flex h-full flex-col">
-      <PageHeader
-        title="Settings"
-        backButton={
-          <Button variant="ghost" size="sm" onClick={() => {
-            if (hasChanges) {
-              setUnsavedAlertOpen(true)
-              setPendingNavigation(-1)
-            } else {
-              navigate(-1)
-            }
-          }}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        }
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setSidebarOpen(true)}
+      <main className="flex-1 overflow-auto p-6">
+        <div className="mx-auto max-w-4xl space-y-6">
+          {/* Model Configuration */}
+          <BlurFade delay={0.1}>
+            <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
+              <ModelSettingsCard
+                modelConfig={modelConfig}
+                setModelConfig={setModelConfig}
+                onValidationChange={setModelConfigValid}
+              />
+            </div>
+          </BlurFade>
+
+          {/* Platform Configuration */}
+          <BlurFade delay={0.2}>
+            <div ref={(el) => (sectionRefs.current.platform = el)} className="scroll-mt-6">
+              <PlatformSettingsCard
+                platformSettings={platformSettings}
+                setPlatformSettings={setPlatformSettings}
+              />
+            </div>
+          </BlurFade>
+
+          {/* Agent Behavior */}
+          <BlurFade delay={0.3}>
+            <div ref={(el) => (sectionRefs.current.agent = el)} className="scroll-mt-6">
+              <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
+            </div>
+          </BlurFade>
+
+          {/* Image Optimization */}
+          <BlurFade delay={0.4}>
+            <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
+              <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
+            </div>
+          </BlurFade>
+
+          {/* Danger Zone */}
+          <BlurFade delay={0.5}>
+            <Card
+              ref={(el) => (sectionRefs.current.danger = el)}
+              className="scroll-mt-6 border-destructive/50"
             >
-              <Menu className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleManualSave}
-              disabled={!hasChanges || saving || !modelConfigValid}
-              variant={hasChanges ? 'default' : 'outline'}
-            >
-              <Save className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">
-                {saving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
-              </span>
-              {hasChanges && (
-                <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-70">
-                  <span className="text-xs">{typeof window !== 'undefined' && window.navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}</span>S
-                </kbd>
-              )}
-            </Button>
-          </>
-        }
-      />
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Sidebar */}
-        <aside className="hidden w-64 border-r bg-background md:block">
-          {SidebarMenu}
-        </aside>
-
-        {/* Mobile Sheet */}
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left">
-            <SheetHeader>
-              <SheetTitle>Settings Menu</SheetTitle>
-              <SheetDescription>Navigate to different settings sections</SheetDescription>
-            </SheetHeader>
-            {SidebarMenu}
-          </SheetContent>
-        </Sheet>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
-          <div className="mx-auto max-w-4xl space-y-6">
-            {/* Model Configuration */}
-            <BlurFade delay={0.1}>
-              <div ref={(el) => (sectionRefs.current.model = el)} className="scroll-mt-6">
-                <ModelSettingsCard
-                  modelConfig={modelConfig}
-                  setModelConfig={setModelConfig}
-                  onValidationChange={setModelConfigValid}
-                />
-              </div>
-            </BlurFade>
-
-            {/* Platform Configuration */}
-            <BlurFade delay={0.2}>
-              <div ref={(el) => (sectionRefs.current.platform = el)} className="scroll-mt-6">
-                <PlatformSettingsCard
-                  platformSettings={platformSettings}
-                  setPlatformSettings={setPlatformSettings}
-                />
-              </div>
-            </BlurFade>
-
-            {/* Agent Behavior */}
-            <BlurFade delay={0.3}>
-              <div ref={(el) => (sectionRefs.current.agent = el)} className="scroll-mt-6">
-                <AgentSettingsCard agentSettings={agentSettings} setAgentSettings={setAgentSettings} />
-              </div>
-            </BlurFade>
-
-            {/* Image Optimization */}
-            <BlurFade delay={0.4}>
-              <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
-                <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
-              </div>
-            </BlurFade>
-
-            {/* Danger Zone */}
-            <BlurFade delay={0.6}>
-              <Card
-                ref={(el) => (sectionRefs.current.danger = el)}
-                className="scroll-mt-6 border-destructive/50"
-              >
-                <CardHeader>
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Reset Configuration */}
-                  <div>
-                    <h3 className="mb-1 text-base font-semibold">Reset Configuration</h3>
-                    <p className="mb-3 text-sm text-muted-foreground">
-                      Delete configuration file and return to setup wizard
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                      onClick={() => setResetDialogOpen(true)}
-                    >
-                      <AlertTriangle className="mr-2 h-4 w-4" />
-                      Reset Configuration
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </BlurFade>
-          </div>
-        </main>
-      </div>
+              <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="mb-1 text-base font-semibold">Reset Configuration</h3>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Delete configuration file and return to setup wizard
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                    onClick={() => setResetDialogOpen(true)}
+                  >
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Reset Configuration
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </BlurFade>
+        </div>
+      </main>
 
       {/* Reset Confirmation Dialog */}
       <Dialog open={resetDialogOpen} onOpenChange={(open) => !isResetting && setResetDialogOpen(open)}>
@@ -450,41 +312,6 @@ export function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Unsaved Changes Alert */}
-      <AlertDialog open={unsavedAlertOpen} onOpenChange={setUnsavedAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-500" />
-              Unsaved Changes
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. If you leave now, all changes will be lost. Do you want to continue?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setPendingNavigation(null)
-            }}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingNavigation !== null) {
-                  navigate(pendingNavigation)
-                }
-                setUnsavedAlertOpen(false)
-                setPendingNavigation(null)
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Leave
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
     </div>
   )
 }

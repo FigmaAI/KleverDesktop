@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useNavigate } from "react-router-dom"
 import { FileText, FolderKanban } from "lucide-react"
 
 import {
@@ -13,15 +12,16 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command"
-import type { Project } from "@/types/project"
+import type { Project, Task } from "@/types/project"
 
 interface CommandMenuProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSelectProject?: (project: Project) => void
+  onSelectTask?: (task: Task, project: Project) => void
 }
 
-export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
-  const navigate = useNavigate()
+export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask }: CommandMenuProps) {
   const [projects, setProjects] = React.useState<Project[]>([])
   const [loading, setLoading] = React.useState(false)
 
@@ -45,13 +45,13 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
     }
   }
 
-  const handleSelectProject = (projectId: string) => {
-    navigate(`/projects/${projectId}`)
+  const handleSelectProject = (project: Project) => {
+    onSelectProject?.(project)
     onOpenChange(false)
   }
 
-  const handleSelectTask = (projectId: string) => {
-    navigate(`/projects/${projectId}`)
+  const handleSelectTask = (task: Task & { projectId: string }, project: Project) => {
+    onSelectTask?.(task, project)
     onOpenChange(false)
   }
 
@@ -85,7 +85,7 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
                     <CommandItem
                       key={project.id}
                       value={`project-${project.name}`}
-                      onSelect={() => handleSelectProject(project.id)}
+                      onSelect={() => handleSelectProject(project)}
                     >
                       <FolderKanban className="mr-2 h-4 w-4" />
                       <span>{project.name}</span>
@@ -101,23 +101,27 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
 
             {allTasks.length > 0 && (
               <CommandGroup heading="Tasks">
-                {allTasks.map((task) => (
-                  <CommandItem
-                    key={task.id}
-                    value={`task-${task.goal || task.description || task.name}-${task.projectName}`}
-                    onSelect={() => handleSelectTask(task.projectId)}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    <div className="flex flex-col">
-                      <span className="text-sm">
-                        {task.goal || task.description || task.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        in {task.projectName}
-                      </span>
-                    </div>
-                  </CommandItem>
-                ))}
+                {allTasks.map((task) => {
+                  const project = projects.find(p => p.id === task.projectId)
+                  if (!project) return null
+                  return (
+                    <CommandItem
+                      key={task.id}
+                      value={`task-${task.goal || task.description || task.name}-${task.projectName}`}
+                      onSelect={() => handleSelectTask(task, project)}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <div className="flex flex-col">
+                        <span className="text-sm">
+                          {task.goal || task.description || task.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          in {task.projectName}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  )
+                })}
               </CommandGroup>
             )}
           </>
@@ -126,4 +130,3 @@ export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {
     </CommandDialog>
   )
 }
-

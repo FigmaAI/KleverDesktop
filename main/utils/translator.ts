@@ -150,8 +150,19 @@ ${text}`;
     // Use config baseUrl if provided, otherwise use provider's default
     let apiUrl: string;
     if (baseUrl && baseUrl.trim() !== '') {
-      // User has configured a custom baseUrl
-      apiUrl = baseUrl;
+      // User has configured a custom baseUrl - append appropriate endpoint
+      const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
+      if (provider === 'anthropic') {
+        // Anthropic uses /messages endpoint
+        apiUrl = base.endsWith('/messages') ? base : `${base}/messages`;
+      } else if (provider === 'gemini') {
+        // Gemini uses a different endpoint structure
+        apiUrl = base;
+      } else {
+        // Most providers use /chat/completions
+        apiUrl = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
+      }
     } else {
       // Use provider's default baseUrl
       if (provider === 'ollama') {

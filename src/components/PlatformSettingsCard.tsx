@@ -90,7 +90,7 @@ export function PlatformSettingsCard({
                     androidScreenshotDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard/Pictures"
+                placeholder="/sdcard"
               />
               <p className="text-sm text-muted-foreground">
                 Path on Android device where screenshots will be saved
@@ -107,7 +107,7 @@ export function PlatformSettingsCard({
                     androidXmlDir: e.target.value,
                   })
                 }
-                placeholder="/sdcard/Documents"
+                placeholder="/sdcard"
               />
               <p className="text-sm text-muted-foreground">
                 Path on Android device where UI hierarchy XML files will be saved

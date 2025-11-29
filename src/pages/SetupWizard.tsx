@@ -119,8 +119,8 @@ export function SetupWizard() {
           maxRounds: 20,
         },
         android: {
-          screenshotDir: '/sdcard/Pictures',
-          xmlDir: '/sdcard/Documents',
+          screenshotDir: '/sdcard',
+          xmlDir: '/sdcard',
           sdkPath: androidSdkPath || '',
         },
         web: {

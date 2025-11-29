@@ -577,8 +577,8 @@ REQUEST_INTERVAL=10
 MAX_ROUNDS=20
 
 # Platform Settings (Android)
-ANDROID_SCREENSHOT_DIR=/sdcard/Pictures
-ANDROID_XML_DIR=/sdcard/
+ANDROID_SCREENSHOT_DIR=/sdcard
+ANDROID_XML_DIR=/sdcard
 
 # Platform Settings (Web)
 WEB_BROWSER_TYPE=chromium
