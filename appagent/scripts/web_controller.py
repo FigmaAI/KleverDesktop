@@ -173,7 +173,7 @@ def extract_interactive_elements(page: Page, html_content: str = None) -> List[W
 class WebController:
     """Web controller using Playwright, similar interface to AndroidController"""
 
-    def __init__(self, browser_type="chromium", headless=False, url=None):
+    def __init__(self, browser_type="chromium", headless=False, url=None, user_data_dir=None):
         """
         Initialize Playwright browser
 
@@ -181,43 +181,103 @@ class WebController:
             browser_type: "chromium", "firefox", or "webkit"
             headless: Run browser in headless mode
             url: Initial URL to navigate to
+            user_data_dir: Path to browser profile directory for persistent context.
+                          If provided, uses launch_persistent_context to maintain
+                          login sessions and cookies across restarts.
         """
         self.playwright = sync_playwright().start()
+        self.browser = None  # Only set when not using persistent context
+        self.user_data_dir = user_data_dir
+        self._is_persistent = user_data_dir is not None
 
-        # Launch browser
-        if browser_type == "chromium":
-            self.browser = self.playwright.chromium.launch(headless=headless)
-        elif browser_type == "firefox":
-            self.browser = self.playwright.firefox.launch(headless=headless)
-        elif browser_type == "webkit":
-            self.browser = self.playwright.webkit.launch(headless=headless)
+        if user_data_dir:
+            # Use persistent context for maintaining login sessions
+            os.makedirs(user_data_dir, exist_ok=True)
+            print_with_color(f"Using persistent browser profile: {user_data_dir}", "yellow")
+            
+            if browser_type == "chromium":
+                self.context = self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    headless=headless,
+                    viewport={"width": 1280, "height": 720},
+                    args=[
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-infobars',
+                    ],
+                    ignore_default_args=['--enable-automation'],
+                )
+            elif browser_type == "firefox":
+                self.context = self.playwright.firefox.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    headless=headless,
+                    viewport={"width": 1280, "height": 720},
+                )
+            elif browser_type == "webkit":
+                self.context = self.playwright.webkit.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    headless=headless,
+                    viewport={"width": 1280, "height": 720},
+                )
+            else:
+                raise ValueError(f"Invalid browser_type: {browser_type}")
+            
+            # Get or create page from persistent context
+            if self.context.pages:
+                self.page = self.context.pages[0]
+            else:
+                self.page = self.context.new_page()
         else:
-            raise ValueError(f"Invalid browser_type: {browser_type}")
+            # Standard non-persistent browser launch
+            if browser_type == "chromium":
+                self.browser = self.playwright.chromium.launch(headless=headless)
+            elif browser_type == "firefox":
+                self.browser = self.playwright.firefox.launch(headless=headless)
+            elif browser_type == "webkit":
+                self.browser = self.playwright.webkit.launch(headless=headless)
+            else:
+                raise ValueError(f"Invalid browser_type: {browser_type}")
 
-        # Create context and page
-        self.context = self.browser.new_context(
-            viewport={"width": 1280, "height": 720},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        )
-        self.page = self.context.new_page()
+            # Create context and page
+            self.context = self.browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+            self.page = self.context.new_page()
 
         # Get viewport size
         viewport = self.page.viewport_size
         self.width = viewport["width"]
         self.height = viewport["height"]
 
-        print_with_color(f"WebController initialized: {browser_type}, {self.width}x{self.height}", "green")
+        mode = "persistent" if self._is_persistent else "standard"
+        print_with_color(f"WebController initialized: {browser_type}, {self.width}x{self.height} ({mode} mode)", "green")
 
         # Navigate to initial URL if provided
         if url:
             url = normalize_url(url)
-            self.page.goto(url, wait_until="networkidle")
+            try:
+                # Use 'load' instead of 'networkidle' for dynamic sites like Gmail
+                self.page.goto(url, wait_until="load", timeout=60000)
+            except Exception as e:
+                # If load times out, try domcontentloaded as fallback
+                print_with_color(f"Initial navigation slow, waiting for content: {e}", "yellow")
+                try:
+                    self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                except Exception:
+                    print_with_color(f"Navigation timeout - page may still be loading", "yellow")
             print_with_color(f"Navigated to: {url}", "yellow")
 
     def navigate(self, url: str):
         """Navigate to URL"""
         url = normalize_url(url)
-        self.page.goto(url, wait_until="networkidle")
+        try:
+            self.page.goto(url, wait_until="load", timeout=60000)
+        except Exception:
+            # Fallback for slow pages
+            try:
+                self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            except Exception:
+                print_with_color(f"Navigation timeout - page may still be loading", "yellow")
         time.sleep(1)  # Extra wait for dynamic content
         return self.page.url
 
@@ -453,8 +513,263 @@ class WebController:
 
     def close(self):
         """Close browser and cleanup"""
-        self.page.close()
-        self.context.close()
-        self.browser.close()
-        self.playwright.stop()
-        print_with_color("WebController closed", "yellow")
+        try:
+            self.page.close()
+        except Exception:
+            pass
+        
+        try:
+            self.context.close()
+        except Exception:
+            pass
+        
+        # Only close browser if not using persistent context
+        if self.browser is not None:
+            try:
+                self.browser.close()
+            except Exception:
+                pass
+        
+        try:
+            self.playwright.stop()
+        except Exception:
+            pass
+        
+        mode = "persistent" if self._is_persistent else "standard"
+        print_with_color(f"WebController closed ({mode} mode)", "yellow")
+    
+    def is_persistent(self) -> bool:
+        """Check if using persistent browser context"""
+        return self._is_persistent
+    
+    def get_profile_path(self) -> str:
+        """Get the browser profile directory path (only for persistent context)"""
+        return self.user_data_dir if self._is_persistent else None
+    
+    def save_storage_state(self, path: str = None) -> str:
+        """
+        Save browser storage state (cookies, localStorage) to JSON file.
+        Useful for preserving login sessions.
+        
+        Args:
+            path: Path to save storage state (default: google-auth.json in profile dir)
+        
+        Returns:
+            Path to saved storage state file
+        """
+        if path is None and self.user_data_dir:
+            path = os.path.join(self.user_data_dir, 'google-auth.json')
+        elif path is None:
+            raise ValueError("Must specify path or use persistent context")
+        
+        self.context.storage_state(path=path)
+        print_with_color(f"Storage state saved to: {path}", "green")
+        return path
+
+
+# ============================================
+# Google Login Functions
+# ============================================
+
+def get_storage_state_path(profile_dir: str) -> str:
+    """Get path for storage state JSON file"""
+    return os.path.join(profile_dir, 'google-auth.json')
+
+
+def check_google_login_from_storage(profile_dir: str) -> dict:
+    """
+    Quick check if already logged into Google using saved storage state.
+    No browser needed - just inspects the JSON file for auth cookies.
+    
+    Args:
+        profile_dir: Browser profile directory path
+    
+    Returns:
+        dict: {'logged_in': bool, 'has_auth_cookies': bool}
+    """
+    import json
+    
+    storage_path = get_storage_state_path(profile_dir)
+    
+    if not os.path.exists(storage_path):
+        return {'logged_in': False, 'has_auth_cookies': False}
+    
+    try:
+        with open(storage_path, 'r') as f:
+            state = json.load(f)
+            cookies = state.get('cookies', [])
+            
+            # Filter Google cookies
+            google_cookies = [c for c in cookies if 'google.com' in c.get('domain', '')]
+            
+            # Check for essential Google auth cookies
+            auth_cookie_names = ['SID', 'HSID', 'SSID', 'APISID', 'SAPISID']
+            has_auth_cookies = any(
+                c.get('name') in auth_cookie_names 
+                for c in google_cookies
+            )
+            
+            return {
+                'logged_in': has_auth_cookies,
+                'has_auth_cookies': has_auth_cookies
+            }
+            
+    except Exception as e:
+        print_with_color(f"Error reading storage state: {e}", "red")
+        return {'logged_in': False, 'has_auth_cookies': False}
+
+
+def start_google_login(profile_dir: str, timeout: int = 600, status_callback=None) -> dict:
+    """
+    Start Google login flow with persistent browser context.
+    
+    Uses Playwright's wait_for_url() for reliable login detection.
+    
+    Args:
+        profile_dir: Directory to store browser profile
+        timeout: Maximum wait time in seconds (default: 600 = 10 minutes)
+        status_callback: Optional callback function(status, message) for progress updates
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'profile_path': str,
+            'error': str or None
+        }
+    """
+    import re
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+    
+    def report_status(status, message=""):
+        """Report status via callback and print"""
+        if status_callback:
+            status_callback(status, message)
+        print(f"[GOOGLE_LOGIN_WEB] {status}: {message}", flush=True)
+    
+    report_status("STARTING", f"Profile: {profile_dir}")
+    os.makedirs(profile_dir, exist_ok=True)
+    storage_state_path = get_storage_state_path(profile_dir)
+    
+    # Success URL patterns
+    success_patterns = [
+        r'myaccount\.google\.com',
+        r'accounts\.google\.com/b/',
+        r'accounts\.google\.com/SignOutOptions',
+        r'mail\.google\.com',
+        r'drive\.google\.com',
+    ]
+    success_regex = re.compile('|'.join(success_patterns), re.IGNORECASE)
+    
+    with sync_playwright() as p:
+        report_status("LAUNCHING", "Opening browser...")
+        
+        context = p.chromium.launch_persistent_context(
+            user_data_dir=profile_dir,
+            headless=False,
+            viewport={"width": 1280, "height": 800},
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--disable-infobars',
+            ],
+            ignore_default_args=['--enable-automation'],
+        )
+        
+        page = context.pages[0] if context.pages else context.new_page()
+        
+        # Navigate to Google accounts
+        report_status("NAVIGATING", "Opening accounts.google.com")
+        
+        try:
+            page.goto('https://accounts.google.com', wait_until='domcontentloaded', timeout=30000)
+        except PlaywrightTimeout:
+            report_status("WARNING", "Page load timeout, continuing...")
+        
+        current_url = page.url
+        report_status("URL_LOADED", f"Current URL: {current_url}")
+        
+        # Check if already logged in
+        if success_regex.search(current_url):
+            report_status("ALREADY_LOGGED_IN", "User is already logged into Google!")
+            
+            try:
+                context.storage_state(path=storage_state_path)
+                report_status("STATE_SAVED", f"Auth state saved")
+            except Exception as e:
+                report_status("WARNING", f"Could not save storage state: {e}")
+            
+            report_status("LOGIN_SUCCESS", "Google login session confirmed")
+            
+            # Wait for close signal
+            report_status("WAITING_CONFIRM", "Waiting for confirmation...")
+            try:
+                page.wait_for_event("close", timeout=0)
+            except:
+                pass
+            
+            try:
+                context.close()
+            except:
+                pass
+            
+            return {'success': True, 'profile_path': profile_dir, 'error': None}
+        
+        # Not logged in - wait for user to complete login
+        report_status("WAITING", "Please log in to your Google account...")
+        
+        try:
+            # Wait for redirect to success URL
+            page.wait_for_url(
+                lambda url: bool(success_regex.search(url)),
+                timeout=timeout * 1000,
+                wait_until='domcontentloaded'
+            )
+            
+            final_url = page.url
+            report_status("LOGIN_DETECTED", f"Redirected to: {final_url}")
+            
+            # Wait for cookies to settle
+            page.wait_for_timeout(2000)
+            
+            # Save storage state
+            try:
+                context.storage_state(path=storage_state_path)
+                report_status("STATE_SAVED", f"Auth state saved")
+            except Exception as e:
+                report_status("WARNING", f"Could not save storage state: {e}")
+            
+            report_status("LOGIN_SUCCESS", "Google login detected successfully")
+            
+            # Wait for close signal
+            report_status("WAITING_CONFIRM", "Waiting for confirmation...")
+            try:
+                page.wait_for_event("close", timeout=0)
+            except:
+                pass
+            
+            try:
+                context.close()
+            except:
+                pass
+            
+            return {'success': True, 'profile_path': profile_dir, 'error': None}
+            
+        except PlaywrightTimeout:
+            report_status("TIMEOUT", f"Login timeout - {timeout}s exceeded")
+            try:
+                context.close()
+            except:
+                pass
+            return {'success': False, 'profile_path': profile_dir, 'error': 'Timeout'}
+            
+        except Exception as e:
+            error_msg = str(e)
+            if "Target page, context or browser has been closed" in error_msg:
+                report_status("CANCELLED", "Browser closed by user")
+            else:
+                report_status("ERROR", f"Unexpected error: {error_msg[:200]}")
+            
+            try:
+                context.close()
+            except:
+                pass
+            return {'success': False, 'profile_path': profile_dir, 'error': error_msg}

@@ -251,10 +251,16 @@ else:  # web
     else:
         print_with_color("Please enter the URL you want to explore:", "blue")
         url = input()
+    # Use persistent browser profile if configured (for login sessions)
+    user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
+    if user_data_dir:
+        print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
+    
     controller = WebController(
         browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
         headless=configs.get("WEB_HEADLESS", False),
-        url=url
+        url=url,
+        user_data_dir=user_data_dir if user_data_dir else None
     )
     width = controller.width
     height = controller.height

@@ -605,7 +605,12 @@ function App() {
   }
 
   if (!setupComplete) {
-    return <SetupWizard />
+    return (
+      <TerminalProvider>
+        <SetupWizard />
+        <Toaster />
+      </TerminalProvider>
+    )
   }
 
   return (

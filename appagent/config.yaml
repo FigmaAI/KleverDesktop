@@ -49,6 +49,7 @@ WEB_BROWSER_TYPE: "chromium"
 WEB_HEADLESS: false
 WEB_VIEWPORT_WIDTH: 1280
 WEB_VIEWPORT_HEIGHT: 720
+WEB_USER_DATA_DIR: ""  # Browser profile for persistent login sessions (set by Electron)
 
 # Image Optimization
 IMAGE_MAX_WIDTH: 512

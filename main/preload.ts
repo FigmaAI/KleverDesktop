@@ -149,4 +149,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ============================================
   translateText: (text: string, targetLang: string) => ipcRenderer.invoke('translator:translateText', text, targetLang),
   translateMarkdown: (markdown: string, targetLang: string) => ipcRenderer.invoke('translator:translateMarkdown', markdown, targetLang),
+
+  // ============================================
+  // Google Login (Pre-authentication)
+  // ============================================
+  // Web browser login
+  googleLoginWebStart: () => ipcRenderer.invoke('google-login:web:start'),
+  googleLoginWebStop: () => ipcRenderer.invoke('google-login:web:stop'),
+  googleLoginWebGetStatus: () => ipcRenderer.invoke('google-login:web:get-status'),
+  googleLoginWebVerifyStatus: () => ipcRenderer.invoke('google-login:web:verify-status'),
+  googleLoginGetProfilePath: () => ipcRenderer.invoke('google-login:get-profile-path'),
+
+  // Android device login
+  googleLoginAndroidListDevices: () => ipcRenderer.invoke('google-login:android:list-devices'),
+  googleLoginAndroidStart: (deviceId: string) => ipcRenderer.invoke('google-login:android:start', deviceId),
+  googleLoginAndroidStop: () => ipcRenderer.invoke('google-login:android:stop'),
+  googleLoginAndroidGetStatus: () => ipcRenderer.invoke('google-login:android:get-status'),
+
+  // Clear login config
+  googleLoginClear: (platform: 'web' | 'android' | 'all') => ipcRenderer.invoke('google-login:clear', platform),
+
+  // Google login event listeners
+  onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => {
+    ipcRenderer.on('google-login:web:status', (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message));
+  },
+  onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => {
+    ipcRenderer.on('google-login:android:status', (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message));
+  },
 });

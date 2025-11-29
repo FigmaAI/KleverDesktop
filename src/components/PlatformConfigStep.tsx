@@ -1,15 +1,15 @@
-import { FolderOpen, Info } from 'lucide-react'
+import { FolderOpen, ChevronRight } from 'lucide-react'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import { GoogleLoginButton } from '@/components/GoogleLoginCard'
 
 interface PlatformConfigStepProps {
   androidSdkPath: string
@@ -32,7 +32,7 @@ export function PlatformConfigStep({
       <Card>
         <CardHeader>
           <CardTitle>Platform Configuration</CardTitle>
-          <CardDescription>Configure Android SDK path for device automation</CardDescription>
+          <CardDescription>Configure Android SDK path and Google login for automation</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -54,90 +54,42 @@ export function PlatformConfigStep({
                   Browse
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Path to your Android SDK directory. This is optional but recommended for Android automation.
-              </p>
-            </div>
-
-            {/* How to Find SDK Path - Accordion */}
-            <div className="border rounded-lg p-4 space-y-2 bg-muted">
-              <div className="flex items-center gap-2 text-sm font-semibold mb-2">
-                <Info className="h-4 w-4" />
-                How to find your Android SDK path
-              </div>
-
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="android-studio">
-                  <AccordionTrigger className="text-sm">
-                    If you have Android Studio installed
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                      <li>Open Android Studio → Settings (or Preferences on macOS)</li>
-                      <li>Navigate to: Appearance & Behavior → System Settings → Android SDK</li>
-                      <li>Copy the &quot;Android SDK Location&quot; path shown at the top</li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="homebrew">
-                  <AccordionTrigger className="text-sm">
-                    If you installed via Homebrew (macOS)
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                      <li>
-                        Run in terminal: <code className="px-1 py-0.5 bg-muted rounded text-xs">which adb</code>
-                      </li>
-                      <li>
-                        The SDK path is the part before <code className="px-1 py-0.5 bg-muted rounded text-xs">/platform-tools/adb</code>
-                      </li>
-                      <li>
-                        Example: If output is <code className="px-1 py-0.5 bg-muted rounded text-xs">/opt/homebrew/bin/adb</code>,
-                        your SDK might be at <code className="px-1 py-0.5 bg-muted rounded text-xs">/opt/homebrew/Caskroom/android-sdk</code>
-                      </li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="common-locations">
-                  <AccordionTrigger className="text-sm">
-                    Common SDK locations
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground ml-2">
-                      <li>macOS: <code className="px-1 py-0.5 bg-muted rounded text-xs">~/Library/Android/sdk</code></li>
-                      <li>Windows: <code className="px-1 py-0.5 bg-muted rounded text-xs">C:\Users\[username]\AppData\Local\Android\Sdk</code></li>
-                      <li>Linux: <code className="px-1 py-0.5 bg-muted rounded text-xs">~/Android/Sdk</code></li>
-                    </ul>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="no-sdk">
-                  <AccordionTrigger className="text-sm">
-                    If you don&apos;t have Android SDK
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <p className="text-sm text-muted-foreground">
-                      The SDK was already checked in the previous step. If it&apos;s not installed,
-                      you can skip this for now and install it later when needed for Android automation.
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-
-            {/* Note about other settings */}
-            {/*             
-            <Alert className="bg-primary/5 border-primary/20">
-              <AlertDescription>
-                <p className="text-sm">
-                  <strong>Note:</strong> Other platform settings (screenshot directory, web
-                  browser settings, etc.) use default values and can be customized later in the
-                  Settings page.
+              <Collapsible>
+                <p className="text-sm text-muted-foreground">
+                  Path to your Android SDK directory. This is optional but recommended for Android automation.{' '}
+                  <CollapsibleTrigger asChild>
+                    <button className="inline-flex items-center text-primary hover:underline text-xs font-medium">
+                      How to find it
+                      <ChevronRight className="h-3 w-3 ml-0.5 transition-transform group-data-[state=open]:rotate-90" />
+                    </button>
+                  </CollapsibleTrigger>
                 </p>
-              </AlertDescription>
-            </Alert> */}
+                <CollapsibleContent>
+                  <div className="mt-2 border rounded-lg p-3 bg-muted/30 text-xs text-muted-foreground space-y-2">
+                    <div>
+                      <strong>Android Studio:</strong> Settings → System Settings → Android SDK → copy path
+                    </div>
+                    <div>
+                      <strong>Homebrew (macOS):</strong> Run <code className="px-1 py-0.5 bg-muted rounded">which adb</code> and remove <code className="px-1 py-0.5 bg-muted rounded">/platform-tools/adb</code>
+                    </div>
+                    <div>
+                      <strong>Common paths:</strong>
+                      <ul className="ml-4 mt-1 space-y-0.5">
+                        <li>macOS: <code className="px-1 py-0.5 bg-muted rounded">~/Library/Android/sdk</code></li>
+                        <li>Windows: <code className="px-1 py-0.5 bg-muted rounded">%LOCALAPPDATA%\Android\Sdk</code></li>
+                        <li>Linux: <code className="px-1 py-0.5 bg-muted rounded">~/Android/Sdk</code></li>
+                      </ul>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Google Login - Web */}
+            <GoogleLoginButton platform="web" />
+
+            {/* Google Login - Android */}
+            <GoogleLoginButton platform="android" />
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 // Setup Wizard related
 export { EnvironmentSetup } from './EnvironmentSetup'
+export { GoogleLoginButton, WebGoogleLoginButton, AndroidGoogleLoginButton, GoogleLoginCard, GoogleLoginSection } from './GoogleLoginCard'
 export { IntegrationTestStep } from './IntegrationTestStep'
 export { ModelConfigStep } from './ModelConfigStep'
 export { PageHeader } from './PageHeader'

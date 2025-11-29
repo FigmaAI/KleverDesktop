@@ -9,7 +9,17 @@
  * - Ollama requires api_base: "http://localhost:11434"
  */
 
+import { app } from 'electron';
+import path from 'path';
 import { AppConfig, ProviderConfig } from '../types/config';
+
+/**
+ * Get browser profile path for persistent login sessions
+ */
+function getBrowserProfilePath(): string {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'browser-profile');
+}
 
 /**
  * Model selection for task execution
@@ -84,12 +94,13 @@ export function buildEnvFromConfig(
     ANDROID_SDK_PATH: config.android.sdkPath,
 
     // ========================================
-    // Web Configuration (4 variables)
+    // Web Configuration (5 variables)
     // ========================================
     WEB_BROWSER_TYPE: config.web.browserType,
     WEB_HEADLESS: config.web.headless.toString(),
     WEB_VIEWPORT_WIDTH: config.web.viewportWidth.toString(),
     WEB_VIEWPORT_HEIGHT: config.web.viewportHeight.toString(),
+    WEB_USER_DATA_DIR: getBrowserProfilePath(),  // Browser profile for login sessions
 
     // ========================================
     // Image Configuration (4 variables)
@@ -145,11 +156,12 @@ export function validateEnvVars(envVars: Record<string, string>): boolean {
     'ANDROID_SCREENSHOT_DIR',
     'ANDROID_XML_DIR',
     'ANDROID_SDK_PATH',
-    // Web (4)
+    // Web (5)
     'WEB_BROWSER_TYPE',
     'WEB_HEADLESS',
     'WEB_VIEWPORT_WIDTH',
     'WEB_VIEWPORT_HEIGHT',
+    'WEB_USER_DATA_DIR',
     // Image (4)
     'IMAGE_MAX_WIDTH',
     'IMAGE_MAX_HEIGHT',
