@@ -169,6 +169,7 @@ export function hardResetUserData(): void {
     'python-env',
     'logs',
     'blob_storage',
+    'browser-profile',  // Playwright browser profile (Google login sessions)
     'Session Storage',
     'Code Cache',
     'DawnGraphiteCache',

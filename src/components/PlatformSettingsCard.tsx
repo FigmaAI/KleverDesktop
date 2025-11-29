@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { PlatformSettings } from '@/hooks/useSettings'
+import { GoogleLoginButton } from '@/components/GoogleLoginCard'
 
 interface PlatformSettingsCardProps {
   platformSettings: PlatformSettings
@@ -114,14 +116,8 @@ export function PlatformSettingsCard({
               </p>
             </div>
 
-            <div className="rounded-md border border-primary/50 bg-primary/5 p-4">
-              <p className="mb-2 text-sm font-semibold">Prerequisites</p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                <li>• ADB (Android Debug Bridge) must be installed</li>
-                <li>• USB debugging enabled on your Android device</li>
-                <li>• Device connected via USB or network</li>
-              </ul>
-            </div>
+            {/* Android Google Login */}
+            <GoogleLoginButton platform="android" />
           </TabsContent>
 
           {/* Web Settings */}
@@ -211,14 +207,8 @@ export function PlatformSettingsCard({
               </div>
             </div>
 
-            <div className="rounded-md border border-primary/50 bg-primary/5 p-4">
-              <p className="mb-2 text-sm font-semibold">Prerequisites</p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                <li>• Playwright must be installed (playwright install)</li>
-                <li>• Browser binaries for selected browser type</li>
-                <li>• Network access for web automation tasks</li>
-              </ul>
-            </div>
+            {/* Web Google Login */}
+            <GoogleLoginButton platform="web" />
           </TabsContent>
         </Tabs>
       </CardContent>

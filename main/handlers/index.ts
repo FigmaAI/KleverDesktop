@@ -15,6 +15,7 @@ import { registerTaskHandlers, cleanupTaskProcesses } from './task';
 import { registerDialogHandlers } from './dialogs';
 import { registerGitHubHandlers } from './github';
 import { registerTranslatorHandlers } from './translator';
+import { registerGoogleLoginHandlers, cleanupGoogleLoginProcesses } from './google-login';
 
 /**
  * Register all IPC handlers
@@ -34,6 +35,7 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
   registerDialogHandlers(ipcMain, getMainWindow);
   registerGitHubHandlers(ipcMain);
   registerTranslatorHandlers(ipcMain);
+  registerGoogleLoginHandlers(ipcMain, getMainWindow);
 }
 
 /**
@@ -42,4 +44,5 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
 export async function cleanupAllProcesses(): Promise<void> {
   cleanupProjectProcesses();
   await cleanupTaskProcesses();
+  cleanupGoogleLoginProcesses();
 }

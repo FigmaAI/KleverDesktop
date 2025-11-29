@@ -115,6 +115,33 @@ export interface PreferencesConfig {
 }
 
 /**
+ * Web browser Google login configuration
+ */
+export interface WebGoogleLoginConfig {
+  enabled: boolean;
+  profilePath: string;       // Path to browser profile directory
+  lastLoginAt?: string;      // ISO timestamp of last successful login
+}
+
+/**
+ * Android device Google login configuration
+ */
+export interface AndroidGoogleLoginConfig {
+  enabled: boolean;
+  deviceId?: string;         // Device ID where login was performed
+  lastLoginAt?: string;      // ISO timestamp of last successful login
+}
+
+/**
+ * Google login configuration for pre-authentication
+ * Used to maintain login sessions for automation tasks
+ */
+export interface GoogleLoginConfig {
+  web?: WebGoogleLoginConfig;
+  android?: AndroidGoogleLoginConfig;
+}
+
+/**
  * Complete application configuration
  * Stored in ~/.klever-desktop/config.json
  */
@@ -126,6 +153,7 @@ export interface AppConfig {
   web: WebConfig;
   image: ImageConfig;
   preferences: PreferencesConfig;
+  googleLogin?: GoogleLoginConfig;  // Optional Google login pre-authentication
 }
 
 /**

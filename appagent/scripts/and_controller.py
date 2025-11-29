@@ -479,6 +479,209 @@ def cleanup_emulators():
     return stopped_count
 
 
+# ============================================
+# Google Login Functions
+# ============================================
+
+def get_google_account_count(device_serial=None):
+    """
+    Get count of Google accounts on device
+    
+    Args:
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        int: Number of Google accounts, or -1 on error
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return -1
+        device_serial = devices[0]
+    
+    result = execute_adb(f"adb -s {device_serial} shell dumpsys account")
+    if result == "ERROR":
+        return -1
+    
+    # Count "Account {" occurrences
+    count = result.count("Account {")
+    return count
+
+
+def open_google_account_settings(device_serial=None):
+    """
+    Open Google account add settings on device
+    
+    Args:
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        bool: True if successful
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            print_with_color("ERROR: No devices connected", "red")
+            return False
+        device_serial = devices[0]
+    
+    result = execute_adb(
+        f"adb -s {device_serial} shell am start -a android.settings.ADD_ACCOUNT_SETTINGS"
+    )
+    return result != "ERROR"
+
+
+def start_google_login(device_serial=None, timeout=600, poll_interval=3, status_callback=None):
+    """
+    Start Google login flow on Android device.
+    
+    If no device is connected, attempts to start an emulator.
+    If device already has Google account, asks user to confirm.
+    Otherwise, opens Google account settings and polls for new account addition.
+    
+    Args:
+        device_serial: Target device serial (optional, auto-selects)
+        timeout: Maximum wait time in seconds (default: 600 = 10 minutes)
+        poll_interval: Polling interval in seconds (default: 3)
+        status_callback: Optional callback function(status, message) for progress updates
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'device': str or None,
+            'already_logged_in': bool,
+            'error': str or None
+        }
+    """
+    import time
+    
+    def report_status(status, message=""):
+        """Report status via callback and print"""
+        if status_callback:
+            status_callback(status, message)
+        # Also print for CLI usage
+        print(f"[GOOGLE_LOGIN_ANDROID] {status}: {message}", flush=True)
+    
+    report_status("STARTING", "Starting Android Google login flow")
+    
+    # Check ADB
+    adb_path = get_adb_path()
+    if not adb_path:
+        report_status("ERROR", "ADB not found. Please configure Android SDK path.")
+        return {'success': False, 'device': None, 'already_logged_in': False, 'error': 'ADB not found'}
+    
+    # Get connected devices
+    devices = list_all_devices()
+    target_device = None
+    
+    if device_serial and device_serial in devices:
+        target_device = device_serial
+        report_status("DEVICE_SELECTED", f"Using specified device: {target_device}")
+    elif devices:
+        target_device = devices[0]
+        report_status("DEVICE_FOUND", f"Using connected device: {target_device}")
+    else:
+        # No devices connected - try to start emulator
+        report_status("NO_DEVICE", "No devices connected. Checking for emulators...")
+        
+        emulators = list_available_emulators()
+        if not emulators:
+            report_status("ERROR", "No devices connected and no emulators available.")
+            return {'success': False, 'device': None, 'already_logged_in': False, 'error': 'No devices or emulators available'}
+        
+        report_status("STARTING_EMULATOR", f"Starting emulator: {emulators[0]}")
+        
+        # Start emulator (this will wait for boot)
+        if not start_emulator(emulators[0], wait_for_boot=True):
+            report_status("ERROR", "Failed to start emulator")
+            return {'success': False, 'device': None, 'already_logged_in': False, 'error': 'Failed to start emulator'}
+        
+        # Get the new device ID
+        devices = list_all_devices()
+        if not devices:
+            report_status("ERROR", "Emulator started but device not detected")
+            return {'success': False, 'device': None, 'already_logged_in': False, 'error': 'Emulator started but not detected'}
+        
+        target_device = devices[0]
+        report_status("EMULATOR_READY", f"Emulator ready: {target_device}")
+    
+    # Get initial account count
+    report_status("CHECKING_ACCOUNTS", "Getting current account count...")
+    initial_count = get_google_account_count(target_device)
+    if initial_count < 0:
+        report_status("ERROR", "Failed to get account count")
+        return {'success': False, 'device': target_device, 'already_logged_in': False, 'error': 'Failed to get account count'}
+    
+    report_status("ACCOUNT_COUNT", f"Current Google accounts: {initial_count}")
+    
+    # If already has Google account, report as already logged in
+    if initial_count > 0:
+        report_status("ALREADY_LOGGED_IN", f"Device already has {initial_count} Google account(s)")
+        report_status("LOGIN_SUCCESS", f"Device: {target_device}")
+        return {'success': True, 'device': target_device, 'already_logged_in': True, 'error': None}
+    
+    # No account - open Google account settings for user to login
+    report_status("OPENING_SETTINGS", "Opening Google account settings...")
+    if not open_google_account_settings(target_device):
+        report_status("ERROR", "Failed to open account settings")
+        return {'success': False, 'device': target_device, 'already_logged_in': False, 'error': 'Failed to open account settings'}
+    
+    report_status("SETTINGS_OPENED", "Account settings opened on device")
+    report_status("WAITING", "Please log in to your Google account on the device...")
+    
+    # Poll for new account
+    elapsed = 0
+    while elapsed < timeout:
+        current_count = get_google_account_count(target_device)
+        
+        if current_count > initial_count:
+            report_status("ACCOUNT_DETECTED", "New Google account detected!")
+            report_status("LOGIN_SUCCESS", f"Device: {target_device}")
+            return {'success': True, 'device': target_device, 'already_logged_in': False, 'error': None}
+        
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+        
+        if elapsed % 30 == 0:
+            report_status("WAITING", f"Still waiting for login... ({elapsed}s)")
+    
+    report_status("TIMEOUT", "Login timeout exceeded")
+    return {'success': False, 'device': target_device, 'already_logged_in': False, 'error': 'Timeout waiting for login'}
+
+
+def check_google_login_status():
+    """
+    Quick check for Android device status for Google login.
+    
+    Returns:
+        dict: {
+            'adb_available': bool,
+            'devices': list of connected devices,
+            'emulators': list of available AVDs,
+            'ready': bool (True if at least one device or emulator available)
+        }
+    """
+    adb_path = get_adb_path()
+    
+    if not adb_path:
+        return {
+            'adb_available': False,
+            'devices': [],
+            'emulators': [],
+            'ready': False
+        }
+    
+    devices = list_all_devices()
+    emulators = list_available_emulators()
+    
+    return {
+        'adb_available': True,
+        'devices': devices,
+        'emulators': emulators,
+        'ready': len(devices) > 0 or len(emulators) > 0
+    }
+
+
 def get_id_from_element(elem):
     bounds = elem.attrib["bounds"][1:-1].split("][")
     x1, y1 = map(int, bounds[0].split(","))

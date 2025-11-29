@@ -27,6 +27,22 @@ interface LastUsedModel {
 }
 
 /**
+ * Google login configuration
+ */
+interface GoogleLoginConfig {
+  web?: {
+    enabled: boolean;
+    profilePath: string;
+    lastLoginAt?: string;
+  };
+  android?: {
+    enabled: boolean;
+    deviceId?: string;
+    lastLoginAt?: string;
+  };
+}
+
+/**
  * Multi-provider AppConfig
  * Supports multiple registered providers with individual API keys
  */
@@ -64,6 +80,7 @@ interface AppConfig {
     minDist: number;
     docRefine: boolean;
   };
+  googleLogin?: GoogleLoginConfig;
 }
 
 /**
@@ -266,6 +283,52 @@ declare global {
       // ============================================
       translateText: (text: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
       translateMarkdown: (markdown: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
+
+      // ============================================
+      // Google Login (Pre-authentication)
+      // ============================================
+      // Web browser login
+      googleLoginWebStart: () => Promise<{ success: boolean; error?: string }>;
+      googleLoginWebStop: () => Promise<{ success: boolean; error?: string }>;
+      googleLoginWebGetStatus: () => Promise<{
+        success: boolean;
+        loggedIn: boolean;
+        lastLoginAt?: string;
+        profilePath?: string;
+        error?: string;
+      }>;
+      googleLoginWebVerifyStatus: () => Promise<{
+        success: boolean;
+        loggedIn: boolean;
+        verified: boolean;
+        lastLoginAt?: string;
+        profilePath?: string;
+        error?: string;
+      }>;
+      googleLoginGetProfilePath: () => Promise<{ success: boolean; path: string }>;
+
+      // Android device login
+      googleLoginAndroidListDevices: () => Promise<{
+        success: boolean;
+        devices: string[];
+        error?: string;
+      }>;
+      googleLoginAndroidStart: (deviceId: string) => Promise<{ success: boolean; error?: string }>;
+      googleLoginAndroidStop: () => Promise<{ success: boolean; error?: string }>;
+      googleLoginAndroidGetStatus: () => Promise<{
+        success: boolean;
+        loggedIn: boolean;
+        deviceId?: string;
+        lastLoginAt?: string;
+        error?: string;
+      }>;
+
+      // Clear login config
+      googleLoginClear: (platform: 'web' | 'android' | 'all') => Promise<{ success: boolean; error?: string }>;
+
+      // Google login event listeners
+      onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => void;
+      onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => void;
     };
   }
 }
