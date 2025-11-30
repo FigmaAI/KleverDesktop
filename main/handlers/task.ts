@@ -93,6 +93,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         modelName: taskInput.modelName,
         language: taskInput.language,
         url: taskInput.url,
+        apkSource: taskInput.apkSource,
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -100,6 +101,12 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
       project.tasks.push(newTask);
       project.updatedAt = new Date().toISOString();
+      
+      // Save last used APK source for this project (Android only)
+      if (taskInput.apkSource) {
+        project.lastApkSource = taskInput.apkSource;
+      }
+      
       saveProjects(data);
 
       return { success: true, task: newTask };
@@ -201,6 +208,94 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       const venvStatus = checkVenvStatus();
       if (!venvStatus.valid) {
         return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
+      }
+
+      // For Android platform with APK source, install/prepare app before running task
+      if (project.platform === 'android' && task.apkSource) {
+        mainWindow?.webContents.send('task:output', { 
+          projectId, 
+          taskId, 
+          output: '[Setup] Preparing Android device and app...\n' 
+        });
+
+        const appagentDir = getAppagentPath();
+        const pythonEnv = getPythonEnv();
+        const scriptsDir = path.join(appagentDir, 'scripts');
+
+        const apkSourceJson = JSON.stringify(task.apkSource);
+        const setupCode = `
+import sys
+import json
+sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
+from and_controller import prelaunch_app
+
+apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
+result = prelaunch_app(apk_source)
+print('SETUP_RESULT:' + json.dumps(result))
+`;
+
+        const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
+          const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
+            cwd: appagentDir,
+            env: {
+              ...pythonEnv,
+              PYTHONPATH: scriptsDir,
+              PYTHONUNBUFFERED: '1'
+            }
+          });
+
+          let stdout = '';
+
+          setupProcess.stdout?.on('data', (data) => {
+            const output = data.toString();
+            stdout += output;
+            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
+          });
+
+          setupProcess.stderr?.on('data', (data) => {
+            const output = data.toString();
+            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
+          });
+
+          setupProcess.on('close', (code) => {
+            const resultMatch = stdout.match(/SETUP_RESULT:(.+)/);
+            if (resultMatch) {
+              try {
+                resolve(JSON.parse(resultMatch[1]));
+              } catch {
+                resolve({ success: code === 0, error: 'Failed to parse setup result' });
+              }
+            } else {
+              resolve({ success: code === 0, error: code !== 0 ? 'App setup failed' : undefined });
+            }
+          });
+
+          setupProcess.on('error', (error) => {
+            resolve({ success: false, error: error.message });
+          });
+        });
+
+        if (!setupResult.success) {
+          // Update task status to failed
+          task.status = 'failed';
+          task.output = `App setup failed: ${setupResult.error}`;
+          task.completedAt = new Date().toISOString();
+          saveProjects(data);
+          
+          mainWindow?.webContents.send('task:error', { 
+            projectId, 
+            taskId, 
+            error: `App setup failed: ${setupResult.error}` 
+          });
+          
+          return { success: false, error: `App setup failed: ${setupResult.error}` };
+        }
+
+        mainWindow?.webContents.send('task:output', { 
+          projectId, 
+          taskId, 
+          output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
+        });
       }
 
       // Sanitize app name (remove spaces) to match learn.py behavior

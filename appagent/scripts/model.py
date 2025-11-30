@@ -244,15 +244,23 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
             # Handle streaming response
             if self.use_streaming:
                 response_content = ""
-                print_with_color("\n--- Model Response (streaming) ---", "yellow")
+                # Only show streaming output for Ollama (useful for <think> mode)
+                show_streaming_output = self.provider == "Ollama"
+                
+                if show_streaming_output:
+                    print_with_color("\n--- Model Response (streaming) ---", "yellow")
+                
                 for chunk in response:
                     if chunk.choices[0].delta.content:
                         chunk_content = chunk.choices[0].delta.content
                         response_content += chunk_content
-                        # Print in real-time (no newline, flush immediately)
-                        print(chunk_content, end="", flush=True)
-                print()  # Newline after streaming completes
-                print_with_color("--- End of Response ---\n", "yellow")
+                        # Print in real-time only for Ollama
+                        if show_streaming_output:
+                            print(chunk_content, end="", flush=True)
+                
+                if show_streaming_output:
+                    print()  # Newline after streaming completes
+                    print_with_color("--- End of Response ---\n", "yellow")
                 
                 # Calculate response time after streaming completes
                 response_time = time.time() - start_time

@@ -176,4 +176,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => {
     ipcRenderer.on('google-login:android:status', (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message));
   },
+
+  // ============================================
+  // APK Installation
+  // ============================================
+  apkSelectFile: () => ipcRenderer.invoke('apk:selectFile'),
+  playstoreParseUrl: (url: string) => ipcRenderer.invoke('playstore:parseUrl', url),
 });

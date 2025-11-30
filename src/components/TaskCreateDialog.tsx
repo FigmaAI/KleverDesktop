@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Loader2, Plus, Smartphone, Globe } from 'lucide-react'
+import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X } from 'lucide-react'
+import PlayStoreIcon from '@/assets/play-store.svg?react'
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { ModelSelector, ModelSelection } from './ModelSelector'
-import type { Task, Project } from '../types/project'
+import type { Task, Project, ApkSourceType, ApkSource } from '../types/project'
 
 interface TaskCreateDialogProps {
   open: boolean
@@ -47,10 +49,15 @@ export function TaskCreateDialog({
   const [loading, setLoading] = useState(false)
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(selectedProjectId)
 
+  // APK Source state (Android only) - Required
+  const [apkSourceType, setApkSourceType] = useState<ApkSourceType>('play_store_url')
+  const [apkFilePath, setApkFilePath] = useState('')
+  const [playStoreUrl, setPlayStoreUrl] = useState('')
+  const [extractedPackageName, setExtractedPackageName] = useState('')
+
   // Get current project
   const currentProject = projects.find(p => p.id === currentProjectId)
   const platform = currentProject?.platform || 'android'
-  const projectName = currentProject?.name || ''
 
   // Update currentProjectId when selectedProjectId changes (only if provided)
   useEffect(() => {
@@ -58,6 +65,28 @@ export function TaskCreateDialog({
       setCurrentProjectId(selectedProjectId)
     }
   }, [selectedProjectId])
+
+  // Load last used APK source when project changes
+  useEffect(() => {
+    if (currentProject?.lastApkSource && currentProject.platform === 'android') {
+      const { type, path, url, packageName } = currentProject.lastApkSource
+      setApkSourceType(type)
+      if (type === 'apk_file' && path) {
+        setApkFilePath(path)
+      } else if (type === 'play_store_url' && url) {
+        setPlayStoreUrl(url)
+      }
+      if (packageName) {
+        setExtractedPackageName(packageName)
+      }
+    } else {
+      // Reset to defaults if no last APK source
+      setApkSourceType('play_store_url')
+      setApkFilePath('')
+      setPlayStoreUrl('')
+      setExtractedPackageName('')
+    }
+  }, [currentProject])
 
   // Load saved model configuration (multi-provider format)
   useEffect(() => {
@@ -93,6 +122,54 @@ export function TaskCreateDialog({
     }
   }, [open])
 
+  const handleSelectApkFile = async () => {
+    const result = await window.electronAPI.apkSelectFile()
+    if (result.success && result.path) {
+      setApkFilePath(result.path)
+      setExtractedPackageName('')
+    }
+  }
+
+  const handlePlayStoreUrlChange = async (inputUrl: string) => {
+    setPlayStoreUrl(inputUrl)
+    setExtractedPackageName('')
+    
+    if (inputUrl && inputUrl.includes('play.google.com')) {
+      const result = await window.electronAPI.playstoreParseUrl(inputUrl)
+      if (result.success && result.packageName) {
+        setExtractedPackageName(result.packageName)
+      }
+    }
+  }
+
+  const buildApkSource = (): ApkSource | undefined => {
+    if (platform !== 'android') return undefined
+    
+    if (apkSourceType === 'apk_file' && apkFilePath) {
+      return {
+        type: 'apk_file',
+        path: apkFilePath,
+        packageName: extractedPackageName || undefined
+      }
+    } else if (apkSourceType === 'play_store_url' && playStoreUrl) {
+      return {
+        type: 'play_store_url',
+        url: playStoreUrl,
+        packageName: extractedPackageName || undefined
+      }
+    }
+    
+    return undefined
+  }
+
+  // Check if APK source is valid (required for Android)
+  const isApkSourceValid = () => {
+    if (platform !== 'android') return true
+    if (apkSourceType === 'apk_file') return !!apkFilePath
+    if (apkSourceType === 'play_store_url') return !!playStoreUrl
+    return false
+  }
+
   const handleSubmit = async () => {
     if (!currentProjectId) {
       alert('Please select a project')
@@ -106,6 +183,11 @@ export function TaskCreateDialog({
 
     if (platform === 'web' && !url.trim()) {
       alert('Please enter a URL for web automation')
+      return
+    }
+
+    if (platform === 'android' && !isApkSourceValid()) {
+      alert('Please provide an APK file or Play Store URL')
       return
     }
 
@@ -129,17 +211,12 @@ export function TaskCreateDialog({
         console.warn('[TaskCreateDialog] Translation failed, using original text:', translateResult.error)
       }
 
-      // For Android, prepend instruction to search and open the app first
-      const taskGoal =
-        platform === 'android'
-          ? `Search and open ${projectName} app and follow the prompt below:\n\n${finalGoal}`
-          : finalGoal
-
       const taskInput = {
         projectId: currentProjectId,
         name: `Task ${new Date().toLocaleString()}`,
-        goal: taskGoal,
+        goal: finalGoal,
         url: platform === 'web' ? url.trim() : undefined,
+        apkSource: buildApkSource(),
         // Include provider and model for task execution
         modelProvider: selectedModel.provider,
         modelName: selectedModel.model,
@@ -185,11 +262,18 @@ export function TaskCreateDialog({
   const handleClose = () => {
     setGoal('')
     setUrl('')
+    setApkSourceType('play_store_url')
+    setApkFilePath('')
+    setPlayStoreUrl('')
+    setExtractedPackageName('')
     setRunImmediately(true)
     onClose()
   }
 
-  const isEligible = currentProjectId && goal.trim() && (platform === 'android' || url.trim()) && selectedModel?.model
+  const isEligible = currentProjectId && 
+    goal.trim() && 
+    (platform === 'web' ? url.trim() : isApkSourceValid()) && 
+    selectedModel?.model
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
@@ -215,6 +299,7 @@ export function TaskCreateDialog({
                 onCreateProject?.()
               } else {
                 setCurrentProjectId(value)
+                // APK source will be loaded from project.lastApkSource by useEffect
               }
             }}>
               <SelectTrigger>
@@ -250,7 +335,7 @@ export function TaskCreateDialog({
           {/* URL Input (Web Platform Only) */}
           {platform === 'web' && (
             <div className="space-y-2">
-              <Label>Website URL</Label>
+              <Label>Website URL <span className="text-destructive">*</span></Label>
               <Input
                 placeholder="https://example.com"
                 value={url}
@@ -259,19 +344,115 @@ export function TaskCreateDialog({
             </div>
           )}
 
+          {/* APK Source (Android Platform Only) - Required */}
+          {platform === 'android' && (
+            <div className="space-y-2">
+              <Label>App Source <span className="text-destructive">*</span></Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                The app will be installed (if needed) and launched before running the task
+              </p>
+              
+              {/* Styled Container for Radio Group */}
+              <div className="rounded-lg border bg-muted/30 p-2">
+                <RadioGroup
+                  value={apkSourceType}
+                  onValueChange={(value) => setApkSourceType(value as ApkSourceType)}
+                  className="gap-1"
+                >
+                  {/* Play Store URL Option - Wrapper */}
+                  <div 
+                    className={`rounded-md transition-colors ${apkSourceType === 'play_store_url' ? 'bg-background shadow-sm' : 'hover:bg-background/40'}`}
+                  >
+                    <label 
+                      htmlFor="task_play_store_url" 
+                      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                    >
+                      <RadioGroupItem value="play_store_url" id="task_play_store_url" />
+                      <PlayStoreIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Google Play Store URL</span>
+                    </label>
+                    
+                    {/* Play Store URL Input */}
+                    {apkSourceType === 'play_store_url' && (
+                      <div className="px-3 pb-3 pt-0 ml-7 space-y-1.5">
+                        <Input
+                          value={playStoreUrl}
+                          onChange={(e) => handlePlayStoreUrlChange(e.target.value)}
+                          placeholder="https://play.google.com/store/apps/details?id=..."
+                          className="text-sm h-8"
+                        />
+                        {extractedPackageName && (
+                          <p className="text-xs text-muted-foreground">
+                            Package: <span className="font-mono text-foreground">{extractedPackageName}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* APK File Option - Wrapper */}
+                  <div 
+                    className={`rounded-md transition-colors ${apkSourceType === 'apk_file' ? 'bg-background shadow-sm' : 'hover:bg-background/40'}`}
+                  >
+                    <label 
+                      htmlFor="task_apk_file" 
+                      className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
+                    >
+                      <RadioGroupItem value="apk_file" id="task_apk_file" />
+                      <FileBox className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">APK File</span>
+                    </label>
+                    
+                    {/* APK File Input */}
+                    {apkSourceType === 'apk_file' && (
+                      <div className="px-3 pb-3 pt-0 ml-7 flex gap-2">
+                        <Input
+                          readOnly
+                          value={apkFilePath}
+                          placeholder="Select an APK file..."
+                          className="flex-1 text-sm h-8"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSelectApkFile}
+                          className="h-8"
+                        >
+                          Browse
+                        </Button>
+                        {apkFilePath && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setApkFilePath('')}
+                            className="h-8 px-2"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+          )}
+
           {/* Task Description */}
           <div className="space-y-2">
-            <Label>Task Description</Label>
+            <Label>Task Description <span className="text-destructive">*</span></Label>
             <Textarea
               placeholder={
                 platform === 'web'
                   ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take a screenshot of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
-                  : 'Describe what you want to automate on the Android device...\nFor example: "Open Instagram and like the top 5 posts"\n\nPress Cmd/Ctrl + Enter to submit'
+                  : 'Describe what you want to automate on the Android app...\nFor example: "Like the top 5 posts on the home feed"\n\nPress Cmd/Ctrl + Enter to submit'
               }
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               onKeyDown={handleKeyDown}
-              rows={8}
+              rows={6}
               className="resize-none font-sans text-base"
             />
           </div>

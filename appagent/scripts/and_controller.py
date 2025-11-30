@@ -878,3 +878,322 @@ class AndroidController:
 
         # Save the modified image
         cv2.imwrite(image_path, img)
+
+
+# ============================================
+# APK Installation Functions
+# ============================================
+
+def parse_playstore_url(url: str) -> str:
+    """
+    Extract package name from Google Play Store URL.
+    
+    Args:
+        url: Play Store URL (e.g., 'https://play.google.com/store/apps/details?id=com.example.app')
+    
+    Returns:
+        Package name (e.g., 'com.example.app') or None if not found
+    """
+    import re
+    from urllib.parse import urlparse, parse_qs
+    
+    if not url:
+        return None
+    
+    try:
+        # Parse the URL
+        parsed = urlparse(url)
+        
+        # Check if it's a Play Store URL
+        if 'play.google.com' not in parsed.netloc:
+            print_with_color(f"Not a Play Store URL: {url}", "yellow")
+            return None
+        
+        # Extract package name from query parameter 'id'
+        query_params = parse_qs(parsed.query)
+        if 'id' in query_params:
+            package_name = query_params['id'][0]
+            print_with_color(f"Extracted package name from URL: {package_name}", "green")
+            return package_name
+        
+        # Try to extract from path (alternative URL format)
+        # e.g., /store/apps/details/com.example.app
+        path_match = re.search(r'/details/([a-zA-Z0-9._]+)', parsed.path)
+        if path_match:
+            package_name = path_match.group(1)
+            print_with_color(f"Extracted package name from path: {package_name}", "green")
+            return package_name
+        
+        print_with_color(f"Could not extract package name from URL: {url}", "yellow")
+        return None
+        
+    except Exception as e:
+        print_with_color(f"Error parsing Play Store URL: {e}", "red")
+        return None
+
+
+def get_package_from_apk(apk_path: str) -> str:
+    """
+    Extract package name from APK file using aapt.
+    
+    Args:
+        apk_path: Path to APK file
+    
+    Returns:
+        Package name or None if extraction failed
+    """
+    import re
+    
+    if not os.path.exists(apk_path):
+        print_with_color(f"APK file not found: {apk_path}", "red")
+        return None
+    
+    # Try to find aapt in Android SDK build-tools
+    sdk_path = get_android_sdk_path()
+    aapt_path = None
+    
+    # Common aapt locations
+    if sdk_path:
+        build_tools_dir = os.path.join(sdk_path, 'build-tools')
+        if os.path.exists(build_tools_dir):
+            # Get latest version of build-tools
+            versions = sorted(os.listdir(build_tools_dir), reverse=True)
+            for version in versions:
+                candidate = os.path.join(build_tools_dir, version, 'aapt')
+                if os.path.exists(candidate):
+                    aapt_path = candidate
+                    break
+                # Windows
+                candidate_exe = os.path.join(build_tools_dir, version, 'aapt.exe')
+                if os.path.exists(candidate_exe):
+                    aapt_path = candidate_exe
+                    break
+    
+    # Fallback: check if aapt is in PATH
+    if not aapt_path:
+        aapt_path = shutil.which('aapt')
+    
+    if not aapt_path:
+        print_with_color("aapt not found. Cannot extract package name from APK.", "red")
+        print_with_color("Please ensure Android SDK build-tools are installed.", "yellow")
+        return None
+    
+    try:
+        # Run aapt dump badging to get package info
+        result = subprocess.run(
+            [aapt_path, 'dump', 'badging', apk_path],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode != 0:
+            print_with_color(f"aapt failed: {result.stderr}", "red")
+            return None
+        
+        # Parse output to find package name
+        # Format: package: name='com.example.app' versionCode='1' ...
+        match = re.search(r"package:\s+name='([^']+)'", result.stdout)
+        if match:
+            package_name = match.group(1)
+            print_with_color(f"Extracted package name from APK: {package_name}", "green")
+            return package_name
+        
+        print_with_color("Could not parse package name from aapt output", "red")
+        return None
+        
+    except subprocess.TimeoutExpired:
+        print_with_color("aapt command timed out", "red")
+        return None
+    except Exception as e:
+        print_with_color(f"Error running aapt: {e}", "red")
+        return None
+
+
+def is_app_installed(package_name: str, device_serial: str = None) -> bool:
+    """
+    Check if an app is installed on the device.
+    
+    Args:
+        package_name: Package name to check
+        device_serial: Device serial (optional)
+    
+    Returns:
+        True if installed, False otherwise
+    """
+    if not package_name:
+        return False
+    
+    # Build adb command
+    if device_serial:
+        cmd = f"adb -s {device_serial} shell pm list packages {package_name}"
+    else:
+        cmd = f"adb shell pm list packages {package_name}"
+    
+    result = execute_adb(cmd)
+    if result == "ERROR":
+        return False
+    
+    # Check if exact package is in the list
+    expected = f"package:{package_name}"
+    for line in result.strip().split('\n'):
+        if line.strip() == expected:
+            print_with_color(f"App is installed: {package_name}", "green")
+            return True
+    
+    return False
+
+
+def install_apk(apk_path: str, device_serial: str = None) -> dict:
+    """
+    Install APK file to Android device via ADB.
+    
+    Args:
+        apk_path: Path to APK file
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'package_name': str or None,
+            'error': str or None
+        }
+    """
+    import time
+    
+    if not os.path.exists(apk_path):
+        return {'success': False, 'package_name': None, 'error': f'APK file not found: {apk_path}'}
+    
+    # Get package name from APK
+    package_name = get_package_from_apk(apk_path)
+    
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return {'success': False, 'package_name': package_name, 'error': 'No devices connected'}
+        device_serial = devices[0]
+    
+    print_with_color(f"Installing APK: {apk_path}", "yellow")
+    print_with_color(f"Target device: {device_serial}", "yellow")
+    
+    # Build adb install command
+    # -r: replace existing application
+    # -t: allow test packages
+    adb_command = f"adb -s {device_serial} install -r -t \"{apk_path}\""
+    
+    result = execute_adb(adb_command)
+    
+    if result == "ERROR":
+        return {'success': False, 'package_name': package_name, 'error': 'ADB install command failed'}
+    
+    # Check if installation was successful
+    if "Success" in result:
+        print_with_color(f"✓ APK installed successfully: {package_name or apk_path}", "green")
+        time.sleep(1)  # Wait for installation to complete
+        return {'success': True, 'package_name': package_name, 'error': None}
+    elif "INSTALL_FAILED" in result:
+        error_msg = result.strip()
+        print_with_color(f"APK installation failed: {error_msg}", "red")
+        return {'success': False, 'package_name': package_name, 'error': error_msg}
+    else:
+        print_with_color(f"APK installation result unclear: {result}", "yellow")
+        return {'success': False, 'package_name': package_name, 'error': result}
+
+
+def prelaunch_app(apk_source: dict, device_serial: str = None, status_callback=None) -> dict:
+    """
+    Setup flow: Prepare device, install APK if needed, and launch app.
+    
+    Args:
+        apk_source: dict with keys:
+            - type: 'apk_file' | 'play_store_url'
+            - path: APK file path (for apk_file type)
+            - url: Play Store URL (for play_store_url type)
+            - packageName: Package name (optional, will be extracted if not provided)
+        device_serial: Target device serial (optional)
+        status_callback: Optional callback function(status, message) for progress updates
+    
+    Returns:
+        dict: {
+            'success': bool,
+            'device': str or None,
+            'package_name': str or None,
+            'error': str or None
+        }
+    """
+    source_type = apk_source.get('type')
+    apk_path = apk_source.get('path')
+    playstore_url = apk_source.get('url')
+    package_name = apk_source.get('packageName')
+    
+    # Step 1: Check/start device
+    devices = list_all_devices()
+    target_device = None
+    
+    if device_serial and device_serial in devices:
+        target_device = device_serial
+    elif devices:
+        target_device = devices[0]
+    else:
+        # No devices - try to start emulator
+        emulators = list_available_emulators()
+        if not emulators:
+            return {'success': False, 'device': None, 'package_name': package_name, 'error': 'No devices or emulators available'}
+        
+        if not start_emulator(emulators[0], wait_for_boot=True):
+            return {'success': False, 'device': None, 'package_name': package_name, 'error': 'Failed to start emulator'}
+        
+        devices = list_all_devices()
+        if not devices:
+            return {'success': False, 'device': None, 'package_name': package_name, 'error': 'Emulator started but not detected'}
+        
+        target_device = devices[0]
+    
+    # Step 2: Determine package name and install if needed
+    if source_type == 'apk_file' and apk_path:
+        # Extract package name if not provided
+        if not package_name:
+            package_name = get_package_from_apk(apk_path)
+        
+        # Check if already installed
+        if not (package_name and is_app_installed(package_name, target_device)):
+            # Install APK
+            install_result = install_apk(apk_path, target_device)
+            
+            if not install_result['success']:
+                return {'success': False, 'device': target_device, 'package_name': package_name, 'error': install_result['error']}
+            
+            package_name = install_result['package_name'] or package_name
+    
+    elif source_type == 'play_store_url' and playstore_url:
+        # Extract package name from URL if not provided
+        if not package_name:
+            package_name = parse_playstore_url(playstore_url)
+        
+        if not package_name:
+            return {'success': False, 'device': target_device, 'package_name': None, 'error': 'Invalid Play Store URL'}
+        
+        # Check if already installed
+        if not is_app_installed(package_name, target_device):
+            # Cannot download from Play Store directly - open Play Store for manual installation
+            playstore_cmd = f"adb -s {target_device} shell am start -a android.intent.action.VIEW -d 'market://details?id={package_name}'"
+            execute_adb(playstore_cmd)
+            
+            return {
+                'success': False,
+                'device': target_device,
+                'package_name': package_name,
+                'error': f'Please install {package_name} from Play Store manually, then try again'
+            }
+    
+    # Step 3: Launch app
+    if package_name:
+        launch_app(package_name, target_device)
+    
+    return {
+        'success': True,
+        'device': target_device,
+        'package_name': package_name,
+        'error': None
+    }

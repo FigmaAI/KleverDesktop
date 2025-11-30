@@ -4,11 +4,12 @@
  * Python is downloaded post-install to reduce app bundle size
  */
 
-import { IpcMain, BrowserWindow } from 'electron';
-import { spawn, exec } from 'child_process';
+import { IpcMain, BrowserWindow, dialog } from 'electron';
+import { spawn, exec, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { ApkSource } from '../types/project';
 import {
   checkPythonRuntime,
   checkPlaywrightBrowsers,
@@ -19,7 +20,9 @@ import {
   checkVenvStatus,
   createVirtualEnvironment,
   installRequirements,
-  getAppagentPath
+  getAppagentPath,
+  spawnBundledPython,
+  getPythonEnv
 } from '../utils/python-runtime';
 import { downloadPython } from '../utils/python-download';
 
@@ -393,5 +396,230 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     }
 
     return result;
+  });
+
+  // ============================================
+  // APK Installation Handlers
+  // ============================================
+
+  // Select APK file via dialog
+  ipcMain.handle('apk:selectFile', async () => {
+    try {
+      const mainWindow = getMainWindow();
+      if (!mainWindow) {
+        return { success: false, error: 'No main window available' };
+      }
+
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select APK File',
+        filters: [
+          { name: 'Android Package', extensions: ['apk'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+      }
+
+      const apkPath = result.filePaths[0];
+      
+      // Verify the file exists and has .apk extension
+      if (!fs.existsSync(apkPath)) {
+        return { success: false, error: 'Selected file does not exist' };
+      }
+
+      if (!apkPath.toLowerCase().endsWith('.apk')) {
+        return { success: false, error: 'Selected file is not an APK file' };
+      }
+
+      return { success: true, path: apkPath };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[apk:selectFile] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Parse Play Store URL to extract package name
+  ipcMain.handle('playstore:parseUrl', async (_event, url: string) => {
+    try {
+      if (!url) {
+        return { success: false, error: 'No URL provided' };
+      }
+
+      // Check if it's a Play Store URL
+      if (!url.includes('play.google.com')) {
+        return { success: false, error: 'Not a valid Google Play Store URL' };
+      }
+
+      // Extract package name from URL
+      // Format: https://play.google.com/store/apps/details?id=com.example.app
+      const urlObj = new URL(url);
+      const packageName = urlObj.searchParams.get('id');
+
+      if (!packageName) {
+        // Try alternative format: /store/apps/details/com.example.app
+        const pathMatch = url.match(/\/details\/([a-zA-Z0-9._]+)/);
+        if (pathMatch) {
+          return { success: true, packageName: pathMatch[1] };
+        }
+        return { success: false, error: 'Could not extract package name from URL' };
+      }
+
+      return { success: true, packageName };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[playstore:parseUrl] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Pre-launch: Prepare device, install APK, and launch app
+  ipcMain.handle('android:prelaunch', async (_event, apkSource: ApkSource, projectName?: string) => {
+    try {
+      const mainWindow = getMainWindow();
+      
+      // Check if Python environment is ready
+      const venvStatus = checkVenvStatus();
+      if (!venvStatus.valid) {
+        return { success: false, error: 'Python environment not ready. Please run Setup Wizard.' };
+      }
+
+      const appagentDir = getAppagentPath();
+      const pythonEnv = getPythonEnv();
+      const scriptsDir = path.join(appagentDir, 'scripts');
+
+      // Build Python code to run prelaunch_app function
+      const apkSourceJson = JSON.stringify(apkSource);
+      const prelaunchCode = `
+import sys
+import json
+sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
+from and_controller import prelaunch_app
+
+apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
+result = prelaunch_app(apk_source)
+print('PRELAUNCH_RESULT:' + json.dumps(result))
+`;
+
+      return new Promise((resolve) => {
+        const process = spawnBundledPython(['-u', '-c', prelaunchCode], {
+          cwd: appagentDir,
+          env: {
+            ...pythonEnv,
+            PYTHONPATH: scriptsDir,
+            PYTHONUNBUFFERED: '1'
+          }
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        process.stdout?.on('data', (data) => {
+          const output = data.toString();
+          stdout += output;
+          mainWindow?.webContents.send('android:prelaunch:progress', output);
+        });
+
+        process.stderr?.on('data', (data) => {
+          const output = data.toString();
+          stderr += output;
+          mainWindow?.webContents.send('android:prelaunch:progress', output);
+        });
+
+        process.on('close', (code) => {
+          // Parse result from stdout
+          const resultMatch = stdout.match(/PRELAUNCH_RESULT:(.+)/);
+          if (resultMatch) {
+            try {
+              const result = JSON.parse(resultMatch[1]);
+              resolve(result);
+            } catch {
+              resolve({ success: code === 0, error: stderr || 'Failed to parse result' });
+            }
+          } else {
+            resolve({ success: code === 0, error: stderr || 'No result returned' });
+          }
+        });
+
+        process.on('error', (error) => {
+          resolve({ success: false, error: error.message });
+        });
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[android:prelaunch] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Get Android device/emulator status
+  ipcMain.handle('android:getStatus', async () => {
+    try {
+      const venvStatus = checkVenvStatus();
+      if (!venvStatus.valid) {
+        return { 
+          success: false, 
+          error: 'Python environment not ready',
+          devices: [],
+          emulators: []
+        };
+      }
+
+      const appagentDir = getAppagentPath();
+      const pythonEnv = getPythonEnv();
+      const scriptsDir = path.join(appagentDir, 'scripts');
+
+      const statusCode = `
+import sys
+import json
+sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
+from and_controller import list_all_devices, list_available_emulators
+
+devices = list_all_devices()
+emulators = list_available_emulators()
+print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}))
+`;
+
+      return new Promise((resolve) => {
+        const process = spawnBundledPython(['-u', '-c', statusCode], {
+          cwd: appagentDir,
+          env: {
+            ...pythonEnv,
+            PYTHONPATH: scriptsDir,
+            PYTHONUNBUFFERED: '1'
+          }
+        });
+
+        let stdout = '';
+
+        process.stdout?.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        process.on('close', (code) => {
+          const resultMatch = stdout.match(/STATUS_RESULT:(.+)/);
+          if (resultMatch) {
+            try {
+              const result = JSON.parse(resultMatch[1]);
+              resolve({ success: true, ...result });
+            } catch {
+              resolve({ success: false, devices: [], emulators: [], error: 'Failed to parse result' });
+            }
+          } else {
+            resolve({ success: false, devices: [], emulators: [], error: 'No result returned' });
+          }
+        });
+
+        process.on('error', (error) => {
+          resolve({ success: false, devices: [], emulators: [], error: error.message });
+        });
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[android:getStatus] Error:', message);
+      return { success: false, devices: [], emulators: [], error: message };
+    }
   });
 }

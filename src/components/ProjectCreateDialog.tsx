@@ -30,6 +30,7 @@ export function ProjectCreateDialog({
   const [platform, setPlatform] = useState<Platform>('android')
   const [projectName, setProjectName] = useState('')
   const [workspaceDir, setWorkspaceDir] = useState('')
+  
   const canCreate = () => {
     return projectName.trim() !== ''
   }

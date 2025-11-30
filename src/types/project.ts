@@ -2,6 +2,15 @@ export type Platform = 'android' | 'web'
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 
+export type ApkSourceType = 'apk_file' | 'play_store_url'
+
+export interface ApkSource {
+  type: ApkSourceType
+  path?: string        // APK file path (for apk_file type)
+  url?: string         // Play Store URL (for play_store_url type)
+  packageName?: string // Extracted or detected package name
+}
+
 export interface TaskMetrics {
   rounds?: number
   maxRounds?: number
@@ -34,6 +43,7 @@ export interface Task {
   error?: string
   resultPath?: string // Task result directory path
   url?: string // Web platform only - passed as --url CLI parameter
+  apkSource?: ApkSource // Android only: APK file path or Play Store URL
   metrics?: TaskMetrics // Task execution metrics
 }
 
@@ -48,6 +58,7 @@ export interface Project {
   updatedAt: string
   tasks: Task[]
   workspaceDir: string // Path to project workspace directory
+  lastApkSource?: ApkSource // Last used APK source for this project (Android only)
 }
 
 export interface ProjectCreateInput {
@@ -64,7 +75,8 @@ export interface TaskCreateInput {
   modelProvider?: string  // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
   modelName?: string      // Model name for LiteLLM
   language?: string       // Output language preference (e.g., 'en', 'ko', 'ja')
-  url?: string
+  url?: string            // Web platform only
+  apkSource?: ApkSource   // Android only: APK file path or Play Store URL
 }
 
 export interface TaskStartInput {

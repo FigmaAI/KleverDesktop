@@ -329,6 +329,12 @@ declare global {
       // Google login event listeners
       onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => void;
       onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => void;
+
+      // ============================================
+      // APK Installation
+      // ============================================
+      apkSelectFile: () => Promise<{ success: boolean; path?: string; canceled?: boolean; error?: string }>;
+      playstoreParseUrl: (url: string) => Promise<{ success: boolean; packageName?: string; error?: string }>;
     };
   }
 }
