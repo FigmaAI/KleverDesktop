@@ -238,8 +238,9 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           return;
         }
 
-        const versionMatch = stdout.match(/Chocolatey v([\d.]+)/);
-        const version = versionMatch ? versionMatch[1] : 'unknown';
+        // choco --version outputs just the version number (e.g. "2.3.0")
+        const versionMatch = stdout.match(/(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : (stdout.trim() || 'unknown');
         resolve({ success: true, version });
       });
     });
