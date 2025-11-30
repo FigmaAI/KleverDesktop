@@ -100,8 +100,10 @@ export function saveProjects(data: ProjectsData): void {
  * Projects are stored directly in the Documents folder for better user accessibility.
  */
 export function getProjectWorkspaceDir(projectName: string): string {
-  const documentsPath = app.getPath('documents');
-  return path.join(documentsPath, projectName);
+  // Use userData/Projects as the default location for better reliability on both Windows and macOS
+  // This avoids permission issues with the Documents folder
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'Projects', projectName);
 }
 
 /**

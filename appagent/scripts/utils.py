@@ -7,33 +7,43 @@ from colorama import Fore, Style
 
 
 def print_with_color(text: str, color="", log_file=None, heading_level=None):
-    if color == "red":
-        print(Fore.RED + text, flush=True)
-    elif color == "green":
-        print(Fore.GREEN + text, flush=True)
-    elif color == "yellow":
-        print(Fore.YELLOW + text, flush=True)
-    elif color == "blue":
-        print(Fore.BLUE + text, flush=True)
-    elif color == "magenta":
-        print(Fore.MAGENTA + text, flush=True)
-    elif color == "cyan":
-        print(Fore.CYAN + text, flush=True)
-    elif color == "white":
-        print(Fore.WHITE + text, flush=True)
-    elif color == "black":
-        print(Fore.BLACK + text, flush=True)
-    else:
-        print(text, flush=True)
-    print(Style.RESET_ALL, flush=True)
+    try:
+        if color == "red":
+            print(Fore.RED + text, flush=True)
+        elif color == "green":
+            print(Fore.GREEN + text, flush=True)
+        elif color == "yellow":
+            print(Fore.YELLOW + text, flush=True)
+        elif color == "blue":
+            print(Fore.BLUE + text, flush=True)
+        elif color == "magenta":
+            print(Fore.MAGENTA + text, flush=True)
+        elif color == "cyan":
+            print(Fore.CYAN + text, flush=True)
+        elif color == "white":
+            print(Fore.WHITE + text, flush=True)
+        elif color == "black":
+            print(Fore.BLACK + text, flush=True)
+        else:
+            print(text, flush=True)
+        print(Style.RESET_ALL, flush=True)
+    except UnicodeEncodeError:
+        # Fallback for Windows consoles that don't support utf-8 characters like checkmarks
+        # Replace non-ascii characters with ?
+        safe_text = text.encode('ascii', 'replace').decode('ascii')
+        print(safe_text, flush=True)
+        print(Style.RESET_ALL, flush=True)
 
     # If a log file is specified, append the message to the file
     if log_file is not None:
         # If a heading level is specified, prepend the message with the appropriate number of '#'
         if heading_level is not None:
             text = '#' * heading_level + ' ' + text
-        with open(log_file, "a") as f:
-            f.write(text + "\n")
+        try:
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(text + "\n")
+        except Exception:
+            pass
 
 
 def append_to_log(text: str, log_file: str, break_line: bool = True):
