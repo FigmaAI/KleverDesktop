@@ -410,9 +410,10 @@ while round_count < configs["MAX_ROUNDS"]:
         elif act_name == "text":
             _, input_str, _, _, _, _ = res
 
-            # Draw a bounding box on the canvas image and save it
+            # For text action, just copy the screenshot (no bounding box since no specific element is targeted)
+            # Text is typed into the currently focused element from a previous tap action
             screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
-            controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
+            shutil.copy(screenshot_before, screenshot_before_actioned)
 
             ret = controller.text(input_str)
             if ret == "ERROR":

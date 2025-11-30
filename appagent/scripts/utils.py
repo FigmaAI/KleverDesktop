@@ -74,45 +74,75 @@ def append_images_as_table(images: list, log_file: str):
 
 def draw_bbox_multi(img_path, output_path, elem_list, record_mode=False, dark_mode=False):
     imgcv = cv2.imread(img_path)
+    if imgcv is None:
+        print_with_color(f"WARNING: Failed to read image: {img_path}", "yellow")
+        return None
+    
+    img_height, img_width = imgcv.shape[:2]
     count = 1
     for elem in elem_list:
         try:
             # Validate bbox exists and has correct structure
             if not hasattr(elem, 'bbox') or not elem.bbox or len(elem.bbox) < 2:
-                print_with_color(f"WARNING: Element {count} has invalid bbox, skipping", "yellow")
                 count += 1
                 continue
 
             top_left = elem.bbox[0]
             bottom_right = elem.bbox[1]
 
-            # Validate bbox coordinates
-            if not top_left or not bottom_right or len(top_left) < 2 or len(bottom_right) < 2:
-                print_with_color(f"WARNING: Element {count} has invalid bbox coordinates, skipping", "yellow")
+            # Validate bbox coordinates - must be tuples/lists with at least 2 elements
+            if (not top_left or not bottom_right or 
+                not isinstance(top_left, (tuple, list)) or not isinstance(bottom_right, (tuple, list)) or
+                len(top_left) < 2 or len(bottom_right) < 2):
                 count += 1
                 continue
 
-            left, top = top_left[0], top_left[1]
-            right, bottom = bottom_right[0], bottom_right[1]
+            left, top = int(top_left[0]), int(top_left[1])
+            right, bottom = int(bottom_right[0]), int(bottom_right[1])
+            
+            # Validate coordinates are within image bounds and valid
+            if (left < 0 or top < 0 or right <= left or bottom <= top or
+                left >= img_width or top >= img_height):
+                count += 1
+                continue
+            
+            # Clamp coordinates to image bounds
+            right = min(right, img_width - 1)
+            bottom = min(bottom, img_height - 1)
+            
+            # Calculate label position (center of bbox)
+            label_x = (left + right) // 2 + 10
+            label_y = (top + bottom) // 2 + 10
+            
+            # Ensure label position is within image bounds
+            label_x = max(10, min(label_x, img_width - 50))
+            label_y = max(20, min(label_y, img_height - 20))
+            
             label = str(count)
             if record_mode:
-                if elem.attrib == "clickable":
-                    color = (250, 0, 0)
-                elif elem.attrib == "focusable":
-                    color = (0, 0, 250)
+                # For Android elements, attrib is a string
+                if isinstance(elem.attrib, str):
+                    if elem.attrib == "clickable":
+                        color = (250, 0, 0)
+                    elif elem.attrib == "focusable":
+                        color = (0, 0, 250)
+                    else:
+                        color = (0, 250, 0)
                 else:
+                    # For web elements, attrib is a dict - use default color
                     color = (0, 250, 0)
-                imgcv = ps.putBText(imgcv, label, text_offset_x=(left + right) // 2 + 10, text_offset_y=(top + bottom) // 2 + 10,
+                imgcv = ps.putBText(imgcv, label, text_offset_x=label_x, text_offset_y=label_y,
                                     vspace=10, hspace=10, font_scale=1, thickness=2, background_RGB=color,
                                     text_RGB=(255, 250, 250), alpha=0.5)
             else:
                 text_color = (10, 10, 10) if dark_mode else (255, 250, 250)
                 bg_color = (255, 250, 250) if dark_mode else (10, 10, 10)
-                imgcv = ps.putBText(imgcv, label, text_offset_x=(left + right) // 2 + 10, text_offset_y=(top + bottom) // 2 + 10,
+                imgcv = ps.putBText(imgcv, label, text_offset_x=label_x, text_offset_y=label_y,
                                     vspace=10, hspace=10, font_scale=1, thickness=2, background_RGB=bg_color,
                                     text_RGB=text_color, alpha=0.5)
         except Exception as e:
-            print_with_color(f"WARNING: Failed to label element {count}: {e}", "yellow")
+            # Silently skip elements that fail to label - don't spam warnings for each element
+            pass
         count += 1
     cv2.imwrite(output_path, imgcv)
     return imgcv
