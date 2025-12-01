@@ -144,7 +144,11 @@ Text to translate:
 ${text}`;
 
     // Model is already in LiteLLM format (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    const modelName = model;
+    // For OpenRouter, we need to strip the "openrouter/" prefix when calling the API directly
+    let modelName = model;
+    if (provider === 'openrouter' && modelName.startsWith('openrouter/')) {
+      modelName = modelName.substring('openrouter/'.length);
+    }
 
     // Determine API endpoint based on provider
     // Use config baseUrl if provided, otherwise use provider's default
@@ -159,6 +163,13 @@ ${text}`;
       } else if (provider === 'gemini') {
         // Gemini uses a different endpoint structure
         apiUrl = base;
+      } else if (provider === 'openrouter') {
+        // OpenRouter uses /chat/completions endpoint
+        apiUrl = base.endsWith('/chat/completions')
+          ? base
+          : base.endsWith('/v1')
+            ? `${base}/chat/completions`
+            : `${base}/api/v1/chat/completions`;
       } else {
         // Most providers use /chat/completions
         apiUrl = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
