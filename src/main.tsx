@@ -351,6 +351,26 @@ if (!window.electronAPI) {
       if (!mockCallbacks['task:complete']) mockCallbacks['task:complete'] = []
       mockCallbacks['task:complete'].push(cb)
     },
+    onTaskAutoStart: (cb) => {
+      if (!mockCallbacks['task:auto-start']) mockCallbacks['task:auto-start'] = []
+      mockCallbacks['task:auto-start'].push(cb)
+    },
+    onTaskScheduled: (cb) => {
+      if (!mockCallbacks['task:scheduled']) mockCallbacks['task:scheduled'] = []
+      mockCallbacks['task:scheduled'].push(cb)
+    },
+    onTaskScheduleCancelled: (cb) => {
+      if (!mockCallbacks['task:schedule-cancelled']) mockCallbacks['task:schedule-cancelled'] = []
+      mockCallbacks['task:schedule-cancelled'].push(cb)
+    },
+    onTaskScheduleTriggered: (cb) => {
+      if (!mockCallbacks['task:schedule-triggered']) mockCallbacks['task:schedule-triggered'] = []
+      mockCallbacks['task:schedule-triggered'].push(cb)
+    },
+    onTaskScheduleError: (cb) => {
+      if (!mockCallbacks['task:schedule-error']) mockCallbacks['task:schedule-error'] = []
+      mockCallbacks['task:schedule-error'].push(cb)
+    },
     removeAllListeners: (channel) => {
       delete mockCallbacks[channel]
     },
@@ -364,6 +384,30 @@ if (!window.electronAPI) {
       success: true,
       translatedText: `[Mock markdown translation to ${targetLang}]:\n${markdown}`,
     }),
+
+    // Google Login (mock)
+    googleLoginWebStart: async () => ({ success: true }),
+    googleLoginWebStop: async () => ({ success: true }),
+    googleLoginWebGetStatus: async () => ({ success: true, loggedIn: false }),
+    googleLoginWebVerifyStatus: async () => ({ success: true, loggedIn: false, verified: false }),
+    googleLoginGetProfilePath: async () => ({ success: true, path: '/mock/profile' }),
+    googleLoginAndroidListDevices: async () => ({ success: true, devices: [] }),
+    googleLoginAndroidStart: async () => ({ success: true }),
+    googleLoginAndroidStop: async () => ({ success: true }),
+    googleLoginAndroidGetStatus: async () => ({ success: true, loggedIn: false }),
+    googleLoginClear: async () => ({ success: true }),
+    onGoogleLoginWebStatus: (cb) => {
+      if (!mockCallbacks['google-login:web:status']) mockCallbacks['google-login:web:status'] = []
+      mockCallbacks['google-login:web:status'].push(cb)
+    },
+    onGoogleLoginAndroidStatus: (cb) => {
+      if (!mockCallbacks['google-login:android:status']) mockCallbacks['google-login:android:status'] = []
+      mockCallbacks['google-login:android:status'].push(cb)
+    },
+
+    // APK Installation (mock)
+    apkSelectFile: async () => ({ success: true, canceled: true }),
+    playstoreParseUrl: async () => ({ success: true, packageName: 'com.example.app' }),
   }
 }
 

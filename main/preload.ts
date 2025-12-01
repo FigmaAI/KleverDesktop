@@ -143,6 +143,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onTaskComplete: (callback: (data: unknown) => void) => {
     ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
+  onTaskAutoStart: (callback: (data: { projectId: string; taskId: string }) => void) => {
+    ipcRenderer.on('task:auto-start', (_event: IpcRendererEvent, data: { projectId: string; taskId: string }) => callback(data));
+  },
+  onTaskScheduled: (callback: (data: { taskId: string; projectId: string; scheduledAt: string }) => void) => {
+    ipcRenderer.on('task:scheduled', (_event: IpcRendererEvent, data: { taskId: string; projectId: string; scheduledAt: string }) => callback(data));
+  },
+  onTaskScheduleCancelled: (callback: (data: { taskId: string }) => void) => {
+    ipcRenderer.on('task:schedule-cancelled', (_event: IpcRendererEvent, data: { taskId: string }) => callback(data));
+  },
+  onTaskScheduleTriggered: (callback: (data: { taskId: string; projectId: string }) => void) => {
+    ipcRenderer.on('task:schedule-triggered', (_event: IpcRendererEvent, data: { taskId: string; projectId: string }) => callback(data));
+  },
+  onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => {
+    ipcRenderer.on('task:schedule-error', (_event: IpcRendererEvent, data: { taskId: string; projectId: string; error: string }) => callback(data));
+  },
 
   // ============================================
   // Translation

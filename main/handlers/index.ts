@@ -11,11 +11,12 @@ import { registerModelHandlers } from './model';
 import { registerUtilityHandlers } from './utilities';
 import { registerIntegrationHandlers } from './integration';
 import { registerProjectHandlers, cleanupProjectProcesses } from './project';
-import { registerTaskHandlers, cleanupTaskProcesses } from './task';
+import { registerTaskHandlers, cleanupTaskProcesses, initializeTaskScheduler } from './task';
 import { registerDialogHandlers } from './dialogs';
 import { registerGitHubHandlers } from './github';
 import { registerTranslatorHandlers } from './translator';
 import { registerGoogleLoginHandlers, cleanupGoogleLoginProcesses } from './google-login';
+import { taskScheduler } from '../utils/task-scheduler';
 
 /**
  * Register all IPC handlers
@@ -36,6 +37,9 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
   registerGitHubHandlers(ipcMain);
   registerTranslatorHandlers(ipcMain);
   registerGoogleLoginHandlers(ipcMain, getMainWindow);
+
+  // Initialize task scheduler after all handlers are registered
+  initializeTaskScheduler(getMainWindow);
 }
 
 /**
@@ -45,4 +49,5 @@ export async function cleanupAllProcesses(): Promise<void> {
   cleanupProjectProcesses();
   await cleanupTaskProcesses();
   cleanupGoogleLoginProcesses();
+  taskScheduler.shutdown();
 }

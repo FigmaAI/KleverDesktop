@@ -45,6 +45,9 @@ export interface Task {
   url?: string // Web platform only - passed as --url CLI parameter
   apkSource?: ApkSource // Android only: APK file path or Play Store URL
   metrics?: TaskMetrics // Task execution metrics
+  // Scheduling
+  scheduledAt?: string // ISO datetime string for when the task should run
+  isScheduled?: boolean // Whether this task is scheduled
 }
 
 export type ProjectStatus = 'active' | 'archived'
@@ -77,6 +80,9 @@ export interface TaskCreateInput {
   language?: string       // Output language preference (e.g., 'en', 'ko', 'ja')
   url?: string            // Web platform only
   apkSource?: ApkSource   // Android only: APK file path or Play Store URL
+  maxRounds?: number      // Max rounds override
+  scheduledAt?: string    // ISO datetime string for when the task should run
+  isScheduled?: boolean   // Whether this task is scheduled
 }
 
 export interface TaskStartInput {

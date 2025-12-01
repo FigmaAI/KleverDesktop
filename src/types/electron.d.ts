@@ -277,6 +277,11 @@ declare global {
       onTaskOutput: (callback: (data: { projectId: string; taskId: string; output: string }) => void) => void;
       onTaskError: (callback: (data: { projectId: string; taskId: string; error: string }) => void) => void;
       onTaskComplete: (callback: (data: { projectId: string; taskId: string; code: number }) => void) => void;
+      onTaskAutoStart: (callback: (data: { projectId: string; taskId: string }) => void) => void;
+      onTaskScheduled: (callback: (data: { taskId: string; projectId: string; scheduledAt: string }) => void) => void;
+      onTaskScheduleCancelled: (callback: (data: { taskId: string }) => void) => void;
+      onTaskScheduleTriggered: (callback: (data: { taskId: string; projectId: string }) => void) => void;
+      onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => void;
 
       // ============================================
       // Translation

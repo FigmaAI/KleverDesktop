@@ -126,6 +126,46 @@ function MainApp() {
     loadProjects()
   }, []) // Only load on mount
 
+  // Listen for scheduled task auto-start
+  useEffect(() => {
+    const handleAutoStart = async (data: { projectId: string; taskId: string }) => {
+      console.log('[App] Auto-starting scheduled task:', data)
+
+      try {
+        // Start the task
+        const result = await window.electronAPI.taskStart(data.projectId, data.taskId)
+
+        if (result.success) {
+          // Reload projects to get updated task status
+          await loadProjects()
+
+          // If this project is currently selected, update the view
+          if (selectedProjectIdRef.current === data.projectId) {
+            const updatedProjects = await window.electronAPI.projectList()
+            if (updatedProjects.success && updatedProjects.projects) {
+              const project = updatedProjects.projects.find(p => p.id === data.projectId)
+              if (project) {
+                setSelectedProject(project)
+
+                // Find and select the task that just started
+                const task = project.tasks.find(t => t.id === data.taskId)
+                if (task) {
+                  setSelectedTask(task)
+                }
+              }
+            }
+          }
+        } else {
+          console.error('[App] Failed to auto-start task:', result.error)
+        }
+      } catch (error) {
+        console.error('[App] Error auto-starting task:', error)
+      }
+    }
+
+    window.electronAPI.onTaskAutoStart(handleAutoStart)
+  }, [loadProjects])
+
   // Keyboard shortcuts
   useEffect(() => {
     const down = (e: globalThis.KeyboardEvent) => {

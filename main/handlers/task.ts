@@ -17,6 +17,7 @@ import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
+import { taskScheduler } from '../utils/task-scheduler';
 
 const taskProcesses = new Map<string, ChildProcess>();
 
@@ -98,17 +99,24 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        scheduledAt: taskInput.scheduledAt,
+        isScheduled: taskInput.isScheduled,
       };
 
       project.tasks.push(newTask);
       project.updatedAt = new Date().toISOString();
-      
+
       // Save last used APK source for this project (Android only)
       if (taskInput.apkSource) {
         project.lastApkSource = taskInput.apkSource;
       }
-      
+
       saveProjects(data);
+
+      // Schedule the task if it has scheduling information
+      if (newTask.isScheduled && newTask.scheduledAt) {
+        taskScheduler.scheduleTask(taskInput.projectId, newTask);
+      }
 
       return { success: true, task: newTask };
     } catch (error: unknown) {
@@ -539,4 +547,22 @@ cleanup_emulators()
   } catch (error) {
     console.error('[app-exit] Error cleaning up emulators:', error);
   }
+}
+
+/**
+ * Initialize the task scheduler with window and task start handler
+ */
+export function initializeTaskScheduler(getMainWindow: () => BrowserWindow | null): void {
+  // Create a task start handler that the scheduler can use
+  const taskStartHandler = async (projectId: string, taskId: string): Promise<void> => {
+    console.log(`[task-scheduler] Starting task ${taskId} in project ${projectId}`);
+    // Trigger the task:start IPC handler logic directly would be complex,
+    // so we'll emit an event that the renderer can handle or we use internal logic
+    // For now, we'll send an event to the renderer to trigger the task
+    const mainWindow = getMainWindow();
+    mainWindow?.webContents.send('task:auto-start', { projectId, taskId });
+  };
+
+  taskScheduler.initialize(getMainWindow, taskStartHandler);
+  console.log('[task-scheduler] Initialized');
 }
