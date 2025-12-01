@@ -144,7 +144,11 @@ Text to translate:
 ${text}`;
 
     // Model is already in LiteLLM format (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    const modelName = model;
+    // For OpenRouter, we need to strip the "openrouter/" prefix when calling the API directly
+    let modelName = model;
+    if (provider === 'openrouter' && modelName.startsWith('openrouter/')) {
+      modelName = modelName.substring('openrouter/'.length);
+    }
 
     // Determine API endpoint based on provider
     // Use config baseUrl if provided, otherwise use provider's default
