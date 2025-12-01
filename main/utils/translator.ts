@@ -159,6 +159,13 @@ ${text}`;
       } else if (provider === 'gemini') {
         // Gemini uses a different endpoint structure
         apiUrl = base;
+      } else if (provider === 'openrouter') {
+        // OpenRouter uses /chat/completions endpoint
+        apiUrl = base.endsWith('/chat/completions')
+          ? base
+          : base.endsWith('/v1')
+            ? `${base}/chat/completions`
+            : `${base}/api/v1/chat/completions`;
       } else {
         // Most providers use /chat/completions
         apiUrl = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
