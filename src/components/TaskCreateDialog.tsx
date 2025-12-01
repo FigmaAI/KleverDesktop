@@ -475,23 +475,28 @@ export function TaskCreateDialog({
 
           {/* Max Rounds Configuration */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Max Rounds</Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm font-semibold text-muted-foreground cursor-help">
-                      {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Maximum number of exploration rounds before stopping</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Global default: {globalMaxRounds}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Max Rounds</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-sm font-semibold text-muted-foreground cursor-help">
+                        {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Maximum number of exploration rounds before stopping</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Global default: {globalMaxRounds}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Prevents infinite loops and limits automation attempts
+              </p>
             </div>
             <Slider
               value={[maxRounds]}
