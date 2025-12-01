@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X } from 'lucide-react'
+import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X, Info } from 'lucide-react'
 import PlayStoreIcon from '@/assets/play-store.svg?react'
 import {
   Dialog,
@@ -475,18 +475,19 @@ export function TaskCreateDialog({
 
           {/* Max Rounds Configuration */}
           <div className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
                 <Label className="text-sm font-medium">Max Rounds</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="text-sm font-semibold text-muted-foreground cursor-help">
-                        {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
-                      </span>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Maximum number of exploration rounds before stopping</p>
+                      <p>Prevents infinite loops and limits automation attempts</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Maximum number of exploration rounds before stopping
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Global default: {globalMaxRounds}
                       </p>
@@ -494,9 +495,21 @@ export function TaskCreateDialog({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Prevents infinite loops and limits automation attempts
-              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm font-semibold text-muted-foreground cursor-help">
+                      {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Current setting: {maxRounds} rounds</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Global default: {globalMaxRounds}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Slider
               value={[maxRounds]}
