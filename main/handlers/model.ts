@@ -10,7 +10,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 import { ModelConfig, isLegacyModelConfig, migrateLegacyModelConfig } from '../types/model';
-import { fetchLiteLLMModels } from '../utils/litellm-providers';
+import { fetchLiteLLMModels, getChatCompletionsUrl } from '../utils/litellm-providers';
 
 /**
  * Register all model management handlers
@@ -27,17 +27,8 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
         modelConfig = config;
       }
 
-      // Determine the endpoint URL
-      let url: string;
-      if (modelConfig.provider === 'ollama') {
-        // Ollama uses local endpoint
-        url = modelConfig.baseUrl || 'http://localhost:11434';
-        // Ollama API endpoint for chat
-        url = url.replace(/\/$/, '') + '/api/chat';
-      } else {
-        // For other providers, use the base URL or default OpenAI
-        url = modelConfig.baseUrl || 'https://api.openai.com/v1/chat/completions';
-      }
+      // Determine the endpoint URL using shared utility
+      const url = getChatCompletionsUrl(modelConfig.provider, modelConfig.baseUrl);
 
       const urlObj = new globalThis.URL(url);
       const protocol = urlObj.protocol === 'https:' ? https : http;

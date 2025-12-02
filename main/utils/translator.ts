@@ -10,6 +10,7 @@ import { promisify } from 'util';
 import * as os from 'os';
 import { Buffer } from 'buffer';
 import { loadAppConfig } from './config-storage';
+import { getChatCompletionsUrl } from './litellm-providers';
 
 const execAsync = promisify(exec);
 
@@ -144,59 +145,10 @@ Text to translate:
 ${text}`;
 
     // Model is already in LiteLLM format (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    // For OpenRouter, we need to strip the "openrouter/" prefix when calling the API directly
-    let modelName = model;
-    if (provider === 'openrouter' && modelName.startsWith('openrouter/')) {
-      modelName = modelName.substring('openrouter/'.length);
-    }
+    const modelName = model;
 
-    // Determine API endpoint based on provider
-    // Use config baseUrl if provided, otherwise use provider's default
-    let apiUrl: string;
-    if (baseUrl && baseUrl.trim() !== '') {
-      // User has configured a custom baseUrl - append appropriate endpoint
-      const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-
-      if (provider === 'anthropic') {
-        // Anthropic uses /messages endpoint
-        apiUrl = base.endsWith('/messages') ? base : `${base}/messages`;
-      } else if (provider === 'gemini') {
-        // Gemini uses a different endpoint structure
-        apiUrl = base;
-      } else if (provider === 'openrouter') {
-        // OpenRouter uses /chat/completions endpoint
-        apiUrl = base.endsWith('/chat/completions')
-          ? base
-          : base.endsWith('/v1')
-            ? `${base}/chat/completions`
-            : `${base}/api/v1/chat/completions`;
-      } else {
-        // Most providers use /chat/completions
-        apiUrl = base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
-      }
-    } else {
-      // Use provider's default baseUrl
-      if (provider === 'ollama') {
-        apiUrl = 'http://localhost:11434/v1/chat/completions';
-      } else if (provider === 'openai') {
-        apiUrl = 'https://api.openai.com/v1/chat/completions';
-      } else if (provider === 'anthropic') {
-        apiUrl = 'https://api.anthropic.com/v1/messages';
-      } else if (provider === 'xai') {
-        apiUrl = 'https://api.x.ai/v1/chat/completions';
-      } else if (provider === 'gemini') {
-        apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
-      } else if (provider === 'mistral') {
-        apiUrl = 'https://api.mistral.ai/v1/chat/completions';
-      } else if (provider === 'deepseek') {
-        apiUrl = 'https://api.deepseek.com/v1/chat/completions';
-      } else if (provider === 'openrouter') {
-        apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-      } else {
-        // Default to OpenAI-compatible endpoint
-        apiUrl = 'https://api.openai.com/v1/chat/completions';
-      }
-    }
+    // Determine API endpoint using shared utility
+    const apiUrl = getChatCompletionsUrl(provider, baseUrl);
 
     const urlObj = new URL(apiUrl);
     const protocol = urlObj.protocol === 'https:' ? https : http;

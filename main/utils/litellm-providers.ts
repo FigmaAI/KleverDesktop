@@ -277,18 +277,27 @@ let fetchInProgress: Promise<FetchResult> | null = null;
 function loadFromCache(): LiteLLMProvider[] | null {
   try {
     const cachePath = getCachePath();
+    console.log('[LiteLLM] Checking disk cache at:', cachePath);
     if (fs.existsSync(cachePath)) {
       const cacheData = JSON.parse(fs.readFileSync(cachePath, 'utf-8'));
       // Check if cache is less than 24 hours old
       const cacheAge = Date.now() - (cacheData.timestamp || 0);
       const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      const cacheAgeHours = (cacheAge / 1000 / 60 / 60).toFixed(2);
+      
+      console.log(`[LiteLLM] Disk cache age: ${cacheAgeHours} hours (max: 24 hours)`);
       
       if (cacheAge < maxAge && cacheData.providers) {
+        console.log(`[LiteLLM] Disk cache valid, ${cacheData.providers.length} providers`);
         return cacheData.providers;
+      } else {
+        console.log('[LiteLLM] Disk cache expired or invalid');
       }
+    } else {
+      console.log('[LiteLLM] No disk cache file found');
     }
-  } catch {
-    // Cache read failed, will fetch from network
+  } catch (err) {
+    console.error('[LiteLLM] Disk cache read error:', err);
   }
   return null;
 }
@@ -360,6 +369,66 @@ export function getDefaultBaseUrl(providerId: string): string | undefined {
 }
 
 /**
+ * Get the chat completions URL for a provider
+ * Handles different endpoint patterns for different providers
+ * @param provider - Provider ID (e.g., 'openai', 'anthropic', 'ollama')
+ * @param baseUrl - Optional custom base URL
+ * @returns Full API endpoint URL for chat completions
+ */
+export function getChatCompletionsUrl(provider: string, baseUrl?: string): string {
+  // If custom baseUrl is provided, append appropriate endpoint
+  if (baseUrl && baseUrl.trim() !== '') {
+    const base = baseUrl.replace(/\/$/, ''); // Remove trailing slash
+
+    if (provider === 'ollama') {
+      // Ollama uses /api/chat for native API, /v1/chat/completions for OpenAI-compatible
+      if (base.includes('/v1')) {
+        return base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
+      }
+      return base.endsWith('/api/chat') ? base : `${base}/api/chat`;
+    } else if (provider === 'anthropic') {
+      // Anthropic uses /messages endpoint
+      return base.endsWith('/messages') ? base : `${base}/messages`;
+    } else if (provider === 'gemini') {
+      // Gemini uses a different endpoint structure - just use base
+      return base;
+    } else {
+      // Most providers use /chat/completions (OpenAI-compatible)
+      return base.endsWith('/chat/completions') ? base : `${base}/chat/completions`;
+    }
+  }
+
+  // Use provider's default endpoint
+  switch (provider) {
+    case 'ollama':
+      return 'http://localhost:11434/api/chat';
+    case 'openai':
+      return 'https://api.openai.com/v1/chat/completions';
+    case 'anthropic':
+      return 'https://api.anthropic.com/v1/messages';
+    case 'xai':
+      return 'https://api.x.ai/v1/chat/completions';
+    case 'gemini':
+      return 'https://generativelanguage.googleapis.com/v1beta/models';
+    case 'mistral':
+      return 'https://api.mistral.ai/v1/chat/completions';
+    case 'deepseek':
+      return 'https://api.deepseek.com/v1/chat/completions';
+    case 'openrouter':
+      return 'https://openrouter.ai/api/v1/chat/completions';
+    case 'cohere':
+      return 'https://api.cohere.ai/v1/chat';
+    case 'perplexity':
+      return 'https://api.perplexity.ai/chat/completions';
+    case 'together_ai':
+      return 'https://api.together.xyz/v1/chat/completions';
+    default:
+      // Default to OpenAI-compatible endpoint
+      return 'https://api.openai.com/v1/chat/completions';
+  }
+}
+
+/**
  * Fetch from network with timeout
  * Uses GitHub API instead of raw.githubusercontent.com for better network compatibility
  * (some networks block raw.githubusercontent.com)
@@ -367,6 +436,8 @@ export function getDefaultBaseUrl(providerId: string): string | undefined {
 function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
   // Use GitHub API with raw content header - works better through firewalls
   const url = 'https://api.github.com/repos/BerriAI/litellm/contents/model_prices_and_context_window.json';
+  
+  console.log('[LiteLLM] Starting network fetch from:', url);
   
   return new Promise((resolve) => {
     try {
@@ -381,6 +452,7 @@ function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
 
       const timeout = setTimeout(() => {
         if (!resolved) {
+          console.error('[LiteLLM] Network fetch TIMEOUT (15s)');
           resolved = true;
           request.abort();
           resolve(null);
@@ -388,7 +460,10 @@ function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
       }, 15000);
 
       request.on('response', (response) => {
+        console.log('[LiteLLM] Network response status:', response.statusCode);
+        
         if (response.statusCode !== 200) {
+          console.error('[LiteLLM] Network fetch failed with status:', response.statusCode);
           clearTimeout(timeout);
           resolved = true;
           resolve(null);
@@ -403,17 +478,22 @@ function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
           if (!resolved) {
             clearTimeout(timeout);
             resolved = true;
+            console.log(`[LiteLLM] Network fetch complete, data size: ${data.length} bytes`);
             try {
               const parsed = JSON.parse(data);
+              const modelCount = Object.keys(parsed).length;
+              console.log(`[LiteLLM] Parsed ${modelCount} models from network`);
               resolve(parsed);
-            } catch {
+            } catch (err) {
+              console.error('[LiteLLM] JSON parse error:', err);
               resolve(null);
             }
           }
         });
 
-        response.on('error', () => {
+        response.on('error', (err) => {
           if (!resolved) {
+            console.error('[LiteLLM] Response error:', err);
             clearTimeout(timeout);
             resolved = true;
             resolve(null);
@@ -421,8 +501,9 @@ function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
         });
       });
 
-      request.on('error', () => {
+      request.on('error', (err) => {
         if (!resolved) {
+          console.error('[LiteLLM] Request error:', err);
           clearTimeout(timeout);
           resolved = true;
           resolve(null);
@@ -430,7 +511,8 @@ function fetchFromNetwork(): Promise<Record<string, LiteLLMModelData> | null> {
       });
 
       request.end();
-    } catch {
+    } catch (err) {
+      console.error('[LiteLLM] Network fetch exception:', err);
       resolve(null);
     }
   });
@@ -508,21 +590,27 @@ function categorizeModels(modelData: Record<string, LiteLLMModelData>): LiteLLMP
  * Main fetch function with caching strategy
  */
 export async function fetchLiteLLMModels(): Promise<FetchResult> {
+  console.log('[LiteLLM] === fetchLiteLLMModels called ===');
+  
   // Return in-memory cache if available
   if (cachedProviders) {
+    console.log(`[LiteLLM] Returning in-memory cache (${cachedProviders.length} providers)`);
     return { success: true, providers: cachedProviders, source: 'cache' };
   }
   
   // Wait for in-progress fetch
   if (fetchInProgress) {
+    console.log('[LiteLLM] Waiting for in-progress fetch...');
     return fetchInProgress;
   }
   
   fetchInProgress = (async () => {
     // Strategy 1: Try network fetch
+    console.log('[LiteLLM] Strategy 1: Attempting network fetch...');
     const networkData = await fetchFromNetwork();
     if (networkData) {
       const providers = categorizeModels(networkData);
+      console.log(`[LiteLLM] SUCCESS: Network fetch returned ${providers.length} providers`);
       cachedProviders = providers;
       saveToCache(providers);
       fetchInProgress = null;
@@ -530,14 +618,17 @@ export async function fetchLiteLLMModels(): Promise<FetchResult> {
     }
     
     // Strategy 2: Try disk cache
+    console.log('[LiteLLM] Strategy 2: Network failed, trying disk cache...');
     const diskCache = loadFromCache();
     if (diskCache) {
+      console.log(`[LiteLLM] SUCCESS: Disk cache returned ${diskCache.length} providers`);
       cachedProviders = diskCache;
       fetchInProgress = null;
       return { success: true, providers: diskCache, source: 'cache' as const };
     }
     
     // Strategy 3: Use bundled fallback
+    console.log(`[LiteLLM] Strategy 3: Using BUNDLED FALLBACK (${BUNDLED_PROVIDERS.length} providers)`);
     cachedProviders = BUNDLED_PROVIDERS;
     fetchInProgress = null;
     return { success: true, providers: BUNDLED_PROVIDERS, source: 'bundled' as const };
