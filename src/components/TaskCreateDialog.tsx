@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X } from 'lucide-react'
+import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X, Info } from 'lucide-react'
 import PlayStoreIcon from '@/assets/play-store.svg?react'
 import {
   Dialog,
@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Slider } from '@/components/ui/slider'
 import { ModelSelector, ModelSelection } from './ModelSelector'
 import type { Task, Project, ApkSourceType, ApkSource } from '../types/project'
 
@@ -48,6 +49,8 @@ export function TaskCreateDialog({
   const [runImmediately, setRunImmediately] = useState(true)
   const [loading, setLoading] = useState(false)
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(selectedProjectId)
+  const [maxRounds, setMaxRounds] = useState<number>(20)
+  const [globalMaxRounds, setGlobalMaxRounds] = useState<number>(20)
 
   // APK Source state (Android only) - Required
   const [apkSourceType, setApkSourceType] = useState<ApkSourceType>('play_store_url')
@@ -93,27 +96,37 @@ export function TaskCreateDialog({
     const loadSavedConfig = async () => {
       try {
         const result = await window.electronAPI.configLoad()
-        if (result.success && result.config?.model) {
-          const { providers, lastUsed } = result.config.model
-          
-          // Set registered providers for filtering
-          if (providers && providers.length > 0) {
-            setRegisteredProviders(providers.map(p => p.id))
+        if (result.success && result.config) {
+          // Load model configuration
+          if (result.config.model) {
+            const { providers, lastUsed } = result.config.model
             
-            // Use lastUsed if available, otherwise use first provider
-            if (lastUsed?.provider && lastUsed?.model) {
-              setSelectedModel({ provider: lastUsed.provider, model: lastUsed.model })
-            } else {
-              const firstProvider = providers[0]
-              setSelectedModel({ 
-                provider: firstProvider.id, 
-                model: firstProvider.preferredModel 
-              })
+            // Set registered providers for filtering
+            if (providers && providers.length > 0) {
+              setRegisteredProviders(providers.map(p => p.id))
+              
+              // Use lastUsed if available, otherwise use first provider
+              if (lastUsed?.provider && lastUsed?.model) {
+                setSelectedModel({ provider: lastUsed.provider, model: lastUsed.model })
+              } else {
+                const firstProvider = providers[0]
+                setSelectedModel({ 
+                  provider: firstProvider.id, 
+                  model: firstProvider.preferredModel 
+                })
+              }
             }
+          }
+          
+          // Load execution configuration for max rounds
+          if (result.config.execution?.maxRounds) {
+            const globalMaxRounds = result.config.execution.maxRounds
+            setGlobalMaxRounds(globalMaxRounds)
+            setMaxRounds(globalMaxRounds)
           }
         }
       } catch (error) {
-        console.error('Failed to load saved model config:', error)
+        console.error('Failed to load saved config:', error)
       }
     }
     
@@ -220,6 +233,8 @@ export function TaskCreateDialog({
         // Include provider and model for task execution
         modelProvider: selectedModel.provider,
         modelName: selectedModel.model,
+        // Include max rounds if different from global default
+        maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
       }
 
       const result = await window.electronAPI.taskCreate(taskInput)
@@ -267,6 +282,7 @@ export function TaskCreateDialog({
     setPlayStoreUrl('')
     setExtractedPackageName('')
     setRunImmediately(true)
+    setMaxRounds(globalMaxRounds)
     onClose()
   }
 
@@ -455,6 +471,58 @@ export function TaskCreateDialog({
               rows={6}
               className="resize-none font-sans text-base"
             />
+          </div>
+
+          {/* Max Rounds Configuration */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-medium">Max Rounds</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Prevents infinite loops and limits automation attempts</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Maximum number of exploration rounds before stopping
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Global default: {globalMaxRounds}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm font-semibold text-muted-foreground cursor-help">
+                      {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Current setting: {maxRounds} rounds</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Global default: {globalMaxRounds}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Slider
+              value={[maxRounds]}
+              onValueChange={(value) => setMaxRounds(value[0])}
+              min={5}
+              max={50}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>5 rounds</span>
+              <span>50 rounds</span>
+            </div>
           </div>
 
           {/* Bottom Controls */}

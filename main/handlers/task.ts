@@ -92,6 +92,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         modelProvider: taskInput.modelProvider,
         modelName: taskInput.modelName,
         language: taskInput.language,
+        maxRounds: taskInput.maxRounds,
         url: taskInput.url,
         apkSource: taskInput.apkSource,
         status: 'pending' as const,
@@ -319,11 +320,11 @@ print('SETUP_RESULT:' + json.dumps(result))
       // Load global config from config.json
       const appConfig = loadAppConfig();
 
-      // Build environment variables from config.json with task-specific model selection
+      // Build environment variables from config.json with task-specific model selection and max rounds
       const taskModel = task.modelProvider && task.modelName
         ? { provider: task.modelProvider, model: task.modelName }
         : undefined;
-      const configEnvVars = buildEnvFromConfig(appConfig, taskModel);
+      const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
 
       // Start Python process
       const appagentDir = getAppagentPath();

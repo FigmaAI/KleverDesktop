@@ -35,11 +35,13 @@ export interface TaskModelSelection {
  *
  * @param config - Application configuration from config.json
  * @param taskModel - Optional model selection for this specific task
+ * @param taskMaxRounds - Optional per-task max rounds override
  * @returns Environment variables object
  */
 export function buildEnvFromConfig(
   config: AppConfig,
-  taskModel?: TaskModelSelection
+  taskModel?: TaskModelSelection,
+  taskMaxRounds?: number
 ): Record<string, string> {
   // Determine which provider/model to use
   let selectedProvider: string;
@@ -84,7 +86,7 @@ export function buildEnvFromConfig(
     MAX_TOKENS: config.execution.maxTokens.toString(),
     TEMPERATURE: config.execution.temperature.toString(),
     REQUEST_INTERVAL: config.execution.requestInterval.toString(),
-    MAX_ROUNDS: config.execution.maxRounds.toString(),
+    MAX_ROUNDS: (taskMaxRounds ?? config.execution.maxRounds).toString(),
 
     // ========================================
     // Android Configuration (3 variables)
