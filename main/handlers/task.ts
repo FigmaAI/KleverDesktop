@@ -423,14 +423,20 @@ print('SETUP_RESULT:' + json.dumps(result))
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
 
         if (currentTask) {
-          const newStatus = code === 0 ? 'completed' : 'failed';
-          currentTask.status = newStatus;
-          currentTask.completedAt = new Date().toISOString();
-          currentTask.updatedAt = new Date().toISOString();
-          saveProjects(currentData);
+          // Only update if still in 'running' status
+          // Don't overwrite 'cancelled', 'completed', or 'failed' (may be set by stop or error handler)
+          if (currentTask.status === 'running') {
+            const newStatus = code === 0 ? 'completed' : 'failed';
+            currentTask.status = newStatus;
+            currentTask.completedAt = new Date().toISOString();
+            currentTask.updatedAt = new Date().toISOString();
+            saveProjects(currentData);
+            
+            // Only send complete event if we updated the status
+            mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
+          }
         }
 
-        mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
         taskProcesses.delete(taskId);
 
         // Auto-cleanup emulator if no more pending Android tasks
@@ -446,6 +452,23 @@ print('SETUP_RESULT:' + json.dumps(result))
           taskId, 
           error: `Process error: ${error.message}` 
         });
+
+        // Update task status to failed on process error
+        const currentData = loadProjects();
+        const currentProject = currentData.projects.find((p) => p.id === projectId);
+        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+
+        if (currentTask && currentTask.status === 'running') {
+          currentTask.status = 'failed';
+          currentTask.error = error.message;
+          currentTask.completedAt = new Date().toISOString();
+          currentTask.updatedAt = new Date().toISOString();
+          saveProjects(currentData);
+
+          mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
+        }
+
+        taskProcesses.delete(taskId);
       });
 
       return { success: true, pid: taskProcess.pid };
@@ -457,6 +480,7 @@ print('SETUP_RESULT:' + json.dumps(result))
   // Stop task execution
   ipcMain.handle('task:stop', async (_event, projectId: string, taskId: string) => {
     try {
+      const mainWindow = getMainWindow();
       const taskProcess = taskProcesses.get(taskId);
 
       if (!taskProcess) {
@@ -466,16 +490,21 @@ print('SETUP_RESULT:' + json.dumps(result))
       taskProcess.kill('SIGTERM');
       taskProcesses.delete(taskId);
 
-      // Update task status
+      // Update task status to 'cancelled' (user-initiated stop)
       const data = loadProjects();
       const project = data.projects.find((p) => p.id === projectId);
       const task = project?.tasks.find((t) => t.id === taskId);
 
       if (task) {
-        task.status = 'failed';
+        task.status = 'cancelled';
+        task.completedAt = new Date().toISOString();
         task.updatedAt = new Date().toISOString();
         saveProjects(data);
       }
+
+      // Emit task:complete event to notify frontend immediately
+      // Using special code -1 to indicate user-initiated cancellation
+      mainWindow?.webContents.send('task:complete', { projectId, taskId, code: -1 });
 
       // Auto-cleanup emulator if no more pending Android tasks
       if (project?.platform === 'android') {
