@@ -87,15 +87,21 @@ class OpenAIModel(BaseModel):
         # Can be disabled via config if needed (e.g., USE_JSON_MODE=false from Electron)
         self.use_json_mode = self.configs.get("USE_JSON_MODE", True)
         
-        # Streaming mode for real-time output (useful for <think> models)
-        self.use_streaming = self.configs.get("USE_STREAMING", True)
+        # Streaming mode for real-time output
+        # Only enable for Ollama (local models) - needed for <think> mode monitoring
+        # For cloud providers (OpenRouter, OpenAI, etc.), disable streaming to get accurate token counts
+        if self.provider == "Ollama":
+            self.use_streaming = self.configs.get("USE_STREAMING", True)
+        else:
+            self.use_streaming = False  # Disable for cloud providers to get token usage
 
         # Use LiteLLM if available, fallback to requests for basic OpenAI compatibility
         self.use_litellm = LITELLM_AVAILABLE
 
         if self.use_litellm:
             print_with_color(f"✓ Model initialized: {model} (Provider: {self.provider}, via LiteLLM)", "green")
-            print_with_color(f"  Timeout: {self.timeout}s, JSON mode: {self.use_json_mode}", "cyan")
+            streaming_status = "enabled (local)" if self.use_streaming else "disabled (accurate tokens)"
+            print_with_color(f"  Timeout: {self.timeout}s, JSON mode: {self.use_json_mode}, Streaming: {streaming_status}", "cyan")
         else:
             print_with_color(f"✓ Model initialized: {model} (Legacy mode - install litellm for better compatibility)", "yellow")
     
@@ -299,8 +305,12 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
                 )
             elif self.use_streaming:
                 # Estimate tokens for streaming (rough approximation)
-                completion_tokens = len(response_content.split()) * 1.3  # rough estimate
-                print_with_color(f"Tokens (estimated): ~{int(completion_tokens)} completion", "yellow")
+                # Words * 1.3 is a rough estimate for token count
+                completion_tokens = int(len(response_content.split()) * 1.3)
+                # Estimate prompt tokens based on image + text (rough: ~1000 for image, text words * 1.3)
+                prompt_tokens = int(1000 + len(prompt.split()) * 1.3)  # rough estimate
+                total_tokens = prompt_tokens + completion_tokens
+                print_with_color(f"Tokens (estimated): ~{total_tokens} total ({prompt_tokens} prompt + {completion_tokens} completion)", "yellow")
 
             # Print response time
             print_with_color(f"✓ {self.provider} response received in {response_time:.2f}s", "green")

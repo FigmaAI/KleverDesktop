@@ -1,24 +1,20 @@
 /**
- * Translation utility using configured AI models
+ * Translation utility using configured AI models via Python/LiteLLM
  * Translates text to target language (ko, ja, en)
+ * 
+ * Uses the unified llm_service.py for all LLM calls, which handles:
+ * - Provider-specific API formats automatically
+ * - Model name format conversions
+ * - Consistent error handling
  */
 
-import * as https from 'https';
-import * as http from 'http';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as os from 'os';
-import { Buffer } from 'buffer';
 import { loadAppConfig } from './config-storage';
-import { getChatCompletionsUrl } from './litellm-providers';
+import { translateWithLLM } from './llm-service';
 
 const execAsync = promisify(exec);
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  ko: 'Korean',
-  ja: 'Japanese',
-};
 
 export interface TranslationResult {
   success: boolean;
@@ -78,7 +74,7 @@ async function translateWithMacOS(text: string, targetLang: string): Promise<Tra
 }
 
 /**
- * Translate text to target language using LiteLLM
+ * Translate text to target language using LiteLLM (via Python)
  * @param text - Text to translate
  * @param targetLang - Target language code ('ko', 'ja', 'en')
  * @returns Translation result
@@ -98,7 +94,7 @@ export async function translateText(
     console.log('[translator] macOS translation unavailable, falling back to AI model');
   }
 
-  // Fallback to AI model translation
+  // Fallback to AI model translation via Python/LiteLLM
   try {
     // Load config to get model settings
     const config = await loadAppConfig();
@@ -137,104 +133,24 @@ export async function translateText(
       };
     }
 
-    const targetLangName = LANGUAGE_NAMES[targetLang] || targetLang;
+    console.log(`[translator] Using Python/LiteLLM service: provider=${provider}, model=${model}`);
 
-    const prompt = `Translate the following text to ${targetLangName}. Respond with ONLY the translation, without any explanation or additional text.
+    // Call Python LLM service (LiteLLM handles all provider-specific logic)
+    const result = await translateWithLLM(text, targetLang, model, apiKey, baseUrl);
 
-Text to translate:
-${text}`;
-
-    // Model is already in LiteLLM format (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    const modelName = model;
-
-    // Determine API endpoint using shared utility
-    const apiUrl = getChatCompletionsUrl(provider, baseUrl);
-
-    const urlObj = new URL(apiUrl);
-    const protocol = urlObj.protocol === 'https:' ? https : http;
-
-    // Build request payload
-    const postData = JSON.stringify({
-      model: modelName,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 4096,
-    });
-
-    return new Promise<TranslationResult>((resolve) => {
-      const options: http.RequestOptions = {
-        hostname: urlObj.hostname,
-        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
-        path: urlObj.pathname + (urlObj.search || ''),
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(postData),
-        },
-        timeout: 30000, // 30 second timeout for translation
+    if (result.success) {
+      console.log('[translator] Translation successful via LiteLLM');
+      return {
+        success: true,
+        translatedText: result.translatedText,
       };
-
-      // Add API key for non-Ollama providers
-      if (provider !== 'ollama' && apiKey) {
-        (options.headers as Record<string, string>)['Authorization'] = `Bearer ${apiKey}`;
-      }
-
-      const req = protocol.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode === 200 || res.statusCode === 201) {
-            try {
-              const parsed = JSON.parse(data);
-              const translatedText = parsed.choices?.[0]?.message?.content?.trim();
-
-              if (!translatedText) {
-                resolve({
-                  success: false,
-                  error: 'No translation received from model',
-                });
-              } else {
-                resolve({
-                  success: true,
-                  translatedText,
-                });
-              }
-            } catch {
-              resolve({
-                success: false,
-                error: 'Failed to parse translation response',
-              });
-            }
-          } else {
-            resolve({
-              success: false,
-              error: `Translation request failed: HTTP ${res.statusCode}`,
-            });
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        console.error('[translator] Request error:', error);
-        resolve({
-          success: false,
-          error: error.message,
-        });
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-        resolve({
-          success: false,
-          error: 'Translation request timeout',
-        });
-      });
-
-      req.write(postData);
-      req.end();
-    });
+    } else {
+      console.error('[translator] LiteLLM translation failed:', result.error);
+      return {
+        success: false,
+        error: result.error || 'Translation failed',
+      };
+    }
   } catch (error) {
     console.error('[translator] Translation failed:', error);
     return {

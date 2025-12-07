@@ -399,6 +399,29 @@ print('SETUP_RESULT:' + json.dumps(result))
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
         if (currentTask) {
           currentTask.output = (currentTask.output || '') + output;
+
+          // Parse PROGRESS JSON from output and update task metrics
+          const progressMatch = output.match(/PROGRESS:(\{.*\})/);
+          if (progressMatch) {
+            try {
+              const progress = JSON.parse(progressMatch[1]);
+              currentTask.metrics = {
+                ...currentTask.metrics,
+                rounds: progress.round,
+                maxRounds: progress.maxRounds,
+                tokens: progress.totalTokens,
+              };
+              // Send progress event to renderer
+              mainWindow?.webContents.send('task:progress', { 
+                projectId, 
+                taskId, 
+                metrics: currentTask.metrics 
+              });
+            } catch (parseError) {
+              console.warn('[task:progress] Failed to parse progress JSON:', parseError);
+            }
+          }
+
           saveProjects(currentData);
         }
       });

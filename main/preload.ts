@@ -143,6 +143,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onTaskComplete: (callback: (data: unknown) => void) => {
     ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: unknown) => callback(data));
   },
+  onTaskProgress: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('task:progress', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
 
   // ============================================
   // Translation
