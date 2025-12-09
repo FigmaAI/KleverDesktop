@@ -17,10 +17,10 @@ import { spawnBundledPython, getAppagentPath, checkVenvStatus } from './python-r
  * Request interface for LLM service
  */
 export interface LLMServiceRequest {
-  action: 'translate' | 'chat';
-  text: string;
-  target_lang?: string;  // Required for 'translate' action
-  model: string;         // LiteLLM model name (e.g., 'openrouter/openai/gpt-4.1-mini')
+  action: 'translate' | 'chat' | 'test';
+  text?: string;             // Required for 'translate' and 'chat' actions (optional for 'test')
+  target_lang?: string;      // Required for 'translate' action
+  model: string;             // LiteLLM model name (e.g., 'openrouter/openai/gpt-4.1-mini')
   api_key?: string;
   base_url?: string;
   temperature?: number;
@@ -34,6 +34,8 @@ export interface LLMServiceResponse {
   success: boolean;
   translated_text?: string;  // For 'translate' action
   content?: string;          // For 'chat' action
+  message?: string;          // For 'test' action
+  response_time?: number;    // For 'test' action
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -185,6 +187,33 @@ export async function translateWithLLM(
   return {
     success: response.success,
     translatedText: response.translated_text,
+    error: response.error,
+  };
+}
+
+/**
+ * Convenience function for testing model connection
+ *
+ * Uses LiteLLM via Python which automatically handles:
+ * - Provider detection from model name prefix (e.g., 'openrouter/', 'ollama/')
+ * - Model name transformation for each provider
+ * - API routing and authentication
+ */
+export async function testWithLLM(
+  model: string,
+  apiKey?: string,
+  baseUrl?: string
+): Promise<{ success: boolean; message?: string; error?: string }> {
+  const response = await callLLMService({
+    action: 'test',
+    model,
+    api_key: apiKey,
+    base_url: baseUrl,
+  });
+
+  return {
+    success: response.success,
+    message: response.message,
     error: response.error,
   };
 }
