@@ -222,11 +222,14 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
             completion_params = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": content}],
-                "api_key": self.api_key,
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
                 "timeout": self.timeout
             }
+
+            # Only add API key if it's not empty and not Ollama (which doesn't need auth)
+            if self.api_key and self.api_key.strip() and self.provider != "Ollama":
+                completion_params["api_key"] = self.api_key
 
             # Add base_url if provided (for custom endpoints like OpenRouter)
             if self.base_url and self.base_url.strip():
@@ -262,7 +265,11 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
                         response_content += chunk_content
                         # Print in real-time only for Ollama
                         if show_streaming_output:
-                            print(chunk_content, end="", flush=True)
+                            # Remove extra newlines from streaming output for better readability
+                            # Ollama tends to add newlines between tokens
+                            display_chunk = chunk_content.replace('\n', ' ').strip()
+                            if display_chunk:  # Only print non-empty chunks
+                                print(display_chunk + " ", end="", flush=True)
                 
                 if show_streaming_output:
                     print()  # Newline after streaming completes

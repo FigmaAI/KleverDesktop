@@ -73,8 +73,10 @@ Text to translate:
             "timeout": 60,  # Increased timeout for large texts
         }
         
-        # Add API key if provided
-        if api_key:
+        # Add API key if provided (skip for Ollama which doesn't need auth)
+        # Detect Ollama from model name
+        is_ollama = model.startswith("ollama/")
+        if api_key and api_key.strip() and not is_ollama:
             completion_params["api_key"] = api_key
             log_debug("API key provided")
         
@@ -136,7 +138,9 @@ def chat_completion(prompt: str, model: str, api_key: str = "", base_url: str = 
             "timeout": 60,
         }
 
-        if api_key:
+        # Add API key if provided (skip for Ollama which doesn't need auth)
+        is_ollama = model.startswith("ollama/")
+        if api_key and api_key.strip() and not is_ollama:
             completion_params["api_key"] = api_key
 
         if base_url and base_url.strip():
@@ -202,7 +206,9 @@ def test_connection(model: str, api_key: str = "", base_url: str = "") -> dict:
             "timeout": 30,
         }
 
-        if api_key:
+        # Add API key if provided (skip for Ollama which doesn't need auth)
+        is_ollama = model.startswith("ollama/")
+        if api_key and api_key.strip() and not is_ollama:
             completion_params["api_key"] = api_key
             log_debug("API key provided")
 
