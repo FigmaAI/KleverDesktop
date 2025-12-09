@@ -11,12 +11,14 @@ import * as http from 'http';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 import { ModelConfig, isLegacyModelConfig, migrateLegacyModelConfig } from '../types/model';
 import { fetchLiteLLMModels, getChatCompletionsUrl } from '../utils/litellm-providers';
+import { testWithLLM } from '../utils/llm-service';
 
 /**
  * Register all model management handlers
  */
 export function registerModelHandlers(ipcMain: IpcMain): void {
-  // Test model connection
+  // Test model connection via Python/LiteLLM
+  // This uses the unified LLM service which handles all provider-specific logic
   ipcMain.handle('model:testConnection', async (_event, config: ModelConfig) => {
     try {
       // Handle legacy config format
@@ -27,73 +29,29 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
         modelConfig = config;
       }
 
-      // Determine the endpoint URL using shared utility
-      const url = getChatCompletionsUrl(modelConfig.provider, modelConfig.baseUrl);
+      console.log(`[model:testConnection] Testing model: ${modelConfig.model} (provider: ${modelConfig.provider})`);
 
-      const urlObj = new globalThis.URL(url);
-      const protocol = urlObj.protocol === 'https:' ? https : http;
+      // Use Python/LiteLLM service for testing
+      // LiteLLM automatically handles:
+      // - Provider detection from model name prefix (e.g., 'openrouter/', 'ollama/')
+      // - Model name transformation for each provider
+      // - API routing and authentication
+      const result = await testWithLLM(
+        modelConfig.model,
+        modelConfig.apiKey,
+        modelConfig.baseUrl
+      );
 
-      return new Promise<{ success: boolean; message?: string }>((resolve) => {
-        const isOllama = modelConfig.provider === 'ollama';
-        
-        // Build request payload based on provider
-        const postData = isOllama 
-          ? JSON.stringify({
-              model: modelConfig.model.replace('ollama/', ''),  // Remove prefix for Ollama API
-              messages: [{ role: 'user', content: 'Hello' }],
-              stream: false,
-            })
-          : JSON.stringify({
-              model: modelConfig.model,
-              messages: [{ role: 'user', content: 'Hello' }],
-              max_tokens: 50,
-            });
-
-        const options: http.RequestOptions = {
-          hostname: urlObj.hostname,
-          port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
-          path: urlObj.pathname,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': globalThis.Buffer.byteLength(postData),
-          },
-          timeout: 10000,
-        };
-
-        // Add authorization header for non-Ollama providers
-        if (!isOllama && modelConfig.apiKey) {
-          (options.headers as Record<string, string>)['Authorization'] = `Bearer ${modelConfig.apiKey}`;
-        }
-
-        const req = protocol.request(options, (res) => {
-          let data = '';
-          res.on('data', (chunk) => {
-            data += chunk;
-          });
-          res.on('end', () => {
-            if (res.statusCode === 200 || res.statusCode === 201) {
-              resolve({ success: true, message: 'Connection successful!' });
-            } else {
-              resolve({ success: false, message: `HTTP ${res.statusCode}: ${data}` });
-            }
-          });
-        });
-
-        req.on('error', (error) => {
-          resolve({ success: false, message: error.message });
-        });
-
-        req.on('timeout', () => {
-          req.destroy();
-          resolve({ success: false, message: 'Connection timeout' });
-        });
-
-        req.write(postData);
-        req.end();
-      });
+      if (result.success) {
+        console.log(`[model:testConnection] Success: ${result.message}`);
+        return { success: true, message: result.message || 'Connection successful!' };
+      } else {
+        console.error(`[model:testConnection] Failed: ${result.error}`);
+        return { success: false, message: result.error || 'Connection failed' };
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`[model:testConnection] Error: ${message}`);
       return { success: false, message };
     }
   });
