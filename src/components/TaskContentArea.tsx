@@ -17,6 +17,7 @@ import {
   ChevronsRight,
   PlusCircle,
   Check,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RainbowButton } from '@/components/ui/rainbow-button'
@@ -65,6 +66,15 @@ interface TaskContentAreaProps {
 
 type SortField = 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
+
+// Utility function to format cost for display
+function formatCost(cost: number | null | undefined): string {
+  if (cost === null || cost === undefined) return '';
+  if (cost === 0) return '$0.00';
+  if (cost < 0.01) return '< $0.01';
+  if (cost < 1) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}
 
 // Sort icon component - declared outside to avoid recreating during render
 function SortIcon({ 
@@ -590,24 +600,70 @@ export function TaskContentArea({
                       <TableCell className="text-xs text-muted-foreground">
                         {(() => {
                           // Use live metrics for running tasks, otherwise use stored metrics
-                          const metrics = task.status === 'running' 
+                          const metrics = task.status === 'running'
                             ? liveMetrics.get(task.id) || task.metrics
                             : task.metrics
-                          
+
                           if (!metrics?.rounds) return '-'
-                          
-                          const roundsText = metrics.maxRounds 
+
+                          const roundsText = metrics.maxRounds
                             ? `${metrics.rounds}/${metrics.maxRounds}`
                             : `${metrics.rounds}`
-                          
-                          const tokensText = metrics.tokens 
-                            ? `${metrics.tokens.toLocaleString()} tokens`
-                            : ''
-                          
+
+                          // Determine if this is a local model
+                          const isLocal = task.modelProvider === 'ollama' || metrics.isLocalModel
+
+                          // Format secondary metric based on model type
+                          let secondaryMetric: React.ReactNode = null
+
+                          if (isLocal) {
+                            // For local models: show "Local" badge or execution speed
+                            if (metrics.tokensPerSecond) {
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  {metrics.tokensPerSecond.toLocaleString()} tok/s
+                                </span>
+                              )
+                            } else if (metrics.durationMs) {
+                              const seconds = (metrics.durationMs / 1000).toFixed(1)
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  {seconds}s
+                                </span>
+                              )
+                            } else {
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  Local
+                                </span>
+                              )
+                            }
+                          } else {
+                            // For paid API models: show estimated cost
+                            if (metrics.estimatedCost !== undefined && metrics.estimatedCost !== null) {
+                              const costText = formatCost(metrics.estimatedCost)
+                              secondaryMetric = (
+                                <span className="text-amber-500">
+                                  {costText}
+                                </span>
+                              )
+                            } else if (metrics.tokens) {
+                              // Fallback: show tokens if cost calculation not available
+                              secondaryMetric = (
+                                <span className="text-muted-foreground">
+                                  {metrics.tokens.toLocaleString()} tokens
+                                </span>
+                              )
+                            }
+                          }
+
                           return (
                             <div className="flex flex-col">
                               <span className="font-medium">{roundsText} rounds</span>
-                              {tokensText && <span className="text-muted-foreground">{tokensText}</span>}
+                              {secondaryMetric}
                             </div>
                           )
                         })()}

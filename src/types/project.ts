@@ -14,12 +14,20 @@ export interface ApkSource {
 export interface TaskMetrics {
   rounds?: number
   maxRounds?: number
-  // API model metrics
-  tokens?: number
-  estimatedCost?: number
+  // API model metrics - ENHANCED
+  tokens?: number              // Total tokens (backward compatible)
+  inputTokens?: number         // Input tokens count
+  outputTokens?: number        // Output tokens count
+  estimatedCost?: number       // Estimated cost in dollars
+  // Execution time metrics
+  startTime?: number           // Unix timestamp (ms)
+  endTime?: number             // Unix timestamp (ms)
+  durationMs?: number          // Execution duration in milliseconds
+  tokensPerSecond?: number     // Inference speed (for local models)
   // Local model metrics
   cpuUsage?: number
   memoryUsage?: number
+  isLocalModel?: boolean       // Flag for local vs API model
 }
 
 export interface Task {

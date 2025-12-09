@@ -16,6 +16,7 @@ import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-st
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
+import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -315,6 +316,12 @@ print('SETUP_RESULT:' + json.dumps(result))
       task.output = '';
       task.resultPath = taskDir;  // Store task directory path
 
+      // Initialize metrics with start time
+      task.metrics = {
+        startTime: Date.now(),
+        isLocalModel: task.modelName ? isLocalModel(task.modelName) : undefined,
+      };
+
       saveProjects(data);
 
       // Load global config from config.json
@@ -405,17 +412,56 @@ print('SETUP_RESULT:' + json.dumps(result))
           if (progressMatch) {
             try {
               const progress = JSON.parse(progressMatch[1]);
+
+              // Update metrics with new data
               currentTask.metrics = {
                 ...currentTask.metrics,
                 rounds: progress.round,
                 maxRounds: progress.maxRounds,
                 tokens: progress.totalTokens,
+                inputTokens: progress.inputTokens || 0,
+                outputTokens: progress.outputTokens || 0,
               };
+
+              // Calculate cost if using paid API model
+              if (currentTask.modelName && !isLocalModel(currentTask.modelName)) {
+                // Fetch pricing data and calculate cost
+                fetchLiteLLMModels().then((result) => {
+                  if (result.success && result.providers && currentTask.metrics) {
+                    const cost = calculateEstimatedCost(
+                      currentTask.modelName!,
+                      currentTask.metrics.inputTokens || 0,
+                      currentTask.metrics.outputTokens || 0,
+                      result.providers
+                    );
+                    if (cost !== null && currentTask.metrics) {
+                      currentTask.metrics.estimatedCost = cost;
+                      // Re-send progress with updated cost
+                      mainWindow?.webContents.send('task:progress', {
+                        projectId,
+                        taskId,
+                        metrics: currentTask.metrics
+                      });
+                      // Save updated metrics
+                      const latestData = loadProjects();
+                      const latestProject = latestData.projects.find((p) => p.id === projectId);
+                      const latestTask = latestProject?.tasks.find((t) => t.id === taskId);
+                      if (latestTask) {
+                        latestTask.metrics = currentTask.metrics;
+                        saveProjects(latestData);
+                      }
+                    }
+                  }
+                }).catch((error) => {
+                  console.warn('[task:progress] Failed to fetch pricing data:', error);
+                });
+              }
+
               // Send progress event to renderer
-              mainWindow?.webContents.send('task:progress', { 
-                projectId, 
-                taskId, 
-                metrics: currentTask.metrics 
+              mainWindow?.webContents.send('task:progress', {
+                projectId,
+                taskId,
+                metrics: currentTask.metrics
               });
             } catch (parseError) {
               console.warn('[task:progress] Failed to parse progress JSON:', parseError);
@@ -453,8 +499,24 @@ print('SETUP_RESULT:' + json.dumps(result))
             currentTask.status = newStatus;
             currentTask.completedAt = new Date().toISOString();
             currentTask.updatedAt = new Date().toISOString();
+
+            // Calculate final execution metrics
+            if (currentTask.metrics?.startTime) {
+              currentTask.metrics.endTime = Date.now();
+              currentTask.metrics.durationMs = currentTask.metrics.endTime - currentTask.metrics.startTime;
+
+              // Calculate tokens per second for local models
+              if (currentTask.metrics.isLocalModel &&
+                  currentTask.metrics.tokens &&
+                  currentTask.metrics.durationMs > 0) {
+                currentTask.metrics.tokensPerSecond = Math.round(
+                  currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
+                );
+              }
+            }
+
             saveProjects(currentData);
-            
+
             // Only send complete event if we updated the status
             mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
           }
