@@ -23,10 +23,21 @@ from utils import print_with_color, draw_bbox_multi, append_to_log, append_image
 # Global flag to track if we started an emulator
 _emulator_started_by_script = False
 _device_serial = None
+_web_controller = None  # Global reference for cleanup
 
 def cleanup_on_exit():
     """Cleanup function called when script exits"""
-    global _emulator_started_by_script, _device_serial
+    global _emulator_started_by_script, _device_serial, _web_controller
+
+    # Cleanup web controller (browser) if used
+    if _web_controller is not None:
+        try:
+            print_with_color("\n[Cleanup] Closing web browser...", "yellow")
+            _web_controller.close()
+        except Exception as e:
+            print_with_color(f"[Cleanup] Error closing browser: {e}", "red")
+
+    # Cleanup Android emulator if started by this script
     if _emulator_started_by_script and _device_serial:
         print_with_color("\n[Cleanup] Stopping emulator started by this script...", "yellow")
         stop_emulator(_device_serial)
@@ -340,13 +351,18 @@ else:  # web
     user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
     if user_data_dir:
         print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
-    
+
     controller = WebController(
         browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
         headless=configs.get("WEB_HEADLESS", False),
         url=url,
         user_data_dir=user_data_dir if user_data_dir else None
     )
+
+    # Set global reference for cleanup
+    global _web_controller
+    _web_controller = controller
+
     width = controller.width
     height = controller.height
     print_with_color(f"Browser resolution: {width}x{height}", "yellow")
