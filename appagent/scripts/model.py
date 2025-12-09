@@ -255,22 +255,41 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
                 response_content = ""
                 # Only show streaming output for Ollama (useful for <think> mode)
                 show_streaming_output = self.provider == "Ollama"
-                
+
                 if show_streaming_output:
                     print_with_color("\n--- Model Response (streaming) ---", "yellow")
-                
+
+                # Buffered output for better readability
+                output_buffer = ""
+                BUFFER_FLUSH_SIZE = 80  # Flush buffer when it reaches this size
+
                 for chunk in response:
                     if chunk.choices[0].delta.content:
                         chunk_content = chunk.choices[0].delta.content
                         response_content += chunk_content
+
                         # Print in real-time only for Ollama
                         if show_streaming_output:
-                            # Remove extra newlines from streaming output for better readability
-                            # Ollama tends to add newlines between tokens
-                            display_chunk = chunk_content.replace('\n', ' ').strip()
-                            if display_chunk:  # Only print non-empty chunks
-                                print(display_chunk + " ", end="", flush=True)
-                
+                            # Add to buffer
+                            output_buffer += chunk_content
+
+                            # Flush buffer on sentence boundaries or when buffer is large enough
+                            should_flush = (
+                                len(output_buffer) >= BUFFER_FLUSH_SIZE or
+                                any(punct in output_buffer for punct in ['. ', '.\n', '? ', '!\n', '?\n', '!\n', '\n\n'])
+                            )
+
+                            if should_flush and output_buffer.strip():
+                                # Print buffer, replacing newlines with spaces for readability
+                                display_text = output_buffer.replace('\n', ' ').strip()
+                                print(display_text + " ", end="", flush=True)
+                                output_buffer = ""
+
+                # Flush remaining buffer
+                if show_streaming_output and output_buffer.strip():
+                    display_text = output_buffer.replace('\n', ' ').strip()
+                    print(display_text, flush=True)
+
                 if show_streaming_output:
                     print()  # Newline after streaming completes
                     print_with_color("--- End of Response ---\n", "yellow")
