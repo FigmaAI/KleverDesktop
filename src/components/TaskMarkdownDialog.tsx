@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, ExternalLink, Loader2 } from 'lucide-react'
+import { FolderOpen, RefreshCw, ExternalLink, Loader2, X, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -95,11 +95,13 @@ export function TaskMarkdownDialog({
   const [translatedContent, setTranslatedContent] = useState<string>('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
   const [isTranslating, setIsTranslating] = useState(false)
+  const [translationModel, setTranslationModel] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
   const [markdownDir, setMarkdownDir] = useState<string>('')
   const contentBoxRef = useRef<HTMLDivElement>(null)
+  const translationCancelledRef = useRef(false)
 
   const loadMarkdown = useCallback(async () => {
     setLoading(true)
@@ -156,12 +158,37 @@ export function TaskMarkdownDialog({
 
     if (lang === 'en' || !content) {
       setTranslatedContent('')
+      setTranslationModel('')
       return
+    }
+
+    // Reset cancellation flag
+    translationCancelledRef.current = false
+
+    // Get current model info for display
+    try {
+      const configResult = await window.electronAPI.configLoad()
+      if (configResult.success && configResult.config?.model?.lastUsed) {
+        const { provider, model } = configResult.config.model.lastUsed
+        setTranslationModel(`${provider}/${model}`)
+      } else if (configResult.success && configResult.config?.model?.providers?.[0]) {
+        const firstProvider = configResult.config.model.providers[0]
+        setTranslationModel(`${firstProvider.id}/${firstProvider.preferredModel}`)
+      }
+    } catch {
+      setTranslationModel('AI Model')
     }
 
     setIsTranslating(true)
     try {
       const result = await window.electronAPI.translateMarkdown(content, lang)
+      
+      // Check if cancelled during translation
+      if (translationCancelledRef.current) {
+        setTranslatedContent('')
+        return
+      }
+
       if (result.success && result.translatedText) {
         setTranslatedContent(result.translatedText)
       } else {
@@ -173,8 +200,18 @@ export function TaskMarkdownDialog({
       setTranslatedContent('')
     } finally {
       setIsTranslating(false)
+      setTranslationModel('')
     }
   }, [content])
+
+  // Cancel translation
+  const handleCancelTranslation = useCallback(() => {
+    translationCancelledRef.current = true
+    setIsTranslating(false)
+    setTranslationModel('')
+    setSelectedLanguage('en')
+    setTranslatedContent('')
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -319,9 +356,28 @@ export function TaskMarkdownDialog({
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : isTranslating ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="ml-3 text-sm text-muted-foreground">Translating...</span>
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Translating with AI...</span>
+                  {translationModel && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      {translationModel}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelTranslation}
+                className="gap-2"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
             </div>
           ) : error ? (
             <div className="p-8 text-center">

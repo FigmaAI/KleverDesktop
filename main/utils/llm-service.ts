@@ -104,8 +104,13 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
 
     proc.stderr?.on('data', (data) => {
       stderr += data.toString();
-      // Log stderr in real-time for debugging
-      console.log('[llm-service] stderr:', data.toString().trim());
+      // Log stderr in real-time for debugging (truncate long messages)
+      const msg = data.toString().trim();
+      if (msg.length > 200) {
+        console.log('[llm-service] stderr:', msg.substring(0, 200) + '...');
+      } else {
+        console.log('[llm-service] stderr:', msg);
+      }
     });
 
     proc.on('close', (code) => {
@@ -115,10 +120,12 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
 
       if (code !== 0) {
         console.error('[llm-service] Process exited with code:', code);
-        console.error('[llm-service] stderr:', stderr);
+        // Truncate stderr for logging
+        const truncatedStderr = stderr.length > 300 ? stderr.substring(0, 300) + '...' : stderr;
+        console.error('[llm-service] stderr:', truncatedStderr);
         resolve({
           success: false,
-          error: stderr || `Process exited with code ${code}`,
+          error: stderr.length > 500 ? stderr.substring(0, 500) + '...' : stderr || `Process exited with code ${code}`,
         });
         return;
       }
@@ -129,7 +136,9 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
         console.log('[llm-service] Success:', response.success);
         resolve(response);
       } catch {
-        console.error('[llm-service] Failed to parse response:', stdout);
+        // Truncate stdout for logging
+        const truncatedStdout = stdout.length > 200 ? stdout.substring(0, 200) + '...' : stdout;
+        console.error('[llm-service] Failed to parse response:', truncatedStdout);
         resolve({
           success: false,
           error: 'Failed to parse LLM service response',

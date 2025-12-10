@@ -358,11 +358,8 @@ else:  # web
         url=url,
         user_data_dir=user_data_dir if user_data_dir else None
     )
-
-    # Set global reference for cleanup
-    global _web_controller
+    # Store reference for cleanup on exit
     _web_controller = controller
-
     width = controller.width
     height = controller.height
     print_with_color(f"Browser resolution: {width}x{height}", "yellow")
