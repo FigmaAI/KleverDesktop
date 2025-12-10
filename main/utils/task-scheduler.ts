@@ -11,7 +11,7 @@ interface ScheduledTaskInfo {
   projectId: string;
   taskId: string;
   scheduledAt: string;
-  timeoutId: NodeJS.Timeout;
+  timeoutId: ReturnType<typeof setTimeout>;
 }
 
 class TaskScheduler {

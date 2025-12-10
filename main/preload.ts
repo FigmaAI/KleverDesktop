@@ -163,6 +163,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ============================================
+  // Schedule Management
+  // ============================================
+  scheduleList: () => ipcRenderer.invoke('schedule:list'),
+  scheduleAdd: (projectId: string, taskId: string, scheduledAt: string, silent: boolean) => 
+    ipcRenderer.invoke('schedule:add', projectId, taskId, scheduledAt, silent),
+  scheduleCancel: (scheduleId: string) => ipcRenderer.invoke('schedule:cancel', scheduleId),
+
+  // Schedule event listeners
+  onScheduleAdded: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('schedule:added', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
+  onScheduleStarted: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('schedule:started', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
+  onScheduleCompleted: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('schedule:completed', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
+  onScheduleCancelled: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('schedule:cancelled', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
+
+  // ============================================
   // Translation
   // ============================================
   translateText: (text: string, targetLang: string) => ipcRenderer.invoke('translator:translateText', text, targetLang),

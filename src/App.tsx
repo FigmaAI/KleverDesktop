@@ -32,13 +32,15 @@ import { ProjectCreateDialog } from '@/components/ProjectCreateDialog'
 import { TaskCreateDialog } from '@/components/TaskCreateDialog'
 import { SetupWizard } from './pages/SetupWizard'
 import { Settings } from './pages/Settings'
+import { ScheduledTasks } from './pages/ScheduledTasks'
 import { useTerminal } from '@/hooks/useTerminal'
 import { TaskContentArea } from '@/components/TaskContentArea'
 import { TaskDetail } from '@/components/TaskDetail'
 import { GitHubLink } from '@/components/GitHubLink'
 import type { Project, Task } from '@/types/project'
 
-type AppView = 'projects' | 'settings'
+type AppView = 'projects' | 'settings' | 'schedules'
+type ScheduleSection = 'active' | 'history'
 
 // Settings section labels for breadcrumb
 const settingsSectionLabels: Record<SettingsSection, string> = {
@@ -55,16 +57,16 @@ function MainApp() {
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
-  
+
   // App state
   const [currentView, setCurrentView] = useState<AppView>('projects')
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  
+
   // Keyboard navigation state
   const [focusArea, setFocusArea] = useState<'sidebar' | 'content'>('sidebar')
   const [selectedProjectIndex, setSelectedProjectIndex] = useState(0)
-  
+
   // Settings state
   const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSection>('model')
   const [settingsHasChanges, setSettingsHasChanges] = useState(false)
@@ -72,12 +74,15 @@ function MainApp() {
   const [settingsCanSave, setSettingsCanSave] = useState(true)
   const settingsSaveRef = useRef<(() => Promise<void>) | null>(null)
 
+  // Schedule state
+  const [activeScheduleSection, setActiveScheduleSection] = useState<ScheduleSection>('active')
+
   // Detect platform for keyboard shortcuts
   const isMac = typeof window !== 'undefined' && window.navigator.platform.toUpperCase().indexOf('MAC') >= 0
 
   // Track selected project ID for updates
   const selectedProjectIdRef = useRef<string | null>(null)
-  
+
   // Keep ref in sync
   useEffect(() => {
     selectedProjectIdRef.current = selectedProject?.id ?? null
@@ -89,7 +94,7 @@ function MainApp() {
       const result = await window.electronAPI.projectList()
       if (result.success && result.projects) {
         setProjects(result.projects)
-        
+
         // Update selected project if it exists (using ref to avoid stale closure)
         const currentSelectedId = selectedProjectIdRef.current
         if (currentSelectedId) {
@@ -122,8 +127,10 @@ function MainApp() {
     }
   }, [loadProjects])
 
+  // Load projects on mount
   useEffect(() => {
     loadProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only load on mount
 
   // Listen for scheduled task auto-start
@@ -277,7 +284,7 @@ function MainApp() {
       if (!target.closest('[role="dialog"]') && currentView === 'projects') {
         // Get sorted projects (newest first)
         const sortedProjects = [...projects].reverse()
-        
+
         if (focusArea === 'sidebar' && !selectedProject) {
           // Navigate project list
           if (e.key === 'ArrowDown') {
@@ -375,13 +382,13 @@ function MainApp() {
     const items: { label: string; onClick?: () => void }[] = []
 
     if (currentView === 'projects') {
-      items.push({ 
-        label: 'Projects', 
-        onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined 
+      items.push({
+        label: 'Projects',
+        onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined
       })
-      
+
       if (selectedProject) {
-        items.push({ 
+        items.push({
           label: selectedProject.name,
           onClick: selectedTask ? () => setSelectedTask(null) : undefined
         })
@@ -392,7 +399,7 @@ function MainApp() {
         items.push({ label: taskLabel.length > 30 ? taskLabel.substring(0, 30) + '...' : taskLabel })
       }
     } else if (currentView === 'settings') {
-      items.push({ 
+      items.push({
         label: 'Settings',
         onClick: () => setActiveSettingsSection('model')
       })
@@ -426,6 +433,8 @@ function MainApp() {
         onDeleteProject={handleDeleteProject}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
+        activeScheduleSection={activeScheduleSection}
+        onScheduleSectionChange={setActiveScheduleSection}
       />
       <SidebarInset>
         <header className="bg-background sticky top-0 z-10 flex h-[57px] shrink-0 items-center gap-2 border-b px-4">
@@ -474,7 +483,7 @@ function MainApp() {
                 <span>{isMac ? '⌘' : 'Ctrl'}</span>K
               </kbd>
             </button>
-            
+
             {/* Mobile search button */}
             <Button
               variant="ghost"
@@ -508,7 +517,7 @@ function MainApp() {
               </Button>
             )}
           </div>
-            </header>
+        </header>
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
@@ -520,6 +529,8 @@ function MainApp() {
               onSavingChange={setSettingsSaving}
               onCanSaveChange={setSettingsCanSave}
             />
+          ) : currentView === 'schedules' ? (
+            <ScheduledTasks section={activeScheduleSection} />
           ) : selectedTask && selectedProject ? (
             <TaskDetail
               task={selectedTask}
@@ -540,8 +551,8 @@ function MainApp() {
       </SidebarInset>
 
       {/* Command Menu */}
-      <CommandMenu 
-        open={commandOpen} 
+      <CommandMenu
+        open={commandOpen}
         onOpenChange={setCommandOpen}
         onSelectProject={(project) => {
           setSelectedProject(project)

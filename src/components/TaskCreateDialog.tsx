@@ -253,9 +253,7 @@ export function TaskCreateDialog({
         modelName: selectedModel.model,
         // Include max rounds if different from global default
         maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
-        // Include scheduling information
-        scheduledAt: scheduledDateTime?.toISOString(),
-        isScheduled: !!scheduledDateTime,
+        // NOTE: Removed scheduledAt and isScheduled - now handled by schedule:add API
       };
 
       const result = await window.electronAPI.taskCreate(taskInput);
@@ -271,8 +269,24 @@ export function TaskCreateDialog({
           console.warn("[TaskCreateDialog] Failed to update lastUsed:", error);
         }
 
-        // If "Run immediately" is checked and not scheduled, start the task
-        if (runImmediately && !scheduledDateTime) {
+        // If scheduled, create a schedule entry via the new API
+        if (scheduledDateTime) {
+          try {
+            const scheduleResult = await window.electronAPI.scheduleAdd(
+              currentProjectId,
+              result.task.id,
+              scheduledDateTime.toISOString(),
+              true // silent mode by default
+            );
+            if (!scheduleResult.success) {
+              console.error("[TaskCreateDialog] Failed to create schedule:", scheduleResult.error);
+              alert(`Task created but scheduling failed: ${scheduleResult.error}`);
+            }
+          } catch (schedError) {
+            console.error("[TaskCreateDialog] Schedule error:", schedError);
+          }
+        } else if (runImmediately) {
+          // If "Run immediately" is checked and not scheduled, start the task
           await window.electronAPI.taskStart(currentProjectId, result.task.id);
         }
 

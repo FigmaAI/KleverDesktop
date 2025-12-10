@@ -10,7 +10,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 import { ModelConfig, isLegacyModelConfig, migrateLegacyModelConfig } from '../types/model';
-import { fetchLiteLLMModels, getChatCompletionsUrl } from '../utils/litellm-providers';
+import { fetchLiteLLMModels } from '../utils/litellm-providers';
 import { testWithLLM } from '../utils/llm-service';
 
 /**

@@ -77,17 +77,17 @@ function formatCost(cost: number | null | undefined): string {
 }
 
 // Sort icon component - declared outside to avoid recreating during render
-function SortIcon({ 
-  field, 
-  sortField, 
-  sortDirection 
-}: { 
+function SortIcon({
+  field,
+  sortField,
+  sortDirection
+}: {
   field: SortField
   sortField: SortField
-  sortDirection: SortDirection 
+  sortDirection: SortDirection
 }) {
   if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4" />
-  return sortDirection === 'asc' 
+  return sortDirection === 'asc'
     ? <ArrowUp className="ml-2 h-4 w-4" />
     : <ArrowDown className="ml-2 h-4 w-4" />
 }
@@ -102,10 +102,10 @@ export function TaskContentArea({
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
-  
+
   // Filter state
   const [statusFilter, setStatusFilter] = useState<Set<Task['status']>>(new Set())
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
@@ -114,6 +114,7 @@ export function TaskContentArea({
   const [liveMetrics, setLiveMetrics] = useState<Map<string, TaskMetrics>>(new Map())
 
   // Reset state when project changes
+   
   useEffect(() => {
     setSelectedTaskIndex(0)
     setCurrentPage(1)
@@ -183,7 +184,7 @@ export function TaskContentArea({
   // Filter and sort tasks
   const sortedTasks = useMemo(() => {
     if (!project) return []
-    
+
     // Apply status filter
     let filtered = [...project.tasks]
     if (statusFilter.size > 0) {
@@ -236,6 +237,7 @@ export function TaskContentArea({
   }, [sortedTasks, currentPage, rowsPerPage])
 
   // Reset page when rows per page changes
+   
   useEffect(() => {
     setCurrentPage(1)
   }, [rowsPerPage])
@@ -279,6 +281,7 @@ export function TaskContentArea({
   }, [sortedTasks, selectedTaskIndex, onTaskClick, focusArea, handleDeleteTask])
 
   // Reset selected index when tasks change
+   
   useEffect(() => {
     setSelectedTaskIndex(0)
   }, [sortedTasks.length])
@@ -311,27 +314,35 @@ export function TaskContentArea({
   // No project selected - show welcome screen with keyboard shortcuts
   if (!project) {
     const shortcuts = [
-      { category: 'Navigation', items: [
-        { keys: [modKey, '1'], description: 'Go to Projects' },
-        { keys: [modKey, ','], description: 'Go to Settings' },
-        { keys: ['Esc'], description: 'Go back' },
-      ]},
-      { category: 'Actions', items: [
-        { keys: [modKey, 'N'], description: 'New Project' },
-        { keys: [modKey, 'T'], description: 'New Task' },
-        { keys: [modKey, 'K'], description: 'Search' },
-        { keys: [modKey, 'S'], description: 'Save Settings' },
-      ]},
-      { category: 'View', items: [
-        { keys: ['Ctrl', 'Shift', '`'], description: 'Toggle Terminal' },
-        { keys: [modKey, '\\'], description: 'Toggle Theme' },
-        { keys: [modKey, 'G'], description: 'Open GitHub' },
-      ]},
-      { category: 'List Navigation', items: [
-        { keys: ['↑', '↓'], description: 'Navigate items' },
-        { keys: ['Enter'], description: 'Select item' },
-        { keys: ['Delete'], description: 'Delete item' },
-      ]},
+      {
+        category: 'Navigation', items: [
+          { keys: [modKey, '1'], description: 'Go to Projects' },
+          { keys: [modKey, ','], description: 'Go to Settings' },
+          { keys: ['Esc'], description: 'Go back' },
+        ]
+      },
+      {
+        category: 'Actions', items: [
+          { keys: [modKey, 'N'], description: 'New Project' },
+          { keys: [modKey, 'T'], description: 'New Task' },
+          { keys: [modKey, 'K'], description: 'Search' },
+          { keys: [modKey, 'S'], description: 'Save Settings' },
+        ]
+      },
+      {
+        category: 'View', items: [
+          { keys: ['Ctrl', 'Shift', '`'], description: 'Toggle Terminal' },
+          { keys: [modKey, '\\'], description: 'Toggle Theme' },
+          { keys: [modKey, 'G'], description: 'Open GitHub' },
+        ]
+      },
+      {
+        category: 'List Navigation', items: [
+          { keys: ['↑', '↓'], description: 'Navigate items' },
+          { keys: ['Enter'], description: 'Select item' },
+          { keys: ['Delete'], description: 'Delete item' },
+        ]
+      },
     ]
 
     return (
@@ -579,8 +590,8 @@ export function TaskContentArea({
                       </TableCell>
                       <TableCell>
                         {task.status === 'running' ? (
-                          <Badge 
-                            variant={statusConfig.variant} 
+                          <Badge
+                            variant={statusConfig.variant}
                             className="flex items-center gap-1 w-fit cursor-pointer group hover:bg-destructive hover:text-destructive-foreground transition-colors"
                             onClick={(e) => handleStopTask(e, task)}
                             title="Click to stop"
@@ -679,7 +690,7 @@ export function TaskContentArea({
                           if (provider && task.modelName.startsWith(`${provider}/`)) {
                             displayName = task.modelName.slice(provider.length + 1)
                           }
-                          
+
                           return (
                             <div className="flex flex-col">
                               <span className="font-medium truncate max-w-[160px]" title={displayName}>

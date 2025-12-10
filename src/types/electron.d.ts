@@ -285,6 +285,19 @@ declare global {
       onTaskProgress: (callback: (data: { projectId: string; taskId: string; metrics: TaskMetrics }) => void) => void;
 
       // ============================================
+      // Schedule Management
+      // ============================================
+      scheduleList: () => Promise<{ success: boolean; schedules?: import('./schedule').ScheduledTask[]; error?: string }>;
+      scheduleAdd: (projectId: string, taskId: string, scheduledAt: string, silent: boolean) => Promise<{ success: boolean; schedule?: import('./schedule').ScheduledTask; error?: string }>;
+      scheduleCancel: (scheduleId: string) => Promise<{ success: boolean; error?: string }>;
+
+      // Schedule event listeners
+      onScheduleAdded: (callback: (data: import('./schedule').ScheduledTask) => void) => void;
+      onScheduleStarted: (callback: (data: { scheduleId: string }) => void) => void;
+      onScheduleCompleted: (callback: (data: { scheduleId: string; status: string; error?: string }) => void) => void;
+      onScheduleCancelled: (callback: (data: { scheduleId: string }) => void) => void;
+
+      // ============================================
       // Translation
       // ============================================
       translateText: (text: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;

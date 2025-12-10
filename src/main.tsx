@@ -408,6 +408,44 @@ if (!window.electronAPI) {
     // APK Installation (mock)
     apkSelectFile: async () => ({ success: true, canceled: true }),
     playstoreParseUrl: async () => ({ success: true, packageName: 'com.example.app' }),
+
+    // Task Progress (mock)
+    onTaskProgress: (cb) => {
+      if (!mockCallbacks['task:progress']) mockCallbacks['task:progress'] = []
+      mockCallbacks['task:progress'].push(cb)
+    },
+
+    // Schedule Management (mock)
+    scheduleList: async () => ({ success: true, schedules: [] }),
+    scheduleAdd: async (_projectId: string, _taskId: string, scheduledAt: string, silent: boolean) => ({
+      success: true,
+      schedule: {
+        id: `schedule_${Date.now()}`,
+        projectId: _projectId,
+        taskId: _taskId,
+        scheduledAt,
+        status: 'pending' as const,
+        createdAt: new Date().toISOString(),
+        silent,
+      },
+    }),
+    scheduleCancel: async () => ({ success: true }),
+    onScheduleAdded: (cb) => {
+      if (!mockCallbacks['schedule:added']) mockCallbacks['schedule:added'] = []
+      mockCallbacks['schedule:added'].push(cb)
+    },
+    onScheduleStarted: (cb) => {
+      if (!mockCallbacks['schedule:started']) mockCallbacks['schedule:started'] = []
+      mockCallbacks['schedule:started'].push(cb)
+    },
+    onScheduleCompleted: (cb) => {
+      if (!mockCallbacks['schedule:completed']) mockCallbacks['schedule:completed'] = []
+      mockCallbacks['schedule:completed'].push(cb)
+    },
+    onScheduleCancelled: (cb) => {
+      if (!mockCallbacks['schedule:cancelled']) mockCallbacks['schedule:cancelled'] = []
+      mockCallbacks['schedule:cancelled'].push(cb)
+    },
   }
 }
 

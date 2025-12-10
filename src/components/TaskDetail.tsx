@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, ExternalLink, Loader2, ArrowLeft, Play, StopCircle, Trash2, X, Sparkles } from 'lucide-react'
+import { FolderOpen, RefreshCw, ExternalLink, Loader2, ArrowLeft, Play, StopCircle, Trash2, X, Sparkles, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ScheduleDialog } from '@/components/ScheduleDialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { LanguageSelector } from './LanguageSelector'
 import { BlurFade } from '@/components/magicui/blur-fade'
@@ -101,6 +102,7 @@ export function TaskDetail({
   const [markdownDir, setMarkdownDir] = useState<string>('')
   const contentBoxRef = useRef<HTMLDivElement>(null)
   const translationCancelledRef = useRef(false)
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
 
   const taskName = task.name || task.goal
 
@@ -183,7 +185,7 @@ export function TaskDetail({
     setIsTranslating(true)
     try {
       const result = await window.electronAPI.translateMarkdown(content, lang)
-      
+
       // Check if cancelled during translation
       if (translationCancelledRef.current) {
         setTranslatedContent('')
@@ -329,6 +331,27 @@ export function TaskDetail({
     }
   }
 
+  const handleScheduleTask = async (date: Date, silent: boolean) => {
+    try {
+      const result = await window.electronAPI.scheduleAdd(
+        project.id,
+        task.id,
+        date.toISOString(),
+        silent
+      )
+      if (result.success) {
+        setScheduleDialogOpen(false)
+        // Show success feedback
+        alert(`Task scheduled for ${date.toLocaleString()}`)
+      } else {
+        alert(result.error || 'Failed to schedule task')
+      }
+    } catch (error) {
+      console.error('Error scheduling task:', error)
+      alert('Failed to schedule task')
+    }
+  }
+
   const getStatusConfig = (status: Task['status']) => {
     switch (status) {
       case 'pending':
@@ -430,10 +453,27 @@ export function TaskDetail({
                 <div className="w-px h-6 bg-border mx-1" />
 
                 {task.status === 'pending' && (
-                  <Button size="sm" onClick={handleStartTask} className="h-8">
-                    <Play className="mr-1 h-3 w-3" />
-                    Start
-                  </Button>
+                  <>
+                    <Button size="sm" onClick={handleStartTask} className="h-8">
+                      <Play className="mr-1 h-3 w-3" />
+                      Start
+                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setScheduleDialogOpen(true)}
+                          className="h-8"
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Schedule Task</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
                 )}
                 {task.status === 'running' && (
                   <Button size="sm" variant="destructive" onClick={handleStopTask} className="h-8">
@@ -567,6 +607,14 @@ export function TaskDetail({
           )}
         </div>
       </BlurFade>
+
+      {/* Schedule Dialog */}
+      <ScheduleDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onSchedule={handleScheduleTask}
+        taskName={taskName || 'Task'}
+      />
     </div>
   )
 }
