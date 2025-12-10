@@ -670,3 +670,53 @@ export function clearCache(): void {
     // Cache clear failed, ignore
   }
 }
+
+/**
+ * Calculate estimated cost based on token usage and model pricing
+ * Returns null for local models (Ollama) or unknown models
+ */
+export function calculateEstimatedCost(
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number,
+  providers: LiteLLMProvider[]
+): number | null {
+  // Local models have no cost
+  const provider = detectProvider(modelId);
+  if (provider === 'ollama') {
+    return null;
+  }
+
+  // Find the model in providers
+  for (const p of providers) {
+    const model = p.models.find(m => m.id === modelId || modelId.includes(m.id));
+    if (model && model.inputCostPerToken !== undefined && model.outputCostPerToken !== undefined) {
+      const inputCost = inputTokens * model.inputCostPerToken;
+      const outputCost = outputTokens * model.outputCostPerToken;
+      return inputCost + outputCost;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a model is a local model (no API cost)
+ */
+export function isLocalModel(modelId: string): boolean {
+  const provider = detectProvider(modelId);
+  return provider === 'ollama';
+}
+
+/**
+ * Format cost for display
+ * @param cost - Cost in dollars
+ * @returns Formatted string (e.g., "$0.0342" or "< $0.01")
+ */
+export function formatCost(cost: number | null): string {
+  if (cost === null) return '';
+  if (cost === 0) return '$0.00';
+  if (cost < 0.01) return '< $0.01';
+  if (cost < 1) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}

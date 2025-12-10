@@ -23,10 +23,21 @@ from utils import print_with_color, draw_bbox_multi, append_to_log, append_image
 # Global flag to track if we started an emulator
 _emulator_started_by_script = False
 _device_serial = None
+_web_controller = None  # Global reference for cleanup
 
 def cleanup_on_exit():
     """Cleanup function called when script exits"""
-    global _emulator_started_by_script, _device_serial
+    global _emulator_started_by_script, _device_serial, _web_controller
+
+    # Cleanup web controller (browser) if used
+    if _web_controller is not None:
+        try:
+            print_with_color("\n[Cleanup] Closing web browser...", "yellow")
+            _web_controller.close()
+        except Exception as e:
+            print_with_color(f"[Cleanup] Error closing browser: {e}", "red")
+
+    # Cleanup Android emulator if started by this script
     if _emulator_started_by_script and _device_serial:
         print_with_color("\n[Cleanup] Stopping emulator started by this script...", "yellow")
         stop_emulator(_device_serial)
@@ -44,20 +55,35 @@ signal.signal(signal.SIGINT, signal_handler)
 
 # Global progress tracking for Electron IPC
 _cumulative_tokens = 0
+_cumulative_input_tokens = 0
+_cumulative_output_tokens = 0
 _cumulative_response_time = 0.0
 
-def emit_progress(round_num, max_rounds, tokens_this_round=0, response_time_this_round=0.0):
+def emit_progress(round_num, max_rounds, tokens_this_round=0, response_time_this_round=0.0,
+                 input_tokens_this_round=0, output_tokens_this_round=0):
     """
     Emit structured progress JSON for Electron to parse.
     This enables real-time progress tracking in the UI.
+
+    Args:
+        round_num: Current round number
+        max_rounds: Maximum rounds for this task
+        tokens_this_round: Total tokens this round (for backward compatibility)
+        response_time_this_round: Response time this round
+        input_tokens_this_round: Input tokens this round
+        output_tokens_this_round: Output tokens this round
     """
-    global _cumulative_tokens, _cumulative_response_time
+    global _cumulative_tokens, _cumulative_input_tokens, _cumulative_output_tokens, _cumulative_response_time
     _cumulative_tokens += tokens_this_round
+    _cumulative_input_tokens += input_tokens_this_round
+    _cumulative_output_tokens += output_tokens_this_round
     _cumulative_response_time += response_time_this_round
     progress = {
         "round": round_num,
         "maxRounds": max_rounds,
         "totalTokens": _cumulative_tokens,
+        "inputTokens": _cumulative_input_tokens,
+        "outputTokens": _cumulative_output_tokens,
         "totalResponseTime": round(_cumulative_response_time, 2)
     }
     print(f"PROGRESS:{json.dumps(progress)}", flush=True)
@@ -325,13 +351,15 @@ else:  # web
     user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
     if user_data_dir:
         print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
-    
+
     controller = WebController(
         browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
         headless=configs.get("WEB_HEADLESS", False),
         url=url,
         user_data_dir=user_data_dir if user_data_dir else None
     )
+    # Store reference for cleanup on exit
+    _web_controller = controller
     width = controller.width
     height = controller.height
     print_with_color(f"Browser resolution: {width}x{height}", "yellow")
@@ -428,9 +456,11 @@ while round_count < configs["MAX_ROUNDS"]:
         perf_info += f" | Provider: {metadata['provider']} ({metadata['model']})\n"
         append_to_log(perf_info, report_log_path)
         # Emit progress with token count from explore step
-        emit_progress(round_count, configs["MAX_ROUNDS"], 
-                     metadata.get('total_tokens', 0), 
-                     metadata.get('response_time', 0))
+        emit_progress(round_count, configs["MAX_ROUNDS"],
+                     metadata.get('total_tokens', 0),
+                     metadata.get('response_time', 0),
+                     metadata.get('prompt_tokens', 0),
+                     metadata.get('completion_tokens', 0))
 
     if status:
         with open(explore_log_path, "a") as logfile:
@@ -617,7 +647,9 @@ while round_count < configs["MAX_ROUNDS"]:
                 # Emit progress with token count from grid step
                 emit_progress(round_count, configs["MAX_ROUNDS"],
                              grid_metadata.get('total_tokens', 0),
-                             grid_metadata.get('response_time', 0))
+                             grid_metadata.get('response_time', 0),
+                             grid_metadata.get('prompt_tokens', 0),
+                             grid_metadata.get('completion_tokens', 0))
 
             if not status:
                 print_with_color(f"ERROR: {grid_rsp}", "red")
@@ -789,7 +821,9 @@ while round_count < configs["MAX_ROUNDS"]:
         # Emit progress with token count from reflection step
         emit_progress(round_count, configs["MAX_ROUNDS"],
                      reflect_metadata.get('total_tokens', 0),
-                     reflect_metadata.get('response_time', 0))
+                     reflect_metadata.get('response_time', 0),
+                     reflect_metadata.get('prompt_tokens', 0),
+                     reflect_metadata.get('completion_tokens', 0))
     if status:
         resource_id = elem_list[int(area) - 1].uid
         with open(reflect_log_path, "a") as logfile:
