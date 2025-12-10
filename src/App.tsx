@@ -166,6 +166,21 @@ function MainApp() {
     window.electronAPI.onTaskAutoStart(handleAutoStart)
   }, [loadProjects])
 
+  // Listen for task completion events to refresh project list
+  // Note: TerminalContext also listens to task:complete for terminal state
+  // This listener refreshes the project list for UI updates
+  useEffect(() => {
+    const handleTaskComplete = () => {
+      // Refresh projects when any task completes, fails, or is cancelled
+      loadProjects()
+    }
+
+    window.electronAPI.onTaskComplete(handleTaskComplete)
+
+    // Note: Don't call removeAllListeners here as it would remove
+    // TerminalContext's listener too. MainApp only unmounts on app exit.
+  }, [loadProjects])
+
   // Keyboard shortcuts
   useEffect(() => {
     const down = (e: globalThis.KeyboardEvent) => {

@@ -158,6 +158,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => {
     ipcRenderer.on('task:schedule-error', (_event: IpcRendererEvent, data: { taskId: string; projectId: string; error: string }) => callback(data));
   },
+  onTaskProgress: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('task:progress', (_event: IpcRendererEvent, data: unknown) => callback(data));
+  },
 
   // ============================================
   // Translation

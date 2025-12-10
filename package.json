@@ -16,7 +16,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "python:verify": "node scripts/verify-bundle.js",
     "python:sync": "node scripts/python-sync.js",
-    "python:sync:all": "node scripts/python-refresh.js"
+    "python:sync:all": "node scripts/python-refresh.js",
+    "appagent:sync": "node scripts/appagent-sync.js"
   },
   "keywords": [
     "electron",

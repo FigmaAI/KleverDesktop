@@ -242,30 +242,11 @@ export function TaskCreateDialog({
 
     setLoading(true);
     try {
-      // Always attempt to translate to English (if already English, translator returns as-is)
-      let finalGoal = goal.trim();
-      console.log("[TaskCreateDialog] Original goal:", finalGoal);
-
-      // Attempt translation to English
-      const translateResult = await window.electronAPI.translateText(
-        finalGoal,
-        "en"
-      );
-      if (translateResult.success && translateResult.translatedText) {
-        finalGoal = translateResult.translatedText;
-        console.log("[TaskCreateDialog] Translated goal:", finalGoal);
-      } else {
-        console.warn(
-          "[TaskCreateDialog] Translation failed, using original text:",
-          translateResult.error
-        );
-      }
-
       const taskInput = {
         projectId: currentProjectId,
         name: `Task ${new Date().toLocaleString()}`,
-        goal: finalGoal,
-        url: platform === "web" ? url.trim() : undefined,
+        goal: goal.trim(),
+        url: platform === 'web' ? url.trim() : undefined,
         apkSource: buildApkSource(),
         // Include provider and model for task execution
         modelProvider: selectedModel.provider,

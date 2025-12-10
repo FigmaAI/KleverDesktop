@@ -220,7 +220,7 @@ export function ModelSelector({
 
       {/* Model Selection */}
       {provider && (
-        <div className="min-w-[220px]">
+        <div className="min-w-[220px] max-w-[320px] flex-1">
           {ollamaLoading ? (
             <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
               <span className="text-sm text-muted-foreground">Loading models...</span>

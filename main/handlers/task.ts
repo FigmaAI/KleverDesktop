@@ -16,6 +16,7 @@ import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-st
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
+import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 import { taskScheduler } from '../utils/task-scheduler';
 
@@ -323,6 +324,12 @@ print('SETUP_RESULT:' + json.dumps(result))
       task.output = '';
       task.resultPath = taskDir;  // Store task directory path
 
+      // Initialize metrics with start time
+      task.metrics = {
+        startTime: Date.now(),
+        isLocalModel: task.modelName ? isLocalModel(task.modelName) : undefined,
+      };
+
       saveProjects(data);
 
       // Load global config from config.json
@@ -407,6 +414,68 @@ print('SETUP_RESULT:' + json.dumps(result))
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
         if (currentTask) {
           currentTask.output = (currentTask.output || '') + output;
+
+          // Parse PROGRESS JSON from output and update task metrics
+          const progressMatch = output.match(/PROGRESS:(\{.*\})/);
+          if (progressMatch) {
+            try {
+              const progress = JSON.parse(progressMatch[1]);
+
+              // Update metrics with new data
+              currentTask.metrics = {
+                ...currentTask.metrics,
+                rounds: progress.round,
+                maxRounds: progress.maxRounds,
+                tokens: progress.totalTokens,
+                inputTokens: progress.inputTokens || 0,
+                outputTokens: progress.outputTokens || 0,
+              };
+
+              // Calculate cost if using paid API model
+              if (currentTask.modelName && !isLocalModel(currentTask.modelName)) {
+                // Fetch pricing data and calculate cost
+                fetchLiteLLMModels().then((result) => {
+                  if (result.success && result.providers && currentTask.metrics) {
+                    const cost = calculateEstimatedCost(
+                      currentTask.modelName!,
+                      currentTask.metrics.inputTokens || 0,
+                      currentTask.metrics.outputTokens || 0,
+                      result.providers
+                    );
+                    if (cost !== null && currentTask.metrics) {
+                      currentTask.metrics.estimatedCost = cost;
+                      // Re-send progress with updated cost
+                      mainWindow?.webContents.send('task:progress', {
+                        projectId,
+                        taskId,
+                        metrics: currentTask.metrics
+                      });
+                      // Save updated metrics
+                      const latestData = loadProjects();
+                      const latestProject = latestData.projects.find((p) => p.id === projectId);
+                      const latestTask = latestProject?.tasks.find((t) => t.id === taskId);
+                      if (latestTask) {
+                        latestTask.metrics = currentTask.metrics;
+                        saveProjects(latestData);
+                      }
+                    }
+                  }
+                }).catch((error) => {
+                  console.warn('[task:progress] Failed to fetch pricing data:', error);
+                });
+              }
+
+              // Send progress event to renderer
+              mainWindow?.webContents.send('task:progress', {
+                projectId,
+                taskId,
+                metrics: currentTask.metrics
+              });
+            } catch (parseError) {
+              console.warn('[task:progress] Failed to parse progress JSON:', parseError);
+            }
+          }
+
           saveProjects(currentData);
         }
       });
@@ -431,14 +500,36 @@ print('SETUP_RESULT:' + json.dumps(result))
         const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
 
         if (currentTask) {
-          const newStatus = code === 0 ? 'completed' : 'failed';
-          currentTask.status = newStatus;
-          currentTask.completedAt = new Date().toISOString();
-          currentTask.updatedAt = new Date().toISOString();
-          saveProjects(currentData);
+          // Only update if still in 'running' status
+          // Don't overwrite 'cancelled', 'completed', or 'failed' (may be set by stop or error handler)
+          if (currentTask.status === 'running') {
+            const newStatus = code === 0 ? 'completed' : 'failed';
+            currentTask.status = newStatus;
+            currentTask.completedAt = new Date().toISOString();
+            currentTask.updatedAt = new Date().toISOString();
+
+            // Calculate final execution metrics
+            if (currentTask.metrics?.startTime) {
+              currentTask.metrics.endTime = Date.now();
+              currentTask.metrics.durationMs = currentTask.metrics.endTime - currentTask.metrics.startTime;
+
+              // Calculate tokens per second for local models
+              if (currentTask.metrics.isLocalModel &&
+                  currentTask.metrics.tokens &&
+                  currentTask.metrics.durationMs > 0) {
+                currentTask.metrics.tokensPerSecond = Math.round(
+                  currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
+                );
+              }
+            }
+
+            saveProjects(currentData);
+
+            // Only send complete event if we updated the status
+            mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
+          }
         }
 
-        mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
         taskProcesses.delete(taskId);
 
         // Auto-cleanup emulator if no more pending Android tasks
@@ -454,6 +545,23 @@ print('SETUP_RESULT:' + json.dumps(result))
           taskId, 
           error: `Process error: ${error.message}` 
         });
+
+        // Update task status to failed on process error
+        const currentData = loadProjects();
+        const currentProject = currentData.projects.find((p) => p.id === projectId);
+        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+
+        if (currentTask && currentTask.status === 'running') {
+          currentTask.status = 'failed';
+          currentTask.error = error.message;
+          currentTask.completedAt = new Date().toISOString();
+          currentTask.updatedAt = new Date().toISOString();
+          saveProjects(currentData);
+
+          mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
+        }
+
+        taskProcesses.delete(taskId);
       });
 
       return { success: true, pid: taskProcess.pid };
@@ -465,6 +573,7 @@ print('SETUP_RESULT:' + json.dumps(result))
   // Stop task execution
   ipcMain.handle('task:stop', async (_event, projectId: string, taskId: string) => {
     try {
+      const mainWindow = getMainWindow();
       const taskProcess = taskProcesses.get(taskId);
 
       if (!taskProcess) {
@@ -474,16 +583,21 @@ print('SETUP_RESULT:' + json.dumps(result))
       taskProcess.kill('SIGTERM');
       taskProcesses.delete(taskId);
 
-      // Update task status
+      // Update task status to 'cancelled' (user-initiated stop)
       const data = loadProjects();
       const project = data.projects.find((p) => p.id === projectId);
       const task = project?.tasks.find((t) => t.id === taskId);
 
       if (task) {
-        task.status = 'failed';
+        task.status = 'cancelled';
+        task.completedAt = new Date().toISOString();
         task.updatedAt = new Date().toISOString();
         saveProjects(data);
       }
+
+      // Emit task:complete event to notify frontend immediately
+      // Using special code -1 to indicate user-initiated cancellation
+      mainWindow?.webContents.send('task:complete', { projectId, taskId, code: -1 });
 
       // Auto-cleanup emulator if no more pending Android tasks
       if (project?.platform === 'android') {

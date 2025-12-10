@@ -1,6 +1,6 @@
 export {};
 
-import type { Project, ProjectCreateInput, Task, TaskCreateInput } from './project';
+import type { Project, ProjectCreateInput, Task, TaskCreateInput, TaskMetrics } from './project';
 
 interface OllamaModel {
   name: string;
@@ -282,6 +282,7 @@ declare global {
       onTaskScheduleCancelled: (callback: (data: { taskId: string }) => void) => void;
       onTaskScheduleTriggered: (callback: (data: { taskId: string; projectId: string }) => void) => void;
       onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => void;
+      onTaskProgress: (callback: (data: { projectId: string; taskId: string; metrics: TaskMetrics }) => void) => void;
 
       // ============================================
       // Translation
