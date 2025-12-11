@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   Plus,
   Play,
-  StopCircle,
   CheckCircle,
   AlertCircle,
   Clock,
@@ -22,6 +21,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { RainbowButton } from '@/components/ui/rainbow-button'
 import { Badge } from '@/components/ui/badge'
+import { TaskStatusBadge } from '@/components/TaskStatusBadge'
+import { getTaskStatusConfig } from '@/lib/task-status'
 import {
   Select,
   SelectContent,
@@ -113,14 +114,6 @@ export function TaskContentArea({
   // Real-time task progress metrics (keyed by taskId)
   const [liveMetrics, setLiveMetrics] = useState<Map<string, TaskMetrics>>(new Map())
 
-  // Reset state when project changes
-   
-  useEffect(() => {
-    setSelectedTaskIndex(0)
-    setCurrentPage(1)
-    setLiveMetrics(new Map())
-  }, [project?.id])
-
   const handleDeleteTask = useCallback(async (task: Task) => {
     if (!project) return
     if (!confirm(`Are you sure you want to delete "${task.name || task.goal}"?`)) return
@@ -155,22 +148,6 @@ export function TaskContentArea({
     }
   }, [project, onProjectsChange])
 
-  const getStatusConfig = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return { label: 'Scheduled', icon: Clock, variant: 'secondary' as const, priority: 2 }
-      case 'running':
-        return { label: 'Running', icon: Play, variant: 'default' as const, priority: 1 }
-      case 'completed':
-        return { label: 'Finished', icon: CheckCircle, variant: 'default' as const, priority: 4 }
-      case 'failed':
-        return { label: 'Error', icon: AlertCircle, variant: 'destructive' as const, priority: 3 }
-      case 'cancelled':
-        return { label: 'Stopped', icon: XCircle, variant: 'secondary' as const, priority: 5 }
-      default:
-        return { label: 'Unknown', icon: Clock, variant: 'secondary' as const, priority: 6 }
-    }
-  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -197,7 +174,7 @@ export function TaskContentArea({
 
       switch (sortField) {
         case 'status':
-          comparison = getStatusConfig(a.status).priority - getStatusConfig(b.status).priority
+          comparison = getTaskStatusConfig(a.status).priority - getTaskStatusConfig(b.status).priority
           break
         case 'createdAt':
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -235,12 +212,6 @@ export function TaskContentArea({
     const startIndex = (currentPage - 1) * rowsPerPage
     return sortedTasks.slice(startIndex, startIndex + rowsPerPage)
   }, [sortedTasks, currentPage, rowsPerPage])
-
-  // Reset page when rows per page changes
-   
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [rowsPerPage])
 
   // Keyboard navigation for task list (only when focused on content area)
   useEffect(() => {
@@ -280,11 +251,11 @@ export function TaskContentArea({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [sortedTasks, selectedTaskIndex, onTaskClick, focusArea, handleDeleteTask])
 
-  // Reset selected index when tasks change
-   
-  useEffect(() => {
-    setSelectedTaskIndex(0)
-  }, [sortedTasks.length])
+  // Ensure selectedTaskIndex is always valid (bounded to list length)
+  const validSelectedIndex = useMemo(() => 
+    Math.min(selectedTaskIndex, Math.max(0, sortedTasks.length - 1)),
+    [selectedTaskIndex, sortedTasks.length]
+  )
 
   // Subscribe to task progress events for real-time updates
   useEffect(() => {
@@ -300,11 +271,9 @@ export function TaskContentArea({
       }
     }
 
-    window.electronAPI.onTaskProgress(handleProgress)
+    const cleanup = window.electronAPI.onTaskProgress(handleProgress)
 
-    return () => {
-      window.electronAPI.removeAllListeners('task:progress')
-    }
+    return cleanup
   }, [project?.id])
 
   // Detect platform for keyboard shortcuts
@@ -568,11 +537,9 @@ export function TaskContentArea({
               </TableHeader>
               <TableBody>
                 {paginatedTasks.map((task, index) => {
-                  const statusConfig = getStatusConfig(task.status)
-                  const StatusIcon = statusConfig.icon
                   // Calculate actual index for keyboard navigation
                   const actualIndex = (currentPage - 1) * rowsPerPage + index
-                  const isSelected = actualIndex === selectedTaskIndex
+                  const isSelected = actualIndex === validSelectedIndex
 
                   return (
                     <TableRow
@@ -589,24 +556,11 @@ export function TaskContentArea({
                         </span>
                       </TableCell>
                       <TableCell>
-                        {task.status === 'running' ? (
-                          <Badge
-                            variant={statusConfig.variant}
-                            className="flex items-center gap-1 w-fit cursor-pointer group hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                            onClick={(e) => handleStopTask(e, task)}
-                            title="Click to stop"
-                          >
-                            <StatusIcon className="h-3 w-3 group-hover:hidden" />
-                            <StopCircle className="h-3 w-3 hidden group-hover:block" />
-                            <span className="group-hover:hidden">{statusConfig.label}</span>
-                            <span className="hidden group-hover:inline">Stop</span>
-                          </Badge>
-                        ) : (
-                          <Badge variant={statusConfig.variant} className="flex items-center gap-1 w-fit">
-                            <StatusIcon className="h-3 w-3" />
-                            {statusConfig.label}
-                          </Badge>
-                        )}
+                        <TaskStatusBadge
+                          status={task.status}
+                          showStopOnHover={task.status === 'running'}
+                          onStop={(e) => handleStopTask(e, task)}
+                        />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {(() => {
@@ -722,7 +676,10 @@ export function TaskContentArea({
                 <p className="text-sm font-medium">Rows per page</p>
                 <Select
                   value={String(rowsPerPage)}
-                  onValueChange={(value) => setRowsPerPage(Number(value))}
+                  onValueChange={(value) => {
+                    setRowsPerPage(Number(value))
+                    setCurrentPage(1)
+                  }}
                 >
                   <SelectTrigger className="h-8 w-[70px]">
                     <SelectValue placeholder={String(rowsPerPage)} />

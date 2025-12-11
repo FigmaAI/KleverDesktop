@@ -1,76 +1,32 @@
 /**
- * Schedule Queue Manager
+ * Schedule Queue Manager (Simplified)
  * 
- * Manages scheduled task execution with sequential (one-at-a-time) processing.
+ * Manages scheduled task execution based on Task.scheduledAt field.
+ * No separate schedules.json - uses projects.json as single source of truth.
  * 
- * ## Architecture: Hybrid Polling + Event-Driven
- * 
- * This manager uses a HYBRID approach combining polling and events:
- * 
- * ### 1. POLLING (10-second interval) - For TIME detection
- * - WHY: "Is the scheduled time reached?" has no external event source
- * - Time itself doesn't emit events - we must periodically check
- * - Alternative (setTimeout per schedule) has downsides:
- *   - Lost on app restart (must rebuild all timers)
- *   - Memory overhead for many schedules
- *   - Complex management of timer handles
- * 
- * ### 2. EVENT-DRIVEN - For TASK STATE changes
- * - Task completion/failure calls triggerCheck() immediately
- * - No need to poll task status - we get notified when it changes
- * - This enables immediate start of next queued schedule
- * 
- * ### Sequential Execution Flow:
- * 1. Polling detects: "Schedule A's time has arrived"
- * 2. Check: "Is any task running?" → If yes, wait
- * 3. Execute Schedule A's task
- * 4. Task A completes → triggerCheck() called (EVENT)
- * 5. Check: "Any more due schedules?" → Execute next
- * 
- * ### Why Not Pure setTimeout?
- * - App restart: All timers lost, need to recalculate delays
- * - Far-future schedules: setTimeout may overflow (max ~24.8 days)
- * - Memory: Each setTimeout holds a reference
- * - Complexity: Managing timer cancellation on schedule updates
- * 
- * ### Why Not Pure Polling for Everything?
- * - Task completion: Already have events, no need to poll
- * - Wastes resources checking status that hasn't changed
- * - Event-driven is immediate; polling has latency
+ * ## How it works:
+ * 1. Polls projects.json every 10 seconds for tasks with scheduledAt in the past
+ * 2. Executes due tasks one at a time (sequential execution)
+ * 3. Task completion updates status in projects.json
  */
 
 import { BrowserWindow } from 'electron';
-import { ScheduledTask } from '../types/schedule';
-import { loadSchedules, saveSchedules } from './schedule-storage';
+import { loadProjects, saveProjects } from './project-storage';
 import { startTaskExecution } from '../handlers/task';
-import { loadProjects } from './project-storage';
+import { Task } from '../types';
 
 export class ScheduleQueueManager {
-  private schedules: Map<string, ScheduledTask> = new Map();
-  private activeExecution: string | null = null;
   private checkInterval: ReturnType<typeof setInterval> | null = null;
   private getMainWindow: (() => BrowserWindow | null) | null = null;
+  private isExecuting = false;
 
   /**
    * Initialize on app start
    */
   initialize(getMainWindow: () => BrowserWindow | null): void {
     this.getMainWindow = getMainWindow;
-    this.loadSchedules();
     this.startPolling();
-    console.log('[schedule-manager] Initialized');
-  }
-
-  /**
-   * Load schedules from schedules.json
-   */
-  private loadSchedules(): void {
-    const data = loadSchedules();
-    // Load all schedules into map
-    data.schedules.forEach(s => {
-      this.schedules.set(s.id, s);
-    });
-    console.log(`[schedule-manager] Loaded ${this.schedules.size} schedules`);
+    console.log('[schedule-manager] Initialized (Task-based scheduling)');
   }
 
   /**
@@ -85,7 +41,6 @@ export class ScheduleQueueManager {
 
   /**
    * Check if any task is currently running (from any project)
-   * This ensures sequential execution even for manually started tasks
    */
   private checkAnyRunningTask(): boolean {
     try {
@@ -93,7 +48,6 @@ export class ScheduleQueueManager {
       for (const project of projectData.projects) {
         for (const task of project.tasks) {
           if (task.status === 'running') {
-            console.log(`[schedule-manager] Task ${task.id} is running, waiting...`);
             return true;
           }
         }
@@ -101,192 +55,218 @@ export class ScheduleQueueManager {
       return false;
     } catch (error) {
       console.error('[schedule-manager] Error checking running tasks:', error);
-      return false; // Assume no running task on error
+      return false;
     }
   }
 
   /**
-   * Start the time-based polling loop.
-   * 
-   * PURPOSE: Detect when scheduled times have been reached.
-   * 
-   * This is the ONLY thing that requires polling - "time arrival" has no event.
-   * Task state changes (running → completed) are handled via triggerCheck() events.
-   * 
-   * Interval: 10 seconds
-   * - Fast enough for responsive scheduling
-   * - Light enough to not impact performance
+   * Start the polling loop (10 seconds interval)
    */
   private startPolling(): void {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
     }
     
-    // 10-second interval: balance between responsiveness and efficiency
     this.checkInterval = setInterval(() => {
       this.checkAndExecuteDue();
     }, 10000);
     
-    // Check immediately on startup (app may have been closed when schedule was due)
+    // Check immediately on startup
     this.checkAndExecuteDue();
   }
 
   /**
-   * Check for due schedules and execute the next one
-   * NOTE: Polling only checks if scheduled TIME has arrived.
-   * Running task detection is event-driven via triggerCheck().
+   * Find and execute due scheduled tasks
    */
   private async checkAndExecuteDue(): Promise<void> {
-    // If we're already executing a scheduled task, skip
-    if (this.activeExecution) {
+    if (this.isExecuting) {
+      return;
+    }
+
+    // Check if any task is currently running
+    if (this.checkAnyRunningTask()) {
       return;
     }
 
     const now = Date.now();
-    const dueSchedules = Array.from(this.schedules.values())
-      .filter(s => s.status === 'pending' && new Date(s.scheduledAt).getTime() <= now)
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+    const projectData = loadProjects();
+    
+    // Find all due tasks (scheduledAt in the past, status is pending)
+    const dueTasks: { projectId: string; task: Task }[] = [];
+    
+    for (const project of projectData.projects) {
+      for (const task of project.tasks) {
+        if (
+          task.scheduledAt &&
+          task.status === 'pending' &&
+          new Date(task.scheduledAt).getTime() <= now
+        ) {
+          dueTasks.push({ projectId: project.id, task });
+        }
+      }
+    }
 
-    if (dueSchedules.length === 0) {
+    if (dueTasks.length === 0) {
       return;
     }
 
-    // Check if any task is currently running before starting
-    // This is the only place we check - not in the polling loop
-    if (this.checkAnyRunningTask()) {
-      console.log('[schedule-manager] Waiting for running task to complete...');
-      return;
-    }
+    // Sort by scheduledAt (oldest first)
+    dueTasks.sort((a, b) => 
+      new Date(a.task.scheduledAt!).getTime() - new Date(b.task.scheduledAt!).getTime()
+    );
 
-    const nextSchedule = dueSchedules[0];
-    console.log(`[schedule-manager] Starting schedule: ${nextSchedule.id} (${dueSchedules.length} due)`);
-    await this.executeSchedule(nextSchedule);
+    const nextTask = dueTasks[0];
+    console.log(`[schedule-manager] Starting scheduled task: ${nextTask.task.id} (${dueTasks.length} due)`);
+    
+    await this.executeScheduledTask(nextTask.projectId, nextTask.task.id);
   }
 
   /**
    * Execute a scheduled task
    */
-  private async executeSchedule(schedule: ScheduledTask): Promise<void> {
+  private async executeScheduledTask(projectId: string, taskId: string): Promise<void> {
     if (!this.getMainWindow) {
       console.error('[schedule-manager] Window accessor not initialized');
       return;
     }
 
-    this.activeExecution = schedule.id;
-    schedule.status = 'running';
-    schedule.executedAt = new Date().toISOString();
-    
-    // Persist status change
-    this.saveAllSchedules();
-    this.notifyRenderer('schedule:started', { scheduleId: schedule.id });
+    this.isExecuting = true;
 
     try {
-      // Direct execution via extracted handlers function
-      const result = await startTaskExecution(
-        schedule.projectId,
-        schedule.taskId,
-        this.getMainWindow,
-        { silent: schedule.silent }
-      );
-
-      schedule.status = result.success ? 'completed' : 'failed';
-      if (!result.success && result.error) {
-        schedule.error = result.error;
-      }
-    } catch (error) {
-      schedule.status = 'failed';
-      schedule.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[schedule-manager] Execution error for ${schedule.id}:`, error);
-    } finally {
-      schedule.completedAt = new Date().toISOString();
-      this.activeExecution = null;
+      console.log(`[schedule-manager] Executing task ${taskId}`);
       
-      this.saveAllSchedules();
-      this.notifyRenderer('schedule:completed', {
-        scheduleId: schedule.id,
-        status: schedule.status,
-        error: schedule.error
+      const result = await startTaskExecution(projectId, taskId, this.getMainWindow);
+
+      if (result.success) {
+        // Notify renderer AFTER task status has been updated to 'running'
+        // This ensures frontend receives the correct state when refreshing
+        this.notifyRenderer('schedule:started', { projectId, taskId });
+      } else {
+        console.error(`[schedule-manager] Failed to start task ${taskId}:`, result.error);
+        this.notifyRenderer('schedule:failed', { projectId, taskId, error: result.error });
+      }
+      
+    } catch (error) {
+      console.error(`[schedule-manager] Execution error for ${taskId}:`, error);
+      this.notifyRenderer('schedule:failed', { 
+        projectId, 
+        taskId, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
       });
-
-      // Check for next due schedule after a short delay
-      setTimeout(() => {
-        this.checkAndExecuteDue();
-      }, 2000);
+    } finally {
+      this.isExecuting = false;
     }
   }
 
   /**
-   * Save all schedules to disk
+   * Get all scheduled tasks from projects
+   * Returns tasks that have scheduledAt set
    */
-  private saveAllSchedules(): void {
-    const schedulesList = Array.from(this.schedules.values());
-    saveSchedules({ schedules: schedulesList });
-  }
-
-  /**
-   * Add new schedule
-   */
-  addSchedule(projectId: string, taskId: string, scheduledAt: string, silent = true): ScheduledTask {
-    const schedule: ScheduledTask = {
-      id: `schedule_${Date.now()}`,
-      projectId,
-      taskId,
-      scheduledAt,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      silent
-    };
-
-    this.schedules.set(schedule.id, schedule);
-    this.saveAllSchedules();
-    this.notifyRenderer('schedule:added', schedule);
-
-    console.log(`[schedule-manager] Added schedule: ${schedule.id} for task ${taskId} at ${scheduledAt}`);
-
-    // Check if we should execute immediately (if scheduled in past or very near future)
-    this.checkAndExecuteDue();
-
-    return schedule;
-  }
-
-  /**
-   * Cancel schedule
-   */
-  cancelSchedule(scheduleId: string): boolean {
-    const schedule = this.schedules.get(scheduleId);
-    if (!schedule) return false;
+  getScheduledTasks(): { projectId: string; projectName: string; task: Task }[] {
+    const projectData = loadProjects();
+    const scheduledTasks: { projectId: string; projectName: string; task: Task }[] = [];
     
-    if (schedule.status !== 'pending' && schedule.status !== 'running') {
-      return false;
+    for (const project of projectData.projects) {
+      for (const task of project.tasks) {
+        if (task.scheduledAt) {
+          scheduledTasks.push({
+            projectId: project.id,
+            projectName: project.name,
+            task
+          });
+        }
+      }
     }
-
-    schedule.status = 'cancelled';
-    this.saveAllSchedules();
-    this.notifyRenderer('schedule:cancelled', { scheduleId });
-    console.log(`[schedule-manager] Cancelled schedule: ${scheduleId}`);
-    return true;
+    
+    // Sort by scheduledAt
+    scheduledTasks.sort((a, b) => 
+      new Date(a.task.scheduledAt!).getTime() - new Date(b.task.scheduledAt!).getTime()
+    );
+    
+    return scheduledTasks;
   }
 
   /**
-   * Get all schedules
+   * Schedule a task (set scheduledAt)
    */
-  getAllSchedules(): ScheduledTask[] {
-    return Array.from(this.schedules.values())
-      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  scheduleTask(projectId: string, taskId: string, scheduledAt: string): { success: boolean; error?: string } {
+    try {
+      const projectData = loadProjects();
+      const project = projectData.projects.find(p => p.id === projectId);
+      
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+      
+      const task = project.tasks.find(t => t.id === taskId);
+      
+      if (!task) {
+        return { success: false, error: 'Task not found' };
+      }
+      
+      task.scheduledAt = scheduledAt;
+      task.updatedAt = new Date().toISOString();
+      
+      saveProjects(projectData);
+      
+      console.log(`[schedule-manager] Task ${taskId} scheduled for ${scheduledAt}`);
+      this.notifyRenderer('schedule:added', { projectId, taskId, scheduledAt });
+      
+      // Check if we should execute immediately
+      this.checkAndExecuteDue();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('[schedule-manager] Error scheduling task:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 
   /**
-   * Trigger an immediate check for due schedules.
-   * 
-   * CALLED BY: task.ts when any task completes or fails
-   * 
-   * This is the EVENT-DRIVEN part of our hybrid architecture:
-   * - Instead of polling task status, we get notified when it changes
-   * - Enables immediate start of next schedule (no 10-second wait)
-   * - Called from task.ts process 'close' and 'error' handlers
+   * Cancel a scheduled task (remove scheduledAt)
+   */
+  cancelSchedule(projectId: string, taskId: string): { success: boolean; error?: string } {
+    try {
+      const projectData = loadProjects();
+      const project = projectData.projects.find(p => p.id === projectId);
+      
+      if (!project) {
+        return { success: false, error: 'Project not found' };
+      }
+      
+      const task = project.tasks.find(t => t.id === taskId);
+      
+      if (!task) {
+        return { success: false, error: 'Task not found' };
+      }
+      
+      if (!task.scheduledAt) {
+        return { success: false, error: 'Task is not scheduled' };
+      }
+      
+      // Remove schedule and mark task as cancelled
+      delete task.scheduledAt;
+      task.status = 'cancelled';
+      task.updatedAt = new Date().toISOString();
+      
+      saveProjects(projectData);
+      
+      console.log(`[schedule-manager] Schedule cancelled for task ${taskId}`);
+      this.notifyRenderer('schedule:cancelled', { projectId, taskId });
+      
+      return { success: true };
+    } catch (error) {
+      console.error('[schedule-manager] Error cancelling schedule:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
+   * Trigger an immediate check for due schedules
+   * Called when a task completes
    */
   triggerCheck(): void {
-    console.log('[schedule-manager] Triggered check (task completed)');
+    console.log('[schedule-manager] Triggered check');
     this.checkAndExecuteDue();
   }
 

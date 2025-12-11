@@ -18,7 +18,6 @@ import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
-import { taskScheduler } from '../utils/task-scheduler';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
 
 const taskProcesses = new Map<string, ChildProcess>();
@@ -78,12 +77,10 @@ stop_emulator()
 export async function startTaskExecution(
   projectId: string,
   taskId: string,
-  getMainWindow: () => BrowserWindow | null,
-  options?: { silent?: boolean }
+  getMainWindow: () => BrowserWindow | null
 ): Promise<{ success: boolean; pid?: number; error?: string }> {
   try {
     const mainWindow = getMainWindow();
-    const silent = options?.silent ?? false;
     const data = loadProjects();
     const project = data.projects.find((p) => p.id === projectId);
 
@@ -108,13 +105,11 @@ export async function startTaskExecution(
 
     // For Android platform with APK source, install/prepare app before running task
     if (project.platform === 'android' && task.apkSource) {
-      if (!silent) {
-        mainWindow?.webContents.send('task:output', { 
-          projectId, 
-          taskId, 
-          output: '[Setup] Preparing Android device and app...\n' 
-        });
-      }
+      mainWindow?.webContents.send('task:output', { 
+        projectId, 
+        taskId, 
+        output: '[Setup] Preparing Android device and app...\n' 
+      });
 
       const appagentDir = getAppagentPath();
       const pythonEnv = getPythonEnv();
@@ -147,16 +142,12 @@ print('SETUP_RESULT:' + json.dumps(result))
         setupProcess.stdout?.on('data', (data) => {
           const output = data.toString();
           stdout += output;
-          if (!silent) {
-            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-          }
+          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
         });
 
         setupProcess.stderr?.on('data', (data) => {
           const output = data.toString();
-          if (!silent) {
-            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-          }
+          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
         });
 
         setupProcess.on('close', (code) => {
@@ -184,24 +175,20 @@ print('SETUP_RESULT:' + json.dumps(result))
         task.completedAt = new Date().toISOString();
         saveProjects(data);
         
-        if (!silent) {
-          mainWindow?.webContents.send('task:error', { 
-            projectId, 
-            taskId, 
-            error: `App setup failed: ${setupResult.error}` 
-          });
-        }
+        mainWindow?.webContents.send('task:error', { 
+          projectId, 
+          taskId, 
+          error: `App setup failed: ${setupResult.error}` 
+        });
         
         return { success: false, error: `App setup failed: ${setupResult.error}` };
       }
 
-      if (!silent) {
-        mainWindow?.webContents.send('task:output', { 
-          projectId, 
-          taskId, 
-          output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
-        });
-      }
+      mainWindow?.webContents.send('task:output', { 
+        projectId, 
+        taskId, 
+        output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
+      });
     }
 
     // Sanitize app name (remove spaces) to match learn.py behavior
@@ -286,6 +273,9 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     // NO WRAPPER: Run self_explorer.py directly
     // This simplifies execution and avoids path/import issues
+    console.log(`[task:${taskId}] Starting Python process with args:`, args);
+    console.log(`[task:${taskId}] Working directory:`, appagentDir);
+    
     const taskProcess = spawnBundledPython(args, {
       cwd: appagentDir,  // Run from appagent directory to ensure relative imports work
       env: {
@@ -298,13 +288,12 @@ print('SETUP_RESULT:' + json.dumps(result))
       }
     });
 
+    console.log(`[task:${taskId}] Process spawned with PID:`, taskProcess.pid);
     taskProcesses.set(taskId, taskProcess);
 
     taskProcess.stdout?.on('data', (data) => {
       const output = data.toString();
-      if (!silent) {
-        mainWindow?.webContents.send('task:output', { projectId, taskId, output });
-      }
+      mainWindow?.webContents.send('task:output', { projectId, taskId, output });
 
       // Append to task output
       const currentData = loadProjects();
@@ -343,13 +332,11 @@ print('SETUP_RESULT:' + json.dumps(result))
                   if (cost !== null && currentTask.metrics) {
                     currentTask.metrics.estimatedCost = cost;
                     // Re-send progress with updated cost
-                    if (!silent) {
-                      mainWindow?.webContents.send('task:progress', {
-                        projectId,
-                        taskId,
-                        metrics: currentTask.metrics
-                      });
-                    }
+                    mainWindow?.webContents.send('task:progress', {
+                      projectId,
+                      taskId,
+                      metrics: currentTask.metrics
+                    });
                     // Save updated metrics
                     const latestData = loadProjects();
                     const latestProject = latestData.projects.find((p) => p.id === projectId);
@@ -366,13 +353,11 @@ print('SETUP_RESULT:' + json.dumps(result))
             }
 
             // Send progress event to renderer
-            if (!silent) {
-              mainWindow?.webContents.send('task:progress', {
-                projectId,
-                taskId,
-                metrics: currentTask.metrics
-              });
-            }
+            mainWindow?.webContents.send('task:progress', {
+              projectId,
+              taskId,
+              metrics: currentTask.metrics
+            });
           } catch (parseError) {
             console.warn('[task:progress] Failed to parse progress JSON:', parseError);
           }
@@ -384,9 +369,10 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     taskProcess.stderr?.on('data', (data) => {
       const error = data.toString();
-      if (!silent) {
-        mainWindow?.webContents.send('task:error', { projectId, taskId, error });
-      }
+      // Log stderr to console for debugging
+      console.error(`[task:${taskId}] stderr:`, error);
+      
+      mainWindow?.webContents.send('task:error', { projectId, taskId, error });
 
       // Append to task output (stderr also goes to output)
       const currentData = loadProjects();
@@ -399,6 +385,8 @@ print('SETUP_RESULT:' + json.dumps(result))
     });
 
     taskProcess.on('close', async (code) => {
+      console.log(`[task:${taskId}] Process closed with exit code:`, code);
+      
       const currentData = loadProjects();
       const currentProject = currentData.projects.find((p) => p.id === projectId);
       const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
@@ -429,12 +417,11 @@ print('SETUP_RESULT:' + json.dumps(result))
 
           saveProjects(currentData);
 
-          // Only send complete event if we updated the status
-          if (!silent) {
-            mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
-          }
+          // Send complete event
+          console.log(`[task:${taskId}] Task completed with status: ${newStatus}, sending task:complete event`);
+          mainWindow?.webContents.send('task:complete', { projectId, taskId, code, status: newStatus });
 
-          // Trigger schedule queue to check for next pending schedule
+          // Trigger schedule queue to check for next pending scheduled task
           scheduleQueueManager.triggerCheck();
         }
       }
@@ -449,13 +436,11 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     taskProcess.on('error', (error) => {
       console.error(`[task:${taskId}] Process error:`, error);
-      if (!silent) {
-        mainWindow?.webContents.send('task:error', { 
-          projectId, 
-          taskId, 
-          error: `Process error: ${error.message}` 
-        });
-      }
+      mainWindow?.webContents.send('task:error', { 
+        projectId, 
+        taskId, 
+        error: `Process error: ${error.message}` 
+      });
 
       // Update task status to failed on process error
       const currentData = loadProjects();
@@ -469,11 +454,9 @@ print('SETUP_RESULT:' + json.dumps(result))
         currentTask.updatedAt = new Date().toISOString();
         saveProjects(currentData);
 
-        if (!silent) {
-          mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
-        }
+        mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
 
-        // Trigger schedule queue to check for next pending schedule
+        // Trigger schedule queue to check for next pending scheduled task
         scheduleQueueManager.triggerCheck();
       }
 
@@ -529,11 +512,6 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       }
 
       saveProjects(data);
-
-      // Schedule the task if it has scheduling information
-      if (newTask.isScheduled && newTask.scheduledAt) {
-        taskScheduler.scheduleTask(taskInput.projectId, newTask);
-      }
 
       return { success: true, task: newTask };
     } catch (error: unknown) {
@@ -611,8 +589,8 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
   });
 
   // Start task execution
-  ipcMain.handle('task:start', async (_event, projectId: string, taskId: string, options?: { silent?: boolean }) => {
-    return startTaskExecution(projectId, taskId, getMainWindow, options);
+  ipcMain.handle('task:start', async (_event, projectId: string, taskId: string) => {
+    return startTaskExecution(projectId, taskId, getMainWindow);
   });
 
   // Stop task execution
@@ -643,6 +621,9 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       // Emit task:complete event to notify frontend immediately
       // Using special code -1 to indicate user-initiated cancellation
       mainWindow?.webContents.send('task:complete', { projectId, taskId, code: -1 });
+
+      // Trigger schedule queue to check for next pending scheduled task
+      scheduleQueueManager.triggerCheck();
 
       // Auto-cleanup emulator if no more pending Android tasks
       if (project?.platform === 'android') {
@@ -708,20 +689,3 @@ cleanup_emulators()
   }
 }
 
-/**
- * Initialize the task scheduler with window and task start handler
- */
-export function initializeTaskScheduler(getMainWindow: () => BrowserWindow | null): void {
-  // Create a task start handler that the scheduler can use
-  const taskStartHandler = async (projectId: string, taskId: string): Promise<void> => {
-    console.log(`[task-scheduler] Starting task ${taskId} in project ${projectId}`);
-    // Trigger the task:start IPC handler logic directly would be complex,
-    // so we'll emit an event that the renderer can handle or we use internal logic
-    // For now, we'll send an event to the renderer to trigger the task
-    const mainWindow = getMainWindow();
-    mainWindow?.webContents.send('task:auto-start', { projectId, taskId });
-  };
-
-  taskScheduler.initialize(getMainWindow, taskStartHandler);
-  console.log('[task-scheduler] Initialized');
-}

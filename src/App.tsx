@@ -3,6 +3,7 @@ import { Save, Search } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingScreen } from './components/LoadingScreen'
 import { TerminalProvider } from './contexts/TerminalContext'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import {
   SidebarInset,
   SidebarProvider,
@@ -182,142 +183,122 @@ function MainApp() {
       loadProjects()
     }
 
-    window.electronAPI.onTaskComplete(handleTaskComplete)
+    const cleanup = window.electronAPI.onTaskComplete(handleTaskComplete)
 
-    // Note: Don't call removeAllListeners here as it would remove
-    // TerminalContext's listener too. MainApp only unmounts on app exit.
+    // Cleanup when effect re-runs (e.g., when loadProjects changes)
+    return cleanup
+  }, [loadProjects])
+
+  // Listen for schedule events to keep task status in sync
+  // When a schedule starts running, the underlying task also changes to running
+  useEffect(() => {
+    const handleScheduleStarted = () => {
+      // Refresh projects when a scheduled task starts running
+      // This syncs the task status from 'pending' to 'running'
+      loadProjects()
+    }
+
+    const cleanup = window.electronAPI.onScheduleStarted(handleScheduleStarted)
+
+    return cleanup
+  }, [loadProjects])
+
+  // Listen for schedule cancellation
+  useEffect(() => {
+    const handleScheduleCancelled = () => {
+      // Refresh projects when a scheduled task is cancelled
+      loadProjects()
+    }
+
+    const cleanup = window.electronAPI.onScheduleCancelled(handleScheduleCancelled)
+
+    return cleanup
   }, [loadProjects])
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const down = (e: globalThis.KeyboardEvent) => {
-      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac')
-      const modKey = isMac ? e.metaKey : e.ctrlKey
-
-      // Skip if in input/textarea
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        // Allow Escape in inputs
-        if (e.key !== 'Escape') return
-      }
-
-      // Search: Cmd+K / Ctrl+K
-      if (e.key === 'k' && modKey) {
-        e.preventDefault()
-        setCommandOpen((open) => !open)
-      }
-
-      // Projects: Cmd+1 / Ctrl+1
-      if (e.key === '1' && modKey) {
-        e.preventDefault()
+  useKeyboardShortcuts({
+    handlers: {
+      onSearch: () => setCommandOpen(open => !open),
+      onProjects: () => {
         setCurrentView('projects')
         setSelectedTask(null)
-      }
-
-      // Settings: Cmd+, / Ctrl+, OR Cmd+2 / Ctrl+2
-      if ((e.key === ',' || e.key === '2') && modKey) {
-        e.preventDefault()
+      },
+      onSchedules: () => {
+        setCurrentView('schedules')
+      },
+      onSettings: () => {
         setCurrentView('settings')
-      }
-
-      // New Project: Cmd+N / Ctrl+N
-      if (e.key === 'n' && modKey && !e.shiftKey) {
-        e.preventDefault()
-        setCreateProjectDialogOpen(true)
-      }
-
-      // New Task: Cmd+T / Ctrl+T
-      if (e.key === 't' && modKey && !selectedTask) {
-        e.preventDefault()
-        setCreateTaskDialogOpen(true)
-      }
-
-      // Save Settings: Cmd+S / Ctrl+S
-      if (e.key === 's' && modKey && currentView === 'settings') {
-        e.preventDefault()
+      },
+      onNewProject: () => setCreateProjectDialogOpen(true),
+      onNewTask: () => setCreateTaskDialogOpen(true),
+      onSave: () => {
         if (settingsHasChanges && settingsCanSave && !settingsSaving && settingsSaveRef.current) {
           settingsSaveRef.current()
         }
-      }
-
-      // Terminal: Ctrl+Shift+`
-      if (e.key === '`' && e.ctrlKey && e.shiftKey) {
-        e.preventDefault()
-        setTerminalOpen((open) => !open)
-      }
-
-      // GitHub: Cmd+G / Ctrl+G
-      if (e.key === 'g' && modKey) {
-        e.preventDefault()
-        window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
-      }
-
-      // Theme: Cmd+\ / Ctrl+\
-      if (e.key === '\\' && modKey) {
-        e.preventDefault()
+      },
+      onToggleTerminal: () => setTerminalOpen(open => !open),
+      onToggleTheme: () => {
         if (document.documentElement.classList.contains('dark')) {
           document.documentElement.classList.remove('dark')
         } else {
           document.documentElement.classList.add('dark')
         }
-      }
-
-      // Escape: Go back (Task -> Project -> Projects list, Settings -> Projects)
-      if (e.key === 'Escape') {
-        e.preventDefault()
+      },
+      onOpenGitHub: () => {
+        window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
+      },
+      onEscape: () => {
         if (selectedTask) {
           setSelectedTask(null)
           setFocusArea('content')
         } else if (focusArea === 'content' && selectedProject) {
-          // From task list back to project list
           setFocusArea('sidebar')
-        } else if (currentView === 'settings') {
+        } else if (currentView === 'settings' || currentView === 'schedules') {
           setCurrentView('projects')
           setFocusArea('sidebar')
         } else if (selectedProject) {
           setSelectedProject(null)
           setFocusArea('sidebar')
         }
-      }
-
-      // Arrow keys for navigation (only when not in dialogs)
-      if (!target.closest('[role="dialog"]') && currentView === 'projects') {
-        // Get sorted projects (newest first)
-        const sortedProjects = [...projects].reverse()
-
-        if (focusArea === 'sidebar' && !selectedProject) {
-          // Navigate project list
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setSelectedProjectIndex(prev => Math.min(prev + 1, sortedProjects.length - 1))
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setSelectedProjectIndex(prev => Math.max(prev - 1, 0))
-          } else if (e.key === 'Enter' && sortedProjects.length > 0) {
-            e.preventDefault()
+      },
+      onArrowDown: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          setSelectedProjectIndex(prev => Math.min(prev + 1, sortedProjects.length - 1))
+        }
+      },
+      onArrowUp: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          setSelectedProjectIndex(prev => Math.max(prev - 1, 0))
+        }
+      },
+      onEnter: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          if (sortedProjects.length > 0) {
             const project = sortedProjects[selectedProjectIndex]
             if (project) {
               setSelectedProject(project)
-              // Delay focus change to prevent Enter event from triggering task selection
-              requestAnimationFrame(() => {
-                setFocusArea('content')
-              })
+              requestAnimationFrame(() => setFocusArea('content'))
             }
-          } else if ((e.key === 'Delete' || e.key === 'Backspace') && sortedProjects.length > 0) {
-            // Delete selected project
-            e.preventDefault()
+          }
+        }
+      },
+      onDelete: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          if (sortedProjects.length > 0) {
             const project = sortedProjects[selectedProjectIndex]
             if (project) {
               handleDeleteProject(project)
             }
           }
         }
-      }
-    }
-
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [setTerminalOpen, projects, selectedProject, selectedTask, currentView, settingsHasChanges, settingsCanSave, settingsSaving, focusArea, selectedProjectIndex, handleDeleteProject])
+      },
+    },
+    canSave: currentView === 'settings' && settingsHasChanges && settingsCanSave && !settingsSaving,
+    canCreateTask: !selectedTask,
+  })
 
   // Handle project selection
   const handleProjectSelect = (project: Project) => {
@@ -530,16 +511,34 @@ function MainApp() {
               onCanSaveChange={setSettingsCanSave}
             />
           ) : currentView === 'schedules' ? (
-            <ScheduledTasks section={activeScheduleSection} />
+            <ScheduledTasks 
+              section={activeScheduleSection}
+              projects={projects}
+              onProjectsChange={loadProjects}
+              onTaskSelect={(projectId, taskId) => {
+                // Find the project and task
+                const project = projects.find(p => p.id === projectId)
+                if (project) {
+                  const task = project.tasks.find(t => t.id === taskId)
+                  if (task) {
+                    setSelectedProject(project)
+                    setSelectedTask(task)
+                    setCurrentView('projects')
+                  }
+                }
+              }}
+            />
           ) : selectedTask && selectedProject ? (
             <TaskDetail
               task={selectedTask}
               project={selectedProject}
+              projects={projects}
               onBack={handleTaskBack}
               onProjectsChange={loadProjects}
             />
           ) : (
             <TaskContentArea
+              key={selectedProject?.id}
               project={selectedProject}
               onTaskClick={handleTaskClick}
               onCreateTask={() => setCreateTaskDialogOpen(true)}

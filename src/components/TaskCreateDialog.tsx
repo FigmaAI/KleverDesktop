@@ -1,16 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Calendar,
+  ChevronDown,
   Loader2,
   Plus,
   Smartphone,
   Globe,
   FileBox,
-  X,
   Info,
+  X,
 } from "lucide-react";
 import PlayStoreIcon from "@/assets/play-store.svg?react";
-import { DateTimePicker } from "@/components/ui/datetime-picker";
+import { ScheduleQuickDialog } from "@/components/ScheduleQuickDialog";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -71,10 +78,8 @@ export function TaskCreateDialog({
   const [maxRounds, setMaxRounds] = useState<number>(20);
   const [globalMaxRounds, setGlobalMaxRounds] = useState<number>(20);
 
-  // Scheduling state
-  const [scheduledDateTime, setScheduledDateTime] = useState<
-    Date | undefined
-  >();
+  // Schedule dialog state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   // APK Source state (Android only) - Required
   const [apkSourceType, setApkSourceType] =
@@ -186,7 +191,7 @@ export function TaskCreateDialog({
     }
   };
 
-  const buildApkSource = (): ApkSource | undefined => {
+  const buildApkSource = useCallback((): ApkSource | undefined => {
     if (platform !== "android") return undefined;
 
     if (apkSourceType === "apk_file" && apkFilePath) {
@@ -204,112 +209,143 @@ export function TaskCreateDialog({
     }
 
     return undefined;
-  };
+  }, [platform, apkSourceType, apkFilePath, playStoreUrl, extractedPackageName]);
 
   // Check if APK source is valid (required for Android)
-  const isApkSourceValid = () => {
+  const isApkSourceValid = useCallback(() => {
     if (platform !== "android") return true;
     if (apkSourceType === "apk_file") return !!apkFilePath;
     if (apkSourceType === "play_store_url") return !!playStoreUrl;
     return false;
-  };
+  }, [platform, apkSourceType, apkFilePath, playStoreUrl]);
 
-  const handleSubmit = async () => {
+  // Validate form before submission
+  const validateForm = useCallback(() => {
     if (!currentProjectId) {
       alert("Please select a project");
-      return;
+      return false;
     }
-
     if (!goal.trim()) {
       alert("Please enter a task description");
-      return;
+      return false;
     }
-
     if (platform === "web" && !url.trim()) {
       alert("Please enter a URL for web automation");
-      return;
+      return false;
     }
-
     if (platform === "android" && !isApkSourceValid()) {
       alert("Please provide an APK file or Play Store URL");
-      return;
+      return false;
     }
-
     if (!selectedModel?.provider || !selectedModel?.model) {
       alert("Please select a model");
-      return;
+      return false;
     }
+    return true;
+  }, [currentProjectId, goal, platform, url, isApkSourceValid, selectedModel]);
+
+  // Create task and optionally schedule it
+  const createTask = useCallback(async (scheduledAt?: Date) => {
+    if (!currentProjectId || !selectedModel) return null;
+
+    const taskInput = {
+      projectId: currentProjectId,
+      name: `Task ${new Date().toLocaleString()}`,
+      goal: goal.trim(),
+      url: platform === 'web' ? url.trim() : undefined,
+      apkSource: buildApkSource(),
+      modelProvider: selectedModel.provider,
+      modelName: selectedModel.model,
+      maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
+    };
+
+    const result = await window.electronAPI.taskCreate(taskInput);
+
+    if (result.success && result.task) {
+      // Update lastUsed in config
+      try {
+        await window.electronAPI.configUpdateLastUsed({
+          provider: selectedModel.provider,
+          model: selectedModel.model,
+        });
+      } catch (error) {
+        console.warn("[TaskCreateDialog] Failed to update lastUsed:", error);
+      }
+
+      // If scheduled, create a schedule entry
+      if (scheduledAt) {
+        const scheduleResult = await window.electronAPI.scheduleAdd(
+          currentProjectId,
+          result.task.id,
+          scheduledAt.toISOString()
+        );
+        if (!scheduleResult.success) {
+          throw new Error(scheduleResult.error || 'Failed to schedule task');
+        }
+      }
+
+      return result.task;
+    } else {
+      throw new Error(result.error || "Failed to create task");
+    }
+  }, [currentProjectId, goal, platform, url, buildApkSource, selectedModel, maxRounds, globalMaxRounds]);
+
+  // Check if any task is currently running across all projects
+  const hasRunningTask = useCallback(() => {
+    for (const project of projects) {
+      for (const task of project.tasks) {
+        if (task.status === 'running') {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [projects]);
+
+  // Handle immediate run
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
     setLoading(true);
     try {
-      const taskInput = {
-        projectId: currentProjectId,
-        name: `Task ${new Date().toLocaleString()}`,
-        goal: goal.trim(),
-        url: platform === 'web' ? url.trim() : undefined,
-        apkSource: buildApkSource(),
-        // Include provider and model for task execution
-        modelProvider: selectedModel.provider,
-        modelName: selectedModel.model,
-        // Include max rounds if different from global default
-        maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
-        // NOTE: Removed scheduledAt and isScheduled - now handled by schedule:add API
-      };
-
-      const result = await window.electronAPI.taskCreate(taskInput);
-
-      if (result.success && result.task) {
-        // Update lastUsed in config
-        try {
-          await window.electronAPI.configUpdateLastUsed({
-            provider: selectedModel.provider,
-            model: selectedModel.model,
-          });
-        } catch (error) {
-          console.warn("[TaskCreateDialog] Failed to update lastUsed:", error);
-        }
-
-        // If scheduled, create a schedule entry via the new API
-        if (scheduledDateTime) {
-          try {
-            const scheduleResult = await window.electronAPI.scheduleAdd(
-              currentProjectId,
-              result.task.id,
-              scheduledDateTime.toISOString(),
-              true // silent mode by default
-            );
-            if (!scheduleResult.success) {
-              console.error("[TaskCreateDialog] Failed to create schedule:", scheduleResult.error);
-              alert(`Task created but scheduling failed: ${scheduleResult.error}`);
-            }
-          } catch (schedError) {
-            console.error("[TaskCreateDialog] Schedule error:", schedError);
+      const task = await createTask();
+      
+      if (task && runImmediately && currentProjectId) {
+        // Check if another task is already running
+        if (hasRunningTask()) {
+          // Queue the task instead of running immediately
+          const scheduledAt = new Date(); // Schedule for now (will run when queue is free)
+          const scheduleResult = await window.electronAPI.scheduleAdd(
+            currentProjectId,
+            task.id,
+            scheduledAt.toISOString()
+          );
+          
+          if (scheduleResult.success) {
+            toast.info('Task queued', {
+              description: 'Another task is running. This task will start automatically when the queue is free.',
+            });
+          } else {
+            console.error('Failed to queue task:', scheduleResult.error);
+            toast.error('Failed to queue task');
           }
-        } else if (runImmediately) {
-          // If "Run immediately" is checked and not scheduled, start the task
-          await window.electronAPI.taskStart(currentProjectId, result.task.id);
+        } else {
+          // No task running, start immediately
+          await window.electronAPI.taskStart(currentProjectId, task.id);
         }
-
-        onTaskCreated?.(result.task);
-        handleClose();
-      } else {
-        alert(result.error || "Failed to create task");
       }
+      
+      onTaskCreated?.(task!);
+      handleClose();
     } catch (error) {
       console.error("Error creating task:", error);
-      alert("Failed to create task");
+      alert(error instanceof Error ? error.message : "Failed to create task");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      handleSubmit();
-    }
-  };
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setGoal("");
     setUrl("");
     setApkSourceType("play_store_url");
@@ -318,8 +354,31 @@ export function TaskCreateDialog({
     setExtractedPackageName("");
     setRunImmediately(true);
     setMaxRounds(globalMaxRounds);
-    setScheduledDateTime(undefined);
     onClose();
+  }, [globalMaxRounds, onClose]);
+
+  // Handle scheduled run (called from ScheduleQuickDialog)
+  const handleScheduledSubmit = useCallback(async (scheduledAt: Date) => {
+    if (!validateForm()) return;
+
+    const task = await createTask(scheduledAt);
+    onTaskCreated?.(task!);
+    handleClose();
+  }, [validateForm, createTask, onTaskCreated, handleClose]);
+
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
+    // ⌥⌘⏎ or Alt+Ctrl+Enter: Open schedule dialog
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === "Enter") {
+      e.preventDefault();
+      if (isEligible && !loading) {
+        setScheduleDialogOpen(true);
+      }
+      return;
+    }
+    // ⌘⏎ or Ctrl+Enter: Run immediately
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      handleSubmit();
+    }
   };
 
   const isEligible =
@@ -534,42 +593,23 @@ export function TaskCreateDialog({
             />
           </div>
 
-          {/* Max Rounds and Scheduling - Side by Side */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Max Rounds Configuration */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-sm font-medium">Max Rounds</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Prevents infinite loops and limits automation attempts
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Maximum number of exploration rounds before stopping
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Global default: {globalMaxRounds}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+          {/* Max Rounds Configuration */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-medium">Max Rounds</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span className="text-sm font-semibold text-muted-foreground cursor-help">
-                        {maxRounds}{" "}
-                        {maxRounds === globalMaxRounds && "(default)"}
-                      </span>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Current setting: {maxRounds} rounds</p>
+                      <p>
+                        Prevents infinite loops and limits automation attempts
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Maximum number of exploration rounds before stopping
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Global default: {globalMaxRounds}
                       </p>
@@ -577,44 +617,34 @@ export function TaskCreateDialog({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Slider
-                value={[maxRounds]}
-                onValueChange={(value) => setMaxRounds(value[0])}
-                min={5}
-                max={50}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>5</span>
-                <span>50</span>
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm font-semibold text-muted-foreground cursor-help">
+                      {maxRounds}{" "}
+                      {maxRounds === globalMaxRounds && "(default)"}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Current setting: {maxRounds} rounds</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Global default: {globalMaxRounds}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-
-            {/* Scheduling Configuration */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-sm font-medium">Schedule</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Schedule task to run at a specific date and time</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Task will start automatically when Klever Desktop is active
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              <DateTimePicker
-                value={scheduledDateTime}
-                onChange={setScheduledDateTime}
-                placeholder="Select date"
-              />
+            <Slider
+              value={[maxRounds]}
+              onValueChange={(value) => setMaxRounds(value[0])}
+              min={5}
+              max={50}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>5</span>
+              <span>50</span>
             </div>
           </div>
 
@@ -629,38 +659,57 @@ export function TaskCreateDialog({
               }
             />
 
-            {/* Right: Action Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Right: Split Button (Run + Schedule dropdown) */}
+            <div className="flex">
+              {/* Main Run Button */}
               <Button
                 size="sm"
                 onClick={handleSubmit}
                 disabled={!isEligible || loading}
+                className="rounded-r-none"
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {scheduledDateTime ? "Scheduling..." : "Running..."}
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    Running...
                   </>
                 ) : (
                   <>
-                    {scheduledDateTime ? (
-                      <>
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Schedule
-                      </>
-                    ) : (
-                      <>
-                        Run
-                        <span className="ml-2 text-xs opacity-60">⌘⏎</span>
-                      </>
-                    )}
+                    Run
+                    <span className="ml-1.5 text-xs opacity-60">⌘⏎</span>
                   </>
                 )}
               </Button>
+
+              {/* Dropdown Trigger */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    disabled={!isEligible || loading}
+                    className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setScheduleDialogOpen(true)}>
+                    <span className="flex-1">Schedule run</span>
+                    <span className="ml-4 text-xs text-muted-foreground">⌥⌘⏎</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
       </DialogContent>
+
+      {/* Schedule Quick Dialog */}
+      <ScheduleQuickDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onSchedule={handleScheduledSubmit}
+      />
     </Dialog>
   );
 }

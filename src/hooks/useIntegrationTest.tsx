@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { ModelConfig } from '@/types/setupWizard'
 import { useTerminal } from './useTerminal'
 
@@ -9,21 +9,14 @@ export function useIntegrationTest() {
   const [integrationTestComplete, setIntegrationTestComplete] = useState(false)
   const [integrationTestSuccess, setIntegrationTestSuccess] = useState(false)
 
-  // Track if listeners are registered to avoid duplicates
-  const listenersRegistered = useRef(false)
-
-  // Register event listeners once on mount
+  // Register event listeners
   // NOTE: TerminalContext already handles integration:output events
   // We only need to handle integration:complete for state management
   useEffect(() => {
-    if (listenersRegistered.current) return
-
-    listenersRegistered.current = true
-
     const processId = 'integration-test'
 
     // Listen for completion (state management only)
-    window.electronAPI.onIntegrationTestComplete((success: boolean) => {
+    const cleanup = window.electronAPI.onIntegrationTestComplete((success: boolean) => {
       setIntegrationTestRunning(false)
       setIntegrationTestComplete(true)
       setIntegrationTestSuccess(success)
@@ -35,11 +28,7 @@ export function useIntegrationTest() {
       })
     })
 
-    // Cleanup on unmount
-    return () => {
-      window.electronAPI.removeAllListeners('integration:complete')
-      listenersRegistered.current = false
-    }
+    return cleanup
   }, [updateProcess])
 
   const handleRunIntegrationTest = useCallback(async (modelConfig: ModelConfig) => {
