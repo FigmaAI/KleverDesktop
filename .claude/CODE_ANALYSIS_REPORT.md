@@ -3,6 +3,55 @@
 **Date:** 2025-12-11
 **Version Analyzed:** 2.0.2
 **Branch:** claude/resolve-schedule-conflicts-01Myttt9HMtdDvPBp1ZhniTt
+**Last Updated:** 2025-12-12
+**Current Version:** 2.0.3
+
+---
+
+## ✅ Completed Cleanup Tasks (2025-12-12)
+
+The following immediate priority items have been successfully completed:
+
+### 1. Removed Unused npm Dependencies
+**Status:** ✅ Complete
+**Impact:** ~2MB bundle size reduction, 18 packages removed
+
+Removed dependencies:
+- `@radix-ui/react-alert-dialog` - Not used
+- `@radix-ui/react-avatar` - Not used
+- `@radix-ui/react-checkbox` - Not used
+- `@radix-ui/react-menubar` - Not used
+- `@radix-ui/react-toast` - Not used (using sonner instead)
+- `motion` - Not used (framer-motion used instead)
+- `next-themes` - Not used (custom theme implementation)
+- `react-router-dom` - Not used (state-based routing)
+
+### 2. Installed Missing Dependency
+**Status:** ✅ Complete
+
+Added dependency:
+- `@radix-ui/react-visually-hidden` - Used in command.tsx
+
+### 3. Deleted Dead Code Files
+**Status:** ✅ Complete
+**Impact:** 409+ lines removed
+
+Deleted files:
+- `main/utils/python-manager.ts` (335 lines) - Deprecated, replaced by python-runtime.ts
+- `main/utils/config-manager.ts` (74 lines) - Legacy YAML handler, replaced by config-storage.ts
+
+### 4. Updated Exports
+**Status:** ✅ Complete
+
+Modified files:
+- `main/utils/index.ts` - Removed dead `config-manager` export
+
+### 5. Verification
+**Status:** ✅ Complete
+
+- TypeScript typecheck: PASSED
+- No breaking changes introduced
+- All existing functionality preserved
 
 ---
 

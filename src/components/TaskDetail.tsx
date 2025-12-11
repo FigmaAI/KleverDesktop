@@ -463,7 +463,7 @@ export function TaskDetail({
                       <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent side="bottom">
                     <p>Refresh <kbd className="ml-1 text-xs opacity-60">⌘R</kbd></p>
                   </TooltipContent>
                 </Tooltip>
@@ -480,7 +480,7 @@ export function TaskDetail({
                       <ExternalLink className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent side="bottom">
                     <p>Open in Editor</p>
                   </TooltipContent>
                 </Tooltip>
@@ -491,7 +491,7 @@ export function TaskDetail({
                       <FolderOpen className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent side="bottom">
                     <p>Open Folder</p>
                   </TooltipContent>
                 </Tooltip>
@@ -515,7 +515,7 @@ export function TaskDetail({
                           <CalendarClock className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
+                      <TooltipContent side="bottom">
                         <p>Schedule Task <kbd className="ml-1 text-[10px] bg-muted px-1 rounded">⌘⌥↵</kbd></p>
                       </TooltipContent>
                     </Tooltip>
@@ -540,7 +540,7 @@ export function TaskDetail({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent side="bottom">
                     <p>Delete Task</p>
                   </TooltipContent>
                 </Tooltip>

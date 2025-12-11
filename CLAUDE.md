@@ -1334,6 +1334,6 @@ await window.electronAPI.configLoad()
 
 ---
 
-**Last Updated**: 2025-01-27
-**Version**: 2.0.1
+**Last Updated**: 2025-12-12
+**Version**: 2.0.3
 **Distribution**: GitHub Releases only
