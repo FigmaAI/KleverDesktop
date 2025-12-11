@@ -5,7 +5,7 @@
  */
 
 import { IpcMain, BrowserWindow, dialog } from 'electron';
-import { spawn, exec, ChildProcess } from 'child_process';
+import { spawn, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -476,7 +476,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   });
 
   // Pre-launch: Prepare device, install APK, and launch app
-  ipcMain.handle('android:prelaunch', async (_event, apkSource: ApkSource, projectName?: string) => {
+  ipcMain.handle('android:prelaunch', async (_event, apkSource: ApkSource, _projectName?: string) => {
     try {
       const mainWindow = getMainWindow();
       
@@ -598,7 +598,7 @@ print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}
           stdout += data.toString();
         });
 
-        process.on('close', (code) => {
+        process.on('close', (_code) => {
           const resultMatch = stdout.match(/STATUS_RESULT:(.+)/);
           if (resultMatch) {
             try {

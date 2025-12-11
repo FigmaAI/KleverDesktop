@@ -143,3 +143,35 @@ export function deleteDirectory(dirPath: string): void {
     fs.rmSync(dirPath, { recursive: true, force: true });
   }
 }
+
+/**
+ * Clean up zombie tasks on app startup
+ * Tasks that were 'running' when the app was terminated will be marked as 'failed'
+ * This prevents orphaned running tasks from appearing after restart
+ */
+export function cleanupZombieTasks(): void {
+  try {
+    const data = loadProjects();
+    let hasChanges = false;
+    
+    for (const project of data.projects) {
+      for (const task of project.tasks) {
+        if (task.status === 'running') {
+          console.log(`[project-storage] Cleaning up zombie task: ${task.id} (was running)`);
+          task.status = 'failed';
+          task.error = 'Task was interrupted by app shutdown';
+          task.completedAt = new Date().toISOString();
+          task.updatedAt = new Date().toISOString();
+          hasChanges = true;
+        }
+      }
+    }
+    
+    if (hasChanges) {
+      saveProjects(data);
+      console.log('[project-storage] Zombie tasks cleaned up');
+    }
+  } catch (error) {
+    console.error('[project-storage] Error cleaning up zombie tasks:', error);
+  }
+}

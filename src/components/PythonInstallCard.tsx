@@ -33,11 +33,9 @@ export function PythonInstallCard({
       setProgress(estimatedProgress)
     }
 
-    window.electronAPI.onPythonProgress(handleProgress)
+    const cleanup = window.electronAPI.onPythonProgress(handleProgress)
 
-    return () => {
-      window.electronAPI.removeAllListeners('python:progress')
-    }
+    return cleanup
   }, [status.installing])
 
   // Reset state when installation starts

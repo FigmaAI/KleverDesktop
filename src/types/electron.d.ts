@@ -240,19 +240,20 @@ declare global {
       // GitHub API
       fetchGitHubStars: (repo: string) => Promise<{ success: boolean; stars?: number; error?: string }>;
 
-      // Event listeners
-      onEnvProgress: (callback: (data: string) => void) => void;
-      onInstallProgress: (callback: (data: string) => void) => void;
-      onPythonProgress: (callback: (data: string) => void) => void;
-      onOllamaPullProgress: (callback: (data: string) => void) => void;
-      onProjectOutput: (callback: (data: string) => void) => void;
-      onProjectError: (callback: (data: string) => void) => void;
-      onProjectExit: (callback: (code: number) => void) => void;
-      onIntegrationTestOutput: (callback: (data: string) => void) => void;
-      onIntegrationTestComplete: (callback: (success: boolean) => void) => void;
+      // Event listeners (return cleanup function)
+      onEnvProgress: (callback: (data: string) => void) => () => void;
+      onInstallProgress: (callback: (data: string) => void) => () => void;
+      onPythonProgress: (callback: (data: string) => void) => () => void;
+      onOllamaPullProgress: (callback: (data: string) => void) => () => void;
+      onProjectOutput: (callback: (data: string) => void) => () => void;
+      onProjectError: (callback: (data: string) => void) => () => void;
+      onProjectExit: (callback: (code: number) => void) => () => void;
+      onIntegrationTestOutput: (callback: (data: string) => void) => () => void;
+      onIntegrationTestComplete: (callback: (success: boolean) => void) => () => void;
 
       // Remove listeners
       removeAllListeners: (channel: string) => void;
+      removeListener: (channel: string, callback: (...args: unknown[]) => void) => void;
 
       // ============================================
       // Project Management
@@ -273,11 +274,28 @@ declare global {
       taskStart: (projectId: string, taskId: string) => Promise<{ success: boolean; pid?: number; error?: string }>;
       taskStop: (projectId: string, taskId: string) => Promise<{ success: boolean; error?: string }>;
 
-      // Task event listeners
-      onTaskOutput: (callback: (data: { projectId: string; taskId: string; output: string }) => void) => void;
-      onTaskError: (callback: (data: { projectId: string; taskId: string; error: string }) => void) => void;
-      onTaskComplete: (callback: (data: { projectId: string; taskId: string; code: number }) => void) => void;
-      onTaskProgress: (callback: (data: { projectId: string; taskId: string; metrics: TaskMetrics }) => void) => void;
+      // Task event listeners (return cleanup function)
+      onTaskOutput: (callback: (data: { projectId: string; taskId: string; output: string }) => void) => () => void;
+      onTaskError: (callback: (data: { projectId: string; taskId: string; error: string }) => void) => () => void;
+      onTaskComplete: (callback: (data: { projectId: string; taskId: string; code: number }) => void) => () => void;
+      onTaskAutoStart: (callback: (data: { projectId: string; taskId: string }) => void) => () => void;
+      onTaskScheduled: (callback: (data: { taskId: string; projectId: string; scheduledAt: string }) => void) => () => void;
+      onTaskScheduleCancelled: (callback: (data: { taskId: string }) => void) => () => void;
+      onTaskScheduleTriggered: (callback: (data: { taskId: string; projectId: string }) => void) => () => void;
+      onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => () => void;
+      onTaskProgress: (callback: (data: { projectId: string; taskId: string; metrics: TaskMetrics }) => void) => () => void;
+
+      // ============================================
+      // Schedule Management (Task-based)
+      // ============================================
+      scheduleList: () => Promise<{ success: boolean; scheduledTasks?: { projectId: string; projectName: string; task: Task }[]; error?: string }>;
+      scheduleAdd: (projectId: string, taskId: string, scheduledAt: string) => Promise<{ success: boolean; error?: string }>;
+      scheduleCancel: (projectId: string, taskId: string) => Promise<{ success: boolean; error?: string }>;
+
+      // Schedule event listeners (return cleanup function)
+      onScheduleAdded: (callback: (data: { projectId: string; taskId: string; scheduledAt: string }) => void) => () => void;
+      onScheduleStarted: (callback: (data: { projectId: string; taskId: string }) => void) => () => void;
+      onScheduleCancelled: (callback: (data: { projectId: string; taskId: string }) => void) => () => void;
 
       // ============================================
       // Translation
@@ -328,8 +346,8 @@ declare global {
       googleLoginClear: (platform: 'web' | 'android' | 'all') => Promise<{ success: boolean; error?: string }>;
 
       // Google login event listeners
-      onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => void;
-      onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => void;
+      onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => () => void;
+      onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => () => void;
 
       // ============================================
       // APK Installation

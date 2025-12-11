@@ -80,38 +80,61 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // GitHub API
   fetchGitHubStars: (repo: string) => ipcRenderer.invoke('github:fetchStars', repo),
 
-  // Event listeners
+  // Event listeners (return cleanup function)
   onEnvProgress: (callback: (data: string) => void) => {
-    ipcRenderer.on('env:progress', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('env:progress', handler);
+    return () => ipcRenderer.removeListener('env:progress', handler);
   },
   onInstallProgress: (callback: (data: string) => void) => {
-    ipcRenderer.on('install:progress', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('install:progress', handler);
+    return () => ipcRenderer.removeListener('install:progress', handler);
   },
   onPythonProgress: (callback: (data: string) => void) => {
-    ipcRenderer.on('python:progress', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('python:progress', handler);
+    return () => ipcRenderer.removeListener('python:progress', handler);
   },
   onOllamaPullProgress: (callback: (data: string) => void) => {
-    ipcRenderer.on('ollama:pull:progress', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('ollama:pull:progress', handler);
+    return () => ipcRenderer.removeListener('ollama:pull:progress', handler);
   },
   onProjectOutput: (callback: (data: string) => void) => {
-    ipcRenderer.on('project:output', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('project:output', handler);
+    return () => ipcRenderer.removeListener('project:output', handler);
   },
   onProjectError: (callback: (data: string) => void) => {
-    ipcRenderer.on('project:error', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('project:error', handler);
+    return () => ipcRenderer.removeListener('project:error', handler);
   },
   onProjectExit: (callback: (code: number) => void) => {
-    ipcRenderer.on('project:exit', (_event: IpcRendererEvent, code: number) => callback(code));
+    const handler = (_event: IpcRendererEvent, code: number) => callback(code);
+    ipcRenderer.on('project:exit', handler);
+    return () => ipcRenderer.removeListener('project:exit', handler);
   },
   onIntegrationTestOutput: (callback: (data: string) => void) => {
-    ipcRenderer.on('integration:output', (_event: IpcRendererEvent, data: string) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('integration:output', handler);
+    return () => ipcRenderer.removeListener('integration:output', handler);
   },
   onIntegrationTestComplete: (callback: (success: boolean) => void) => {
-    ipcRenderer.on('integration:complete', (_event: IpcRendererEvent, success: boolean) => callback(success));
+    const handler = (_event: IpcRendererEvent, success: boolean) => callback(success);
+    ipcRenderer.on('integration:complete', handler);
+    return () => ipcRenderer.removeListener('integration:complete', handler);
   },
 
   // Remove listeners
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
+  },
+  
+  // Remove a specific listener (safer than removeAllListeners)
+  removeListener: (channel: string, callback: (...args: unknown[]) => void) => {
+    ipcRenderer.removeListener(channel, callback);
   },
 
   // ============================================
@@ -133,18 +156,77 @@ contextBridge.exposeInMainWorld('electronAPI', {
   taskStart: (projectId: string, taskId: string) => ipcRenderer.invoke('task:start', projectId, taskId),
   taskStop: (projectId: string, taskId: string) => ipcRenderer.invoke('task:stop', projectId, taskId),
 
-  // Task event listeners
+  // Task event listeners (return cleanup function)
   onTaskOutput: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('task:output', (_event: IpcRendererEvent, data: unknown) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
+    ipcRenderer.on('task:output', handler);
+    return () => ipcRenderer.removeListener('task:output', handler);
   },
   onTaskError: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('task:error', (_event: IpcRendererEvent, data: unknown) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
+    ipcRenderer.on('task:error', handler);
+    return () => ipcRenderer.removeListener('task:error', handler);
   },
   onTaskComplete: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('task:complete', (_event: IpcRendererEvent, data: unknown) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
+    ipcRenderer.on('task:complete', handler);
+    return () => ipcRenderer.removeListener('task:complete', handler);
+  },
+  onTaskAutoStart: (callback: (data: { projectId: string; taskId: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { projectId: string; taskId: string }) => callback(data);
+    ipcRenderer.on('task:auto-start', handler);
+    return () => ipcRenderer.removeListener('task:auto-start', handler);
+  },
+  onTaskScheduled: (callback: (data: { taskId: string; projectId: string; scheduledAt: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { taskId: string; projectId: string; scheduledAt: string }) => callback(data);
+    ipcRenderer.on('task:scheduled', handler);
+    return () => ipcRenderer.removeListener('task:scheduled', handler);
+  },
+  onTaskScheduleCancelled: (callback: (data: { taskId: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { taskId: string }) => callback(data);
+    ipcRenderer.on('task:schedule-cancelled', handler);
+    return () => ipcRenderer.removeListener('task:schedule-cancelled', handler);
+  },
+  onTaskScheduleTriggered: (callback: (data: { taskId: string; projectId: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { taskId: string; projectId: string }) => callback(data);
+    ipcRenderer.on('task:schedule-triggered', handler);
+    return () => ipcRenderer.removeListener('task:schedule-triggered', handler);
+  },
+  onTaskScheduleError: (callback: (data: { taskId: string; projectId: string; error: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { taskId: string; projectId: string; error: string }) => callback(data);
+    ipcRenderer.on('task:schedule-error', handler);
+    return () => ipcRenderer.removeListener('task:schedule-error', handler);
   },
   onTaskProgress: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('task:progress', (_event: IpcRendererEvent, data: unknown) => callback(data));
+    const handler = (_event: IpcRendererEvent, data: unknown) => callback(data);
+    ipcRenderer.on('task:progress', handler);
+    return () => ipcRenderer.removeListener('task:progress', handler);
+  },
+
+  // ============================================
+  // Schedule Management (Task-based)
+  // ============================================
+  scheduleList: () => ipcRenderer.invoke('schedule:list'),
+  scheduleAdd: (projectId: string, taskId: string, scheduledAt: string) => 
+    ipcRenderer.invoke('schedule:add', projectId, taskId, scheduledAt),
+  scheduleCancel: (projectId: string, taskId: string) => 
+    ipcRenderer.invoke('schedule:cancel', projectId, taskId),
+
+  // Schedule event listeners (return cleanup function)
+  onScheduleAdded: (callback: (data: { projectId: string; taskId: string; scheduledAt: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { projectId: string; taskId: string; scheduledAt: string }) => callback(data);
+    ipcRenderer.on('schedule:added', handler);
+    return () => ipcRenderer.removeListener('schedule:added', handler);
+  },
+  onScheduleStarted: (callback: (data: { projectId: string; taskId: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { projectId: string; taskId: string }) => callback(data);
+    ipcRenderer.on('schedule:started', handler);
+    return () => ipcRenderer.removeListener('schedule:started', handler);
+  },
+  onScheduleCancelled: (callback: (data: { projectId: string; taskId: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { projectId: string; taskId: string }) => callback(data);
+    ipcRenderer.on('schedule:cancelled', handler);
+    return () => ipcRenderer.removeListener('schedule:cancelled', handler);
   },
 
   // ============================================
@@ -172,12 +254,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Clear login config
   googleLoginClear: (platform: 'web' | 'android' | 'all') => ipcRenderer.invoke('google-login:clear', platform),
 
-  // Google login event listeners
+  // Google login event listeners (return cleanup function)
   onGoogleLoginWebStatus: (callback: (status: string, message?: string) => void) => {
-    ipcRenderer.on('google-login:web:status', (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message));
+    const handler = (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message);
+    ipcRenderer.on('google-login:web:status', handler);
+    return () => ipcRenderer.removeListener('google-login:web:status', handler);
   },
   onGoogleLoginAndroidStatus: (callback: (status: string, message?: string) => void) => {
-    ipcRenderer.on('google-login:android:status', (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message));
+    const handler = (_event: IpcRendererEvent, status: string, message?: string) => callback(status, message);
+    ipcRenderer.on('google-login:android:status', handler);
+    return () => ipcRenderer.removeListener('google-login:android:status', handler);
   },
 
   // ============================================

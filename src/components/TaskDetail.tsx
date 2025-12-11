@@ -1,16 +1,20 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { FolderOpen, RefreshCw, ExternalLink, Loader2, ArrowLeft, Play, StopCircle, Trash2, X, Sparkles } from 'lucide-react'
+import { FolderOpen, RefreshCw, ExternalLink, Loader2, ArrowLeft, Play, StopCircle, Trash2, X, Sparkles, CalendarClock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ScheduleQuickDialog } from '@/components/ScheduleQuickDialog'
+import { getTaskStatusConfig } from '@/lib/task-status'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { LanguageSelector } from './LanguageSelector'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
 import type { Task, Project } from '@/types/project'
 
 interface TaskDetailProps {
   task: Task
   project: Project
+  projects: Project[]
   onBack: () => void
   onProjectsChange: () => void
 }
@@ -87,6 +91,7 @@ function MarkdownImage({ src, alt, baseDir }: { src?: string; alt?: string; base
 export function TaskDetail({
   task,
   project,
+  projects,
   onBack,
   onProjectsChange,
 }: TaskDetailProps) {
@@ -101,6 +106,7 @@ export function TaskDetail({
   const [markdownDir, setMarkdownDir] = useState<string>('')
   const contentBoxRef = useRef<HTMLDivElement>(null)
   const translationCancelledRef = useRef(false)
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
 
   const taskName = task.name || task.goal
 
@@ -183,7 +189,7 @@ export function TaskDetail({
     setIsTranslating(true)
     try {
       const result = await window.electronAPI.translateMarkdown(content, lang)
-      
+
       // Check if cancelled during translation
       if (translationCancelledRef.current) {
         setTranslatedContent('')
@@ -220,24 +226,33 @@ export function TaskDetail({
     setTranslatedContent('')
   }, [loadMarkdown])
 
-  // Keyboard shortcut: Cmd/Ctrl + R to refresh, Escape to go back
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + R to refresh
       if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
         e.preventDefault()
         if (!loading) {
           loadMarkdown()
         }
       }
+      // Escape to go back
       if (e.key === 'Escape') {
         e.preventDefault()
         onBack()
+      }
+      // Cmd/Ctrl + Option/Alt + Enter to open schedule dialog
+      if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === 'Enter') {
+        e.preventDefault()
+        if (task.status !== 'running' && task.status !== 'pending') {
+          setScheduleDialogOpen(true)
+        }
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [loading, loadMarkdown, onBack])
+  }, [loading, loadMarkdown, onBack, task.status])
 
   const handleOpenFolder = async () => {
     try {
@@ -284,8 +299,58 @@ export function TaskDetail({
     }
   }
 
+  // Check if any task is currently running across all projects
+  // Fetches fresh data from main process to ensure accurate status
+  const hasRunningTask = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.projectList()
+      if (result.success && result.projects) {
+        for (const p of result.projects) {
+          for (const t of p.tasks) {
+            if (t.status === 'running') {
+              return true
+            }
+          }
+        }
+      }
+      return false
+    } catch (error) {
+      console.error('[TaskDetail] Error checking running tasks:', error)
+      // Fall back to prop-based check if API fails
+      for (const p of projects) {
+        for (const t of p.tasks) {
+          if (t.status === 'running') {
+            return true
+          }
+        }
+      }
+      return false
+    }
+  }, [projects])
+
   const handleStartTask = async () => {
     try {
+      // Check if another task is already running (fetches fresh data)
+      if (await hasRunningTask()) {
+        // Queue the task instead of running immediately
+        const scheduledAt = new Date()
+        const scheduleResult = await window.electronAPI.scheduleAdd(
+          project.id,
+          task.id,
+          scheduledAt.toISOString()
+        )
+
+        if (scheduleResult.success) {
+          toast.info('Task queued', {
+            description: 'Another task is running. This task will start automatically when the queue is free.',
+          })
+          onProjectsChange()
+        } else {
+          alert(scheduleResult.error || 'Failed to queue task')
+        }
+        return
+      }
+
       const result = await window.electronAPI.taskStart(project.id, task.id)
       if (result.success) {
         onProjectsChange()
@@ -329,24 +394,28 @@ export function TaskDetail({
     }
   }
 
-  const getStatusConfig = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return { label: 'Scheduled', variant: 'secondary' as const }
-      case 'running':
-        return { label: 'Running', variant: 'default' as const }
-      case 'completed':
-        return { label: 'Finished', variant: 'default' as const }
-      case 'failed':
-        return { label: 'Error', variant: 'destructive' as const }
-      case 'cancelled':
-        return { label: 'Stopped', variant: 'secondary' as const }
-      default:
-        return { label: 'Unknown', variant: 'secondary' as const }
+  const handleScheduleTask = async (date: Date) => {
+    try {
+      const result = await window.electronAPI.scheduleAdd(
+        project.id,
+        task.id,
+        date.toISOString()
+      )
+      if (result.success) {
+        setScheduleDialogOpen(false)
+        onProjectsChange() // Refresh to show updated scheduledAt
+        // Show success feedback
+        alert(`Task scheduled for ${date.toLocaleString()}`)
+      } else {
+        alert(result.error || 'Failed to schedule task')
+      }
+    } catch (error) {
+      console.error('Error scheduling task:', error)
+      alert('Failed to schedule task')
     }
   }
 
-  const statusConfig = getStatusConfig(task.status)
+  const statusConfig = getTaskStatusConfig(task.status)
 
   // Information items for the banner
   const infoItems = [
@@ -430,10 +499,27 @@ export function TaskDetail({
                 <div className="w-px h-6 bg-border mx-1" />
 
                 {task.status === 'pending' && (
-                  <Button size="sm" onClick={handleStartTask} className="h-8">
-                    <Play className="mr-1 h-3 w-3" />
-                    Start
-                  </Button>
+                  <>
+                    <Button size="sm" onClick={handleStartTask} className="h-8">
+                      <Play className="mr-1 h-3 w-3" />
+                      Start
+                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setScheduleDialogOpen(true)}
+                          className="h-8"
+                        >
+                          <CalendarClock className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Schedule Task <kbd className="ml-1 text-[10px] bg-muted px-1 rounded">⌘⌥↵</kbd></p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
                 )}
                 {task.status === 'running' && (
                   <Button size="sm" variant="destructive" onClick={handleStopTask} className="h-8">
@@ -567,6 +653,13 @@ export function TaskDetail({
           )}
         </div>
       </BlurFade>
+
+      {/* Schedule Dialog */}
+      <ScheduleQuickDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onSchedule={handleScheduleTask}
+      />
     </div>
   )
 }

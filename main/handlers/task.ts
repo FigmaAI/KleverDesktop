@@ -18,6 +18,7 @@ import { buildEnvFromConfig } from '../utils/config-env-builder';
 import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
+import { scheduleQueueManager } from '../utils/schedule-queue-manager';
 
 const taskProcesses = new Map<string, ChildProcess>();
 
@@ -71,6 +72,405 @@ stop_emulator()
 }
 
 /**
+ * Execute a task
+ */
+export async function startTaskExecution(
+  projectId: string,
+  taskId: string,
+  getMainWindow: () => BrowserWindow | null
+): Promise<{ success: boolean; pid?: number; error?: string }> {
+  try {
+    const mainWindow = getMainWindow();
+    const data = loadProjects();
+    const project = data.projects.find((p) => p.id === projectId);
+
+    if (!project) {
+      return { success: false, error: 'Project not found' };
+    }
+
+    const task = project.tasks.find((t) => t.id === taskId);
+    if (!task) {
+      return { success: false, error: 'Task not found' };
+    }
+
+    // Check if Python environment is valid
+    if (!isPythonInstalled()) {
+      return { success: false, error: 'Python runtime not found. Please run the Setup Wizard.' };
+    }
+
+    const venvStatus = checkVenvStatus();
+    if (!venvStatus.valid) {
+      return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
+    }
+
+    // For Android platform with APK source, install/prepare app before running task
+    if (project.platform === 'android' && task.apkSource) {
+      mainWindow?.webContents.send('task:output', { 
+        projectId, 
+        taskId, 
+        output: '[Setup] Preparing Android device and app...\n' 
+      });
+
+      const appagentDir = getAppagentPath();
+      const pythonEnv = getPythonEnv();
+      const scriptsDir = path.join(appagentDir, 'scripts');
+
+      const apkSourceJson = JSON.stringify(task.apkSource);
+      const setupCode = `
+import sys
+import json
+sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
+from and_controller import prelaunch_app
+
+apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
+result = prelaunch_app(apk_source)
+print('SETUP_RESULT:' + json.dumps(result))
+`;
+
+      const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
+        const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
+          cwd: appagentDir,
+          env: {
+            ...pythonEnv,
+            PYTHONPATH: scriptsDir,
+            PYTHONUNBUFFERED: '1'
+          }
+        });
+
+        let stdout = '';
+
+        setupProcess.stdout?.on('data', (data) => {
+          const output = data.toString();
+          stdout += output;
+          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
+        });
+
+        setupProcess.stderr?.on('data', (data) => {
+          const output = data.toString();
+          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
+        });
+
+        setupProcess.on('close', (code) => {
+          const resultMatch = stdout.match(/SETUP_RESULT:(.+)/);
+          if (resultMatch) {
+            try {
+              resolve(JSON.parse(resultMatch[1]));
+            } catch {
+              resolve({ success: code === 0, error: 'Failed to parse setup result' });
+            }
+          } else {
+            resolve({ success: code === 0, error: code !== 0 ? 'App setup failed' : undefined });
+          }
+        });
+
+        setupProcess.on('error', (error) => {
+          resolve({ success: false, error: error.message });
+        });
+      });
+
+      if (!setupResult.success) {
+        // Update task status to failed
+        task.status = 'failed';
+        task.output = `App setup failed: ${setupResult.error}`;
+        task.completedAt = new Date().toISOString();
+        saveProjects(data);
+        
+        mainWindow?.webContents.send('task:error', { 
+          projectId, 
+          taskId, 
+          error: `App setup failed: ${setupResult.error}` 
+        });
+        
+        return { success: false, error: `App setup failed: ${setupResult.error}` };
+      }
+
+      mainWindow?.webContents.send('task:output', { 
+        projectId, 
+        taskId, 
+        output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
+      });
+    }
+
+    // Sanitize app name (remove spaces) to match learn.py behavior
+    const sanitizedAppName = sanitizeAppName(project.name);
+
+    // Calculate task directory path (matches Python script's logic)
+    // {workspaceDir}/apps/{sanitizedAppName}/demos/self_explore_{timestamp}
+    const appsDir = path.join(project.workspaceDir, 'apps', sanitizedAppName, 'demos');
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '-').replace(/\..+/, '').replace('T', '_');
+    const taskDirName = `self_explore_${timestamp}`;
+    const taskDir = path.join(appsDir, taskDirName);
+
+    // Update task status
+    task.status = 'running';
+    task.startedAt = new Date().toISOString();
+    task.output = '';
+    task.resultPath = taskDir;  // Store task directory path
+
+    // Initialize metrics with start time
+    task.metrics = {
+      startTime: Date.now(),
+      isLocalModel: task.modelName ? isLocalModel(task.modelName) : undefined,
+    };
+
+    saveProjects(data);
+
+    // Load global config from config.json
+    const appConfig = loadAppConfig();
+
+    // Build environment variables from config.json with task-specific model selection and max rounds
+    const taskModel = task.modelProvider && task.modelName
+      ? { provider: task.modelProvider, model: task.modelName }
+      : undefined;
+    const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
+
+    // Start Python process
+    const appagentDir = getAppagentPath();
+    const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
+
+    // Build CLI parameters
+    // Project info (always required)
+    const args = [
+      '-u',  // Unbuffered output for real-time logging
+      scriptPath,
+      '--platform', project.platform,
+      '--app', sanitizedAppName,
+      '--root_dir', project.workspaceDir,
+      '--task_dir', taskDir,
+    ];
+
+    // Task description (required) - passed as CLI parameter
+    const taskDescription = task.goal || task.description;
+    if (taskDescription) {
+      args.push('--task_desc', taskDescription);
+    }
+
+    // Web URL (required for web platform) - passed as CLI parameter
+    if (project.platform === 'web' && task.url) {
+      args.push('--url', task.url);
+    }
+
+    // Model override (optional) - passed as CLI parameter
+    // modelName now contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
+    if (task.modelName) {
+      args.push('--model_name', task.modelName);
+    }
+
+    // Get Python environment and merge with config environment variables
+    const pythonEnv = getPythonEnv();
+
+    // Add appagent/scripts to PYTHONPATH so imports work
+    const scriptsDir = path.join(appagentDir, 'scripts');
+    const existingPythonPath = pythonEnv.PYTHONPATH || '';
+    const pythonPath = existingPythonPath
+      ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
+      : scriptsDir;
+
+    // Add Android SDK default paths to PATH for adb/emulator detection
+    const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
+    const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
+    const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
+
+    // NO WRAPPER: Run self_explorer.py directly
+    // This simplifies execution and avoids path/import issues
+    console.log(`[task:${taskId}] Starting Python process with args:`, args);
+    console.log(`[task:${taskId}] Working directory:`, appagentDir);
+    
+    const taskProcess = spawnBundledPython(args, {
+      cwd: appagentDir,  // Run from appagent directory to ensure relative imports work
+      env: {
+        ...pythonEnv,         // Python bundled environment variables
+        ...configEnvVars,     // 22 config settings from config.json
+        PYTHONPATH: pythonPath, // Add scripts directory to PYTHONPATH
+        PATH: updatedPath,    // Add Android SDK tools to PATH
+        PYTHONUNBUFFERED: '1', // Force unbuffered output
+        PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
+      }
+    });
+
+    console.log(`[task:${taskId}] Process spawned with PID:`, taskProcess.pid);
+    taskProcesses.set(taskId, taskProcess);
+
+    taskProcess.stdout?.on('data', (data) => {
+      const output = data.toString();
+      mainWindow?.webContents.send('task:output', { projectId, taskId, output });
+
+      // Append to task output
+      const currentData = loadProjects();
+      const currentProject = currentData.projects.find((p) => p.id === projectId);
+      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+      if (currentTask) {
+        currentTask.output = (currentTask.output || '') + output;
+
+        // Parse PROGRESS JSON from output and update task metrics
+        const progressMatch = output.match(/PROGRESS:(\{.*\})/);
+        if (progressMatch) {
+          try {
+            const progress = JSON.parse(progressMatch[1]);
+
+            // Update metrics with new data
+            currentTask.metrics = {
+              ...currentTask.metrics,
+              rounds: progress.round,
+              maxRounds: progress.maxRounds,
+              tokens: progress.totalTokens,
+              inputTokens: progress.inputTokens || 0,
+              outputTokens: progress.outputTokens || 0,
+            };
+
+            // Calculate cost if using paid API model
+            if (currentTask.modelName && !isLocalModel(currentTask.modelName)) {
+              // Fetch pricing data and calculate cost
+              fetchLiteLLMModels().then((result) => {
+                if (result.success && result.providers && currentTask.metrics) {
+                  const cost = calculateEstimatedCost(
+                    currentTask.modelName!,
+                    currentTask.metrics.inputTokens || 0,
+                    currentTask.metrics.outputTokens || 0,
+                    result.providers
+                  );
+                  if (cost !== null && currentTask.metrics) {
+                    currentTask.metrics.estimatedCost = cost;
+                    // Re-send progress with updated cost
+                    mainWindow?.webContents.send('task:progress', {
+                      projectId,
+                      taskId,
+                      metrics: currentTask.metrics
+                    });
+                    // Save updated metrics
+                    const latestData = loadProjects();
+                    const latestProject = latestData.projects.find((p) => p.id === projectId);
+                    const latestTask = latestProject?.tasks.find((t) => t.id === taskId);
+                    if (latestTask) {
+                      latestTask.metrics = currentTask.metrics;
+                      saveProjects(latestData);
+                    }
+                  }
+                }
+              }).catch((error) => {
+                console.warn('[task:progress] Failed to fetch pricing data:', error);
+              });
+            }
+
+            // Send progress event to renderer
+            mainWindow?.webContents.send('task:progress', {
+              projectId,
+              taskId,
+              metrics: currentTask.metrics
+            });
+          } catch (parseError) {
+            console.warn('[task:progress] Failed to parse progress JSON:', parseError);
+          }
+        }
+
+        saveProjects(currentData);
+      }
+    });
+
+    taskProcess.stderr?.on('data', (data) => {
+      const error = data.toString();
+      // Log stderr to console for debugging
+      console.error(`[task:${taskId}] stderr:`, error);
+      
+      mainWindow?.webContents.send('task:error', { projectId, taskId, error });
+
+      // Append to task output (stderr also goes to output)
+      const currentData = loadProjects();
+      const currentProject = currentData.projects.find((p) => p.id === projectId);
+      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+      if (currentTask) {
+        currentTask.output = (currentTask.output || '') + error;
+        saveProjects(currentData);
+      }
+    });
+
+    taskProcess.on('close', async (code) => {
+      console.log(`[task:${taskId}] Process closed with exit code:`, code);
+      
+      const currentData = loadProjects();
+      const currentProject = currentData.projects.find((p) => p.id === projectId);
+      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+
+      if (currentTask) {
+        // Only update if still in 'running' status
+        // Don't overwrite 'cancelled', 'completed', or 'failed' (may be set by stop or error handler)
+        if (currentTask.status === 'running') {
+          const newStatus = code === 0 ? 'completed' : 'failed';
+          currentTask.status = newStatus;
+          currentTask.completedAt = new Date().toISOString();
+          currentTask.updatedAt = new Date().toISOString();
+
+          // Calculate final execution metrics
+          if (currentTask.metrics?.startTime) {
+            currentTask.metrics.endTime = Date.now();
+            currentTask.metrics.durationMs = currentTask.metrics.endTime - currentTask.metrics.startTime;
+
+            // Calculate tokens per second for local models
+            if (currentTask.metrics.isLocalModel &&
+                currentTask.metrics.tokens &&
+                currentTask.metrics.durationMs > 0) {
+              currentTask.metrics.tokensPerSecond = Math.round(
+                currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
+              );
+            }
+          }
+
+          saveProjects(currentData);
+
+          // Send complete event
+          console.log(`[task:${taskId}] Task completed with status: ${newStatus}, sending task:complete event`);
+          mainWindow?.webContents.send('task:complete', { projectId, taskId, code, status: newStatus });
+
+          // Trigger schedule queue to check for next pending scheduled task
+          scheduleQueueManager.triggerCheck();
+        }
+      }
+
+      taskProcesses.delete(taskId);
+
+      // Auto-cleanup emulator if no more pending Android tasks
+      if (currentProject?.platform === 'android') {
+        await cleanupEmulatorIfIdle(currentData);
+      }
+    });
+
+    taskProcess.on('error', (error) => {
+      console.error(`[task:${taskId}] Process error:`, error);
+      mainWindow?.webContents.send('task:error', { 
+        projectId, 
+        taskId, 
+        error: `Process error: ${error.message}` 
+      });
+
+      // Update task status to failed on process error
+      const currentData = loadProjects();
+      const currentProject = currentData.projects.find((p) => p.id === projectId);
+      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
+
+      if (currentTask && currentTask.status === 'running') {
+        currentTask.status = 'failed';
+        currentTask.error = error.message;
+        currentTask.completedAt = new Date().toISOString();
+        currentTask.updatedAt = new Date().toISOString();
+        saveProjects(currentData);
+
+        mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
+
+        // Trigger schedule queue to check for next pending scheduled task
+        scheduleQueueManager.triggerCheck();
+      }
+
+      taskProcesses.delete(taskId);
+    });
+
+    return { success: true, pid: taskProcess.pid };
+  } catch (error: unknown) {
+    return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+  }
+}
+
+
+/**
  * Register all task management handlers
  */
 export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
@@ -99,16 +499,18 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         status: 'pending' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        scheduledAt: taskInput.scheduledAt,
+        isScheduled: taskInput.isScheduled,
       };
 
       project.tasks.push(newTask);
       project.updatedAt = new Date().toISOString();
-      
+
       // Save last used APK source for this project (Android only)
       if (taskInput.apkSource) {
         project.lastApkSource = taskInput.apkSource;
       }
-      
+
       saveProjects(data);
 
       return { success: true, task: newTask };
@@ -188,378 +590,7 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
 
   // Start task execution
   ipcMain.handle('task:start', async (_event, projectId: string, taskId: string) => {
-    try {
-      const mainWindow = getMainWindow();
-      const data = loadProjects();
-      const project = data.projects.find((p) => p.id === projectId);
-
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      const task = project.tasks.find((t) => t.id === taskId);
-      if (!task) {
-        return { success: false, error: 'Task not found' };
-      }
-
-      // Check if Python environment is valid
-      if (!isPythonInstalled()) {
-        return { success: false, error: 'Python runtime not found. Please run the Setup Wizard.' };
-      }
-
-      const venvStatus = checkVenvStatus();
-      if (!venvStatus.valid) {
-        return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
-      }
-
-      // For Android platform with APK source, install/prepare app before running task
-      if (project.platform === 'android' && task.apkSource) {
-        mainWindow?.webContents.send('task:output', { 
-          projectId, 
-          taskId, 
-          output: '[Setup] Preparing Android device and app...\n' 
-        });
-
-        const appagentDir = getAppagentPath();
-        const pythonEnv = getPythonEnv();
-        const scriptsDir = path.join(appagentDir, 'scripts');
-
-        const apkSourceJson = JSON.stringify(task.apkSource);
-        const setupCode = `
-import sys
-import json
-sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
-from and_controller import prelaunch_app
-
-apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
-result = prelaunch_app(apk_source)
-print('SETUP_RESULT:' + json.dumps(result))
-`;
-
-        const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
-          const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
-            cwd: appagentDir,
-            env: {
-              ...pythonEnv,
-              PYTHONPATH: scriptsDir,
-              PYTHONUNBUFFERED: '1'
-            }
-          });
-
-          let stdout = '';
-
-          setupProcess.stdout?.on('data', (data) => {
-            const output = data.toString();
-            stdout += output;
-            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-          });
-
-          setupProcess.stderr?.on('data', (data) => {
-            const output = data.toString();
-            mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-          });
-
-          setupProcess.on('close', (code) => {
-            const resultMatch = stdout.match(/SETUP_RESULT:(.+)/);
-            if (resultMatch) {
-              try {
-                resolve(JSON.parse(resultMatch[1]));
-              } catch {
-                resolve({ success: code === 0, error: 'Failed to parse setup result' });
-              }
-            } else {
-              resolve({ success: code === 0, error: code !== 0 ? 'App setup failed' : undefined });
-            }
-          });
-
-          setupProcess.on('error', (error) => {
-            resolve({ success: false, error: error.message });
-          });
-        });
-
-        if (!setupResult.success) {
-          // Update task status to failed
-          task.status = 'failed';
-          task.output = `App setup failed: ${setupResult.error}`;
-          task.completedAt = new Date().toISOString();
-          saveProjects(data);
-          
-          mainWindow?.webContents.send('task:error', { 
-            projectId, 
-            taskId, 
-            error: `App setup failed: ${setupResult.error}` 
-          });
-          
-          return { success: false, error: `App setup failed: ${setupResult.error}` };
-        }
-
-        mainWindow?.webContents.send('task:output', { 
-          projectId, 
-          taskId, 
-          output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
-        });
-      }
-
-      // Sanitize app name (remove spaces) to match learn.py behavior
-      const sanitizedAppName = sanitizeAppName(project.name);
-
-      // Calculate task directory path (matches Python script's logic)
-      // {workspaceDir}/apps/{sanitizedAppName}/demos/self_explore_{timestamp}
-      const appsDir = path.join(project.workspaceDir, 'apps', sanitizedAppName, 'demos');
-      const timestamp = new Date().toISOString().replace(/[-:]/g, '-').replace(/\..+/, '').replace('T', '_');
-      const taskDirName = `self_explore_${timestamp}`;
-      const taskDir = path.join(appsDir, taskDirName);
-
-      // Update task status
-      task.status = 'running';
-      task.startedAt = new Date().toISOString();
-      task.output = '';
-      task.resultPath = taskDir;  // Store task directory path
-
-      // Initialize metrics with start time
-      task.metrics = {
-        startTime: Date.now(),
-        isLocalModel: task.modelName ? isLocalModel(task.modelName) : undefined,
-      };
-
-      saveProjects(data);
-
-      // Load global config from config.json
-      const appConfig = loadAppConfig();
-
-      // Build environment variables from config.json with task-specific model selection and max rounds
-      const taskModel = task.modelProvider && task.modelName
-        ? { provider: task.modelProvider, model: task.modelName }
-        : undefined;
-      const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
-
-      // Start Python process
-      const appagentDir = getAppagentPath();
-      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
-
-      // Build CLI parameters
-      // Project info (always required)
-      const args = [
-        '-u',  // Unbuffered output for real-time logging
-        scriptPath,
-        '--platform', project.platform,
-        '--app', sanitizedAppName,
-        '--root_dir', project.workspaceDir,
-        '--task_dir', taskDir,
-      ];
-
-      // Task description (required) - passed as CLI parameter
-      const taskDescription = task.goal || task.description;
-      if (taskDescription) {
-        args.push('--task_desc', taskDescription);
-      }
-
-      // Web URL (required for web platform) - passed as CLI parameter
-      if (project.platform === 'web' && task.url) {
-        args.push('--url', task.url);
-      }
-
-      // Model override (optional) - passed as CLI parameter
-      // modelName now contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-      if (task.modelName) {
-        args.push('--model_name', task.modelName);
-      }
-
-      // Get Python environment and merge with config environment variables
-      const pythonEnv = getPythonEnv();
-
-      // Add appagent/scripts to PYTHONPATH so imports work
-      const scriptsDir = path.join(appagentDir, 'scripts');
-      const existingPythonPath = pythonEnv.PYTHONPATH || '';
-      const pythonPath = existingPythonPath
-        ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
-        : scriptsDir;
-
-      // Add Android SDK default paths to PATH for adb/emulator detection
-      const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
-      const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
-      const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
-
-      // NO WRAPPER: Run self_explorer.py directly
-      // This simplifies execution and avoids path/import issues
-      const taskProcess = spawnBundledPython(args, {
-        cwd: appagentDir,  // Run from appagent directory to ensure relative imports work
-        env: {
-          ...pythonEnv,         // Python bundled environment variables
-          ...configEnvVars,     // 22 config settings from config.json
-          PYTHONPATH: pythonPath, // Add scripts directory to PYTHONPATH
-          PATH: updatedPath,    // Add Android SDK tools to PATH
-          PYTHONUNBUFFERED: '1', // Force unbuffered output
-          PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
-        }
-      });
-
-      taskProcesses.set(taskId, taskProcess);
-
-      taskProcess.stdout?.on('data', (data) => {
-        const output = data.toString();
-        mainWindow?.webContents.send('task:output', { projectId, taskId, output });
-
-        // Append to task output
-        const currentData = loadProjects();
-        const currentProject = currentData.projects.find((p) => p.id === projectId);
-        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-        if (currentTask) {
-          currentTask.output = (currentTask.output || '') + output;
-
-          // Parse PROGRESS JSON from output and update task metrics
-          const progressMatch = output.match(/PROGRESS:(\{.*\})/);
-          if (progressMatch) {
-            try {
-              const progress = JSON.parse(progressMatch[1]);
-
-              // Update metrics with new data
-              currentTask.metrics = {
-                ...currentTask.metrics,
-                rounds: progress.round,
-                maxRounds: progress.maxRounds,
-                tokens: progress.totalTokens,
-                inputTokens: progress.inputTokens || 0,
-                outputTokens: progress.outputTokens || 0,
-              };
-
-              // Calculate cost if using paid API model
-              if (currentTask.modelName && !isLocalModel(currentTask.modelName)) {
-                // Fetch pricing data and calculate cost
-                fetchLiteLLMModels().then((result) => {
-                  if (result.success && result.providers && currentTask.metrics) {
-                    const cost = calculateEstimatedCost(
-                      currentTask.modelName!,
-                      currentTask.metrics.inputTokens || 0,
-                      currentTask.metrics.outputTokens || 0,
-                      result.providers
-                    );
-                    if (cost !== null && currentTask.metrics) {
-                      currentTask.metrics.estimatedCost = cost;
-                      // Re-send progress with updated cost
-                      mainWindow?.webContents.send('task:progress', {
-                        projectId,
-                        taskId,
-                        metrics: currentTask.metrics
-                      });
-                      // Save updated metrics
-                      const latestData = loadProjects();
-                      const latestProject = latestData.projects.find((p) => p.id === projectId);
-                      const latestTask = latestProject?.tasks.find((t) => t.id === taskId);
-                      if (latestTask) {
-                        latestTask.metrics = currentTask.metrics;
-                        saveProjects(latestData);
-                      }
-                    }
-                  }
-                }).catch((error) => {
-                  console.warn('[task:progress] Failed to fetch pricing data:', error);
-                });
-              }
-
-              // Send progress event to renderer
-              mainWindow?.webContents.send('task:progress', {
-                projectId,
-                taskId,
-                metrics: currentTask.metrics
-              });
-            } catch (parseError) {
-              console.warn('[task:progress] Failed to parse progress JSON:', parseError);
-            }
-          }
-
-          saveProjects(currentData);
-        }
-      });
-
-      taskProcess.stderr?.on('data', (data) => {
-        const error = data.toString();
-        mainWindow?.webContents.send('task:error', { projectId, taskId, error });
-
-        // Append to task output (stderr also goes to output)
-        const currentData = loadProjects();
-        const currentProject = currentData.projects.find((p) => p.id === projectId);
-        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-        if (currentTask) {
-          currentTask.output = (currentTask.output || '') + error;
-          saveProjects(currentData);
-        }
-      });
-
-      taskProcess.on('close', async (code) => {
-        const currentData = loadProjects();
-        const currentProject = currentData.projects.find((p) => p.id === projectId);
-        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-
-        if (currentTask) {
-          // Only update if still in 'running' status
-          // Don't overwrite 'cancelled', 'completed', or 'failed' (may be set by stop or error handler)
-          if (currentTask.status === 'running') {
-            const newStatus = code === 0 ? 'completed' : 'failed';
-            currentTask.status = newStatus;
-            currentTask.completedAt = new Date().toISOString();
-            currentTask.updatedAt = new Date().toISOString();
-
-            // Calculate final execution metrics
-            if (currentTask.metrics?.startTime) {
-              currentTask.metrics.endTime = Date.now();
-              currentTask.metrics.durationMs = currentTask.metrics.endTime - currentTask.metrics.startTime;
-
-              // Calculate tokens per second for local models
-              if (currentTask.metrics.isLocalModel &&
-                  currentTask.metrics.tokens &&
-                  currentTask.metrics.durationMs > 0) {
-                currentTask.metrics.tokensPerSecond = Math.round(
-                  currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
-                );
-              }
-            }
-
-            saveProjects(currentData);
-
-            // Only send complete event if we updated the status
-            mainWindow?.webContents.send('task:complete', { projectId, taskId, code });
-          }
-        }
-
-        taskProcesses.delete(taskId);
-
-        // Auto-cleanup emulator if no more pending Android tasks
-        if (currentProject?.platform === 'android') {
-          await cleanupEmulatorIfIdle(currentData);
-        }
-      });
-
-      taskProcess.on('error', (error) => {
-        console.error(`[task:${taskId}] Process error:`, error);
-        mainWindow?.webContents.send('task:error', { 
-          projectId, 
-          taskId, 
-          error: `Process error: ${error.message}` 
-        });
-
-        // Update task status to failed on process error
-        const currentData = loadProjects();
-        const currentProject = currentData.projects.find((p) => p.id === projectId);
-        const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-
-        if (currentTask && currentTask.status === 'running') {
-          currentTask.status = 'failed';
-          currentTask.error = error.message;
-          currentTask.completedAt = new Date().toISOString();
-          currentTask.updatedAt = new Date().toISOString();
-          saveProjects(currentData);
-
-          mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
-        }
-
-        taskProcesses.delete(taskId);
-      });
-
-      return { success: true, pid: taskProcess.pid };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-    }
+    return startTaskExecution(projectId, taskId, getMainWindow);
   });
 
   // Stop task execution
@@ -590,6 +621,9 @@ print('SETUP_RESULT:' + json.dumps(result))
       // Emit task:complete event to notify frontend immediately
       // Using special code -1 to indicate user-initiated cancellation
       mainWindow?.webContents.send('task:complete', { projectId, taskId, code: -1 });
+
+      // Trigger schedule queue to check for next pending scheduled task
+      scheduleQueueManager.triggerCheck();
 
       // Auto-cleanup emulator if no more pending Android tasks
       if (project?.platform === 'android') {
@@ -654,3 +688,4 @@ cleanup_emulators()
     console.error('[app-exit] Error cleaning up emulators:', error);
   }
 }
+

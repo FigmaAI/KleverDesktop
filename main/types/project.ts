@@ -37,6 +37,24 @@ export interface Task {
   completedAt?: string;
   url?: string; // Web platform only - passed as --url CLI parameter
   apkSource?: ApkSource; // Android only: APK file path or Play Store URL
+  // Metrics
+  metrics?: {
+    startTime?: number;
+    endTime?: number;
+    durationMs?: number;
+    tokens?: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    tokensPerSecond?: number;
+    estimatedCost?: number;
+    rounds?: number;
+    maxRounds?: number;
+    isLocalModel?: boolean;
+  };
+  error?: string; // Error message if status is 'failed'
+  // Scheduling
+  scheduledAt?: string; // ISO datetime string for when the task should run
+  isScheduled?: boolean; // Whether this task is scheduled
 }
 
 export type ProjectStatus = 'active' | 'archived';
@@ -80,6 +98,8 @@ export interface CreateTaskInput {
   maxRounds?: number; // Per-task max rounds override (if not specified, uses global config)
   url?: string; // Web platform only
   apkSource?: ApkSource; // Android only: APK file path or Play Store URL
+  scheduledAt?: string; // ISO datetime string for when the task should run
+  isScheduled?: boolean; // Whether this task is scheduled
 }
 
 export interface UpdateTaskInput {

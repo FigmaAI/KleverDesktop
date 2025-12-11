@@ -3,6 +3,7 @@ import { Save, Search } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingScreen } from './components/LoadingScreen'
 import { TerminalProvider } from './contexts/TerminalContext'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import {
   SidebarInset,
   SidebarProvider,
@@ -32,13 +33,15 @@ import { ProjectCreateDialog } from '@/components/ProjectCreateDialog'
 import { TaskCreateDialog } from '@/components/TaskCreateDialog'
 import { SetupWizard } from './pages/SetupWizard'
 import { Settings } from './pages/Settings'
+import { ScheduledTasks } from './pages/ScheduledTasks'
 import { useTerminal } from '@/hooks/useTerminal'
 import { TaskContentArea } from '@/components/TaskContentArea'
 import { TaskDetail } from '@/components/TaskDetail'
 import { GitHubLink } from '@/components/GitHubLink'
 import type { Project, Task } from '@/types/project'
 
-type AppView = 'projects' | 'settings'
+type AppView = 'projects' | 'settings' | 'schedules'
+type ScheduleSection = 'active' | 'history'
 
 // Settings section labels for breadcrumb
 const settingsSectionLabels: Record<SettingsSection, string> = {
@@ -55,16 +58,16 @@ function MainApp() {
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
-  
+
   // App state
   const [currentView, setCurrentView] = useState<AppView>('projects')
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  
+
   // Keyboard navigation state
   const [focusArea, setFocusArea] = useState<'sidebar' | 'content'>('sidebar')
   const [selectedProjectIndex, setSelectedProjectIndex] = useState(0)
-  
+
   // Settings state
   const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSection>('model')
   const [settingsHasChanges, setSettingsHasChanges] = useState(false)
@@ -72,12 +75,15 @@ function MainApp() {
   const [settingsCanSave, setSettingsCanSave] = useState(true)
   const settingsSaveRef = useRef<(() => Promise<void>) | null>(null)
 
+  // Schedule state
+  const [activeScheduleSection, setActiveScheduleSection] = useState<ScheduleSection>('active')
+
   // Detect platform for keyboard shortcuts
   const isMac = typeof window !== 'undefined' && window.navigator.platform.toUpperCase().indexOf('MAC') >= 0
 
   // Track selected project ID for updates
   const selectedProjectIdRef = useRef<string | null>(null)
-  
+
   // Keep ref in sync
   useEffect(() => {
     selectedProjectIdRef.current = selectedProject?.id ?? null
@@ -89,7 +95,7 @@ function MainApp() {
       const result = await window.electronAPI.projectList()
       if (result.success && result.projects) {
         setProjects(result.projects)
-        
+
         // Update selected project if it exists (using ref to avoid stale closure)
         const currentSelectedId = selectedProjectIdRef.current
         if (currentSelectedId) {
@@ -122,9 +128,51 @@ function MainApp() {
     }
   }, [loadProjects])
 
+  // Load projects on mount
   useEffect(() => {
     loadProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only load on mount
+
+  // Listen for scheduled task auto-start
+  useEffect(() => {
+    const handleAutoStart = async (data: { projectId: string; taskId: string }) => {
+      console.log('[App] Auto-starting scheduled task:', data)
+
+      try {
+        // Start the task
+        const result = await window.electronAPI.taskStart(data.projectId, data.taskId)
+
+        if (result.success) {
+          // Reload projects to get updated task status
+          await loadProjects()
+
+          // If this project is currently selected, update the view
+          if (selectedProjectIdRef.current === data.projectId) {
+            const updatedProjects = await window.electronAPI.projectList()
+            if (updatedProjects.success && updatedProjects.projects) {
+              const project = updatedProjects.projects.find(p => p.id === data.projectId)
+              if (project) {
+                setSelectedProject(project)
+
+                // Find and select the task that just started
+                const task = project.tasks.find(t => t.id === data.taskId)
+                if (task) {
+                  setSelectedTask(task)
+                }
+              }
+            }
+          }
+        } else {
+          console.error('[App] Failed to auto-start task:', result.error)
+        }
+      } catch (error) {
+        console.error('[App] Error auto-starting task:', error)
+      }
+    }
+
+    window.electronAPI.onTaskAutoStart(handleAutoStart)
+  }, [loadProjects])
 
   // Listen for task completion events to refresh project list
   // Note: TerminalContext also listens to task:complete for terminal state
@@ -135,142 +183,122 @@ function MainApp() {
       loadProjects()
     }
 
-    window.electronAPI.onTaskComplete(handleTaskComplete)
+    const cleanup = window.electronAPI.onTaskComplete(handleTaskComplete)
 
-    // Note: Don't call removeAllListeners here as it would remove
-    // TerminalContext's listener too. MainApp only unmounts on app exit.
+    // Cleanup when effect re-runs (e.g., when loadProjects changes)
+    return cleanup
+  }, [loadProjects])
+
+  // Listen for schedule events to keep task status in sync
+  // When a schedule starts running, the underlying task also changes to running
+  useEffect(() => {
+    const handleScheduleStarted = () => {
+      // Refresh projects when a scheduled task starts running
+      // This syncs the task status from 'pending' to 'running'
+      loadProjects()
+    }
+
+    const cleanup = window.electronAPI.onScheduleStarted(handleScheduleStarted)
+
+    return cleanup
+  }, [loadProjects])
+
+  // Listen for schedule cancellation
+  useEffect(() => {
+    const handleScheduleCancelled = () => {
+      // Refresh projects when a scheduled task is cancelled
+      loadProjects()
+    }
+
+    const cleanup = window.electronAPI.onScheduleCancelled(handleScheduleCancelled)
+
+    return cleanup
   }, [loadProjects])
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const down = (e: globalThis.KeyboardEvent) => {
-      const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac')
-      const modKey = isMac ? e.metaKey : e.ctrlKey
-
-      // Skip if in input/textarea
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        // Allow Escape in inputs
-        if (e.key !== 'Escape') return
-      }
-
-      // Search: Cmd+K / Ctrl+K
-      if (e.key === 'k' && modKey) {
-        e.preventDefault()
-        setCommandOpen((open) => !open)
-      }
-
-      // Projects: Cmd+1 / Ctrl+1
-      if (e.key === '1' && modKey) {
-        e.preventDefault()
+  useKeyboardShortcuts({
+    handlers: {
+      onSearch: () => setCommandOpen(open => !open),
+      onProjects: () => {
         setCurrentView('projects')
         setSelectedTask(null)
-      }
-
-      // Settings: Cmd+, / Ctrl+, OR Cmd+2 / Ctrl+2
-      if ((e.key === ',' || e.key === '2') && modKey) {
-        e.preventDefault()
+      },
+      onSchedules: () => {
+        setCurrentView('schedules')
+      },
+      onSettings: () => {
         setCurrentView('settings')
-      }
-
-      // New Project: Cmd+N / Ctrl+N
-      if (e.key === 'n' && modKey && !e.shiftKey) {
-        e.preventDefault()
-        setCreateProjectDialogOpen(true)
-      }
-
-      // New Task: Cmd+T / Ctrl+T
-      if (e.key === 't' && modKey && !selectedTask) {
-        e.preventDefault()
-        setCreateTaskDialogOpen(true)
-      }
-
-      // Save Settings: Cmd+S / Ctrl+S
-      if (e.key === 's' && modKey && currentView === 'settings') {
-        e.preventDefault()
+      },
+      onNewProject: () => setCreateProjectDialogOpen(true),
+      onNewTask: () => setCreateTaskDialogOpen(true),
+      onSave: () => {
         if (settingsHasChanges && settingsCanSave && !settingsSaving && settingsSaveRef.current) {
           settingsSaveRef.current()
         }
-      }
-
-      // Terminal: Ctrl+Shift+`
-      if (e.key === '`' && e.ctrlKey && e.shiftKey) {
-        e.preventDefault()
-        setTerminalOpen((open) => !open)
-      }
-
-      // GitHub: Cmd+G / Ctrl+G
-      if (e.key === 'g' && modKey) {
-        e.preventDefault()
-        window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
-      }
-
-      // Theme: Cmd+\ / Ctrl+\
-      if (e.key === '\\' && modKey) {
-        e.preventDefault()
+      },
+      onToggleTerminal: () => setTerminalOpen(open => !open),
+      onToggleTheme: () => {
         if (document.documentElement.classList.contains('dark')) {
           document.documentElement.classList.remove('dark')
         } else {
           document.documentElement.classList.add('dark')
         }
-      }
-
-      // Escape: Go back (Task -> Project -> Projects list, Settings -> Projects)
-      if (e.key === 'Escape') {
-        e.preventDefault()
+      },
+      onOpenGitHub: () => {
+        window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop')
+      },
+      onEscape: () => {
         if (selectedTask) {
           setSelectedTask(null)
           setFocusArea('content')
         } else if (focusArea === 'content' && selectedProject) {
-          // From task list back to project list
           setFocusArea('sidebar')
-        } else if (currentView === 'settings') {
+        } else if (currentView === 'settings' || currentView === 'schedules') {
           setCurrentView('projects')
           setFocusArea('sidebar')
         } else if (selectedProject) {
           setSelectedProject(null)
           setFocusArea('sidebar')
         }
-      }
-
-      // Arrow keys for navigation (only when not in dialogs)
-      if (!target.closest('[role="dialog"]') && currentView === 'projects') {
-        // Get sorted projects (newest first)
-        const sortedProjects = [...projects].reverse()
-        
-        if (focusArea === 'sidebar' && !selectedProject) {
-          // Navigate project list
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setSelectedProjectIndex(prev => Math.min(prev + 1, sortedProjects.length - 1))
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setSelectedProjectIndex(prev => Math.max(prev - 1, 0))
-          } else if (e.key === 'Enter' && sortedProjects.length > 0) {
-            e.preventDefault()
+      },
+      onArrowDown: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          setSelectedProjectIndex(prev => Math.min(prev + 1, sortedProjects.length - 1))
+        }
+      },
+      onArrowUp: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          setSelectedProjectIndex(prev => Math.max(prev - 1, 0))
+        }
+      },
+      onEnter: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          if (sortedProjects.length > 0) {
             const project = sortedProjects[selectedProjectIndex]
             if (project) {
               setSelectedProject(project)
-              // Delay focus change to prevent Enter event from triggering task selection
-              requestAnimationFrame(() => {
-                setFocusArea('content')
-              })
+              requestAnimationFrame(() => setFocusArea('content'))
             }
-          } else if ((e.key === 'Delete' || e.key === 'Backspace') && sortedProjects.length > 0) {
-            // Delete selected project
-            e.preventDefault()
+          }
+        }
+      },
+      onDelete: () => {
+        if (currentView === 'projects' && focusArea === 'sidebar' && !selectedProject) {
+          const sortedProjects = [...projects].reverse()
+          if (sortedProjects.length > 0) {
             const project = sortedProjects[selectedProjectIndex]
             if (project) {
               handleDeleteProject(project)
             }
           }
         }
-      }
-    }
-
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [setTerminalOpen, projects, selectedProject, selectedTask, currentView, settingsHasChanges, settingsCanSave, settingsSaving, focusArea, selectedProjectIndex, handleDeleteProject])
+      },
+    },
+    canSave: currentView === 'settings' && settingsHasChanges && settingsCanSave && !settingsSaving,
+    canCreateTask: !selectedTask,
+  })
 
   // Handle project selection
   const handleProjectSelect = (project: Project) => {
@@ -335,13 +363,13 @@ function MainApp() {
     const items: { label: string; onClick?: () => void }[] = []
 
     if (currentView === 'projects') {
-      items.push({ 
-        label: 'Projects', 
-        onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined 
+      items.push({
+        label: 'Projects',
+        onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined
       })
-      
+
       if (selectedProject) {
-        items.push({ 
+        items.push({
           label: selectedProject.name,
           onClick: selectedTask ? () => setSelectedTask(null) : undefined
         })
@@ -352,7 +380,7 @@ function MainApp() {
         items.push({ label: taskLabel.length > 30 ? taskLabel.substring(0, 30) + '...' : taskLabel })
       }
     } else if (currentView === 'settings') {
-      items.push({ 
+      items.push({
         label: 'Settings',
         onClick: () => setActiveSettingsSection('model')
       })
@@ -386,6 +414,8 @@ function MainApp() {
         onDeleteProject={handleDeleteProject}
         activeSettingsSection={activeSettingsSection}
         onSettingsSectionChange={setActiveSettingsSection}
+        activeScheduleSection={activeScheduleSection}
+        onScheduleSectionChange={setActiveScheduleSection}
       />
       <SidebarInset>
         <header className="bg-background sticky top-0 z-10 flex h-[57px] shrink-0 items-center gap-2 border-b px-4">
@@ -434,7 +464,7 @@ function MainApp() {
                 <span>{isMac ? '⌘' : 'Ctrl'}</span>K
               </kbd>
             </button>
-            
+
             {/* Mobile search button */}
             <Button
               variant="ghost"
@@ -468,7 +498,7 @@ function MainApp() {
               </Button>
             )}
           </div>
-            </header>
+        </header>
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
@@ -480,15 +510,35 @@ function MainApp() {
               onSavingChange={setSettingsSaving}
               onCanSaveChange={setSettingsCanSave}
             />
+          ) : currentView === 'schedules' ? (
+            <ScheduledTasks 
+              section={activeScheduleSection}
+              projects={projects}
+              onProjectsChange={loadProjects}
+              onTaskSelect={(projectId, taskId) => {
+                // Find the project and task
+                const project = projects.find(p => p.id === projectId)
+                if (project) {
+                  const task = project.tasks.find(t => t.id === taskId)
+                  if (task) {
+                    setSelectedProject(project)
+                    setSelectedTask(task)
+                    setCurrentView('projects')
+                  }
+                }
+              }}
+            />
           ) : selectedTask && selectedProject ? (
             <TaskDetail
               task={selectedTask}
               project={selectedProject}
+              projects={projects}
               onBack={handleTaskBack}
               onProjectsChange={loadProjects}
             />
           ) : (
             <TaskContentArea
+              key={selectedProject?.id}
               project={selectedProject}
               onTaskClick={handleTaskClick}
               onCreateTask={() => setCreateTaskDialogOpen(true)}
@@ -500,8 +550,8 @@ function MainApp() {
       </SidebarInset>
 
       {/* Command Menu */}
-      <CommandMenu 
-        open={commandOpen} 
+      <CommandMenu
+        open={commandOpen}
         onOpenChange={setCommandOpen}
         onSelectProject={(project) => {
           setSelectedProject(project)

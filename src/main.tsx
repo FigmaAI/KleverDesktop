@@ -306,53 +306,144 @@ if (!window.electronAPI) {
     onEnvProgress: (cb) => {
       if (!mockCallbacks['env:progress']) mockCallbacks['env:progress'] = []
       mockCallbacks['env:progress'].push(cb)
+      return () => {
+        const idx = mockCallbacks['env:progress']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['env:progress'].splice(idx, 1)
+      }
     },
     onInstallProgress: (cb) => {
       if (!mockCallbacks['install:progress']) mockCallbacks['install:progress'] = []
       mockCallbacks['install:progress'].push(cb)
+      return () => {
+        const idx = mockCallbacks['install:progress']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['install:progress'].splice(idx, 1)
+      }
     },
     onPythonProgress: (cb) => {
       if (!mockCallbacks['python:progress']) mockCallbacks['python:progress'] = []
       mockCallbacks['python:progress'].push(cb)
+      return () => {
+        const idx = mockCallbacks['python:progress']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['python:progress'].splice(idx, 1)
+      }
     },
     onOllamaPullProgress: (cb) => {
       if (!mockCallbacks['ollama:pull:progress']) mockCallbacks['ollama:pull:progress'] = []
       mockCallbacks['ollama:pull:progress'].push(cb)
+      return () => {
+        const idx = mockCallbacks['ollama:pull:progress']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['ollama:pull:progress'].splice(idx, 1)
+      }
     },
     onProjectOutput: (cb) => {
       if (!mockCallbacks['project:output']) mockCallbacks['project:output'] = []
       mockCallbacks['project:output'].push(cb)
+      return () => {
+        const idx = mockCallbacks['project:output']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['project:output'].splice(idx, 1)
+      }
     },
     onProjectError: (cb) => {
       if (!mockCallbacks['project:error']) mockCallbacks['project:error'] = []
       mockCallbacks['project:error'].push(cb)
+      return () => {
+        const idx = mockCallbacks['project:error']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['project:error'].splice(idx, 1)
+      }
     },
     onProjectExit: (cb) => {
       if (!mockCallbacks['project:exit']) mockCallbacks['project:exit'] = []
       mockCallbacks['project:exit'].push(cb)
+      return () => {
+        const idx = mockCallbacks['project:exit']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['project:exit'].splice(idx, 1)
+      }
     },
     onIntegrationTestOutput: (cb) => {
       if (!mockCallbacks['integration:output']) mockCallbacks['integration:output'] = []
       mockCallbacks['integration:output'].push(cb)
+      return () => {
+        const idx = mockCallbacks['integration:output']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['integration:output'].splice(idx, 1)
+      }
     },
     onIntegrationTestComplete: (cb) => {
       if (!mockCallbacks['integration:complete']) mockCallbacks['integration:complete'] = []
       mockCallbacks['integration:complete'].push(cb)
+      return () => {
+        const idx = mockCallbacks['integration:complete']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['integration:complete'].splice(idx, 1)
+      }
     },
     onTaskOutput: (cb) => {
       if (!mockCallbacks['task:output']) mockCallbacks['task:output'] = []
       mockCallbacks['task:output'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:output']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:output'].splice(idx, 1)
+      }
     },
     onTaskError: (cb) => {
       if (!mockCallbacks['task:error']) mockCallbacks['task:error'] = []
       mockCallbacks['task:error'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:error']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:error'].splice(idx, 1)
+      }
     },
     onTaskComplete: (cb) => {
       if (!mockCallbacks['task:complete']) mockCallbacks['task:complete'] = []
       mockCallbacks['task:complete'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:complete']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:complete'].splice(idx, 1)
+      }
+    },
+    onTaskAutoStart: (cb) => {
+      if (!mockCallbacks['task:auto-start']) mockCallbacks['task:auto-start'] = []
+      mockCallbacks['task:auto-start'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:auto-start']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:auto-start'].splice(idx, 1)
+      }
+    },
+    onTaskScheduled: (cb) => {
+      if (!mockCallbacks['task:scheduled']) mockCallbacks['task:scheduled'] = []
+      mockCallbacks['task:scheduled'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:scheduled']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:scheduled'].splice(idx, 1)
+      }
+    },
+    onTaskScheduleCancelled: (cb) => {
+      if (!mockCallbacks['task:schedule-cancelled']) mockCallbacks['task:schedule-cancelled'] = []
+      mockCallbacks['task:schedule-cancelled'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:schedule-cancelled']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:schedule-cancelled'].splice(idx, 1)
+      }
+    },
+    onTaskScheduleTriggered: (cb) => {
+      if (!mockCallbacks['task:schedule-triggered']) mockCallbacks['task:schedule-triggered'] = []
+      mockCallbacks['task:schedule-triggered'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:schedule-triggered']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:schedule-triggered'].splice(idx, 1)
+      }
+    },
+    onTaskScheduleError: (cb) => {
+      if (!mockCallbacks['task:schedule-error']) mockCallbacks['task:schedule-error'] = []
+      mockCallbacks['task:schedule-error'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:schedule-error']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:schedule-error'].splice(idx, 1)
+      }
     },
     removeAllListeners: (channel) => {
       delete mockCallbacks[channel]
+    },
+    removeListener: (_channel: string, _callback: (...args: unknown[]) => void) => {
+      // Mock implementation - in real electron this would remove specific listener
     },
 
     // Translation (mock)
@@ -364,6 +455,79 @@ if (!window.electronAPI) {
       success: true,
       translatedText: `[Mock markdown translation to ${targetLang}]:\n${markdown}`,
     }),
+
+    // Google Login (mock)
+    googleLoginWebStart: async () => ({ success: true }),
+    googleLoginWebStop: async () => ({ success: true }),
+    googleLoginWebGetStatus: async () => ({ success: true, loggedIn: false }),
+    googleLoginWebVerifyStatus: async () => ({ success: true, loggedIn: false, verified: false }),
+    googleLoginGetProfilePath: async () => ({ success: true, path: '/mock/profile' }),
+    googleLoginAndroidListDevices: async () => ({ success: true, devices: [] }),
+    googleLoginAndroidStart: async () => ({ success: true }),
+    googleLoginAndroidStop: async () => ({ success: true }),
+    googleLoginAndroidGetStatus: async () => ({ success: true, loggedIn: false }),
+    googleLoginClear: async () => ({ success: true }),
+    onGoogleLoginWebStatus: (cb) => {
+      if (!mockCallbacks['google-login:web:status']) mockCallbacks['google-login:web:status'] = []
+      mockCallbacks['google-login:web:status'].push(cb)
+      return () => {
+        const idx = mockCallbacks['google-login:web:status']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['google-login:web:status'].splice(idx, 1)
+      }
+    },
+    onGoogleLoginAndroidStatus: (cb) => {
+      if (!mockCallbacks['google-login:android:status']) mockCallbacks['google-login:android:status'] = []
+      mockCallbacks['google-login:android:status'].push(cb)
+      return () => {
+        const idx = mockCallbacks['google-login:android:status']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['google-login:android:status'].splice(idx, 1)
+      }
+    },
+
+    // APK Installation (mock)
+    apkSelectFile: async () => ({ success: true, canceled: true }),
+    playstoreParseUrl: async () => ({ success: true, packageName: 'com.example.app' }),
+
+    // Task Progress (mock)
+    onTaskProgress: (cb) => {
+      if (!mockCallbacks['task:progress']) mockCallbacks['task:progress'] = []
+      mockCallbacks['task:progress'].push(cb)
+      return () => {
+        const idx = mockCallbacks['task:progress']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['task:progress'].splice(idx, 1)
+      }
+    },
+
+    // Schedule Management (mock)
+    scheduleList: async () => ({ success: true, schedules: [] }),
+    scheduleAdd: async (_projectId: string, _taskId: string, _scheduledAt: string) => ({
+      success: true,
+    }),
+    scheduleCancel: async () => ({ success: true }),
+    onScheduleAdded: (cb) => {
+      if (!mockCallbacks['schedule:added']) mockCallbacks['schedule:added'] = []
+      mockCallbacks['schedule:added'].push(cb)
+      return () => {
+        const idx = mockCallbacks['schedule:added']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['schedule:added'].splice(idx, 1)
+      }
+    },
+    onScheduleStarted: (cb) => {
+      if (!mockCallbacks['schedule:started']) mockCallbacks['schedule:started'] = []
+      mockCallbacks['schedule:started'].push(cb)
+      return () => {
+        const idx = mockCallbacks['schedule:started']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['schedule:started'].splice(idx, 1)
+      }
+    },
+    onScheduleCancelled: (cb) => {
+      if (!mockCallbacks['schedule:cancelled']) mockCallbacks['schedule:cancelled'] = []
+      mockCallbacks['schedule:cancelled'].push(cb)
+      return () => {
+        const idx = mockCallbacks['schedule:cancelled']?.indexOf(cb)
+        if (idx !== undefined && idx > -1) mockCallbacks['schedule:cancelled'].splice(idx, 1)
+      }
+    },
   }
 }
 

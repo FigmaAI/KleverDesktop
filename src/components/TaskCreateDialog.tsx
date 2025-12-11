@@ -1,37 +1,59 @@
-import { useState, useEffect } from 'react'
-import { Calendar, Loader2, Plus, Smartphone, Globe, FileBox, X, Info } from 'lucide-react'
-import PlayStoreIcon from '@/assets/play-store.svg?react'
+import { useState, useEffect, useCallback } from "react";
+import {
+  ChevronDown,
+  Loader2,
+  Plus,
+  Smartphone,
+  Globe,
+  FileBox,
+  Info,
+  X,
+} from "lucide-react";
+import PlayStoreIcon from "@/assets/play-store.svg?react";
+import { ScheduleQuickDialog } from "@/components/ScheduleQuickDialog";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Slider } from '@/components/ui/slider'
-import { ModelSelector, ModelSelection } from './ModelSelector'
-import type { Task, Project, ApkSourceType, ApkSource } from '../types/project'
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Slider } from "@/components/ui/slider";
+import { ModelSelector, ModelSelection } from "./ModelSelector";
+import type { Task, Project, ApkSourceType, ApkSource } from "../types/project";
 
 interface TaskCreateDialogProps {
-  open: boolean
-  onClose: () => void
-  projects: Project[]
-  selectedProjectId?: string
-  onTaskCreated?: (task: Task) => void
-  onCreateProject?: () => void
+  open: boolean;
+  onClose: () => void;
+  projects: Project[];
+  selectedProjectId?: string;
+  onTaskCreated?: (task: Task) => void;
+  onCreateProject?: () => void;
 }
 
 export function TaskCreateDialog({
@@ -42,254 +64,359 @@ export function TaskCreateDialog({
   onTaskCreated,
   onCreateProject,
 }: TaskCreateDialogProps) {
-  const [goal, setGoal] = useState('')
-  const [url, setUrl] = useState('')
-  const [selectedModel, setSelectedModel] = useState<ModelSelection | undefined>()
-  const [registeredProviders, setRegisteredProviders] = useState<string[]>([])
-  const [runImmediately, setRunImmediately] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(selectedProjectId)
-  const [maxRounds, setMaxRounds] = useState<number>(20)
-  const [globalMaxRounds, setGlobalMaxRounds] = useState<number>(20)
+  const [goal, setGoal] = useState("");
+  const [url, setUrl] = useState("");
+  const [selectedModel, setSelectedModel] = useState<
+    ModelSelection | undefined
+  >();
+  const [registeredProviders, setRegisteredProviders] = useState<string[]>([]);
+  const [runImmediately, setRunImmediately] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(
+    selectedProjectId
+  );
+  const [maxRounds, setMaxRounds] = useState<number>(20);
+  const [globalMaxRounds, setGlobalMaxRounds] = useState<number>(20);
+
+  // Schedule dialog state
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   // APK Source state (Android only) - Required
-  const [apkSourceType, setApkSourceType] = useState<ApkSourceType>('play_store_url')
-  const [apkFilePath, setApkFilePath] = useState('')
-  const [playStoreUrl, setPlayStoreUrl] = useState('')
-  const [extractedPackageName, setExtractedPackageName] = useState('')
+  const [apkSourceType, setApkSourceType] =
+    useState<ApkSourceType>("play_store_url");
+  const [apkFilePath, setApkFilePath] = useState("");
+  const [playStoreUrl, setPlayStoreUrl] = useState("");
+  const [extractedPackageName, setExtractedPackageName] = useState("");
 
   // Get current project
-  const currentProject = projects.find(p => p.id === currentProjectId)
-  const platform = currentProject?.platform || 'android'
+  const currentProject = projects.find((p) => p.id === currentProjectId);
+  const platform = currentProject?.platform || "android";
 
   // Update currentProjectId when selectedProjectId changes (only if provided)
   useEffect(() => {
     if (selectedProjectId) {
-      setCurrentProjectId(selectedProjectId)
+      setCurrentProjectId(selectedProjectId);
     }
-  }, [selectedProjectId])
+  }, [selectedProjectId]);
 
   // Load last used APK source when project changes
   useEffect(() => {
-    if (currentProject?.lastApkSource && currentProject.platform === 'android') {
-      const { type, path, url, packageName } = currentProject.lastApkSource
-      setApkSourceType(type)
-      if (type === 'apk_file' && path) {
-        setApkFilePath(path)
-      } else if (type === 'play_store_url' && url) {
-        setPlayStoreUrl(url)
+    if (
+      currentProject?.lastApkSource &&
+      currentProject.platform === "android"
+    ) {
+      const { type, path, url, packageName } = currentProject.lastApkSource;
+      setApkSourceType(type);
+      if (type === "apk_file" && path) {
+        setApkFilePath(path);
+      } else if (type === "play_store_url" && url) {
+        setPlayStoreUrl(url);
       }
       if (packageName) {
-        setExtractedPackageName(packageName)
+        setExtractedPackageName(packageName);
       }
     } else {
       // Reset to defaults if no last APK source
-      setApkSourceType('play_store_url')
-      setApkFilePath('')
-      setPlayStoreUrl('')
-      setExtractedPackageName('')
+      setApkSourceType("play_store_url");
+      setApkFilePath("");
+      setPlayStoreUrl("");
+      setExtractedPackageName("");
     }
-  }, [currentProject])
+  }, [currentProject]);
 
   // Load saved model configuration (multi-provider format)
   useEffect(() => {
     const loadSavedConfig = async () => {
       try {
-        const result = await window.electronAPI.configLoad()
+        const result = await window.electronAPI.configLoad();
         if (result.success && result.config) {
           // Load model configuration
           if (result.config.model) {
-            const { providers, lastUsed } = result.config.model
-            
+            const { providers, lastUsed } = result.config.model;
+
             // Set registered providers for filtering
             if (providers && providers.length > 0) {
-              setRegisteredProviders(providers.map(p => p.id))
-              
+              setRegisteredProviders(providers.map((p) => p.id));
+
               // Use lastUsed if available, otherwise use first provider
               if (lastUsed?.provider && lastUsed?.model) {
-                setSelectedModel({ provider: lastUsed.provider, model: lastUsed.model })
+                setSelectedModel({
+                  provider: lastUsed.provider,
+                  model: lastUsed.model,
+                });
               } else {
-                const firstProvider = providers[0]
-                setSelectedModel({ 
-                  provider: firstProvider.id, 
-                  model: firstProvider.preferredModel 
-                })
+                const firstProvider = providers[0];
+                setSelectedModel({
+                  provider: firstProvider.id,
+                  model: firstProvider.preferredModel,
+                });
               }
             }
           }
-          
+
           // Load execution configuration for max rounds
           if (result.config.execution?.maxRounds) {
-            const globalMaxRounds = result.config.execution.maxRounds
-            setGlobalMaxRounds(globalMaxRounds)
-            setMaxRounds(globalMaxRounds)
+            const globalMaxRounds = result.config.execution.maxRounds;
+            setGlobalMaxRounds(globalMaxRounds);
+            setMaxRounds(globalMaxRounds);
           }
         }
       } catch (error) {
-        console.error('Failed to load saved config:', error)
+        console.error("Failed to load saved config:", error);
       }
-    }
-    
+    };
+
     if (open) {
-      loadSavedConfig()
+      loadSavedConfig();
     }
-  }, [open])
+  }, [open]);
 
   const handleSelectApkFile = async () => {
-    const result = await window.electronAPI.apkSelectFile()
+    const result = await window.electronAPI.apkSelectFile();
     if (result.success && result.path) {
-      setApkFilePath(result.path)
-      setExtractedPackageName('')
+      setApkFilePath(result.path);
+      setExtractedPackageName("");
     }
-  }
+  };
 
   const handlePlayStoreUrlChange = async (inputUrl: string) => {
-    setPlayStoreUrl(inputUrl)
-    setExtractedPackageName('')
-    
-    if (inputUrl && inputUrl.includes('play.google.com')) {
-      const result = await window.electronAPI.playstoreParseUrl(inputUrl)
-      if (result.success && result.packageName) {
-        setExtractedPackageName(result.packageName)
-      }
-    }
-  }
+    setPlayStoreUrl(inputUrl);
+    setExtractedPackageName("");
 
-  const buildApkSource = (): ApkSource | undefined => {
-    if (platform !== 'android') return undefined
-    
-    if (apkSourceType === 'apk_file' && apkFilePath) {
-      return {
-        type: 'apk_file',
-        path: apkFilePath,
-        packageName: extractedPackageName || undefined
-      }
-    } else if (apkSourceType === 'play_store_url' && playStoreUrl) {
-      return {
-        type: 'play_store_url',
-        url: playStoreUrl,
-        packageName: extractedPackageName || undefined
+    if (inputUrl && inputUrl.includes("play.google.com")) {
+      const result = await window.electronAPI.playstoreParseUrl(inputUrl);
+      if (result.success && result.packageName) {
+        setExtractedPackageName(result.packageName);
       }
     }
-    
-    return undefined
-  }
+  };
+
+  const buildApkSource = useCallback((): ApkSource | undefined => {
+    if (platform !== "android") return undefined;
+
+    if (apkSourceType === "apk_file" && apkFilePath) {
+      return {
+        type: "apk_file",
+        path: apkFilePath,
+        packageName: extractedPackageName || undefined,
+      };
+    } else if (apkSourceType === "play_store_url" && playStoreUrl) {
+      return {
+        type: "play_store_url",
+        url: playStoreUrl,
+        packageName: extractedPackageName || undefined,
+      };
+    }
+
+    return undefined;
+  }, [platform, apkSourceType, apkFilePath, playStoreUrl, extractedPackageName]);
 
   // Check if APK source is valid (required for Android)
-  const isApkSourceValid = () => {
-    if (platform !== 'android') return true
-    if (apkSourceType === 'apk_file') return !!apkFilePath
-    if (apkSourceType === 'play_store_url') return !!playStoreUrl
-    return false
-  }
+  const isApkSourceValid = useCallback(() => {
+    if (platform !== "android") return true;
+    if (apkSourceType === "apk_file") return !!apkFilePath;
+    if (apkSourceType === "play_store_url") return !!playStoreUrl;
+    return false;
+  }, [platform, apkSourceType, apkFilePath, playStoreUrl]);
 
-  const handleSubmit = async () => {
+  // Validate form before submission
+  const validateForm = useCallback(() => {
     if (!currentProjectId) {
-      alert('Please select a project')
-      return
+      alert("Please select a project");
+      return false;
     }
-
     if (!goal.trim()) {
-      alert('Please enter a task description')
-      return
+      alert("Please enter a task description");
+      return false;
     }
-
-    if (platform === 'web' && !url.trim()) {
-      alert('Please enter a URL for web automation')
-      return
+    if (platform === "web" && !url.trim()) {
+      alert("Please enter a URL for web automation");
+      return false;
     }
-
-    if (platform === 'android' && !isApkSourceValid()) {
-      alert('Please provide an APK file or Play Store URL')
-      return
+    if (platform === "android" && !isApkSourceValid()) {
+      alert("Please provide an APK file or Play Store URL");
+      return false;
     }
-
     if (!selectedModel?.provider || !selectedModel?.model) {
-      alert('Please select a model')
-      return
+      alert("Please select a model");
+      return false;
     }
+    return true;
+  }, [currentProjectId, goal, platform, url, isApkSourceValid, selectedModel]);
 
-    setLoading(true)
+  // Create task and optionally schedule it
+  const createTask = useCallback(async (scheduledAt?: Date) => {
+    if (!currentProjectId || !selectedModel) return null;
+
+    const taskInput = {
+      projectId: currentProjectId,
+      name: `Task ${new Date().toLocaleString()}`,
+      goal: goal.trim(),
+      url: platform === 'web' ? url.trim() : undefined,
+      apkSource: buildApkSource(),
+      modelProvider: selectedModel.provider,
+      modelName: selectedModel.model,
+      maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
+    };
+
+    const result = await window.electronAPI.taskCreate(taskInput);
+
+    if (result.success && result.task) {
+      // Update lastUsed in config
+      try {
+        await window.electronAPI.configUpdateLastUsed({
+          provider: selectedModel.provider,
+          model: selectedModel.model,
+        });
+      } catch (error) {
+        console.warn("[TaskCreateDialog] Failed to update lastUsed:", error);
+      }
+
+      // If scheduled, create a schedule entry
+      if (scheduledAt) {
+        const scheduleResult = await window.electronAPI.scheduleAdd(
+          currentProjectId,
+          result.task.id,
+          scheduledAt.toISOString()
+        );
+        if (!scheduleResult.success) {
+          throw new Error(scheduleResult.error || 'Failed to schedule task');
+        }
+      }
+
+      return result.task;
+    } else {
+      throw new Error(result.error || "Failed to create task");
+    }
+  }, [currentProjectId, goal, platform, url, buildApkSource, selectedModel, maxRounds, globalMaxRounds]);
+
+  // Check if any task is currently running across all projects
+  // Fetches fresh data from main process to ensure accurate status
+  const hasRunningTask = useCallback(async (): Promise<boolean> => {
     try {
-      const taskInput = {
-        projectId: currentProjectId,
-        name: `Task ${new Date().toLocaleString()}`,
-        goal: goal.trim(),
-        url: platform === 'web' ? url.trim() : undefined,
-        apkSource: buildApkSource(),
-        // Include provider and model for task execution
-        modelProvider: selectedModel.provider,
-        modelName: selectedModel.model,
-        // Include max rounds if different from global default
-        maxRounds: maxRounds !== globalMaxRounds ? maxRounds : undefined,
-      }
-
-      const result = await window.electronAPI.taskCreate(taskInput)
-
-      if (result.success && result.task) {
-        // Update lastUsed in config
-        try {
-          await window.electronAPI.configUpdateLastUsed({
-            provider: selectedModel.provider,
-            model: selectedModel.model,
-          })
-        } catch (error) {
-          console.warn('[TaskCreateDialog] Failed to update lastUsed:', error)
+      const result = await window.electronAPI.projectList();
+      if (result.success && result.projects) {
+        for (const project of result.projects) {
+          for (const task of project.tasks) {
+            if (task.status === 'running') {
+              return true;
+            }
+          }
         }
-
-        // If "Run immediately" is checked, start the task
-        if (runImmediately) {
-          await window.electronAPI.taskStart(currentProjectId, result.task.id)
-        }
-
-        onTaskCreated?.(result.task)
-        handleClose()
-      } else {
-        alert(result.error || 'Failed to create task')
       }
+      return false;
     } catch (error) {
-      console.error('Error creating task:', error)
-      alert('Failed to create task')
-    } finally {
-      setLoading(false)
+      console.error('[TaskCreateDialog] Error checking running tasks:', error);
+      // Fall back to prop-based check if API fails
+      for (const project of projects) {
+        for (const task of project.tasks) {
+          if (task.status === 'running') {
+            return true;
+          }
+        }
+      }
+      return false;
     }
-  }
+  }, [projects]);
+
+  // Handle immediate run
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      const task = await createTask();
+
+      if (task && runImmediately && currentProjectId) {
+        // Check if another task is already running (fetches fresh data)
+        if (await hasRunningTask()) {
+          // Queue the task instead of running immediately
+          const scheduledAt = new Date(); // Schedule for now (will run when queue is free)
+          const scheduleResult = await window.electronAPI.scheduleAdd(
+            currentProjectId,
+            task.id,
+            scheduledAt.toISOString()
+          );
+
+          if (scheduleResult.success) {
+            toast.info('Task queued', {
+              description: 'Another task is running. This task will start automatically when the queue is free.',
+            });
+          } else {
+            console.error('Failed to queue task:', scheduleResult.error);
+            toast.error('Failed to queue task');
+          }
+        } else {
+          // No task running, start immediately
+          await window.electronAPI.taskStart(currentProjectId, task.id);
+        }
+      }
+
+      onTaskCreated?.(task!);
+      handleClose();
+    } catch (error) {
+      console.error("Error creating task:", error);
+      alert(error instanceof Error ? error.message : "Failed to create task");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = useCallback(() => {
+    setGoal("");
+    setUrl("");
+    setApkSourceType("play_store_url");
+    setApkFilePath("");
+    setPlayStoreUrl("");
+    setExtractedPackageName("");
+    setRunImmediately(true);
+    setMaxRounds(globalMaxRounds);
+    onClose();
+  }, [globalMaxRounds, onClose]);
+
+  // Handle scheduled run (called from ScheduleQuickDialog)
+  const handleScheduledSubmit = useCallback(async (scheduledAt: Date) => {
+    if (!validateForm()) return;
+
+    const task = await createTask(scheduledAt);
+    onTaskCreated?.(task!);
+    handleClose();
+  }, [validateForm, createTask, onTaskCreated, handleClose]);
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      handleSubmit()
+    // ⌥⌘⏎ or Alt+Ctrl+Enter: Open schedule dialog
+    if ((e.metaKey || e.ctrlKey) && e.altKey && e.key === "Enter") {
+      e.preventDefault();
+      if (isEligible && !loading) {
+        setScheduleDialogOpen(true);
+      }
+      return;
     }
-  }
+    // ⌘⏎ or Ctrl+Enter: Run immediately
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      handleSubmit();
+    }
+  };
 
-  const handleClose = () => {
-    setGoal('')
-    setUrl('')
-    setApkSourceType('play_store_url')
-    setApkFilePath('')
-    setPlayStoreUrl('')
-    setExtractedPackageName('')
-    setRunImmediately(true)
-    setMaxRounds(globalMaxRounds)
-    onClose()
-  }
-
-  const isEligible = currentProjectId && 
-    goal.trim() && 
-    (platform === 'web' ? url.trim() : isApkSourceValid()) && 
-    selectedModel?.model
+  const isEligible =
+    currentProjectId &&
+    goal.trim() &&
+    (platform === "web" ? url.trim() : isApkSourceValid()) &&
+    selectedModel?.model;
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         className="max-w-2xl"
         onInteractOutside={(e) => {
-          e.preventDefault()
+          e.preventDefault();
         }}
       >
         <DialogHeader>
           <DialogTitle>Create New Task</DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new automation task for your project. Select a project, enter a task description, and choose a model to run the task.
+            Create a new automation task for your project. Select a project,
+            enter a task description, and choose a model to run the task.
           </DialogDescription>
         </DialogHeader>
 
@@ -297,20 +424,24 @@ export function TaskCreateDialog({
           {/* Project Selection */}
           <div className="space-y-2">
             <Label>Project</Label>
-            <Select value={currentProjectId || ''} onValueChange={(value) => {
-              if (value === '__create_new__') {
-                onCreateProject?.()
-              } else {
-                setCurrentProjectId(value)
-                // APK source will be loaded from project.lastApkSource by useEffect
-              }
-            }}>
+            <Select
+              value={currentProjectId || ""}
+              onValueChange={(value) => {
+                if (value === "__create_new__") {
+                  onCreateProject?.();
+                } else {
+                  setCurrentProjectId(value);
+                  // APK source will be loaded from project.lastApkSource by useEffect
+                }
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => {
-                  const PlatformIcon = project.platform === 'android' ? Smartphone : Globe
+                  const PlatformIcon =
+                    project.platform === "android" ? Smartphone : Globe;
                   return (
                     <SelectItem key={project.id} value={project.id}>
                       <span className="flex items-center gap-2">
@@ -318,11 +449,13 @@ export function TaskCreateDialog({
                         <span>{project.name}</span>
                       </span>
                     </SelectItem>
-                  )
+                  );
                 })}
                 {onCreateProject && (
                   <>
-                    {projects.length > 0 && <div className="h-px bg-border my-1" />}
+                    {projects.length > 0 && (
+                      <div className="h-px bg-border my-1" />
+                    )}
                     <SelectItem value="__create_new__" className="text-primary">
                       <span className="flex items-center gap-2">
                         <Plus className="h-3 w-3" />
@@ -336,9 +469,11 @@ export function TaskCreateDialog({
           </div>
 
           {/* URL Input (Web Platform Only) */}
-          {platform === 'web' && (
+          {platform === "web" && (
             <div className="space-y-2">
-              <Label>Website URL <span className="text-destructive">*</span></Label>
+              <Label>
+                Website URL <span className="text-destructive">*</span>
+              </Label>
               <Input
                 placeholder="https://example.com"
                 value={url}
@@ -348,45 +483,58 @@ export function TaskCreateDialog({
           )}
 
           {/* APK Source (Android Platform Only) - Required */}
-          {platform === 'android' && (
+          {platform === "android" && (
             <div className="space-y-2">
-              <Label>App Source <span className="text-destructive">*</span></Label>
+              <Label>
+                App Source <span className="text-destructive">*</span>
+              </Label>
               <p className="text-xs text-muted-foreground -mt-1">
-                The app will be installed (if needed) and launched before running the task
+                The app will be installed (if needed) and launched before
+                running the task
               </p>
-              
+
               {/* Styled Container for Radio Group */}
               <div className="rounded-lg border bg-muted/30 p-2">
                 <RadioGroup
                   value={apkSourceType}
-                  onValueChange={(value) => setApkSourceType(value as ApkSourceType)}
+                  onValueChange={(value) =>
+                    setApkSourceType(value as ApkSourceType)
+                  }
                   className="gap-1"
                 >
                   {/* Play Store URL Option - Wrapper */}
-                  <div 
-                    className={`rounded-md transition-colors ${apkSourceType === 'play_store_url' ? 'bg-background shadow-sm' : 'hover:bg-background/40'}`}
+                  <div
+                    className={`rounded-md transition-colors ${apkSourceType === "play_store_url" ? "bg-background shadow-sm" : "hover:bg-background/40"}`}
                   >
-                    <label 
-                      htmlFor="task_play_store_url" 
+                    <label
+                      htmlFor="task_play_store_url"
                       className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                     >
-                      <RadioGroupItem value="play_store_url" id="task_play_store_url" />
+                      <RadioGroupItem
+                        value="play_store_url"
+                        id="task_play_store_url"
+                      />
                       <PlayStoreIcon className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Google Play Store URL</span>
                     </label>
-                    
+
                     {/* Play Store URL Input */}
-                    {apkSourceType === 'play_store_url' && (
+                    {apkSourceType === "play_store_url" && (
                       <div className="px-3 pb-3 pt-0 ml-7 space-y-1.5">
                         <Input
                           value={playStoreUrl}
-                          onChange={(e) => handlePlayStoreUrlChange(e.target.value)}
+                          onChange={(e) =>
+                            handlePlayStoreUrlChange(e.target.value)
+                          }
                           placeholder="https://play.google.com/store/apps/details?id=..."
                           className="text-sm h-8"
                         />
                         {extractedPackageName && (
                           <p className="text-xs text-muted-foreground">
-                            Package: <span className="font-mono text-foreground">{extractedPackageName}</span>
+                            Package:{" "}
+                            <span className="font-mono text-foreground">
+                              {extractedPackageName}
+                            </span>
                           </p>
                         )}
                       </div>
@@ -394,20 +542,20 @@ export function TaskCreateDialog({
                   </div>
 
                   {/* APK File Option - Wrapper */}
-                  <div 
-                    className={`rounded-md transition-colors ${apkSourceType === 'apk_file' ? 'bg-background shadow-sm' : 'hover:bg-background/40'}`}
+                  <div
+                    className={`rounded-md transition-colors ${apkSourceType === "apk_file" ? "bg-background shadow-sm" : "hover:bg-background/40"}`}
                   >
-                    <label 
-                      htmlFor="task_apk_file" 
+                    <label
+                      htmlFor="task_apk_file"
                       className="flex items-center gap-3 px-3 py-2.5 cursor-pointer"
                     >
                       <RadioGroupItem value="apk_file" id="task_apk_file" />
                       <FileBox className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">APK File</span>
                     </label>
-                    
+
                     {/* APK File Input */}
-                    {apkSourceType === 'apk_file' && (
+                    {apkSourceType === "apk_file" && (
                       <div className="px-3 pb-3 pt-0 ml-7 flex gap-2">
                         <Input
                           readOnly
@@ -429,7 +577,7 @@ export function TaskCreateDialog({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setApkFilePath('')}
+                            onClick={() => setApkFilePath("")}
                             className="h-8 px-2"
                           >
                             <X className="h-4 w-4" />
@@ -445,10 +593,12 @@ export function TaskCreateDialog({
 
           {/* Task Description */}
           <div className="space-y-2">
-            <Label>Task Description <span className="text-destructive">*</span></Label>
+            <Label>
+              Task Description <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               placeholder={
-                platform === 'web'
+                platform === "web"
                   ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take a screenshot of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
                   : 'Describe what you want to automate on the Android app...\nFor example: "Like the top 5 posts on the home feed"\n\nPress Cmd/Ctrl + Enter to submit'
               }
@@ -471,7 +621,9 @@ export function TaskCreateDialog({
                       <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Prevents infinite loops and limits automation attempts</p>
+                      <p>
+                        Prevents infinite loops and limits automation attempts
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Maximum number of exploration rounds before stopping
                       </p>
@@ -486,7 +638,8 @@ export function TaskCreateDialog({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-sm font-semibold text-muted-foreground cursor-help">
-                      {maxRounds} {maxRounds === globalMaxRounds && '(default)'}
+                      {maxRounds}{" "}
+                      {maxRounds === globalMaxRounds && "(default)"}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -507,52 +660,73 @@ export function TaskCreateDialog({
               className="w-full"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>5 rounds</span>
-              <span>50 rounds</span>
+              <span>5</span>
+              <span>50</span>
             </div>
           </div>
 
           {/* Bottom Controls */}
           <div className="flex items-center justify-between pt-2">
             {/* Left: Model Selection - now editable with registered providers filter */}
-            <ModelSelector 
-              value={selectedModel} 
+            <ModelSelector
+              value={selectedModel}
               onChange={setSelectedModel}
-              registeredProviders={registeredProviders.length > 0 ? registeredProviders : undefined}
+              registeredProviders={
+                registeredProviders.length > 0 ? registeredProviders : undefined
+              }
             />
 
-            {/* Right: Action Buttons */}
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="outline" disabled>
-                      <Calendar className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Schedule task (Coming soon)</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <Button size="sm" onClick={handleSubmit} disabled={!isEligible || loading}>
+            {/* Right: Split Button (Run + Schedule dropdown) */}
+            <div className="flex">
+              {/* Main Run Button */}
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={!isEligible || loading}
+                className="rounded-r-none"
+              >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                     Running...
                   </>
                 ) : (
                   <>
                     Run
-                    <span className="ml-2 text-xs opacity-60">⌘⏎</span>
+                    <span className="ml-1.5 text-xs opacity-60">⌘⏎</span>
                   </>
                 )}
               </Button>
+
+              {/* Dropdown Trigger */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    disabled={!isEligible || loading}
+                    className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setScheduleDialogOpen(true)}>
+                    <span className="flex-1">Schedule run</span>
+                    <span className="ml-4 text-xs text-muted-foreground">⌥⌘⏎</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
       </DialogContent>
+
+      {/* Schedule Quick Dialog */}
+      <ScheduleQuickDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onSchedule={handleScheduledSubmit}
+      />
     </Dialog>
-  )
+  );
 }

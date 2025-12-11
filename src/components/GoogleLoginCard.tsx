@@ -78,10 +78,8 @@ function WebGoogleLoginButton() {
             }
         }
 
-        window.electronAPI.onGoogleLoginWebStatus(handleStatus)
-        return () => {
-            window.electronAPI.removeAllListeners('google-login:web:status')
-        }
+        const cleanup = window.electronAPI.onGoogleLoginWebStatus(handleStatus)
+        return cleanup
     }, [])
 
     const loadStatus = async () => {
@@ -234,10 +232,8 @@ function AndroidGoogleLoginButton() {
             }
         }
 
-        window.electronAPI.onGoogleLoginAndroidStatus(handleStatus)
-        return () => {
-            window.electronAPI.removeAllListeners('google-login:android:status')
-        }
+        const cleanup = window.electronAPI.onGoogleLoginAndroidStatus(handleStatus)
+        return cleanup
     }, [])
 
     const loadDevices = async () => {
