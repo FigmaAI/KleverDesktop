@@ -2,6 +2,7 @@ argparse
 beautifulsoup4
 colorama
 opencv-python
+Pillow
 playwright
 pyshine
 pyyaml

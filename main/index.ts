@@ -9,6 +9,7 @@
 import { app, BrowserWindow, ipcMain, crashReporter, session } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
+import { cleanupZombieTasks } from './utils/project-storage';
 
 /**
  * Enable crash reporting for debugging (Build 13+)
@@ -133,6 +134,9 @@ app.whenReady().then(() => {
     });
   });
 
+  // Clean up any tasks that were 'running' when app was terminated
+  cleanupZombieTasks();
+  
   createWindow();
   registerAllHandlers(ipcMain, getMainWindow);
 });

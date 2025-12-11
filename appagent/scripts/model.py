@@ -87,15 +87,21 @@ class OpenAIModel(BaseModel):
         # Can be disabled via config if needed (e.g., USE_JSON_MODE=false from Electron)
         self.use_json_mode = self.configs.get("USE_JSON_MODE", True)
         
-        # Streaming mode for real-time output (useful for <think> models)
-        self.use_streaming = self.configs.get("USE_STREAMING", True)
+        # Streaming mode for real-time output
+        # Only enable for Ollama (local models) - needed for <think> mode monitoring
+        # For cloud providers (OpenRouter, OpenAI, etc.), disable streaming to get accurate token counts
+        if self.provider == "Ollama":
+            self.use_streaming = self.configs.get("USE_STREAMING", True)
+        else:
+            self.use_streaming = False  # Disable for cloud providers to get token usage
 
         # Use LiteLLM if available, fallback to requests for basic OpenAI compatibility
         self.use_litellm = LITELLM_AVAILABLE
 
         if self.use_litellm:
             print_with_color(f"✓ Model initialized: {model} (Provider: {self.provider}, via LiteLLM)", "green")
-            print_with_color(f"  Timeout: {self.timeout}s, JSON mode: {self.use_json_mode}", "cyan")
+            streaming_status = "enabled (local)" if self.use_streaming else "disabled (accurate tokens)"
+            print_with_color(f"  Timeout: {self.timeout}s, JSON mode: {self.use_json_mode}, Streaming: {streaming_status}", "cyan")
         else:
             print_with_color(f"✓ Model initialized: {model} (Legacy mode - install litellm for better compatibility)", "yellow")
     
@@ -216,11 +222,14 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
             completion_params = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": content}],
-                "api_key": self.api_key,
                 "temperature": self.temperature,
                 "max_tokens": self.max_tokens,
                 "timeout": self.timeout
             }
+
+            # Only add API key if it's not empty and not Ollama (which doesn't need auth)
+            if self.api_key and self.api_key.strip() and self.provider != "Ollama":
+                completion_params["api_key"] = self.api_key
 
             # Add base_url if provided (for custom endpoints like OpenRouter)
             if self.base_url and self.base_url.strip():
@@ -246,18 +255,41 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
                 response_content = ""
                 # Only show streaming output for Ollama (useful for <think> mode)
                 show_streaming_output = self.provider == "Ollama"
-                
+
                 if show_streaming_output:
                     print_with_color("\n--- Model Response (streaming) ---", "yellow")
-                
+
+                # Buffered output for better readability
+                output_buffer = ""
+                BUFFER_FLUSH_SIZE = 80  # Flush buffer when it reaches this size
+
                 for chunk in response:
                     if chunk.choices[0].delta.content:
                         chunk_content = chunk.choices[0].delta.content
                         response_content += chunk_content
+
                         # Print in real-time only for Ollama
                         if show_streaming_output:
-                            print(chunk_content, end="", flush=True)
-                
+                            # Add to buffer
+                            output_buffer += chunk_content
+
+                            # Flush buffer on sentence boundaries or when buffer is large enough
+                            should_flush = (
+                                len(output_buffer) >= BUFFER_FLUSH_SIZE or
+                                any(punct in output_buffer for punct in ['. ', '.\n', '? ', '!\n', '?\n', '!\n', '\n\n'])
+                            )
+
+                            if should_flush and output_buffer.strip():
+                                # Print buffer, replacing newlines with spaces for readability
+                                display_text = output_buffer.replace('\n', ' ').strip()
+                                print(display_text + " ", end="", flush=True)
+                                output_buffer = ""
+
+                # Flush remaining buffer
+                if show_streaming_output and output_buffer.strip():
+                    display_text = output_buffer.replace('\n', ' ').strip()
+                    print(display_text, flush=True)
+
                 if show_streaming_output:
                     print()  # Newline after streaming completes
                     print_with_color("--- End of Response ---\n", "yellow")
@@ -299,8 +331,12 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
                 )
             elif self.use_streaming:
                 # Estimate tokens for streaming (rough approximation)
-                completion_tokens = len(response_content.split()) * 1.3  # rough estimate
-                print_with_color(f"Tokens (estimated): ~{int(completion_tokens)} completion", "yellow")
+                # Words * 1.3 is a rough estimate for token count
+                completion_tokens = int(len(response_content.split()) * 1.3)
+                # Estimate prompt tokens based on image + text (rough: ~1000 for image, text words * 1.3)
+                prompt_tokens = int(1000 + len(prompt.split()) * 1.3)  # rough estimate
+                total_tokens = prompt_tokens + completion_tokens
+                print_with_color(f"Tokens (estimated): ~{total_tokens} total ({prompt_tokens} prompt + {completion_tokens} completion)", "yellow")
 
             # Print response time
             print_with_color(f"✓ {self.provider} response received in {response_time:.2f}s", "green")

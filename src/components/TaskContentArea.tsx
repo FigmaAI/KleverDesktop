@@ -2,9 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   Plus,
   Play,
-  StopCircle,
-  Trash2,
-  FileText,
   CheckCircle,
   AlertCircle,
   Clock,
@@ -19,10 +16,13 @@ import {
   ChevronsRight,
   PlusCircle,
   Check,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { RainbowButton } from '@/components/ui/rainbow-button'
 import { Badge } from '@/components/ui/badge'
+import { TaskStatusBadge } from '@/components/TaskStatusBadge'
+import { getTaskStatusConfig } from '@/lib/task-status'
 import {
   Select,
   SelectContent,
@@ -54,7 +54,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Project, Task } from '@/types/project'
+import type { Project, Task, TaskMetrics } from '@/types/project'
 import { cn } from '@/lib/utils'
 
 interface TaskContentAreaProps {
@@ -68,18 +68,27 @@ interface TaskContentAreaProps {
 type SortField = 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
 
+// Utility function to format cost for display
+function formatCost(cost: number | null | undefined): string {
+  if (cost === null || cost === undefined) return '';
+  if (cost === 0) return '$0.00';
+  if (cost < 0.01) return '< $0.01';
+  if (cost < 1) return `$${cost.toFixed(4)}`;
+  return `$${cost.toFixed(2)}`;
+}
+
 // Sort icon component - declared outside to avoid recreating during render
-function SortIcon({ 
-  field, 
-  sortField, 
-  sortDirection 
-}: { 
+function SortIcon({
+  field,
+  sortField,
+  sortDirection
+}: {
   field: SortField
   sortField: SortField
-  sortDirection: SortDirection 
+  sortDirection: SortDirection
 }) {
   if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4" />
-  return sortDirection === 'asc' 
+  return sortDirection === 'asc'
     ? <ArrowUp className="ml-2 h-4 w-4" />
     : <ArrowDown className="ml-2 h-4 w-4" />
 }
@@ -94,51 +103,16 @@ export function TaskContentArea({
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
-  
+
   // Filter state
   const [statusFilter, setStatusFilter] = useState<Set<Task['status']>>(new Set())
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
 
-  // Reset state when project changes
-  useEffect(() => {
-    setSelectedTaskIndex(0)
-    setCurrentPage(1)
-  }, [project?.id])
-
-  const handleStartTask = async (task: Task) => {
-    if (!project) return
-
-    try {
-      const result = await window.electronAPI.taskStart(project.id, task.id)
-      if (result.success) {
-        onProjectsChange()
-      } else {
-        alert(result.error || 'Failed to start task')
-      }
-    } catch (error) {
-      console.error('Error starting task:', error)
-      alert('Failed to start task')
-    }
-  }
-
-  const handleStopTask = async (task: Task) => {
-    if (!project) return
-
-    try {
-      const result = await window.electronAPI.taskStop(project.id, task.id)
-      if (result.success) {
-        onProjectsChange()
-      } else {
-        alert(result.error || 'Failed to stop task')
-      }
-    } catch (error) {
-      console.error('Error stopping task:', error)
-      alert('Failed to stop task')
-    }
-  }
+  // Real-time task progress metrics (keyed by taskId)
+  const [liveMetrics, setLiveMetrics] = useState<Map<string, TaskMetrics>>(new Map())
 
   const handleDeleteTask = useCallback(async (task: Task) => {
     if (!project) return
@@ -157,22 +131,23 @@ export function TaskContentArea({
     }
   }, [project, onProjectsChange])
 
-  const getStatusConfig = (status: Task['status']) => {
-    switch (status) {
-      case 'pending':
-        return { label: 'Scheduled', icon: Clock, variant: 'secondary' as const, priority: 2 }
-      case 'running':
-        return { label: 'Running', icon: Play, variant: 'default' as const, priority: 1 }
-      case 'completed':
-        return { label: 'Finished', icon: CheckCircle, variant: 'default' as const, priority: 4 }
-      case 'failed':
-        return { label: 'Error', icon: AlertCircle, variant: 'destructive' as const, priority: 3 }
-      case 'cancelled':
-        return { label: 'Stopped', icon: XCircle, variant: 'secondary' as const, priority: 5 }
-      default:
-        return { label: 'Unknown', icon: Clock, variant: 'secondary' as const, priority: 6 }
+  const handleStopTask = useCallback(async (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation() // Prevent row click
+    if (!project) return
+
+    try {
+      const result = await window.electronAPI.taskStop(project.id, task.id)
+      if (result.success) {
+        onProjectsChange()
+      } else {
+        alert(result.error || 'Failed to stop task')
+      }
+    } catch (error) {
+      console.error('Error stopping task:', error)
+      alert('Failed to stop task')
     }
-  }
+  }, [project, onProjectsChange])
+
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -186,7 +161,7 @@ export function TaskContentArea({
   // Filter and sort tasks
   const sortedTasks = useMemo(() => {
     if (!project) return []
-    
+
     // Apply status filter
     let filtered = [...project.tasks]
     if (statusFilter.size > 0) {
@@ -199,7 +174,7 @@ export function TaskContentArea({
 
       switch (sortField) {
         case 'status':
-          comparison = getStatusConfig(a.status).priority - getStatusConfig(b.status).priority
+          comparison = getTaskStatusConfig(a.status).priority - getTaskStatusConfig(b.status).priority
           break
         case 'createdAt':
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -237,11 +212,6 @@ export function TaskContentArea({
     const startIndex = (currentPage - 1) * rowsPerPage
     return sortedTasks.slice(startIndex, startIndex + rowsPerPage)
   }, [sortedTasks, currentPage, rowsPerPage])
-
-  // Reset page when rows per page changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [rowsPerPage])
 
   // Keyboard navigation for task list (only when focused on content area)
   useEffect(() => {
@@ -281,10 +251,30 @@ export function TaskContentArea({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [sortedTasks, selectedTaskIndex, onTaskClick, focusArea, handleDeleteTask])
 
-  // Reset selected index when tasks change
+  // Ensure selectedTaskIndex is always valid (bounded to list length)
+  const validSelectedIndex = useMemo(() => 
+    Math.min(selectedTaskIndex, Math.max(0, sortedTasks.length - 1)),
+    [selectedTaskIndex, sortedTasks.length]
+  )
+
+  // Subscribe to task progress events for real-time updates
   useEffect(() => {
-    setSelectedTaskIndex(0)
-  }, [sortedTasks.length])
+    const projectId = project?.id
+    const handleProgress = (data: { projectId: string; taskId: string; metrics: TaskMetrics }) => {
+      // Only update if this project matches
+      if (projectId && data.projectId === projectId) {
+        setLiveMetrics(prev => {
+          const newMap = new Map(prev)
+          newMap.set(data.taskId, data.metrics)
+          return newMap
+        })
+      }
+    }
+
+    const cleanup = window.electronAPI.onTaskProgress(handleProgress)
+
+    return cleanup
+  }, [project?.id])
 
   // Detect platform for keyboard shortcuts
   const isMac = typeof window !== 'undefined' && window.navigator.platform.includes('Mac')
@@ -293,27 +283,35 @@ export function TaskContentArea({
   // No project selected - show welcome screen with keyboard shortcuts
   if (!project) {
     const shortcuts = [
-      { category: 'Navigation', items: [
-        { keys: [modKey, '1'], description: 'Go to Projects' },
-        { keys: [modKey, ','], description: 'Go to Settings' },
-        { keys: ['Esc'], description: 'Go back' },
-      ]},
-      { category: 'Actions', items: [
-        { keys: [modKey, 'N'], description: 'New Project' },
-        { keys: [modKey, 'T'], description: 'New Task' },
-        { keys: [modKey, 'K'], description: 'Search' },
-        { keys: [modKey, 'S'], description: 'Save Settings' },
-      ]},
-      { category: 'View', items: [
-        { keys: ['Ctrl', 'Shift', '`'], description: 'Toggle Terminal' },
-        { keys: [modKey, '\\'], description: 'Toggle Theme' },
-        { keys: [modKey, 'G'], description: 'Open GitHub' },
-      ]},
-      { category: 'List Navigation', items: [
-        { keys: ['↑', '↓'], description: 'Navigate items' },
-        { keys: ['Enter'], description: 'Select item' },
-        { keys: ['Delete'], description: 'Delete item' },
-      ]},
+      {
+        category: 'Navigation', items: [
+          { keys: [modKey, '1'], description: 'Go to Projects' },
+          { keys: [modKey, ','], description: 'Go to Settings' },
+          { keys: ['Esc'], description: 'Go back' },
+        ]
+      },
+      {
+        category: 'Actions', items: [
+          { keys: [modKey, 'N'], description: 'New Project' },
+          { keys: [modKey, 'T'], description: 'New Task' },
+          { keys: [modKey, 'K'], description: 'Search' },
+          { keys: [modKey, 'S'], description: 'Save Settings' },
+        ]
+      },
+      {
+        category: 'View', items: [
+          { keys: ['Ctrl', 'Shift', '`'], description: 'Toggle Terminal' },
+          { keys: [modKey, '\\'], description: 'Toggle Theme' },
+          { keys: [modKey, 'G'], description: 'Open GitHub' },
+        ]
+      },
+      {
+        category: 'List Navigation', items: [
+          { keys: ['↑', '↓'], description: 'Navigate items' },
+          { keys: ['Enter'], description: 'Select item' },
+          { keys: ['Delete'], description: 'Delete item' },
+        ]
+      },
     ]
 
     return (
@@ -522,7 +520,9 @@ export function TaskContentArea({
                       <SortIcon field="status" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[180px]">
+                  <TableHead className="w-[160px]">Progress</TableHead>
+                  <TableHead className="w-[180px]">Model</TableHead>
+                  <TableHead className="w-[100px]">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -533,16 +533,13 @@ export function TaskContentArea({
                       <SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[180px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedTasks.map((task, index) => {
-                  const statusConfig = getStatusConfig(task.status)
-                  const StatusIcon = statusConfig.icon
                   // Calculate actual index for keyboard navigation
                   const actualIndex = (currentPage - 1) * rowsPerPage + index
-                  const isSelected = actualIndex === selectedTaskIndex
+                  const isSelected = actualIndex === validSelectedIndex
 
                   return (
                     <TableRow
@@ -559,61 +556,107 @@ export function TaskContentArea({
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={statusConfig.variant} className="flex items-center gap-1 w-fit">
-                          <StatusIcon className="h-3 w-3" />
-                          {statusConfig.label}
-                        </Badge>
+                        <TaskStatusBadge
+                          status={task.status}
+                          showStopOnHover={task.status === 'running'}
+                          onStop={(e) => handleStopTask(e, task)}
+                        />
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {task.startedAt
-                          ? new Date(task.startedAt).toLocaleString()
-                          : new Date(task.createdAt).toLocaleDateString()}
+                        {(() => {
+                          // Use live metrics for running tasks, otherwise use stored metrics
+                          const metrics = task.status === 'running'
+                            ? liveMetrics.get(task.id) || task.metrics
+                            : task.metrics
+
+                          if (!metrics?.rounds) return '-'
+
+                          const roundsText = metrics.maxRounds
+                            ? `${metrics.rounds}/${metrics.maxRounds}`
+                            : `${metrics.rounds}`
+
+                          // Determine if this is a local model
+                          const isLocal = task.modelProvider === 'ollama' || metrics.isLocalModel
+
+                          // Format secondary metric based on model type
+                          let secondaryMetric: React.ReactNode = null
+
+                          if (isLocal) {
+                            // For local models: show "Local" badge or execution speed
+                            if (metrics.tokensPerSecond) {
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  {metrics.tokensPerSecond.toLocaleString()} tok/s
+                                </span>
+                              )
+                            } else if (metrics.durationMs) {
+                              const seconds = (metrics.durationMs / 1000).toFixed(1)
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  {seconds}s
+                                </span>
+                              )
+                            } else {
+                              secondaryMetric = (
+                                <span className="text-emerald-500 flex items-center gap-1">
+                                  <Zap className="h-3 w-3" />
+                                  Local
+                                </span>
+                              )
+                            }
+                          } else {
+                            // For paid API models: show estimated cost
+                            if (metrics.estimatedCost !== undefined && metrics.estimatedCost !== null) {
+                              const costText = formatCost(metrics.estimatedCost)
+                              secondaryMetric = (
+                                <span className="text-amber-500">
+                                  {costText}
+                                </span>
+                              )
+                            } else if (metrics.tokens) {
+                              // Fallback: show tokens if cost calculation not available
+                              secondaryMetric = (
+                                <span className="text-muted-foreground">
+                                  {metrics.tokens.toLocaleString()} tokens
+                                </span>
+                              )
+                            }
+                          }
+
+                          return (
+                            <div className="flex flex-col">
+                              <span className="font-medium">{roundsText} rounds</span>
+                              {secondaryMetric}
+                            </div>
+                          )
+                        })()}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {task.status === 'pending' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8"
-                              onClick={() => handleStartTask(task)}
-                            >
-                              <Play className="mr-1 h-3 w-3" />
-                              Start
-                            </Button>
-                          )}
-                          {task.status === 'running' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-destructive hover:text-destructive"
-                              onClick={() => handleStopTask(task)}
-                            >
-                              <StopCircle className="mr-1 h-3 w-3" />
-                              Stop
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onTaskClick(task)}
-                            disabled={!task.resultPath}
-                            title="View Results"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteTask(task)}
-                            disabled={task.status === 'running'}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {(() => {
+                          if (!task.modelName) return '-'
+                          // modelName contains full LiteLLM model string (e.g., "openrouter/openai/gpt-4.1-mini")
+                          // modelProvider contains the provider ID (e.g., "openrouter")
+                          const provider = task.modelProvider || ''
+                          // Extract display name from modelName (remove provider prefix if present)
+                          let displayName = task.modelName
+                          if (provider && task.modelName.startsWith(`${provider}/`)) {
+                            displayName = task.modelName.slice(provider.length + 1)
+                          }
+
+                          return (
+                            <div className="flex flex-col">
+                              <span className="font-medium truncate max-w-[160px]" title={displayName}>
+                                {displayName}
+                              </span>
+                              <span className="text-muted-foreground capitalize">{provider}</span>
+                            </div>
+                          )
+                        })()}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(task.startedAt || task.createdAt).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
                   )
@@ -633,7 +676,10 @@ export function TaskContentArea({
                 <p className="text-sm font-medium">Rows per page</p>
                 <Select
                   value={String(rowsPerPage)}
-                  onValueChange={(value) => setRowsPerPage(Number(value))}
+                  onValueChange={(value) => {
+                    setRowsPerPage(Number(value))
+                    setCurrentPage(1)
+                  }}
                 >
                   <SelectTrigger className="h-8 w-[70px]">
                     <SelectValue placeholder={String(rowsPerPage)} />

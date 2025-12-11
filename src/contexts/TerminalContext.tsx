@@ -259,30 +259,23 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       console.log('[TerminalContext] Integration test complete:', success)
     }
 
-    // Register listeners
-    window.electronAPI.onTaskOutput(handleTaskOutput)
-    window.electronAPI.onTaskError(handleTaskError)
-    window.electronAPI.onTaskComplete(handleTaskComplete)
-    window.electronAPI.onEnvProgress(handleEnvProgress)
-    window.electronAPI.onPythonProgress(handlePythonProgress)
-    window.electronAPI.onInstallProgress(handleInstallProgress)
-    window.electronAPI.onProjectOutput(handleProjectOutput)
-    window.electronAPI.onProjectError(handleProjectError)
-    window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput)
-    window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete)
+    // Register listeners and collect cleanup functions
+    const cleanups = [
+      window.electronAPI.onTaskOutput(handleTaskOutput),
+      window.electronAPI.onTaskError(handleTaskError),
+      window.electronAPI.onTaskComplete(handleTaskComplete),
+      window.electronAPI.onEnvProgress(handleEnvProgress),
+      window.electronAPI.onPythonProgress(handlePythonProgress),
+      window.electronAPI.onInstallProgress(handleInstallProgress),
+      window.electronAPI.onProjectOutput(handleProjectOutput),
+      window.electronAPI.onProjectError(handleProjectError),
+      window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput),
+      window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete),
+    ]
 
-    // Cleanup
+    // Cleanup when effect re-runs (e.g., when addLine/updateProcess changes)
     return () => {
-      window.electronAPI.removeAllListeners('task:output')
-      window.electronAPI.removeAllListeners('task:error')
-      window.electronAPI.removeAllListeners('task:complete')
-      window.electronAPI.removeAllListeners('env:progress')
-      window.electronAPI.removeAllListeners('python:progress')
-      window.electronAPI.removeAllListeners('install:progress')
-      window.electronAPI.removeAllListeners('project:output')
-      window.electronAPI.removeAllListeners('project:error')
-      window.electronAPI.removeAllListeners('integration:output')
-      window.electronAPI.removeAllListeners('integration:complete')
+      cleanups.forEach(cleanup => cleanup?.())
     }
   }, [addLine, updateProcess])
 

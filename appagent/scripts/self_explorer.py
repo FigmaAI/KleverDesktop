@@ -23,10 +23,21 @@ from utils import print_with_color, draw_bbox_multi, append_to_log, append_image
 # Global flag to track if we started an emulator
 _emulator_started_by_script = False
 _device_serial = None
+_web_controller = None  # Global reference for cleanup
 
 def cleanup_on_exit():
     """Cleanup function called when script exits"""
-    global _emulator_started_by_script, _device_serial
+    global _emulator_started_by_script, _device_serial, _web_controller
+
+    # Cleanup web controller (browser) if used
+    if _web_controller is not None:
+        try:
+            print_with_color("\n[Cleanup] Closing web browser...", "yellow")
+            _web_controller.close()
+        except Exception as e:
+            print_with_color(f"[Cleanup] Error closing browser: {e}", "red")
+
+    # Cleanup Android emulator if started by this script
     if _emulator_started_by_script and _device_serial:
         print_with_color("\n[Cleanup] Stopping emulator started by this script...", "yellow")
         stop_emulator(_device_serial)
@@ -41,6 +52,91 @@ def signal_handler(signum, _frame):
 atexit.register(cleanup_on_exit)
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
+
+# Global progress tracking for Electron IPC
+_cumulative_tokens = 0
+_cumulative_input_tokens = 0
+_cumulative_output_tokens = 0
+_cumulative_response_time = 0.0
+
+def emit_progress(round_num, max_rounds, tokens_this_round=0, response_time_this_round=0.0,
+                 input_tokens_this_round=0, output_tokens_this_round=0):
+    """
+    Emit structured progress JSON for Electron to parse.
+    This enables real-time progress tracking in the UI.
+
+    Args:
+        round_num: Current round number
+        max_rounds: Maximum rounds for this task
+        tokens_this_round: Total tokens this round (for backward compatibility)
+        response_time_this_round: Response time this round
+        input_tokens_this_round: Input tokens this round
+        output_tokens_this_round: Output tokens this round
+    """
+    global _cumulative_tokens, _cumulative_input_tokens, _cumulative_output_tokens, _cumulative_response_time
+    _cumulative_tokens += tokens_this_round
+    _cumulative_input_tokens += input_tokens_this_round
+    _cumulative_output_tokens += output_tokens_this_round
+    _cumulative_response_time += response_time_this_round
+    progress = {
+        "round": round_num,
+        "maxRounds": max_rounds,
+        "totalTokens": _cumulative_tokens,
+        "inputTokens": _cumulative_input_tokens,
+        "outputTokens": _cumulative_output_tokens,
+        "totalResponseTime": round(_cumulative_response_time, 2)
+    }
+    print(f"PROGRESS:{json.dumps(progress)}", flush=True)
+
+
+def retry_with_valid_range(mllm, original_prompt, images, elem_count, invalid_area, max_retries=2):
+    """
+    Retry model request when an invalid element index is returned.
+    Provides the model with information about valid element range.
+    
+    Args:
+        mllm: Model instance
+        original_prompt: Original prompt sent to model
+        images: Image paths for the request
+        elem_count: Number of valid elements
+        invalid_area: The invalid area number that was returned
+        max_retries: Maximum retry attempts
+    
+    Returns:
+        (status, response, metadata) or None if all retries fail
+    """
+    retry_prompt = f"""Your previous response selected element {invalid_area}, but only {elem_count} elements are available on screen.
+
+Please select a valid element number between 1 and {elem_count}.
+
+{original_prompt}"""
+    
+    for retry in range(max_retries):
+        print_with_color(f"[Retry {retry + 1}/{max_retries}] Invalid element {invalid_area}, only {elem_count} elements available. Retrying...", "yellow")
+        status, rsp, metadata = mllm.get_model_response(retry_prompt, images)
+        if status:
+            return status, rsp, metadata
+    
+    return None, None, None
+
+
+def validate_element_area(area, elem_list, action_name):
+    """
+    Validate that the element area index is within bounds.
+    
+    Args:
+        area: Element area number (1-indexed)
+        elem_list: List of available elements
+        action_name: Name of the action (for error message)
+    
+    Returns:
+        True if valid, False otherwise
+    """
+    if area < 1 or area > len(elem_list):
+        print_with_color(f"WARNING: {action_name} requested element {area}, but only {len(elem_list)} elements detected.", "yellow")
+        return False
+    return True
+
 
 def calculate_grid_coordinates(area, subarea, screen_width, screen_height, rows, cols):
     """
@@ -255,13 +351,15 @@ else:  # web
     user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
     if user_data_dir:
         print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
-    
+
     controller = WebController(
         browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
         headless=configs.get("WEB_HEADLESS", False),
         url=url,
         user_data_dir=user_data_dir if user_data_dir else None
     )
+    # Store reference for cleanup on exit
+    _web_controller = controller
     width = controller.width
     height = controller.height
     print_with_color(f"Browser resolution: {width}x{height}", "yellow")
@@ -289,6 +387,8 @@ append_to_log(task_desc, report_log_path)
 while round_count < configs["MAX_ROUNDS"]:
     round_count += 1
     print_with_color(f"Round {round_count}", "yellow", log_file=report_log_path, heading_level=2)
+    # Emit progress at start of round (tokens will be updated after model response)
+    emit_progress(round_count, configs["MAX_ROUNDS"])
     screenshot_before = controller.get_screenshot(f"{round_count}_before", task_dir)
 
     # Get interactive elements based on platform
@@ -355,6 +455,12 @@ while round_count < configs["MAX_ROUNDS"]:
             perf_info += f" | CPU: {metadata['cpu_usage']:.1f}% | Memory: {metadata['memory_usage']:.1f}%"
         perf_info += f" | Provider: {metadata['provider']} ({metadata['model']})\n"
         append_to_log(perf_info, report_log_path)
+        # Emit progress with token count from explore step
+        emit_progress(round_count, configs["MAX_ROUNDS"],
+                     metadata.get('total_tokens', 0),
+                     metadata.get('response_time', 0),
+                     metadata.get('prompt_tokens', 0),
+                     metadata.get('completion_tokens', 0))
 
     if status:
         with open(explore_log_path, "a") as logfile:
@@ -395,6 +501,28 @@ while round_count < configs["MAX_ROUNDS"]:
         append_to_log(f"**Summary:** {last_act}\n", report_log_path)
         if act_name == "tap":
             _, area, _, _, _, _ = res
+            
+            # Validate element index and retry if out of bounds
+            if not validate_element_area(area, elem_list, "tap"):
+                # Retry with corrected prompt
+                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+                if retry_result[0]:
+                    retry_res = parse_explore_rsp(retry_result[1])
+                    if retry_res[0] == "tap":
+                        _, area, _, _, _, _ = retry_res
+                        if not validate_element_area(area, elem_list, "tap"):
+                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                            time.sleep(configs["REQUEST_INTERVAL"])
+                            continue  # Skip to next round
+                    else:
+                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue
+                else:
+                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            
             tl, br = elem_list[area - 1].bbox
             x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
 
@@ -421,6 +549,27 @@ while round_count < configs["MAX_ROUNDS"]:
                 break
         elif act_name == "long_press":
             _, area, _, _, _, _ = res
+            
+            # Validate element index and retry if out of bounds
+            if not validate_element_area(area, elem_list, "long_press"):
+                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+                if retry_result[0]:
+                    retry_res = parse_explore_rsp(retry_result[1])
+                    if retry_res[0] == "long_press":
+                        _, area, _, _, _, _ = retry_res
+                        if not validate_element_area(area, elem_list, "long_press"):
+                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                            time.sleep(configs["REQUEST_INTERVAL"])
+                            continue
+                    else:
+                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue
+                else:
+                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            
             tl, br = elem_list[area - 1].bbox
             x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
 
@@ -435,6 +584,27 @@ while round_count < configs["MAX_ROUNDS"]:
                 break
         elif act_name == "swipe":
             _, area, swipe_dir, dist, _, _, _, _ = res
+            
+            # Validate element index and retry if out of bounds
+            if not validate_element_area(area, elem_list, "swipe"):
+                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+                if retry_result[0]:
+                    retry_res = parse_explore_rsp(retry_result[1])
+                    if retry_res[0] == "swipe":
+                        _, area, swipe_dir, dist, _, _, _, _ = retry_res
+                        if not validate_element_area(area, elem_list, "swipe"):
+                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                            time.sleep(configs["REQUEST_INTERVAL"])
+                            continue
+                    else:
+                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue
+                else:
+                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            
             tl, br = elem_list[area - 1].bbox
             x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
 
@@ -474,6 +644,12 @@ while round_count < configs["MAX_ROUNDS"]:
                     perf_info += f" | CPU: {grid_metadata['cpu_usage']:.1f}% | Memory: {grid_metadata['memory_usage']:.1f}%"
                 perf_info += f" | Provider: {grid_metadata['provider']} ({grid_metadata['model']})\n"
                 append_to_log(perf_info, report_log_path)
+                # Emit progress with token count from grid step
+                emit_progress(round_count, configs["MAX_ROUNDS"],
+                             grid_metadata.get('total_tokens', 0),
+                             grid_metadata.get('response_time', 0),
+                             grid_metadata.get('prompt_tokens', 0),
+                             grid_metadata.get('completion_tokens', 0))
 
             if not status:
                 print_with_color(f"ERROR: {grid_rsp}", "red")
@@ -642,6 +818,12 @@ while round_count < configs["MAX_ROUNDS"]:
             perf_info += f" | CPU: {reflect_metadata['cpu_usage']:.1f}% | Memory: {reflect_metadata['memory_usage']:.1f}%"
         perf_info += f" | Provider: {reflect_metadata['provider']} ({reflect_metadata['model']})\n"
         append_to_log(perf_info, report_log_path)
+        # Emit progress with token count from reflection step
+        emit_progress(round_count, configs["MAX_ROUNDS"],
+                     reflect_metadata.get('total_tokens', 0),
+                     reflect_metadata.get('response_time', 0),
+                     reflect_metadata.get('prompt_tokens', 0),
+                     reflect_metadata.get('completion_tokens', 0))
     if status:
         resource_id = elem_list[int(area) - 1].uid
         with open(reflect_log_path, "a") as logfile:
@@ -703,12 +885,18 @@ while round_count < configs["MAX_ROUNDS"]:
     time.sleep(configs["REQUEST_INTERVAL"])
 
 if task_complete:
+    # Emit final progress with completion status
+    emit_progress(round_count, configs["MAX_ROUNDS"])
     print_with_color(f"Autonomous exploration completed successfully. {doc_count} docs generated.", "yellow")
     sys.exit(0)  # Exit with success code
 elif round_count == configs["MAX_ROUNDS"]:
+    # Emit final progress when max rounds reached
+    emit_progress(round_count, configs["MAX_ROUNDS"])
     print_with_color(f"Autonomous exploration finished due to reaching max rounds. {doc_count} docs generated.",
                      "yellow")
     sys.exit(0)  # Exit with success code (max rounds is still a valid completion)
 else:
+    # Emit final progress even on unexpected exit
+    emit_progress(round_count, configs["MAX_ROUNDS"])
     print_with_color(f"Autonomous exploration finished unexpectedly. {doc_count} docs generated.", "red")
     sys.exit(1)  # Exit with error code

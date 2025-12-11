@@ -57,5 +57,4 @@ const RainbowButton = React.forwardRef<HTMLButtonElement, RainbowButtonProps>(
 
 RainbowButton.displayName = "RainbowButton"
 
-// eslint-disable-next-line react-refresh/only-export-components
 export { RainbowButton, rainbowButtonVariants, type RainbowButtonProps }

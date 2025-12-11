@@ -103,13 +103,20 @@ export default [
       '@typescript-eslint/no-empty-object-type': 'off',
       'react/prop-types': 'off',
       'react/no-unknown-property': ['error', { ignore: ['cmdk-input-wrapper'] }],
-      'react-hooks/set-state-in-effect': 'warn',
       'no-duplicate-imports': 'error',
     },
     settings: {
       react: {
         version: 'detect',
       },
+    },
+  },
+  // Disable react-refresh warning for shadcn/ui components
+  // These components follow the shadcn pattern of exporting variants alongside components
+  {
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ]

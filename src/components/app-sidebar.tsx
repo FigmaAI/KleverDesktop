@@ -17,6 +17,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Calendar,
+  CheckCircle,
 } from "lucide-react"
 
 import {
@@ -37,8 +39,9 @@ import type { Project } from "@/types/project"
 import logoImg from "@/assets/logo.png"
 import { cn } from "@/lib/utils"
 
-export type AppView = 'projects' | 'settings'
+export type AppView = 'projects' | 'settings' | 'schedules'
 export type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'danger'
+export type ScheduleSection = 'active' | 'history'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   projects: Project[]
@@ -55,6 +58,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   // Settings specific
   activeSettingsSection?: SettingsSection
   onSettingsSectionChange?: (section: SettingsSection) => void
+  // Schedule specific
+  activeScheduleSection?: ScheduleSection
+  onScheduleSectionChange?: (section: ScheduleSection) => void
 }
 
 const settingsMenuItems: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
@@ -63,6 +69,11 @@ const settingsMenuItems: { id: SettingsSection; label: string; icon: React.Eleme
   { id: 'agent', label: 'Agent', icon: Sparkles },
   { id: 'image', label: 'Image', icon: ImageIcon },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+]
+
+const scheduleMenuItems: { id: ScheduleSection; label: string; icon: React.ElementType }[] = [
+  { id: 'active', label: 'Active & Upcoming', icon: Calendar },
+  { id: 'history', label: 'History', icon: CheckCircle },
 ]
 
 export function AppSidebar({
@@ -78,6 +89,8 @@ export function AppSidebar({
   onDeleteProject,
   activeSettingsSection = 'model',
   onSettingsSectionChange,
+  activeScheduleSection = 'active',
+  onScheduleSectionChange,
   ...props
 }: AppSidebarProps) {
   const { setOpen } = useSidebar()
@@ -97,6 +110,13 @@ export function AppSidebar({
       isActive: currentView === 'projects',
       onClick: () => onNavigate('projects'),
       shortcut: `${modSymbol}1`,
+    },
+    {
+      title: "Scheduled Tasks",
+      icon: Calendar,
+      isActive: currentView === 'schedules',
+      onClick: () => onNavigate('schedules'),
+      shortcut: `${modSymbol}2`,
     },
     {
       title: "Settings",
@@ -210,7 +230,7 @@ export function AppSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <AnimatedThemeToggler 
+              <AnimatedThemeToggler
                 className="flex aspect-square h-8 w-full items-center justify-center rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               />
             </SidebarMenuItem>
@@ -328,7 +348,7 @@ export function AppSidebar({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          
+
           {/* Pagination Footer */}
           {totalPages > 1 && (
             <SidebarFooter className="border-t p-2">
@@ -390,6 +410,45 @@ export function AppSidebar({
                             ? isDanger
                               ? "bg-destructive/10 text-destructive"
                               : "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.label}
+                      </button>
+                    )
+                  })}
+                </nav>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+      )}
+
+      {/* Second sidebar - Schedules menu */}
+      {currentView === 'schedules' && (
+        <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+          <SidebarHeader className="gap-3.5 border-b p-4">
+            <div className="text-base font-medium text-foreground">
+              Scheduled Tasks
+            </div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup className="px-0">
+              <SidebarGroupContent>
+                <nav className="space-y-1 p-2">
+                  {scheduleMenuItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = activeScheduleSection === item.id
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onScheduleSectionChange?.(item.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
                             : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                         )}
                       >
