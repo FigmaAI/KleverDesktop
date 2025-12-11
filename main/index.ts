@@ -10,6 +10,8 @@ import { app, BrowserWindow, ipcMain, crashReporter, session } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
 import { cleanupZombieTasks } from './utils/project-storage';
+import { createMenu } from './menu';
+import { initializeUpdater } from './handlers/updater';
 
 /**
  * Enable crash reporting for debugging (Build 13+)
@@ -70,6 +72,9 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
+
+  // Create application menu
+  createMenu(mainWindow);
 
   // Load the app
   // Electron Forge provides these environment variables
@@ -136,6 +141,9 @@ app.whenReady().then(() => {
 
   // Clean up any tasks that were 'running' when app was terminated
   cleanupZombieTasks();
+  
+  // Initialize auto-updater
+  initializeUpdater();
   
   createWindow();
   registerAllHandlers(ipcMain, getMainWindow);

@@ -28,6 +28,10 @@
   ],
   "author": "JooHyung Park",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FigmaAI/KleverDesktop.git"
+  },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -53,6 +57,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "electron-log": "^5.4.3",
     "framer-motion": "^11.5.4",
     "js-yaml": "^4.1.0",
     "lucide-react": "^0.454.0",
@@ -64,6 +69,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "update-electron-app": "^3.1.2",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
