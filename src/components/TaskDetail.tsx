@@ -300,21 +300,38 @@ export function TaskDetail({
   }
 
   // Check if any task is currently running across all projects
-  const hasRunningTask = useCallback(() => {
-    for (const p of projects) {
-      for (const t of p.tasks) {
-        if (t.status === 'running') {
-          return true
+  // Fetches fresh data from main process to ensure accurate status
+  const hasRunningTask = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.projectList()
+      if (result.success && result.projects) {
+        for (const p of result.projects) {
+          for (const t of p.tasks) {
+            if (t.status === 'running') {
+              return true
+            }
+          }
         }
       }
+      return false
+    } catch (error) {
+      console.error('[TaskDetail] Error checking running tasks:', error)
+      // Fall back to prop-based check if API fails
+      for (const p of projects) {
+        for (const t of p.tasks) {
+          if (t.status === 'running') {
+            return true
+          }
+        }
+      }
+      return false
     }
-    return false
   }, [projects])
 
   const handleStartTask = async () => {
     try {
-      // Check if another task is already running
-      if (hasRunningTask()) {
+      // Check if another task is already running (fetches fresh data)
+      if (await hasRunningTask()) {
         // Queue the task instead of running immediately
         const scheduledAt = new Date()
         const scheduleResult = await window.electronAPI.scheduleAdd(
@@ -322,7 +339,7 @@ export function TaskDetail({
           task.id,
           scheduledAt.toISOString()
         )
-        
+
         if (scheduleResult.success) {
           toast.info('Task queued', {
             description: 'Another task is running. This task will start automatically when the queue is free.',

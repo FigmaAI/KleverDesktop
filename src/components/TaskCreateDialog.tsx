@@ -291,15 +291,32 @@ export function TaskCreateDialog({
   }, [currentProjectId, goal, platform, url, buildApkSource, selectedModel, maxRounds, globalMaxRounds]);
 
   // Check if any task is currently running across all projects
-  const hasRunningTask = useCallback(() => {
-    for (const project of projects) {
-      for (const task of project.tasks) {
-        if (task.status === 'running') {
-          return true;
+  // Fetches fresh data from main process to ensure accurate status
+  const hasRunningTask = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await window.electronAPI.projectList();
+      if (result.success && result.projects) {
+        for (const project of result.projects) {
+          for (const task of project.tasks) {
+            if (task.status === 'running') {
+              return true;
+            }
+          }
         }
       }
+      return false;
+    } catch (error) {
+      console.error('[TaskCreateDialog] Error checking running tasks:', error);
+      // Fall back to prop-based check if API fails
+      for (const project of projects) {
+        for (const task of project.tasks) {
+          if (task.status === 'running') {
+            return true;
+          }
+        }
+      }
+      return false;
     }
-    return false;
   }, [projects]);
 
   // Handle immediate run
@@ -309,10 +326,10 @@ export function TaskCreateDialog({
     setLoading(true);
     try {
       const task = await createTask();
-      
+
       if (task && runImmediately && currentProjectId) {
-        // Check if another task is already running
-        if (hasRunningTask()) {
+        // Check if another task is already running (fetches fresh data)
+        if (await hasRunningTask()) {
           // Queue the task instead of running immediately
           const scheduledAt = new Date(); // Schedule for now (will run when queue is free)
           const scheduleResult = await window.electronAPI.scheduleAdd(
@@ -320,7 +337,7 @@ export function TaskCreateDialog({
             task.id,
             scheduledAt.toISOString()
           );
-          
+
           if (scheduleResult.success) {
             toast.info('Task queued', {
               description: 'Another task is running. This task will start automatically when the queue is free.',
@@ -334,7 +351,7 @@ export function TaskCreateDialog({
           await window.electronAPI.taskStart(currentProjectId, task.id);
         }
       }
-      
+
       onTaskCreated?.(task!);
       handleClose();
     } catch (error) {
