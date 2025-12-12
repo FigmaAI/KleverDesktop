@@ -1,6 +1,5 @@
 import { autoUpdater, BrowserWindow, dialog, app } from 'electron';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { updateElectronApp } = require('update-electron-app');
+import { updateElectronApp } from 'update-electron-app';
 import log from 'electron-log';
 
 // Configure logging
