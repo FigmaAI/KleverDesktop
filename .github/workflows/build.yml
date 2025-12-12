@@ -194,6 +194,7 @@ jobs:
           name: macos-artifacts
           path: |
             out/make/**/*.dmg
+            out/make/**/*.zip
           retention-days: 7
 
       - name: Upload Build Log
@@ -252,6 +253,8 @@ jobs:
           name: windows-artifacts
           path: |
             out/make/squirrel.windows/**/*Setup.exe
+            out/make/squirrel.windows/**/RELEASES
+            out/make/squirrel.windows/**/*.nupkg
           retention-days: 7
 
   # ========================================
@@ -290,10 +293,10 @@ jobs:
       - name: List Artifacts
         run: |
           echo "=== macOS Artifacts ==="
-          find artifacts/macos -type f -name "*.dmg" -exec ls -lh {} \; || echo "No DMG files found"
+          find artifacts/macos -type f \( -name "*.dmg" -o -name "*.zip" \) -exec ls -lh {} \; || echo "No macOS files found"
           echo ""
           echo "=== Windows Artifacts ==="
-          find artifacts/windows -type f -name "*.exe" -exec ls -lh {} \; || echo "No EXE files found"
+          find artifacts/windows -type f \( -name "*.exe" -o -name "RELEASES" -o -name "*.nupkg" \) -exec ls -lh {} \; || echo "No Windows files found"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -312,15 +315,19 @@ jobs:
             - **Windows**: Run the Setup.exe installer
 
             ### Auto-Updates
-            - Windows: Auto-updates are enabled via Squirrel
-            - macOS: Check for updates in the app menu
+            - Both macOS and Windows support automatic updates
+            - Check for updates via the app menu
+            - Updates will be downloaded and installed automatically
 
             ---
 
             For full changelog and documentation, see [CLAUDE.md](https://github.com/FigmaAI/KleverDesktop/blob/main/CLAUDE.md)
           files: |
             artifacts/macos/**/*.dmg
+            artifacts/macos/**/*.zip
             artifacts/windows/**/*.exe
+            artifacts/windows/**/RELEASES
+            artifacts/windows/**/*.nupkg
           draft: ${{ github.event.inputs.draft == 'true' }}
           prerelease: ${{ github.event.inputs.prerelease == 'true' }}
           generate_release_notes: true

@@ -64,12 +64,11 @@ module.exports = {
       platforms: ['darwin'],
     },
 
-    // ZIP (Portable) - Disabled to reduce artifact size
-    // Uncomment if needed for auto-updates or portable distribution
-    // {
-    //   name: '@electron-forge/maker-zip',
-    //   platforms: ['darwin', 'win32'],
-    // },
+    // ZIP - Required for auto-updates (macOS needs .zip, per update-electron-app docs)
+    {
+      name: '@electron-forge/maker-zip',
+      platforms: ['darwin'], // macOS only; Windows uses Squirrel .nupkg
+    },
   ],
 
   plugins: [
