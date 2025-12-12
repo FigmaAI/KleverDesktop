@@ -298,39 +298,6 @@ jobs:
           echo "=== Windows Artifacts ==="
           find artifacts/windows -type f \( -name "*.exe" -o -name "RELEASES" -o -name "*.nupkg" \) -exec ls -lh {} \; || echo "No Windows files found"
 
-      - name: Duplicate Universal ZIP for Architecture-Specific Updates
-        run: |
-          echo "Creating architecture-specific copies of universal ZIP for auto-updates..."
-
-          # Find the universal ZIP file
-          UNIVERSAL_ZIP=$(find artifacts/macos -name "*-darwin-universal-*.zip" | head -n 1)
-
-          if [ -z "$UNIVERSAL_ZIP" ]; then
-            echo "❌ Universal ZIP not found"
-            exit 1
-          fi
-
-          echo "Found universal ZIP: $UNIVERSAL_ZIP"
-
-          # Extract version and base name
-          DIR=$(dirname "$UNIVERSAL_ZIP")
-          BASENAME=$(basename "$UNIVERSAL_ZIP" .zip)
-
-          # Create arm64 and x64 copies
-          ARM64_ZIP="${BASENAME/-universal-/-arm64-}.zip"
-          X64_ZIP="${BASENAME/-universal-/-x64-}.zip"
-
-          cp "$UNIVERSAL_ZIP" "$DIR/$ARM64_ZIP"
-          cp "$UNIVERSAL_ZIP" "$DIR/$X64_ZIP"
-
-          echo "✅ Created: $ARM64_ZIP"
-          echo "✅ Created: $X64_ZIP"
-
-          # List all ZIPs
-          echo ""
-          echo "=== All macOS ZIPs ==="
-          find artifacts/macos -name "*.zip" -exec ls -lh {} \;
-
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
