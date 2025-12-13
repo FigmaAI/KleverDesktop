@@ -58,6 +58,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "electron-log": "^5.4.3",
+    "electron-squirrel-startup": "^1.0.1",
     "framer-motion": "^11.5.4",
     "js-yaml": "^4.1.0",
     "lucide-react": "^0.454.0",

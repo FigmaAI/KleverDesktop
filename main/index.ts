@@ -6,6 +6,11 @@
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./vite-env.d.ts" />
 
+// Handle creating/removing shortcuts on Windows when installing/uninstalling
+if (require('electron-squirrel-startup')) {
+  require('electron').app.quit();
+}
+
 import { app, BrowserWindow, ipcMain, crashReporter, session } from 'electron';
 import * as path from 'path';
 import { registerAllHandlers, cleanupAllProcesses } from './handlers';
