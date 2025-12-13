@@ -693,7 +693,9 @@ export function TaskCreateDialog({
                 ) : (
                   <>
                     Run
-                    <span className="ml-1.5 text-xs opacity-60">⌘⏎</span>
+                    <span className="ml-1.5 text-xs opacity-60">
+                      {window.navigator.platform.toLowerCase().includes('mac') ? '⌘⏎' : 'Ctrl+⏎'}
+                    </span>
                   </>
                 )}
               </Button>
@@ -712,7 +714,9 @@ export function TaskCreateDialog({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setScheduleDialogOpen(true)}>
                     <span className="flex-1">Schedule run</span>
-                    <span className="ml-4 text-xs text-muted-foreground">⌥⌘⏎</span>
+                    <span className="ml-4 text-xs text-muted-foreground">
+                      {window.navigator.platform.toLowerCase().includes('mac') ? '⌥⌘⏎' : 'Alt+Ctrl+⏎'}
+                    </span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
