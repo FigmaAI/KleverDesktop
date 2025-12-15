@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Save, Search } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingScreen } from './components/LoadingScreen'
@@ -44,17 +45,18 @@ import type { Project, Task } from '@/types/project'
 type AppView = 'projects' | 'settings' | 'schedules'
 type ScheduleSection = 'active' | 'history'
 
-// Settings section labels for breadcrumb
-const settingsSectionLabels: Record<SettingsSection, string> = {
-  model: 'Model',
-  platform: 'Platform',
-  agent: 'Agent',
-  image: 'Image',
-  preferences: 'Preferences',
-  danger: 'Danger Zone',
+// Settings section labels translation keys
+const settingsSectionLabelKeys: Record<SettingsSection, string> = {
+  model: 'settings.model',
+  platform: 'settings.platform',
+  agent: 'settings.agent',
+  image: 'settings.image',
+  preferences: 'settings.preferences',
+  danger: 'settings.dangerZone',
 }
 
 function MainApp() {
+  const { t } = useTranslation()
   const [commandOpen, setCommandOpen] = useState(false)
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false)
@@ -366,7 +368,7 @@ function MainApp() {
 
     if (currentView === 'projects') {
       items.push({
-        label: 'Projects',
+        label: t('nav.projects'),
         onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined
       })
 
@@ -383,10 +385,10 @@ function MainApp() {
       }
     } else if (currentView === 'settings') {
       items.push({
-        label: 'Settings',
+        label: t('nav.settings'),
         onClick: () => setActiveSettingsSection('model')
       })
-      items.push({ label: settingsSectionLabels[activeSettingsSection] })
+      items.push({ label: t(settingsSectionLabelKeys[activeSettingsSection]) })
     }
 
     return items

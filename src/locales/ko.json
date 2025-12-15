@@ -171,6 +171,13 @@
     "copy": "복사",
     "noOutput": "아직 출력이 없습니다"
   },
+  "schedules": {
+    "title": "예약된 태스크",
+    "activeUpcoming": "활성 및 예정",
+    "history": "기록",
+    "empty": "예약된 태스크가 없습니다",
+    "emptyDesc": "특정 시간에 실행할 태스크를 예약하세요"
+  },
   "language": {
     "en": "영어",
     "ko": "한국어"

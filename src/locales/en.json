@@ -171,6 +171,13 @@
     "copy": "Copy",
     "noOutput": "No output yet"
   },
+  "schedules": {
+    "title": "Scheduled Tasks",
+    "activeUpcoming": "Active & Upcoming",
+    "history": "History",
+    "empty": "No scheduled tasks",
+    "emptyDesc": "Schedule a task to run at a specific time"
+  },
   "language": {
     "en": "English",
     "ko": "Korean"

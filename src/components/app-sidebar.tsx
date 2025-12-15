@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslation } from "react-i18next"
 import {
   FolderKanban,
   Settings,
@@ -63,18 +64,18 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onScheduleSectionChange?: (section: ScheduleSection) => void
 }
 
-const settingsMenuItems: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
-  { id: 'model', label: 'Model', icon: Brain },
-  { id: 'platform', label: 'Platform', icon: Smartphone },
-  { id: 'agent', label: 'Agent', icon: Sparkles },
-  { id: 'image', label: 'Image', icon: ImageIcon },
-  { id: 'preferences', label: 'Preferences', icon: Globe },
-  { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+const settingsMenuItems: { id: SettingsSection; labelKey: string; icon: React.ElementType }[] = [
+  { id: 'model', labelKey: 'settings.model', icon: Brain },
+  { id: 'platform', labelKey: 'settings.platform', icon: Smartphone },
+  { id: 'agent', labelKey: 'settings.agent', icon: Sparkles },
+  { id: 'image', labelKey: 'settings.image', icon: ImageIcon },
+  { id: 'preferences', labelKey: 'settings.preferences', icon: Globe },
+  { id: 'danger', labelKey: 'settings.dangerZone', icon: AlertTriangle },
 ]
 
-const scheduleMenuItems: { id: ScheduleSection; label: string; icon: React.ElementType }[] = [
-  { id: 'active', label: 'Active & Upcoming', icon: Calendar },
-  { id: 'history', label: 'History', icon: CheckCircle },
+const scheduleMenuItems: { id: ScheduleSection; labelKey: string; icon: React.ElementType }[] = [
+  { id: 'active', labelKey: 'schedules.activeUpcoming', icon: Calendar },
+  { id: 'history', labelKey: 'schedules.history', icon: CheckCircle },
 ]
 
 export function AppSidebar({
@@ -94,6 +95,7 @@ export function AppSidebar({
   onScheduleSectionChange,
   ...props
 }: AppSidebarProps) {
+  const { t } = useTranslation()
   const { setOpen } = useSidebar()
   const { isOpen: terminalOpen, setIsOpen: setTerminalOpen } = useTerminal()
   const [currentPage, setCurrentPage] = React.useState(1)
@@ -106,21 +108,21 @@ export function AppSidebar({
   // Navigation items - state based instead of routing
   const navMain = [
     {
-      title: "Projects",
+      title: t('nav.projects'),
       icon: FolderKanban,
       isActive: currentView === 'projects',
       onClick: () => onNavigate('projects'),
       shortcut: `${modSymbol}1`,
     },
     {
-      title: "Scheduled Tasks",
+      title: t('nav.schedules'),
       icon: Calendar,
       isActive: currentView === 'schedules',
       onClick: () => onNavigate('schedules'),
       shortcut: `${modSymbol}2`,
     },
     {
-      title: "Settings",
+      title: t('nav.settings'),
       icon: Settings,
       isActive: currentView === 'settings',
       onClick: () => onNavigate('settings'),
@@ -214,7 +216,7 @@ export function AppSidebar({
                 tooltip={{
                   children: (
                     <span className="flex items-center gap-2">
-                      Terminal
+                      {t('terminal.title')}
                       <kbd className="ml-1 inline-flex h-5 select-none items-center rounded border border-primary/20 bg-primary/10 text-primary-foreground px-1.5 font-mono text-[10px] font-medium">
                         Ctrl+Shift+`
                       </kbd>
@@ -227,7 +229,7 @@ export function AppSidebar({
                 className="px-2.5 md:px-2"
               >
                 <Terminal />
-                <span>Terminal</span>
+                <span>{t('terminal.title')}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -245,12 +247,12 @@ export function AppSidebar({
           <SidebarHeader className="gap-3.5 border-b p-4">
             <div className="flex w-full items-center justify-between">
               <div className="text-base font-medium text-foreground">
-                Projects
+                {t('nav.projects')}
               </div>
               <button
                 onClick={onCreateProject}
                 className="flex items-center justify-center rounded-md p-1 hover:bg-sidebar-accent"
-                title="New Project (⌘N)"
+                title={t('sidebar.newProject')}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -262,13 +264,13 @@ export function AppSidebar({
                 {sortedProjects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center p-8 text-center">
                     <p className="text-sm text-muted-foreground">
-                      No projects yet
+                      {t('projects.empty')}
                     </p>
                     <button
                       onClick={onCreateProject}
                       className="mt-2 text-sm text-primary hover:underline"
                     >
-                      Create your first project
+                      {t('projects.emptyDesc')}
                     </button>
                   </div>
                 ) : (
@@ -324,10 +326,10 @@ export function AppSidebar({
                                 onOpenWorkDir?.(project)
                               }}
                               className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
-                              title="Open workspace folder"
+                              title={t('sidebar.openWorkDir')}
                             >
                               <FolderOpen className="h-3 w-3" />
-                              <span>Open Folder</span>
+                              <span>{t('sidebar.openWorkDir')}</span>
                             </button>
                             <button
                               onClick={(e) => {
@@ -335,10 +337,10 @@ export function AppSidebar({
                                 onDeleteProject?.(project)
                               }}
                               className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors"
-                              title="Delete project"
+                              title={t('sidebar.deleteProject')}
                             >
                               <Trash2 className="h-3 w-3" />
-                              <span>Delete</span>
+                              <span>{t('common.delete')}</span>
                             </button>
                           </div>
                         )}
@@ -389,7 +391,7 @@ export function AppSidebar({
         <Sidebar collapsible="none" className="hidden flex-1 md:flex">
           <SidebarHeader className="gap-3.5 border-b p-4">
             <div className="text-base font-medium text-foreground">
-              Settings
+              {t('nav.settings')}
             </div>
           </SidebarHeader>
           <SidebarContent>
@@ -415,7 +417,7 @@ export function AppSidebar({
                         )}
                       >
                         <Icon className="h-4 w-4" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </button>
                     )
                   })}
@@ -431,7 +433,7 @@ export function AppSidebar({
         <Sidebar collapsible="none" className="hidden flex-1 md:flex">
           <SidebarHeader className="gap-3.5 border-b p-4">
             <div className="text-base font-medium text-foreground">
-              Scheduled Tasks
+              {t('nav.schedules')}
             </div>
           </SidebarHeader>
           <SidebarContent>
@@ -454,7 +456,7 @@ export function AppSidebar({
                         )}
                       >
                         <Icon className="h-4 w-4" />
-                        {item.label}
+                        {t(item.labelKey)}
                       </button>
                     )
                   })}
