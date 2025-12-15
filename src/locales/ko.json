@@ -1,0 +1,178 @@
+{
+  "common": {
+    "save": "저장",
+    "saved": "저장됨",
+    "saving": "저장 중...",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "생성",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "loading": "로딩 중...",
+    "search": "검색...",
+    "yes": "예",
+    "no": "아니오",
+    "confirm": "확인",
+    "error": "오류",
+    "success": "성공",
+    "warning": "경고",
+    "info": "정보"
+  },
+  "nav": {
+    "projects": "프로젝트",
+    "settings": "설정",
+    "schedules": "예약"
+  },
+  "sidebar": {
+    "projects": "프로젝트",
+    "newProject": "새 프로젝트",
+    "settings": "설정",
+    "schedules": "예약",
+    "openWorkDir": "작업 디렉토리 열기",
+    "deleteProject": "프로젝트 삭제"
+  },
+  "settings": {
+    "title": "설정",
+    "model": "모델",
+    "platform": "플랫폼",
+    "agent": "에이전트",
+    "image": "이미지",
+    "preferences": "환경설정",
+    "dangerZone": "위험 구역",
+    "saveSuccess": "설정이 성공적으로 업데이트되었습니다.",
+    "saveFailed": "저장 실패",
+    "cannotSave": "저장 불가",
+    "testApiFirst": "저장하기 전에 API 연결을 테스트해주세요.",
+    "modelConfig": {
+      "title": "모델 설정",
+      "description": "AI 모델 제공자 및 설정 구성",
+      "provider": "제공자",
+      "model": "모델",
+      "apiKey": "API 키",
+      "baseUrl": "기본 URL",
+      "testConnection": "연결 테스트",
+      "connectionSuccess": "연결 성공!",
+      "connectionFailed": "연결 실패"
+    },
+    "platformConfig": {
+      "title": "플랫폼 설정",
+      "description": "플랫폼별 설정 구성",
+      "android": "안드로이드",
+      "web": "웹",
+      "screenshotDir": "스크린샷 디렉토리",
+      "xmlDir": "XML 디렉토리",
+      "sdkPath": "SDK 경로",
+      "browserType": "브라우저 유형",
+      "headless": "헤드리스 모드",
+      "viewportWidth": "뷰포트 너비",
+      "viewportHeight": "뷰포트 높이"
+    },
+    "agentConfig": {
+      "title": "에이전트 동작",
+      "description": "에이전트 실행 매개변수 구성",
+      "maxTokens": "최대 토큰",
+      "temperature": "온도",
+      "requestInterval": "요청 간격",
+      "maxRounds": "최대 라운드",
+      "minDist": "최소 거리",
+      "docRefine": "문서 개선",
+      "enableReflection": "반영 활성화"
+    },
+    "imageConfig": {
+      "title": "이미지 최적화",
+      "description": "이미지 처리 설정 구성",
+      "maxWidth": "최대 너비",
+      "maxHeight": "최대 높이",
+      "quality": "품질",
+      "optimize": "이미지 최적화"
+    },
+    "preferencesConfig": {
+      "title": "환경설정",
+      "description": "애플리케이션 환경설정 구성",
+      "systemLanguage": "시스템 언어",
+      "systemLanguageDesc": "애플리케이션 인터페이스 언어를 선택하세요",
+      "darkMode": "다크 모드"
+    },
+    "dangerZoneConfig": {
+      "title": "위험 구역",
+      "resetConfig": "설정 초기화",
+      "resetConfigDesc": "설정 파일을 삭제하고 설정 마법사로 돌아갑니다",
+      "resetButton": "설정 초기화",
+      "resetDialogTitle": "설정을 초기화하시겠습니까?",
+      "resetDialogDesc": "모든 설정이 삭제되고 설정 마법사로 리디렉션됩니다.",
+      "resetDialogWarning": "이 작업은 되돌릴 수 없습니다.",
+      "resetDialogItems": {
+        "title": "삭제될 항목:",
+        "aiConfig": "AI 모델 설정",
+        "apiKeys": "API 키 및 엔드포인트",
+        "preferences": "기타 모든 환경설정"
+      },
+      "resetDialogRedirect": "모든 것을 다시 구성하기 위해 설정 마법사로 리디렉션됩니다.",
+      "resetting": "초기화 중..."
+    }
+  },
+  "projects": {
+    "title": "프로젝트",
+    "empty": "프로젝트가 없습니다",
+    "emptyDesc": "시작하려면 첫 번째 프로젝트를 만드세요",
+    "createProject": "프로젝트 생성",
+    "newProject": "새 프로젝트",
+    "selectProject": "세부 정보를 보려면 프로젝트를 선택하세요",
+    "deleteConfirm": "\"{{name}}\"을(를) 삭제하시겠습니까?",
+    "deleteFailed": "프로젝트 삭제 실패",
+    "platform": {
+      "android": "안드로이드",
+      "web": "웹"
+    }
+  },
+  "tasks": {
+    "title": "태스크",
+    "empty": "태스크가 없습니다",
+    "emptyDesc": "자동화를 시작하려면 태스크를 만드세요",
+    "createTask": "태스크 생성",
+    "newTask": "새 태스크",
+    "status": {
+      "pending": "대기 중",
+      "running": "실행 중",
+      "completed": "완료됨",
+      "failed": "실패",
+      "cancelled": "취소됨"
+    },
+    "run": "실행",
+    "stop": "중지",
+    "viewResults": "결과 보기",
+    "deleteConfirm": "이 태스크를 삭제하시겠습니까?"
+  },
+  "setup": {
+    "title": "설정 마법사",
+    "welcome": "Klever Desktop에 오신 것을 환영합니다",
+    "welcomeDesc": "시작하기 위해 환경을 설정해 보겠습니다",
+    "step": "{{total}}단계 중 {{current}}단계",
+    "environment": {
+      "title": "환경 설정",
+      "checking": "환경 확인 중...",
+      "ready": "환경이 준비되었습니다",
+      "setupRequired": "설정이 필요합니다"
+    },
+    "model": {
+      "title": "모델 설정",
+      "description": "AI 모델 제공자를 구성하세요"
+    },
+    "complete": {
+      "title": "설정 완료",
+      "description": "모든 준비가 완료되었습니다! 프로젝트를 만들어 보세요."
+    }
+  },
+  "terminal": {
+    "title": "터미널",
+    "clear": "지우기",
+    "copy": "복사",
+    "noOutput": "아직 출력이 없습니다"
+  },
+  "language": {
+    "en": "영어",
+    "ko": "한국어"
+  }
+}

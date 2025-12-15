@@ -18,6 +18,7 @@ import { ModelSettingsCard } from '@/components/ModelSettingsCard'
 import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
 import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
+import { PreferencesSettingsCard } from '@/components/PreferencesSettingsCard'
 import type { SettingsSection } from '@/components/app-sidebar'
 
 interface SettingsProps {
@@ -46,6 +47,7 @@ export function Settings({
     platform: null,
     agent: null,
     image: null,
+    preferences: null,
     danger: null,
   })
 
@@ -59,6 +61,8 @@ export function Settings({
     setAgentSettings,
     imageSettings,
     setImageSettings,
+    preferencesSettings,
+    setPreferencesSettings,
     loading,
     saving,
     saveError,
@@ -78,10 +82,11 @@ export function Settings({
         platformSettings,
         agentSettings,
         imageSettings,
+        preferencesSettings,
       })
       isInitialLoad.current = false
     }
-  }, [loading, modelConfig, platformSettings, agentSettings, imageSettings])
+  }, [loading, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings])
 
   // Show toast on save success or error
   useEffect(() => {
@@ -104,11 +109,12 @@ export function Settings({
         platformSettings,
         agentSettings,
         imageSettings,
+        preferencesSettings,
       })
       const changed = currentSnapshot !== settingsSnapshot.current
       onHasChangesChange(changed)
     }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading, onHasChangesChange])
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, loading, onHasChangesChange])
 
   // Update saving state
   useEffect(() => {
@@ -136,9 +142,10 @@ export function Settings({
       platformSettings,
       agentSettings,
       imageSettings,
+      preferencesSettings,
     })
     onHasChangesChange(false)
-  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, onHasChangesChange])
+  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, onHasChangesChange])
 
   // Expose save function to parent
   useEffect(() => {
@@ -224,6 +231,16 @@ export function Settings({
           <BlurFade delay={0.4}>
             <div ref={(el) => (sectionRefs.current.image = el)} className="scroll-mt-6">
               <ImageSettingsCard imageSettings={imageSettings} setImageSettings={setImageSettings} />
+            </div>
+          </BlurFade>
+
+          {/* Preferences */}
+          <BlurFade delay={0.45}>
+            <div ref={(el) => (sectionRefs.current.preferences = el)} className="scroll-mt-6">
+              <PreferencesSettingsCard
+                preferencesSettings={preferencesSettings}
+                setPreferencesSettings={setPreferencesSettings}
+              />
             </div>
           </BlurFade>
 

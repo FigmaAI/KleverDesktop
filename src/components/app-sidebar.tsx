@@ -40,7 +40,7 @@ import logoImg from "@/assets/logo.png"
 import { cn } from "@/lib/utils"
 
 export type AppView = 'projects' | 'settings' | 'schedules'
-export type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'danger'
+export type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'preferences' | 'danger'
 export type ScheduleSection = 'active' | 'history'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -68,6 +68,7 @@ const settingsMenuItems: { id: SettingsSection; label: string; icon: React.Eleme
   { id: 'platform', label: 'Platform', icon: Smartphone },
   { id: 'agent', label: 'Agent', icon: Sparkles },
   { id: 'image', label: 'Image', icon: ImageIcon },
+  { id: 'preferences', label: 'Preferences', icon: Globe },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ]
 

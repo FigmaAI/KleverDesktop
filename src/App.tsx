@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { LoadingScreen } from './components/LoadingScreen'
 import { TerminalProvider } from './contexts/TerminalContext'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { changeLanguage, type SupportedLanguage } from './i18n'
 import {
   SidebarInset,
   SidebarProvider,
@@ -49,6 +50,7 @@ const settingsSectionLabels: Record<SettingsSection, string> = {
   platform: 'Platform',
   agent: 'Agent',
   image: 'Image',
+  preferences: 'Preferences',
   danger: 'Danger Zone',
 }
 
@@ -626,6 +628,23 @@ function App() {
     mediaQuery.addEventListener('change', updateTheme)
 
     return () => mediaQuery.removeEventListener('change', updateTheme)
+  }, [])
+
+  // Load and sync system language from config
+  useEffect(() => {
+    const loadLanguageFromConfig = async () => {
+      try {
+        const result = await window.electronAPI.configLoad()
+        if (result.success && result.config?.preferences?.systemLanguage) {
+          const savedLang = result.config.preferences.systemLanguage as SupportedLanguage
+          await changeLanguage(savedLang)
+        }
+      } catch (error) {
+        console.error('[App] Error loading language from config:', error)
+      }
+    }
+
+    loadLanguageFromConfig()
   }, [])
 
   useEffect(() => {
