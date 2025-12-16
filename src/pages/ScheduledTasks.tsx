@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Calendar, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,26 +48,27 @@ interface ScheduleTableProps {
     showActions: boolean
     onCancel: (projectId: string, taskId: string) => void
     onTaskSelect?: (projectId: string, taskId: string) => void
+    t: (key: string) => string
 }
 
-function ScheduleTable({ items, showActions, onCancel, onTaskSelect }: ScheduleTableProps) {
+function ScheduleTable({ items, showActions, onCancel, onTaskSelect, t }: ScheduleTableProps) {
     return (
         <div className="rounded-md border">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="min-w-[250px]">Task</TableHead>
-                        <TableHead className="w-[150px]">Project</TableHead>
-                        <TableHead className="w-[120px]">Status</TableHead>
-                        <TableHead className="w-[150px]">Scheduled</TableHead>
-                        {showActions && <TableHead className="w-[80px]">Actions</TableHead>}
+                        <TableHead className="min-w-[250px]">{t('schedules.table.task')}</TableHead>
+                        <TableHead className="w-[150px]">{t('schedules.table.project')}</TableHead>
+                        <TableHead className="w-[120px]">{t('schedules.table.status')}</TableHead>
+                        <TableHead className="w-[150px]">{t('schedules.table.scheduled')}</TableHead>
+                        {showActions && <TableHead className="w-[80px]">{t('schedules.table.actions')}</TableHead>}
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {items.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={showActions ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                                No scheduled tasks
+                                {t('schedules.empty')}
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -74,14 +76,14 @@ function ScheduleTable({ items, showActions, onCancel, onTaskSelect }: ScheduleT
                             const { date, time } = formatDateTime(task.scheduledAt!)
 
                             return (
-                                <TableRow 
+                                <TableRow
                                     key={task.id}
                                     className={onTaskSelect ? "cursor-pointer hover:bg-muted/50 transition-colors" : ""}
                                     onClick={() => onTaskSelect?.(projectId, task.id)}
                                 >
                                     <TableCell>
                                         <span className="font-medium line-clamp-1">
-                                            {task.name || task.goal || 'Untitled Task'}
+                                            {task.name || task.goal || t('schedules.untitledTask')}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
@@ -108,7 +110,7 @@ function ScheduleTable({ items, showActions, onCancel, onTaskSelect }: ScheduleT
                                                         onCancel(projectId, task.id)
                                                     }}
                                                 >
-                                                    Cancel
+                                                    {t('schedules.cancel')}
                                                 </Button>
                                             )}
                                             {task.status === 'failed' && task.error && (
@@ -136,10 +138,12 @@ function ScheduleTable({ items, showActions, onCancel, onTaskSelect }: ScheduleT
 }
 
 export function ScheduledTasks({ section, projects, onTaskSelect, onProjectsChange }: ScheduledTasksProps) {
+    const { t } = useTranslation()
+
     // Derive scheduled tasks from projects - no separate API call needed
     const scheduledTasks = useMemo<ScheduledTaskInfo[]>(() => {
         const tasks: ScheduledTaskInfo[] = []
-        
+
         for (const project of projects) {
             for (const task of project.tasks) {
                 if (task.scheduledAt) {
@@ -151,15 +155,15 @@ export function ScheduledTasks({ section, projects, onTaskSelect, onProjectsChan
                 }
             }
         }
-        
+
         // Sort by scheduledAt
-        return tasks.sort((a, b) => 
+        return tasks.sort((a, b) =>
             new Date(a.task.scheduledAt!).getTime() - new Date(b.task.scheduledAt!).getTime()
         )
     }, [projects])
 
     const handleCancel = async (projectId: string, taskId: string) => {
-        if (!confirm('Are you sure you want to cancel this scheduled task?')) return
+        if (!confirm(t('schedules.cancelConfirm'))) return
         await window.electronAPI.scheduleCancel(projectId, taskId)
         onProjectsChange?.()
     }
@@ -184,12 +188,12 @@ export function ScheduledTasks({ section, projects, onTaskSelect, onProjectsChan
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
                             <Calendar className="h-6 w-6" />
-                            {section === 'active' ? 'Active & Upcoming' : 'History'}
+                            {section === 'active' ? t('schedules.activeUpcoming') : t('schedules.history')}
                         </h1>
                         <p className="text-muted-foreground">
                             {section === 'active'
-                                ? 'Tasks scheduled to run'
-                                : 'Completed scheduled tasks'}
+                                ? t('schedules.activeDesc')
+                                : t('schedules.historyDesc')}
                         </p>
                     </div>
                 </div>
@@ -198,18 +202,20 @@ export function ScheduledTasks({ section, projects, onTaskSelect, onProjectsChan
             <BlurFade delay={0.2}>
                 <div className="flex-1 p-6">
                     {section === 'active' ? (
-                        <ScheduleTable 
-                            items={activeTasks} 
+                        <ScheduleTable
+                            items={activeTasks}
                             showActions={true}
                             onCancel={handleCancel}
                             onTaskSelect={onTaskSelect}
+                            t={t}
                         />
                     ) : (
-                        <ScheduleTable 
-                            items={completedTasks} 
+                        <ScheduleTable
+                            items={completedTasks}
                             showActions={false}
                             onCancel={handleCancel}
                             onTaskSelect={onTaskSelect}
+                            t={t}
                         />
                     )}
                 </div>

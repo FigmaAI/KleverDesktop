@@ -93,15 +93,15 @@ export function Settings({
   // Show toast on save success or error
   useEffect(() => {
     if (saveSuccess) {
-      toast.success('Your configuration has been updated successfully.')
+      toast.success(t('settings.saveSuccess'))
     }
-  }, [saveSuccess])
+  }, [saveSuccess, t])
 
   useEffect(() => {
     if (saveError) {
-      toast.error('Save Failed', { description: saveError })
+      toast.error(t('settings.saveFailed'), { description: saveError })
     }
-  }, [saveError])
+  }, [saveError, t])
 
   // Detect changes (compare with saved snapshot)
   useEffect(() => {
@@ -131,8 +131,8 @@ export function Settings({
   // Manual save handler
   const handleManualSave = useCallback(async () => {
     if (!modelConfigValid) {
-      toast.warning('Cannot Save', {
-        description: 'Please test your API connection before saving.'
+      toast.warning(t('settings.cannotSave'), {
+        description: t('settings.testApiFirst')
       })
       return
     }
@@ -147,7 +147,7 @@ export function Settings({
       preferencesSettings,
     })
     onHasChangesChange(false)
-  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, onHasChangesChange])
+  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, onHasChangesChange, t])
 
   // Expose save function to parent
   useEffect(() => {
@@ -191,7 +191,7 @@ export function Settings({
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
+          <p className="text-sm text-muted-foreground">{t('settings.loading')}</p>
         </div>
       </div>
     )

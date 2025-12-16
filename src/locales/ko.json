@@ -41,6 +41,7 @@
     "image": "이미지",
     "preferences": "환경설정",
     "dangerZone": "위험 구역",
+    "loading": "설정 로딩 중...",
     "saveSuccess": "설정이 성공적으로 업데이트되었습니다.",
     "saveFailed": "저장 실패",
     "cannotSave": "저장 불가",
@@ -262,7 +263,19 @@
     "activeUpcoming": "활성 및 예정",
     "history": "기록",
     "empty": "예약된 태스크가 없습니다",
-    "emptyDesc": "특정 시간에 실행할 태스크를 예약하세요"
+    "emptyDesc": "특정 시간에 실행할 태스크를 예약하세요",
+    "activeDesc": "실행 예정인 태스크",
+    "historyDesc": "완료된 예약 태스크",
+    "table": {
+      "task": "태스크",
+      "project": "프로젝트",
+      "status": "상태",
+      "scheduled": "예약 시간",
+      "actions": "작업"
+    },
+    "untitledTask": "제목 없는 태스크",
+    "cancel": "취소",
+    "cancelConfirm": "이 예약된 태스크를 취소하시겠습니까?"
   },
   "keyboard": {
     "title": "키보드 단축키",

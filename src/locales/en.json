@@ -41,6 +41,7 @@
     "image": "Image",
     "preferences": "Preferences",
     "dangerZone": "Danger Zone",
+    "loading": "Loading settings...",
     "saveSuccess": "Your configuration has been updated successfully.",
     "saveFailed": "Save Failed",
     "cannotSave": "Cannot Save",
@@ -262,7 +263,19 @@
     "activeUpcoming": "Active & Upcoming",
     "history": "History",
     "empty": "No scheduled tasks",
-    "emptyDesc": "Schedule a task to run at a specific time"
+    "emptyDesc": "Schedule a task to run at a specific time",
+    "activeDesc": "Tasks scheduled to run",
+    "historyDesc": "Completed scheduled tasks",
+    "table": {
+      "task": "Task",
+      "project": "Project",
+      "status": "Status",
+      "scheduled": "Scheduled",
+      "actions": "Actions"
+    },
+    "untitledTask": "Untitled Task",
+    "cancel": "Cancel",
+    "cancelConfirm": "Are you sure you want to cancel this scheduled task?"
   },
   "keyboard": {
     "title": "Keyboard Shortcuts",
