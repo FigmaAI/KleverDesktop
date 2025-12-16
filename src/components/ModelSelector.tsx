@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ export function ModelSelector({
   disabled = false,
   registeredProviders,
 }: ModelSelectorProps) {
+  const { t } = useTranslation()
   const [provider, setProvider] = useState(value?.provider || '')
   const [model, setModel] = useState(value?.model || '')
 
@@ -153,7 +155,7 @@ export function ModelSelector({
             <span className="truncate">{m}</span>
             <div className="flex gap-1 shrink-0">
               {modelInfo?.supportsVision && (
-                <Badge variant="default" className="text-xs px-1 py-0">Vision</Badge>
+                <Badge variant="default" className="text-xs px-1 py-0">{t('modelSelector.vision')}</Badge>
               )}
               {modelInfo?.maxInputTokens && (
                 <Badge variant="secondary" className="text-xs px-1 py-0">
@@ -165,7 +167,7 @@ export function ModelSelector({
         ) : m, // Just the model name if no badges
       };
     });
-  }, [currentModels, getModelInfo]);
+  }, [currentModels, getModelInfo, t]);
 
   // Handle provider change
   const handleProviderChange = (newProvider: string) => {
@@ -192,15 +194,15 @@ export function ModelSelector({
         disabled={disabled}
       >
         <SelectTrigger className="w-[120px] shrink-0">
-          <SelectValue placeholder="Select provider" />
+          <SelectValue placeholder={t('modelSelector.selectProvider')} />
         </SelectTrigger>
         <SelectContent>
           {providersLoading ? (
-            <SelectItem value="_loading" disabled>Loading providers...</SelectItem>
+            <SelectItem value="_loading" disabled>{t('modelSelector.loadingProviders')}</SelectItem>
           ) : providersError ? (
-            <SelectItem value="_error" disabled>Error: {providersError}</SelectItem>
+            <SelectItem value="_error" disabled>{t('modelSelector.error', { message: providersError })}</SelectItem>
           ) : allProviders.length === 0 ? (
-            <SelectItem value="_empty" disabled>No providers available</SelectItem>
+            <SelectItem value="_empty" disabled>{t('modelSelector.noProviders')}</SelectItem>
           ) : (
             allProviders.map((p) => (
               <SelectItem key={p.id} value={p.id}>
@@ -223,23 +225,23 @@ export function ModelSelector({
         <div className="min-w-[220px] max-w-[320px] flex-1">
           {ollamaLoading ? (
             <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
-              <span className="text-sm text-muted-foreground">Loading models...</span>
+              <span className="text-sm text-muted-foreground">{t('modelSelector.loadingModels')}</span>
             </div>
           ) : currentModels.length > 0 ? (
             <Combobox
               options={modelOptions}
               value={model}
               onValueChange={handleModelChange}
-              placeholder="Select model"
-              searchPlaceholder="Search models..."
-              emptyText={provider === 'ollama' ? 'No Ollama models found. Run: ollama pull llama3.2-vision' : 'No models found'}
+              placeholder={t('modelSelector.selectModel')}
+              searchPlaceholder={t('modelSelector.searchModels')}
+              emptyText={provider === 'ollama' ? t('modelSelector.ollamaNoModels') : t('modelSelector.noModelsFound')}
               disabled={disabled}
               className="w-full"
             />
           ) : (
             <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
               <span className="text-sm text-muted-foreground">
-                {provider === 'ollama' ? 'No models installed' : 'No models available'}
+                {provider === 'ollama' ? t('modelSelector.noModelsInstalled') : t('modelSelector.noModels')}
               </span>
             </div>
           )}

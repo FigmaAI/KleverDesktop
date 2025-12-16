@@ -352,5 +352,40 @@
   "language": {
     "en": "English",
     "ko": "Korean"
+  },
+  "search": {
+    "placeholder": "Search...",
+    "searchProjectsTasks": "Search projects and tasks...",
+    "noResults": "No results found.",
+    "projects": "Projects",
+    "tasks": "Tasks",
+    "tasksCount": "{{count}} tasks",
+    "inProject": "in {{name}}"
+  },
+  "modelSelector": {
+    "selectProvider": "Select provider",
+    "selectModel": "Select model",
+    "searchModels": "Search models...",
+    "loadingProviders": "Loading providers...",
+    "loadingModels": "Loading models...",
+    "noProviders": "No providers available",
+    "noModels": "No models available",
+    "noModelsInstalled": "No models installed",
+    "noModelsFound": "No models found",
+    "ollamaNoModels": "No Ollama models found. Run: ollama pull llama3.2-vision",
+    "vision": "Vision",
+    "error": "Error: {{message}}"
+  },
+  "header": {
+    "saving": "Saving...",
+    "save": "Save",
+    "saved": "Saved"
+  },
+  "errors": {
+    "deleteConfirm": "Are you sure you want to delete \"{{name}}\"?",
+    "deleteFailed": "Failed to delete project: {{error}}",
+    "deleteFailedGeneric": "Failed to delete project",
+    "openFolderFailed": "Failed to open folder: {{error}}",
+    "openFolderFailedGeneric": "Failed to open folder"
   }
 }

@@ -116,7 +116,7 @@ function MainApp() {
 
   // Handle delete project (declared early for keyboard shortcut use)
   const handleDeleteProject = useCallback(async (project: Project) => {
-    if (!confirm(`Are you sure you want to delete "${project.name}"?`)) return
+    if (!confirm(t('errors.deleteConfirm', { name: project.name }))) return
 
     try {
       const result = await window.electronAPI.projectDelete(project.id)
@@ -124,13 +124,13 @@ function MainApp() {
         setSelectedProject(null)
         loadProjects()
       } else {
-        alert(`Failed to delete project: ${result.error}`)
+        alert(t('errors.deleteFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error deleting project:', error)
-      alert('Failed to delete project')
+      alert(t('errors.deleteFailedGeneric'))
     }
-  }, [loadProjects])
+  }, [loadProjects, t])
 
   // Load projects on mount
   useEffect(() => {
@@ -354,11 +354,11 @@ function MainApp() {
     try {
       const result = await window.electronAPI.openFolder(workDir)
       if (!result.success) {
-        alert(`Failed to open folder: ${result.error}`)
+        alert(t('errors.openFolderFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Exception opening folder:', error)
-      alert('Failed to open folder')
+      alert(t('errors.openFolderFailedGeneric'))
     }
   }
 
@@ -463,7 +463,7 @@ function MainApp() {
               className="hidden sm:flex items-center gap-2 h-8 w-48 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <Search className="h-4 w-4" />
-              <span className="flex-1 text-left">Search...</span>
+              <span className="flex-1 text-left">{t('search.placeholder')}</span>
               <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
                 <span>{isMac ? '⌘' : 'Ctrl'}</span>K
               </kbd>
@@ -492,7 +492,7 @@ function MainApp() {
               >
                 <Save className="h-4 w-4" />
                 <span className="hidden sm:inline ml-2">
-                  {settingsSaving ? 'Saving...' : settingsHasChanges ? 'Save' : 'Saved'}
+                  {settingsSaving ? t('header.saving') : settingsHasChanges ? t('header.save') : t('header.saved')}
                 </span>
                 {settingsHasChanges && (
                   <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-70">
