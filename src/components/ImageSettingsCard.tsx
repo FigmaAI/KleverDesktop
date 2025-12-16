@@ -1,4 +1,5 @@
 import { Info } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -18,6 +19,7 @@ interface ImageSettingsCardProps {
 }
 
 export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSettingsCardProps) {
+  const { t } = useTranslation()
   const estimatedSize = Math.round(
     (imageSettings.imageMaxWidth * imageSettings.imageMaxHeight * 3 * imageSettings.imageQuality) /
       100 /
@@ -27,9 +29,9 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Image Optimization</CardTitle>
+        <CardTitle>{t('settings.imageConfig.title')}</CardTitle>
         <CardDescription>
-          Configure image processing settings for screenshots and UI captures
+          {t('settings.imageConfig.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -37,9 +39,9 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
           {/* Optimize Images Toggle */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <Label>Enable Image Optimization</Label>
+              <Label>{t('settings.imageConfig.enableOptimization')}</Label>
               <p className="text-sm text-muted-foreground">
-                Compress and resize images to reduce file size and improve performance
+                {t('settings.imageConfig.enableOptimizationDesc')}
               </p>
             </div>
             <Switch
@@ -60,10 +62,10 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
                 <div className="flex items-center justify-between">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Label className="cursor-help">Maximum Width</Label>
+                      <Label className="cursor-help">{t('settings.imageConfig.maxWidth')}</Label>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Images wider than this will be resized while maintaining aspect ratio
+                      {t('settings.imageConfig.maxWidthTooltip')}
                     </TooltipContent>
                   </Tooltip>
                   <span className="text-sm font-semibold">
@@ -90,10 +92,10 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
                 <div className="flex items-center justify-between">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Label className="cursor-help">Maximum Height</Label>
+                      <Label className="cursor-help">{t('settings.imageConfig.maxHeight')}</Label>
                     </TooltipTrigger>
                     <TooltipContent>
-                      Images taller than this will be resized while maintaining aspect ratio
+                      {t('settings.imageConfig.maxHeightTooltip')}
                     </TooltipContent>
                   </Tooltip>
                   <span className="text-sm font-semibold">
@@ -120,10 +122,10 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
                 <div className="flex items-center justify-between">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Label className="cursor-help">Image Quality</Label>
+                      <Label className="cursor-help">{t('settings.imageConfig.quality')}</Label>
                     </TooltipTrigger>
                     <TooltipContent>
-                      JPEG compression quality (higher = better quality, larger files)
+                      {t('settings.imageConfig.qualityTooltip')}
                     </TooltipContent>
                   </Tooltip>
                   <span className="text-sm font-semibold">{imageSettings.imageQuality}%</span>
@@ -146,24 +148,27 @@ export function ImageSettingsCard({ imageSettings, setImageSettings }: ImageSett
               {/* Estimated Size Info */}
               <Alert>
                 <Info className="h-4 w-4" />
-                <AlertTitle>Estimated File Size</AlertTitle>
+                <AlertTitle>{t('settings.imageConfig.estimatedSize')}</AlertTitle>
                 <AlertDescription>
-                  <p>Approximately {estimatedSize}KB per image</p>
+                  <p>{t('settings.imageConfig.estimatedSizeDesc', { size: estimatedSize })}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Based on {imageSettings.imageMaxWidth}×{imageSettings.imageMaxHeight} at{' '}
-                    {imageSettings.imageQuality}% quality
+                    {t('settings.imageConfig.estimatedSizeDetail', {
+                      width: imageSettings.imageMaxWidth,
+                      height: imageSettings.imageMaxHeight,
+                      quality: imageSettings.imageQuality
+                    })}
                   </p>
                 </AlertDescription>
               </Alert>
 
               {/* Recommendations */}
               <div className="rounded-md border border-green-500/50 bg-green-50 p-4 dark:bg-green-950/20">
-                <p className="mb-2 text-sm font-semibold">Recommended Settings</p>
+                <p className="mb-2 text-sm font-semibold">{t('settings.imageConfig.recommendedSettings')}</p>
                 <ul className="space-y-1 text-xs text-muted-foreground">
-                  <li>• For mobile devices: 512×512 at 85% quality</li>
-                  <li>• For web automation: 1024×1024 at 85% quality</li>
-                  <li>• For high-detail analysis: 2048×2048 at 95% quality</li>
-                  <li>• Lower quality (50-70%) for faster processing</li>
+                  <li>• {t('settings.imageConfig.recommendMobile')}</li>
+                  <li>• {t('settings.imageConfig.recommendWeb')}</li>
+                  <li>• {t('settings.imageConfig.recommendHighDetail')}</li>
+                  <li>• {t('settings.imageConfig.recommendFast')}</li>
                 </ul>
               </div>
             </div>

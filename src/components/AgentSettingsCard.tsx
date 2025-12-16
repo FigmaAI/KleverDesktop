@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
@@ -16,11 +17,13 @@ interface AgentSettingsCardProps {
 }
 
 export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSettingsCardProps) {
+  const { t } = useTranslation()
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Agent Behavior</CardTitle>
-        <CardDescription>Configure AI agent behavior and performance settings</CardDescription>
+        <CardTitle>{t('settings.agentConfig.title')}</CardTitle>
+        <CardDescription>{t('settings.agentConfig.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <TooltipProvider>
@@ -29,10 +32,10 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
             <div className="flex items-center justify-between">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Label className="cursor-help">Max Tokens</Label>
+                  <Label className="cursor-help">{t('settings.agentConfig.maxTokens')}</Label>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Maximum number of tokens the model can generate per response
+                  {t('settings.agentConfig.maxTokensTooltip')}
                 </TooltipContent>
               </Tooltip>
               <span className="text-sm font-semibold">{agentSettings.maxTokens}</span>
@@ -57,10 +60,10 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
             <div className="flex items-center justify-between">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Label className="cursor-help">Temperature</Label>
+                  <Label className="cursor-help">{t('settings.agentConfig.temperature')}</Label>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Controls randomness: 0 = more focused, 2 = more creative
+                  {t('settings.agentConfig.temperatureTooltip')}
                 </TooltipContent>
               </Tooltip>
               <span className="text-sm font-semibold">
@@ -87,10 +90,10 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
             <div className="flex items-center justify-between">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Label className="cursor-help">Request Interval</Label>
+                  <Label className="cursor-help">{t('settings.agentConfig.requestInterval')}</Label>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Delay between consecutive model requests (to avoid rate limits)
+                  {t('settings.agentConfig.requestIntervalTooltip')}
                 </TooltipContent>
               </Tooltip>
               <span className="text-sm font-semibold">{agentSettings.requestInterval}s</span>
@@ -115,10 +118,10 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
             <div className="flex items-center justify-between">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Label className="cursor-help">Max Rounds</Label>
+                  <Label className="cursor-help">{t('settings.agentConfig.maxRounds')}</Label>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Maximum number of exploration rounds before stopping
+                  {t('settings.agentConfig.maxRoundsTooltip')}
                 </TooltipContent>
               </Tooltip>
               <span className="text-sm font-semibold">{agentSettings.maxRounds}</span>
@@ -143,9 +146,9 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
             <div className="flex items-center justify-between">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Label className="cursor-help">Minimum Distance</Label>
+                  <Label className="cursor-help">{t('settings.agentConfig.minDist')}</Label>
                 </TooltipTrigger>
-                <TooltipContent>Minimum pixel distance for UI element detection</TooltipContent>
+                <TooltipContent>{t('settings.agentConfig.minDistTooltip')}</TooltipContent>
               </Tooltip>
               <span className="text-sm font-semibold">{agentSettings.minDist}px</span>
             </div>
@@ -168,9 +171,9 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
           <div className="space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <Label>Document Refine</Label>
+                <Label>{t('settings.agentConfig.docRefine')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Enable refinement of generated documentation
+                  {t('settings.agentConfig.docRefineDesc')}
                 </p>
               </div>
               <Switch
@@ -186,9 +189,9 @@ export function AgentSettingsCard({ agentSettings, setAgentSettings }: AgentSett
 
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-1">
-                <Label>Dark Mode (Agent)</Label>
+                <Label>{t('settings.agentConfig.darkMode')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Use dark theme for agent-generated outputs
+                  {t('settings.agentConfig.darkModeDesc')}
                 </p>
               </div>
               <Switch

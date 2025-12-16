@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Smartphone, Globe, FolderOpen } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -24,6 +25,7 @@ export function PlatformSettingsCard({
   platformSettings,
   setPlatformSettings,
 }: PlatformSettingsCardProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<string>('android')
 
   const handleBrowseSdkPath = async () => {
@@ -39,26 +41,26 @@ export function PlatformSettingsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Platform Configuration</CardTitle>
-        <CardDescription>Configure Android and Web automation settings</CardDescription>
+        <CardTitle>{t('settings.platformConfig.title')}</CardTitle>
+        <CardDescription>{t('settings.platformConfig.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="android" className="gap-2">
               <Smartphone className="h-4 w-4" />
-              Android
+              {t('settings.platformConfig.android')}
             </TabsTrigger>
             <TabsTrigger value="web" className="gap-2">
               <Globe className="h-4 w-4" />
-              Web
+              {t('settings.platformConfig.web')}
             </TabsTrigger>
           </TabsList>
 
           {/* Android Settings */}
           <TabsContent value="android" className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label>Android SDK Path</Label>
+              <Label>{t('settings.platformConfig.sdkPath')}</Label>
               <div className="flex gap-2">
                 <Input
                   value={platformSettings.androidSdkPath}
@@ -73,16 +75,16 @@ export function PlatformSettingsCard({
                 />
                 <Button variant="outline" onClick={handleBrowseSdkPath}>
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  Browse
+                  {t('settings.platformConfig.browse')}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Path to Android SDK directory (contains platform-tools and emulator folders)
+                {t('settings.platformConfig.sdkPathDesc')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Screenshot Directory</Label>
+              <Label>{t('settings.platformConfig.screenshotDir')}</Label>
               <Input
                 value={platformSettings.androidScreenshotDir}
                 onChange={(e) =>
@@ -94,12 +96,12 @@ export function PlatformSettingsCard({
                 placeholder="/sdcard"
               />
               <p className="text-sm text-muted-foreground">
-                Path on Android device where screenshots will be saved
+                {t('settings.platformConfig.screenshotDirDesc')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>XML Directory</Label>
+              <Label>{t('settings.platformConfig.xmlDir')}</Label>
               <Input
                 value={platformSettings.androidXmlDir}
                 onChange={(e) =>
@@ -111,7 +113,7 @@ export function PlatformSettingsCard({
                 placeholder="/sdcard"
               />
               <p className="text-sm text-muted-foreground">
-                Path on Android device where UI hierarchy XML files will be saved
+                {t('settings.platformConfig.xmlDirDesc')}
               </p>
             </div>
 
@@ -122,7 +124,7 @@ export function PlatformSettingsCard({
           {/* Web Settings */}
           <TabsContent value="web" className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label>Browser Type</Label>
+              <Label>{t('settings.platformConfig.browserType')}</Label>
               <Select
                 value={platformSettings.webBrowserType}
                 onValueChange={(value) =>
@@ -136,18 +138,18 @@ export function PlatformSettingsCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="chromium">Chromium</SelectItem>
-                  <SelectItem value="firefox">Firefox</SelectItem>
-                  <SelectItem value="webkit">WebKit (Safari)</SelectItem>
+                  <SelectItem value="chromium">{t('settings.platformConfig.chromium')}</SelectItem>
+                  <SelectItem value="firefox">{t('settings.platformConfig.firefox')}</SelectItem>
+                  <SelectItem value="webkit">{t('settings.platformConfig.webkit')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Playwright browser engine to use for web automation
+                {t('settings.platformConfig.browserTypeDesc')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Headless Mode</Label>
+              <Label>{t('settings.platformConfig.headless')}</Label>
               <Select
                 value={platformSettings.webHeadless ? 'true' : 'false'}
                 onValueChange={(value) =>
@@ -161,18 +163,18 @@ export function PlatformSettingsCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="false">Disabled (Show browser window)</SelectItem>
-                  <SelectItem value="true">Enabled (Run in background)</SelectItem>
+                  <SelectItem value="false">{t('settings.platformConfig.headlessDisabled')}</SelectItem>
+                  <SelectItem value="true">{t('settings.platformConfig.headlessEnabled')}</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Whether to run browser in headless mode (no visible window)
+                {t('settings.platformConfig.headlessDesc')}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Viewport Width</Label>
+                <Label>{t('settings.platformConfig.viewportWidth')}</Label>
                 <Input
                   type="number"
                   value={platformSettings.webViewportWidth}
@@ -185,11 +187,11 @@ export function PlatformSettingsCard({
                   min={320}
                   max={3840}
                 />
-                <p className="text-sm text-muted-foreground">320-3840 pixels</p>
+                <p className="text-sm text-muted-foreground">{t('settings.platformConfig.pixelRangeWidth')}</p>
               </div>
 
               <div className="space-y-2">
-                <Label>Viewport Height</Label>
+                <Label>{t('settings.platformConfig.viewportHeight')}</Label>
                 <Input
                   type="number"
                   value={platformSettings.webViewportHeight}
@@ -202,7 +204,7 @@ export function PlatformSettingsCard({
                   min={240}
                   max={2160}
                 />
-                <p className="text-sm text-muted-foreground">240-2160 pixels</p>
+                <p className="text-sm text-muted-foreground">{t('settings.platformConfig.pixelRangeHeight')}</p>
               </div>
             </div>
 
