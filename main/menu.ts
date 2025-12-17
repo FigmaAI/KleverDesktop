@@ -115,20 +115,20 @@ export function createMenu(mainWindow: BrowserWindow) {
         {
           label: 'Learn More',
           click: async () => {
-            await shell.openExternal('https://github.com/StartKlever/KleverDesktop');
+            await shell.openExternal('https://github.com/FigmaAI/KleverDesktop');
           }
         },
         {
             label: 'Documentation',
             click: async () => {
-                await shell.openExternal('https://docs.klever.ai');
+                await shell.openExternal('https://github.com/FigmaAI/KleverDesktop/blob/main/README.md');
             }
         },
         { type: 'separator' },
         {
             label: 'Report Issue',
             click: async () => {
-                await shell.openExternal('https://github.com/StartKlever/KleverDesktop/issues');
+                await shell.openExternal('https://github.com/FigmaAI/KleverDesktop/issues');
             }
         }
       ]
