@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Moon, Sunrise, Calendar as CalendarIcon, Clock, ChevronLeft } from 'lucide-react'
 import {
     Dialog,
@@ -13,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { format, addDays, setHours, setMinutes, startOfDay } from 'date-fns'
 import { toast } from 'sonner'
+import type { TFunction } from 'i18next'
 
 interface ScheduleQuickDialogProps {
     open: boolean
@@ -32,7 +34,7 @@ interface QuickOption {
     getDate: () => Date
 }
 
-function getQuickOptions(): QuickOption[] {
+function getQuickOptions(t: TFunction): QuickOption[] {
     const now = new Date()
     const today = startOfDay(now)
     const tomorrow = addDays(today, 1)
@@ -53,21 +55,21 @@ function getQuickOptions(): QuickOption[] {
     return [
         {
             id: 'tonight',
-            label: tonightDate.getDate() === now.getDate() ? 'Tonight' : 'Tomorrow night',
+            label: tonightDate.getDate() === now.getDate() ? t('scheduleDialog.tonight') : t('scheduleDialog.tomorrowNight'),
             sublabel: format(tonightDate, 'MMM d, h:mm a'),
             icon: Moon,
             getDate: () => tonightDate,
         },
         {
             id: 'morning',
-            label: 'Next morning',
+            label: t('scheduleDialog.nextMorning'),
             sublabel: format(tomorrowMorning, 'MMM d, h:mm a'),
             icon: Sunrise,
             getDate: () => tomorrowMorning,
         },
         {
             id: 'night',
-            label: 'Next night',
+            label: t('scheduleDialog.nextNight'),
             sublabel: format(tomorrowNight, 'MMM d, h:mm a'),
             icon: Moon,
             getDate: () => tomorrowNight,
@@ -76,6 +78,7 @@ function getQuickOptions(): QuickOption[] {
 }
 
 export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = true }: ScheduleQuickDialogProps) {
+    const { t } = useTranslation()
     const [mode, setMode] = useState<DialogMode>('quick')
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [date, setDate] = useState<Date | undefined>(() => {
@@ -91,7 +94,7 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
     const [loading, setLoading] = useState(false)
     const timeInputRef = useRef<HTMLInputElement>(null)
 
-    const quickOptions = getQuickOptions()
+    const quickOptions = getQuickOptions(t)
     const totalOptions = quickOptions.length + 1 // +1 for "Pick date & time"
 
     // Reset state when dialog opens
@@ -109,11 +112,11 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
 
     const handleScheduleSuccess = useCallback((scheduledDate: Date) => {
         if (showToast) {
-            toast.success('Task scheduled', {
+            toast.success(t('scheduleDialog.taskScheduled'), {
                 description: format(scheduledDate, 'MMM d, yyyy \'at\' h:mm a'),
             })
         }
-    }, [showToast])
+    }, [showToast, t])
 
     const handleClose = useCallback(() => {
         setMode('quick')
@@ -130,11 +133,11 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
             handleClose()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to schedule task')
+            toast.error(t('scheduleDialog.failedToSchedule'))
         } finally {
             setLoading(false)
         }
-    }, [onSchedule, handleScheduleSuccess, handleClose])
+    }, [onSchedule, handleScheduleSuccess, handleClose, t])
 
     const handleCustomSchedule = useCallback(async () => {
         if (!date || !time) return
@@ -146,7 +149,7 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
             scheduledDate.setHours(hours, minutes, 0, 0)
 
             if (scheduledDate.getTime() <= Date.now()) {
-                toast.error('Please select a future date and time')
+                toast.error(t('scheduleDialog.selectFutureDateTime'))
                 setLoading(false)
                 return
             }
@@ -156,11 +159,11 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
             handleClose()
         } catch (error) {
             console.error(error)
-            toast.error('Failed to schedule task')
+            toast.error(t('scheduleDialog.failedToSchedule'))
         } finally {
             setLoading(false)
         }
-    }, [date, time, onSchedule, handleScheduleSuccess, handleClose])
+    }, [date, time, onSchedule, handleScheduleSuccess, handleClose, t])
 
     const handleOpenChange = useCallback((isOpen: boolean) => {
         if (!isOpen) {
@@ -226,7 +229,7 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                 {mode === 'quick' ? (
                     <>
                         <DialogHeader className="p-4 pb-2">
-                            <DialogTitle className="text-lg font-semibold">Schedule Task</DialogTitle>
+                            <DialogTitle className="text-lg font-semibold">{t('scheduleDialog.title')}</DialogTitle>
                             <DialogDescription className="text-sm text-muted-foreground">{timezoneName}</DialogDescription>
                         </DialogHeader>
                         
@@ -262,15 +265,15 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                                 )}
                             >
                                 <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                                <span className="font-medium">Pick date & time</span>
+                                <span className="font-medium">{t('scheduleDialog.pickDateTime')}</span>
                             </button>
                         </div>
                         
                         <div className="px-4 pb-3 text-xs text-muted-foreground flex items-center gap-1">
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">↑↓</kbd>
-                            <span>navigate</span>
+                            <span>{t('scheduleDialog.navigate')}</span>
                             <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] ml-2">↵</kbd>
-                            <span>select</span>
+                            <span>{t('scheduleDialog.select')}</span>
                         </div>
                     </>
                 ) : (
@@ -285,9 +288,9 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <DialogTitle className="text-lg font-semibold">Pick date & time</DialogTitle>
+                                <DialogTitle className="text-lg font-semibold">{t('scheduleDialog.pickDateTime')}</DialogTitle>
                             </div>
-                            <DialogDescription className="sr-only">Select a custom date and time to schedule your task</DialogDescription>
+                            <DialogDescription className="sr-only">{t('scheduleDialog.customDescription')}</DialogDescription>
                         </DialogHeader>
                         
                         <div className="p-4 pt-2">
@@ -306,14 +309,14 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                                 {/* Date & Time Display */}
                                 <div className="flex flex-col gap-3 flex-1 min-w-[140px]">
                                     <div className="flex flex-col gap-1.5">
-                                        <Label className="text-xs text-muted-foreground">Date</Label>
+                                        <Label className="text-xs text-muted-foreground">{t('scheduleDialog.date')}</Label>
                                         <div className="h-10 px-3 py-2 border rounded-md bg-muted/30 flex items-center text-sm">
-                                            {date ? format(date, 'MMM d, yyyy') : 'Select date'}
+                                            {date ? format(date, 'MMM d, yyyy') : t('scheduleDialog.selectDate')}
                                         </div>
                                     </div>
                                     
                                     <div className="flex flex-col gap-1.5">
-                                        <Label className="text-xs text-muted-foreground">Time</Label>
+                                        <Label className="text-xs text-muted-foreground">{t('scheduleDialog.time')}</Label>
                                         <div className="relative">
                                             <input
                                                 ref={timeInputRef}
@@ -330,7 +333,7 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                                     
                                     <div className="text-xs text-muted-foreground">
                                         <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘↵</kbd>
-                                        <span className="ml-1">to confirm</span>
+                                        <span className="ml-1">{t('scheduleDialog.toConfirm')}</span>
                                     </div>
                                 </div>
                             </div>
@@ -339,10 +342,10 @@ export function ScheduleQuickDialog({ open, onClose, onSchedule, showToast = tru
                         {/* Footer */}
                         <div className="flex justify-end gap-2 p-4 pt-0">
                             <Button variant="ghost" onClick={() => setMode('quick')} disabled={loading}>
-                                Back
+                                {t('common.back')}
                             </Button>
                             <Button onClick={handleCustomSchedule} disabled={loading || !date || !time}>
-                                {loading ? 'Scheduling...' : 'Schedule'}
+                                {loading ? t('scheduleDialog.scheduling') : t('scheduleDialog.schedule')}
                             </Button>
                         </div>
                     </>
