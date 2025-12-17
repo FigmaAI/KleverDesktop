@@ -79,6 +79,7 @@ interface AppConfig {
     darkMode: boolean;
     minDist: number;
     docRefine: boolean;
+    systemLanguage?: 'en' | 'ko';
   };
   googleLogin?: GoogleLoginConfig;
 }

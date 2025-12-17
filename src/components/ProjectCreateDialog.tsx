@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { FolderOpen, Smartphone, Globe } from 'lucide-react'
 import {
@@ -26,6 +27,7 @@ export function ProjectCreateDialog({
   onClose,
   onProjectCreated,
 }: ProjectCreateDialogProps) {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [platform, setPlatform] = useState<Platform>('android')
   const [projectName, setProjectName] = useState('')
@@ -55,15 +57,15 @@ export function ProjectCreateDialog({
 
       if (result.success && result.project) {
         const message = result.message || `Project created at ${result.project.workspaceDir}`
-        toast.success('Project Created', { description: message })
+        toast.success(t('projects.createDialog.projectCreated'), { description: message })
         onProjectCreated?.(result.project)
         handleClose()
       } else {
-        toast.error('Error', { description: `Failed to create project: ${result.error}` })
+        toast.error(t('common.error'), { description: `${t('projects.createDialog.createFailed')}: ${result.error}` })
       }
     } catch (error) {
       console.error('Error creating project:', error)
-      toast.error('Error', { description: 'Failed to create project. Please try again.' })
+      toast.error(t('common.error'), { description: t('projects.createDialog.createFailedRetry') })
     } finally {
       setLoading(false)
     }
@@ -86,41 +88,41 @@ export function ProjectCreateDialog({
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-2xl" showClose={false} onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>{t('projects.createDialog.title')}</DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new automation project. Enter a project name, optionally select a workspace directory, and choose a platform (Android or Web).
+            {t('projects.createDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Section 1: Project Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground">PROJECT DETAILS</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">{t('projects.createDialog.projectDetails')}</h3>
 
             <div className="space-y-2">
               <Label htmlFor="projectName">
-                Project Name <span className="text-destructive">*</span>
+                {t('projects.createDialog.projectName')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="projectName"
-                placeholder="e.g., Instagram Automation"
+                placeholder={t('projects.createDialog.projectNamePlaceholder')}
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
               <p className="text-sm text-muted-foreground">
-                The name of the app or website you want to automate.
+                {t('projects.createDialog.projectNameDesc')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="workspaceDir">Workspace Directory (Optional)</Label>
+              <Label htmlFor="workspaceDir">{t('projects.createDialog.workspaceDir')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="workspaceDir"
                   readOnly
                   value={workspaceDir}
-                  placeholder="Default: ~/Documents"
+                  placeholder={t('projects.createDialog.workspaceDirPlaceholder')}
                   className="flex-1"
                 />
                 <Button
@@ -129,18 +131,18 @@ export function ProjectCreateDialog({
                   className="shrink-0"
                 >
                   <FolderOpen className="mr-2 h-4 w-4" />
-                  Browse
+                  {t('projects.createDialog.browse')}
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                The directory where project data and outputs will be stored.
+                {t('projects.createDialog.workspaceDirDesc')}
               </p>
             </div>
           </div>
 
           {/* Section 2: Platform Selection */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground">SELECT PLATFORM</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">{t('projects.createDialog.selectPlatform')}</h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Android Platform Card */}
@@ -173,7 +175,7 @@ export function ProjectCreateDialog({
                       platform === 'android' ? 'text-primary' : 'text-foreground'
                     )}
                   >
-                    Android
+                    {t('projects.platform.android')}
                   </h4>
                 </CardContent>
               </Card>
@@ -208,7 +210,7 @@ export function ProjectCreateDialog({
                       platform === 'web' ? 'text-primary' : 'text-foreground'
                     )}
                   >
-                    Web
+                    {t('projects.platform.web')}
                   </h4>
                 </CardContent>
               </Card>
@@ -218,12 +220,12 @@ export function ProjectCreateDialog({
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={handleClose} disabled={loading}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleCreate} disabled={!canCreate() || loading}>
-              {loading ? 'Creating...' : (
+              {loading ? t('projects.createDialog.creating') : (
                 <>
-                  Create
+                  {t('common.create')}
                   <span className="ml-2 text-xs opacity-60">⌘⏎</span>
                 </>
               )}

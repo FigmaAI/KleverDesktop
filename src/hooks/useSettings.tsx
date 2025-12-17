@@ -24,6 +24,10 @@ export interface AgentSettings {
   minDist: number
 }
 
+export interface PreferencesSettings {
+  systemLanguage: 'en' | 'ko'
+}
+
 export interface ImageSettings {
   optimizeImages: boolean
   imageMaxWidth: number
@@ -76,6 +80,11 @@ export function useSettings() {
     imageMaxWidth: 512,
     imageMaxHeight: 512,
     imageQuality: 85,
+  })
+
+  // Preferences settings (including system language)
+  const [preferencesSettings, setPreferencesSettings] = useState<PreferencesSettings>({
+    systemLanguage: 'en',
   })
 
   // Loading states
@@ -143,6 +152,11 @@ export function useSettings() {
           imageMaxHeight: config.image?.maxHeight || 512,
           imageQuality: config.image?.quality || 85,
         })
+
+        // Load preferences settings (including system language)
+        setPreferencesSettings({
+          systemLanguage: config.preferences?.systemLanguage || 'en',
+        })
       }
     } catch (error) {
       console.error('[useSettings] Error loading settings:', error)
@@ -194,6 +208,7 @@ export function useSettings() {
           darkMode: agentSettings.darkMode,
           minDist: agentSettings.minDist,
           docRefine: agentSettings.docRefine,
+          systemLanguage: preferencesSettings.systemLanguage,
         },
       }
 
@@ -215,7 +230,7 @@ export function useSettings() {
     } finally {
       setSaving(false)
     }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings])
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings])
 
   // Auto-load settings on mount
   useEffect(() => {
@@ -231,6 +246,8 @@ export function useSettings() {
     setAgentSettings,
     imageSettings,
     setImageSettings,
+    preferencesSettings,
+    setPreferencesSettings,
     loading,
     saving,
     saveError,

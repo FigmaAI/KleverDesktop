@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   Loader2,
@@ -64,6 +65,7 @@ export function TaskCreateDialog({
   onTaskCreated,
   onCreateProject,
 }: TaskCreateDialogProps) {
+  const { t } = useTranslation();
   const [goal, setGoal] = useState("");
   const [url, setUrl] = useState("");
   const [selectedModel, setSelectedModel] = useState<
@@ -222,27 +224,27 @@ export function TaskCreateDialog({
   // Validate form before submission
   const validateForm = useCallback(() => {
     if (!currentProjectId) {
-      alert("Please select a project");
+      alert(t("tasks.alerts.selectProject"));
       return false;
     }
     if (!goal.trim()) {
-      alert("Please enter a task description");
+      alert(t("tasks.alerts.enterDescription"));
       return false;
     }
     if (platform === "web" && !url.trim()) {
-      alert("Please enter a URL for web automation");
+      alert(t("tasks.alerts.enterUrl"));
       return false;
     }
     if (platform === "android" && !isApkSourceValid()) {
-      alert("Please provide an APK file or Play Store URL");
+      alert(t("tasks.alerts.provideApk"));
       return false;
     }
     if (!selectedModel?.provider || !selectedModel?.model) {
-      alert("Please select a model");
+      alert(t("tasks.alerts.selectModel"));
       return false;
     }
     return true;
-  }, [currentProjectId, goal, platform, url, isApkSourceValid, selectedModel]);
+  }, [currentProjectId, goal, platform, url, isApkSourceValid, selectedModel, t]);
 
   // Create task and optionally schedule it
   const createTask = useCallback(async (scheduledAt?: Date) => {
@@ -339,12 +341,12 @@ export function TaskCreateDialog({
           );
 
           if (scheduleResult.success) {
-            toast.info('Task queued', {
-              description: 'Another task is running. This task will start automatically when the queue is free.',
+            toast.info(t('tasks.createDialog.taskQueued'), {
+              description: t('tasks.createDialog.taskQueuedDesc'),
             });
           } else {
             console.error('Failed to queue task:', scheduleResult.error);
-            toast.error('Failed to queue task');
+            toast.error(t('tasks.createDialog.failedToQueue'));
           }
         } else {
           // No task running, start immediately
@@ -413,17 +415,16 @@ export function TaskCreateDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>Create New Task</DialogTitle>
+          <DialogTitle>{t('tasks.createDialog.title')}</DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new automation task for your project. Select a project,
-            enter a task description, and choose a model to run the task.
+            {t('tasks.createDialog.description')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Project Selection */}
           <div className="space-y-2">
-            <Label>Project</Label>
+            <Label>{t('tasks.createDialog.project')}</Label>
             <Select
               value={currentProjectId || ""}
               onValueChange={(value) => {
@@ -436,7 +437,7 @@ export function TaskCreateDialog({
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a project" />
+                <SelectValue placeholder={t('tasks.createDialog.selectProject')} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => {
@@ -459,7 +460,7 @@ export function TaskCreateDialog({
                     <SelectItem value="__create_new__" className="text-primary">
                       <span className="flex items-center gap-2">
                         <Plus className="h-3 w-3" />
-                        Create new project
+                        {t('tasks.createDialog.createNewProject')}
                       </span>
                     </SelectItem>
                   </>
@@ -472,7 +473,7 @@ export function TaskCreateDialog({
           {platform === "web" && (
             <div className="space-y-2">
               <Label>
-                Website URL <span className="text-destructive">*</span>
+                {t('tasks.createDialog.websiteUrl')} <span className="text-destructive">*</span>
               </Label>
               <Input
                 placeholder="https://example.com"
@@ -486,11 +487,10 @@ export function TaskCreateDialog({
           {platform === "android" && (
             <div className="space-y-2">
               <Label>
-                App Source <span className="text-destructive">*</span>
+                {t('tasks.createDialog.appSource')} <span className="text-destructive">*</span>
               </Label>
               <p className="text-xs text-muted-foreground -mt-1">
-                The app will be installed (if needed) and launched before
-                running the task
+                {t('tasks.createDialog.appSourceDesc')}
               </p>
 
               {/* Styled Container for Radio Group */}
@@ -515,7 +515,7 @@ export function TaskCreateDialog({
                         id="task_play_store_url"
                       />
                       <PlayStoreIcon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">Google Play Store URL</span>
+                      <span className="text-sm">{t('tasks.createDialog.playStoreUrl')}</span>
                     </label>
 
                     {/* Play Store URL Input */}
@@ -526,12 +526,12 @@ export function TaskCreateDialog({
                           onChange={(e) =>
                             handlePlayStoreUrlChange(e.target.value)
                           }
-                          placeholder="https://play.google.com/store/apps/details?id=..."
+                          placeholder={t('tasks.createDialog.playStorePlaceholder')}
                           className="text-sm h-8"
                         />
                         {extractedPackageName && (
                           <p className="text-xs text-muted-foreground">
-                            Package:{" "}
+                            {t('tasks.createDialog.package')}{" "}
                             <span className="font-mono text-foreground">
                               {extractedPackageName}
                             </span>
@@ -551,7 +551,7 @@ export function TaskCreateDialog({
                     >
                       <RadioGroupItem value="apk_file" id="task_apk_file" />
                       <FileBox className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">APK File</span>
+                      <span className="text-sm">{t('tasks.createDialog.apkFile')}</span>
                     </label>
 
                     {/* APK File Input */}
@@ -560,7 +560,7 @@ export function TaskCreateDialog({
                         <Input
                           readOnly
                           value={apkFilePath}
-                          placeholder="Select an APK file..."
+                          placeholder={t('tasks.createDialog.selectApkFile')}
                           className="flex-1 text-sm h-8"
                         />
                         <Button
@@ -570,7 +570,7 @@ export function TaskCreateDialog({
                           onClick={handleSelectApkFile}
                           className="h-8"
                         >
-                          Browse
+                          {t('projects.createDialog.browse')}
                         </Button>
                         {apkFilePath && (
                           <Button
@@ -594,13 +594,13 @@ export function TaskCreateDialog({
           {/* Task Description */}
           <div className="space-y-2">
             <Label>
-              Task Description <span className="text-destructive">*</span>
+              {t('tasks.createDialog.taskDescription')} <span className="text-destructive">*</span>
             </Label>
             <Textarea
               placeholder={
                 platform === "web"
-                  ? 'Describe what you want to automate...\nFor example: "Search for React tutorials and take a screenshot of the top 3 results"\n\nPress Cmd/Ctrl + Enter to submit'
-                  : 'Describe what you want to automate on the Android app...\nFor example: "Like the top 5 posts on the home feed"\n\nPress Cmd/Ctrl + Enter to submit'
+                  ? t('tasks.createDialog.taskPlaceholderWeb')
+                  : t('tasks.createDialog.taskPlaceholderAndroid')
               }
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
@@ -614,7 +614,7 @@ export function TaskCreateDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <Label className="text-sm font-medium">Max Rounds</Label>
+                <Label className="text-sm font-medium">{t('tasks.createDialog.maxRounds')}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -622,13 +622,13 @@ export function TaskCreateDialog({
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>
-                        Prevents infinite loops and limits automation attempts
+                        {t('tasks.createDialog.maxRoundsTooltip')}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Maximum number of exploration rounds before stopping
+                        {t('tasks.createDialog.maxRoundsDesc')}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Global default: {globalMaxRounds}
+                        {t('tasks.createDialog.globalDefault', { value: globalMaxRounds })}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -639,13 +639,13 @@ export function TaskCreateDialog({
                   <TooltipTrigger asChild>
                     <span className="text-sm font-semibold text-muted-foreground cursor-help">
                       {maxRounds}{" "}
-                      {maxRounds === globalMaxRounds && "(default)"}
+                      {maxRounds === globalMaxRounds && t('tasks.createDialog.default')}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Current setting: {maxRounds} rounds</p>
+                    <p>{t('tasks.createDialog.currentSetting', { value: maxRounds })}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Global default: {globalMaxRounds}
+                      {t('tasks.createDialog.globalDefault', { value: globalMaxRounds })}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -688,11 +688,11 @@ export function TaskCreateDialog({
                 {loading ? (
                   <>
                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    Running...
+                    {t('tasks.running')}
                   </>
                 ) : (
                   <>
-                    Run
+                    {t('tasks.run')}
                     <span className="ml-1.5 text-xs opacity-60">
                       {window.navigator.platform.toLowerCase().includes('mac') ? '⌘⏎' : 'Ctrl+⏎'}
                     </span>
@@ -713,7 +713,7 @@ export function TaskCreateDialog({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setScheduleDialogOpen(true)}>
-                    <span className="flex-1">Schedule run</span>
+                    <span className="flex-1">{t('tasks.createDialog.scheduleRun')}</span>
                     <span className="ml-4 text-xs text-muted-foreground">
                       {window.navigator.platform.toLowerCase().includes('mac') ? '⌥⌘⏎' : 'Alt+Ctrl+⏎'}
                     </span>

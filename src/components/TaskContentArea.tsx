@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Plus,
   Play,
@@ -100,6 +101,7 @@ export function TaskContentArea({
   onProjectsChange,
   focusArea = 'content',
 }: TaskContentAreaProps) {
+  const { t } = useTranslation()
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [selectedTaskIndex, setSelectedTaskIndex] = useState(0)
@@ -188,12 +190,12 @@ export function TaskContentArea({
   }, [project, sortField, sortDirection, statusFilter])
 
   // Status options for filter
-  const statusOptions: { value: Task['status']; label: string; icon: React.ElementType }[] = [
-    { value: 'pending', label: 'Scheduled', icon: Clock },
-    { value: 'running', label: 'Running', icon: Play },
-    { value: 'completed', label: 'Finished', icon: CheckCircle },
-    { value: 'failed', label: 'Error', icon: AlertCircle },
-    { value: 'cancelled', label: 'Stopped', icon: XCircle },
+  const statusOptions: { value: Task['status']; labelKey: string; icon: React.ElementType }[] = [
+    { value: 'pending', labelKey: 'tasks.status.scheduled', icon: Clock },
+    { value: 'running', labelKey: 'tasks.status.running', icon: Play },
+    { value: 'completed', labelKey: 'tasks.status.finished', icon: CheckCircle },
+    { value: 'failed', labelKey: 'tasks.status.error', icon: AlertCircle },
+    { value: 'cancelled', labelKey: 'tasks.status.stopped', icon: XCircle },
   ]
 
   // Get status counts for filter badges
@@ -284,32 +286,32 @@ export function TaskContentArea({
   if (!project) {
     const shortcuts = [
       {
-        category: 'Navigation', items: [
-          { keys: [modKey, '1'], description: 'Go to Projects' },
-          { keys: [modKey, ','], description: 'Go to Settings' },
-          { keys: ['Esc'], description: 'Go back' },
+        categoryKey: 'keyboard.navigation', items: [
+          { keys: [modKey, '1'], descriptionKey: 'keyboard.goToProjects' },
+          { keys: [modKey, ','], descriptionKey: 'keyboard.goToSettings' },
+          { keys: ['Esc'], descriptionKey: 'keyboard.goBack' },
         ]
       },
       {
-        category: 'Actions', items: [
-          { keys: [modKey, 'N'], description: 'New Project' },
-          { keys: [modKey, 'T'], description: 'New Task' },
-          { keys: [modKey, 'K'], description: 'Search' },
-          { keys: [modKey, 'S'], description: 'Save Settings' },
+        categoryKey: 'keyboard.actions', items: [
+          { keys: [modKey, 'N'], descriptionKey: 'keyboard.newProject' },
+          { keys: [modKey, 'T'], descriptionKey: 'keyboard.newTask' },
+          { keys: [modKey, 'K'], descriptionKey: 'keyboard.search' },
+          { keys: [modKey, 'S'], descriptionKey: 'keyboard.saveSettings' },
         ]
       },
       {
-        category: 'View', items: [
-          { keys: ['Ctrl', 'Shift', '`'], description: 'Toggle Terminal' },
-          { keys: [modKey, '\\'], description: 'Toggle Theme' },
-          { keys: [modKey, 'G'], description: 'Open GitHub' },
+        categoryKey: 'keyboard.view', items: [
+          { keys: ['Ctrl', 'Shift', '`'], descriptionKey: 'keyboard.toggleTerminal' },
+          { keys: [modKey, '\\'], descriptionKey: 'keyboard.toggleTheme' },
+          { keys: [modKey, 'G'], descriptionKey: 'keyboard.openGitHub' },
         ]
       },
       {
-        category: 'List Navigation', items: [
-          { keys: ['↑', '↓'], description: 'Navigate items' },
-          { keys: ['Enter'], description: 'Select item' },
-          { keys: ['Delete'], description: 'Delete item' },
+        categoryKey: 'keyboard.listNavigation', items: [
+          { keys: ['↑', '↓'], descriptionKey: 'keyboard.navigateItems' },
+          { keys: ['Enter'], descriptionKey: 'keyboard.selectItem' },
+          { keys: ['Delete'], descriptionKey: 'keyboard.deleteItem' },
         ]
       },
     ]
@@ -321,22 +323,22 @@ export function TaskContentArea({
             <div className="mb-6 rounded-full bg-primary/10 p-6">
               <FolderKanban className="h-12 w-12 text-primary" />
             </div>
-            <h2 className="mb-2 text-2xl font-semibold">Select a Project</h2>
+            <h2 className="mb-2 text-2xl font-semibold">{t('projects.selectProject')}</h2>
             <p className="mb-8 text-muted-foreground">
-              Choose a project from the sidebar to view its tasks and details.
+              {t('projects.selectProjectDesc')}
             </p>
 
             {/* Keyboard Shortcuts */}
             <div className="w-full rounded-lg border bg-card p-6">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Keyboard Shortcuts</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-4">{t('keyboard.title')}</h3>
               <div className="grid grid-cols-2 gap-6 text-left">
                 {shortcuts.map((section) => (
-                  <div key={section.category}>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">{section.category}</h4>
+                  <div key={section.categoryKey}>
+                    <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">{t(section.categoryKey)}</h4>
                     <div className="space-y-2">
                       {section.items.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between gap-4">
-                          <span className="text-sm text-foreground">{item.description}</span>
+                          <span className="text-sm text-foreground">{t(item.descriptionKey)}</span>
                           <div className="flex items-center gap-0.5">
                             {item.keys.map((key, keyIdx) => (
                               <kbd
@@ -366,13 +368,13 @@ export function TaskContentArea({
       {project.tasks.length === 0 ? (
         <BlurFade delay={0.2}>
           <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border bg-card p-8 text-center">
-            <h3 className="mb-2 text-lg font-semibold">No tasks yet</h3>
+            <h3 className="mb-2 text-lg font-semibold">{t('tasks.empty')}</h3>
             <p className="mb-6 text-sm text-muted-foreground">
-              Add your first task to start automating
+              {t('tasks.emptyDesc')}
             </p>
             <RainbowButton onClick={onCreateTask}>
               <Plus className="h-4 w-4" />
-              Add Task
+              {t('tasks.addTask')}
               <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
                 <span className="text-xs">{modKey}</span>
                 <span className="text-xs">T</span>
@@ -390,7 +392,7 @@ export function TaskContentArea({
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-8 border-dashed">
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Status
+                    {t('tasks.filter.status')}
                     {statusFilter.size > 0 && (
                       <>
                         <Separator orientation="vertical" className="mx-2 h-4" />
@@ -400,14 +402,14 @@ export function TaskContentArea({
                         <div className="hidden space-x-1 lg:flex">
                           {statusFilter.size > 2 ? (
                             <Badge variant="secondary" className="rounded-sm px-1 font-normal">
-                              {statusFilter.size} selected
+                              {statusFilter.size} {t('tasks.filter.selected')}
                             </Badge>
                           ) : (
                             Array.from(statusFilter).map((status) => {
                               const option = statusOptions.find(o => o.value === status)
                               return (
                                 <Badge key={status} variant="secondary" className="rounded-sm px-1 font-normal">
-                                  {option?.label}
+                                  {option ? t(option.labelKey) : ''}
                                 </Badge>
                               )
                             })
@@ -419,9 +421,9 @@ export function TaskContentArea({
                 </PopoverTrigger>
                 <PopoverContent className="w-[200px] p-0" align="start">
                   <Command>
-                    <CommandInput placeholder="Status" />
+                    <CommandInput placeholder={t('tasks.filter.status')} />
                     <CommandList>
-                      <CommandEmpty>No results found.</CommandEmpty>
+                      <CommandEmpty>{t('tasks.filter.noResults')}</CommandEmpty>
                       <CommandGroup>
                         {statusOptions.map((option) => {
                           const isSelected = statusFilter.has(option.value)
@@ -451,7 +453,7 @@ export function TaskContentArea({
                                 <Check className="h-4 w-4" />
                               </div>
                               <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                              <span>{option.label}</span>
+                              <span>{t(option.labelKey)}</span>
                               {count > 0 && (
                                 <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
                                   {count}
@@ -469,7 +471,7 @@ export function TaskContentArea({
                               onSelect={() => setStatusFilter(new Set())}
                               className="justify-center text-center"
                             >
-                              Clear filters
+                              {t('tasks.filter.clearFilters')}
                             </CommandItem>
                           </CommandGroup>
                         </>
@@ -487,7 +489,7 @@ export function TaskContentArea({
                   className="h-8 px-2 lg:px-3"
                   onClick={() => setStatusFilter(new Set())}
                 >
-                  Reset
+                  {t('tasks.filter.reset')}
                   <XCircle className="ml-2 h-4 w-4" />
                 </Button>
               )}
@@ -495,7 +497,7 @@ export function TaskContentArea({
 
             <RainbowButton onClick={onCreateTask} size="sm">
               <Plus className="h-4 w-4" />
-              Add Task
+              {t('tasks.addTask')}
               <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-50">
                 <span className="text-xs">{modKey}</span>
                 <span className="text-xs">T</span>
@@ -508,7 +510,7 @@ export function TaskContentArea({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[300px]">Task</TableHead>
+                  <TableHead className="min-w-[300px]">{t('tasks.table.task')}</TableHead>
                   <TableHead className="w-[120px]">
                     <Button
                       variant="ghost"
@@ -516,12 +518,12 @@ export function TaskContentArea({
                       className="-ml-3 h-8 data-[state=open]:bg-accent"
                       onClick={() => handleSort('status')}
                     >
-                      Status
+                      {t('tasks.table.status')}
                       <SortIcon field="status" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[160px]">Progress</TableHead>
-                  <TableHead className="w-[180px]">Model</TableHead>
+                  <TableHead className="w-[160px]">{t('tasks.table.progress')}</TableHead>
+                  <TableHead className="w-[180px]">{t('tasks.table.model')}</TableHead>
                   <TableHead className="w-[100px]">
                     <Button
                       variant="ghost"
@@ -529,7 +531,7 @@ export function TaskContentArea({
                       className="-ml-3 h-8 data-[state=open]:bg-accent"
                       onClick={() => handleSort('createdAt')}
                     >
-                      Date
+                      {t('tasks.table.date')}
                       <SortIcon field="createdAt" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
@@ -552,7 +554,7 @@ export function TaskContentArea({
                     >
                       <TableCell>
                         <span className="font-medium line-clamp-1">
-                          {task.goal || task.description || 'No description'}
+                          {task.goal || task.description || t('tasks.noDescription')}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -602,7 +604,7 @@ export function TaskContentArea({
                               secondaryMetric = (
                                 <span className="text-emerald-500 flex items-center gap-1">
                                   <Zap className="h-3 w-3" />
-                                  Local
+                                  {t('tasks.table.local')}
                                 </span>
                               )
                             }
@@ -619,7 +621,7 @@ export function TaskContentArea({
                               // Fallback: show tokens if cost calculation not available
                               secondaryMetric = (
                                 <span className="text-muted-foreground">
-                                  {metrics.tokens.toLocaleString()} tokens
+                                  {metrics.tokens.toLocaleString()} {t('tasks.table.tokens')}
                                 </span>
                               )
                             }
@@ -627,7 +629,7 @@ export function TaskContentArea({
 
                           return (
                             <div className="flex flex-col">
-                              <span className="font-medium">{roundsText} rounds</span>
+                              <span className="font-medium">{roundsText} {t('tasks.table.rounds')}</span>
                               {secondaryMetric}
                             </div>
                           )
@@ -668,12 +670,12 @@ export function TaskContentArea({
           {/* Pagination Footer */}
           <div className="flex items-center justify-between px-2 py-4">
             <div className="text-sm text-muted-foreground">
-              {sortedTasks.length} task(s) total
+              {t('tasks.pagination.tasksTotal', { count: sortedTasks.length })}
             </div>
             <div className="flex items-center gap-6 lg:gap-8">
               {/* Rows per page */}
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium">Rows per page</p>
+                <p className="text-sm font-medium">{t('tasks.pagination.rowsPerPage')}</p>
                 <Select
                   value={String(rowsPerPage)}
                   onValueChange={(value) => {
@@ -696,7 +698,7 @@ export function TaskContentArea({
 
               {/* Page info */}
               <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                Page {currentPage} of {totalPages || 1}
+                {t('tasks.pagination.pageOf', { current: currentPage, total: totalPages || 1 })}
               </div>
 
               {/* Navigation buttons */}
@@ -709,7 +711,7 @@ export function TaskContentArea({
                   disabled={currentPage === 1}
                 >
                   <ChevronsLeft className="h-4 w-4" />
-                  <span className="sr-only">Go to first page</span>
+                  <span className="sr-only">{t('tasks.pagination.goToFirst')}</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -719,7 +721,7 @@ export function TaskContentArea({
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Go to previous page</span>
+                  <span className="sr-only">{t('tasks.pagination.goToPrevious')}</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -729,7 +731,7 @@ export function TaskContentArea({
                   disabled={currentPage === totalPages || totalPages === 0}
                 >
                   <ChevronRight className="h-4 w-4" />
-                  <span className="sr-only">Go to next page</span>
+                  <span className="sr-only">{t('tasks.pagination.goToNext')}</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -739,7 +741,7 @@ export function TaskContentArea({
                   disabled={currentPage === totalPages || totalPages === 0}
                 >
                   <ChevronsRight className="h-4 w-4" />
-                  <span className="sr-only">Go to last page</span>
+                  <span className="sr-only">{t('tasks.pagination.goToLast')}</span>
                 </Button>
               </div>
             </div>

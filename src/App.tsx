@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Save, Search } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingScreen } from './components/LoadingScreen'
 import { TerminalProvider } from './contexts/TerminalContext'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { changeLanguage, type SupportedLanguage } from './i18n'
 import {
   SidebarInset,
   SidebarProvider,
@@ -43,16 +45,18 @@ import type { Project, Task } from '@/types/project'
 type AppView = 'projects' | 'settings' | 'schedules'
 type ScheduleSection = 'active' | 'history'
 
-// Settings section labels for breadcrumb
-const settingsSectionLabels: Record<SettingsSection, string> = {
-  model: 'Model',
-  platform: 'Platform',
-  agent: 'Agent',
-  image: 'Image',
-  danger: 'Danger Zone',
+// Settings section labels translation keys
+const settingsSectionLabelKeys: Record<SettingsSection, string> = {
+  model: 'settings.model',
+  platform: 'settings.platform',
+  agent: 'settings.agent',
+  image: 'settings.image',
+  preferences: 'settings.preferences',
+  danger: 'settings.dangerZone',
 }
 
 function MainApp() {
+  const { t } = useTranslation()
   const [commandOpen, setCommandOpen] = useState(false)
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
   const [createTaskDialogOpen, setCreateTaskDialogOpen] = useState(false)
@@ -112,7 +116,7 @@ function MainApp() {
 
   // Handle delete project (declared early for keyboard shortcut use)
   const handleDeleteProject = useCallback(async (project: Project) => {
-    if (!confirm(`Are you sure you want to delete "${project.name}"?`)) return
+    if (!confirm(t('errors.deleteConfirm', { name: project.name }))) return
 
     try {
       const result = await window.electronAPI.projectDelete(project.id)
@@ -120,13 +124,13 @@ function MainApp() {
         setSelectedProject(null)
         loadProjects()
       } else {
-        alert(`Failed to delete project: ${result.error}`)
+        alert(t('errors.deleteFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error deleting project:', error)
-      alert('Failed to delete project')
+      alert(t('errors.deleteFailedGeneric'))
     }
-  }, [loadProjects])
+  }, [loadProjects, t])
 
   // Load projects on mount
   useEffect(() => {
@@ -350,11 +354,11 @@ function MainApp() {
     try {
       const result = await window.electronAPI.openFolder(workDir)
       if (!result.success) {
-        alert(`Failed to open folder: ${result.error}`)
+        alert(t('errors.openFolderFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Exception opening folder:', error)
-      alert('Failed to open folder')
+      alert(t('errors.openFolderFailedGeneric'))
     }
   }
 
@@ -364,7 +368,7 @@ function MainApp() {
 
     if (currentView === 'projects') {
       items.push({
-        label: 'Projects',
+        label: t('nav.projects'),
         onClick: selectedProject ? () => { setSelectedProject(null); setSelectedTask(null); } : undefined
       })
 
@@ -381,10 +385,10 @@ function MainApp() {
       }
     } else if (currentView === 'settings') {
       items.push({
-        label: 'Settings',
+        label: t('nav.settings'),
         onClick: () => setActiveSettingsSection('model')
       })
-      items.push({ label: settingsSectionLabels[activeSettingsSection] })
+      items.push({ label: t(settingsSectionLabelKeys[activeSettingsSection]) })
     }
 
     return items
@@ -459,7 +463,7 @@ function MainApp() {
               className="hidden sm:flex items-center gap-2 h-8 w-48 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
             >
               <Search className="h-4 w-4" />
-              <span className="flex-1 text-left">Search...</span>
+              <span className="flex-1 text-left">{t('search.placeholder')}</span>
               <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
                 <span>{isMac ? '⌘' : 'Ctrl'}</span>K
               </kbd>
@@ -488,7 +492,7 @@ function MainApp() {
               >
                 <Save className="h-4 w-4" />
                 <span className="hidden sm:inline ml-2">
-                  {settingsSaving ? 'Saving...' : settingsHasChanges ? 'Save' : 'Saved'}
+                  {settingsSaving ? t('header.saving') : settingsHasChanges ? t('header.save') : t('header.saved')}
                 </span>
                 {settingsHasChanges && (
                   <kbd className="ml-2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-70">
@@ -626,6 +630,23 @@ function App() {
     mediaQuery.addEventListener('change', updateTheme)
 
     return () => mediaQuery.removeEventListener('change', updateTheme)
+  }, [])
+
+  // Load and sync system language from config
+  useEffect(() => {
+    const loadLanguageFromConfig = async () => {
+      try {
+        const result = await window.electronAPI.configLoad()
+        if (result.success && result.config?.preferences?.systemLanguage) {
+          const savedLang = result.config.preferences.systemLanguage as SupportedLanguage
+          await changeLanguage(savedLang)
+        }
+      } catch (error) {
+        console.error('[App] Error loading language from config:', error)
+      }
+    }
+
+    loadLanguageFromConfig()
   }, [])
 
   useEffect(() => {

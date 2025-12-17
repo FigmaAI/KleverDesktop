@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -45,6 +46,7 @@ interface ModelSettingsCardProps {
 }
 
 export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationChange }: ModelSettingsCardProps) {
+  const { t } = useTranslation()
   const { getProvider } = useLiteLLMProviders()
   
   // Dialog state
@@ -133,12 +135,12 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
   // Test API connection
   const handleTestConnection = useCallback(async () => {
     if (!formProvider || !formModel) {
-      setTestResult({ success: false, message: 'Please select a provider and model first' })
+      setTestResult({ success: false, message: t('settings.modelConfig.selectProviderFirst') })
       return
     }
 
     if (formProvider !== 'ollama' && !formApiKey) {
-      setTestResult({ success: false, message: 'Please enter an API key' })
+      setTestResult({ success: false, message: t('settings.modelConfig.enterApiKeyFirst') })
       return
     }
 
@@ -153,22 +155,22 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
         baseUrl: formBaseUrl,
       })
       const success = result.success
-      setTestResult({ 
-        success, 
-        message: result.message || (success ? 'Connection successful!' : 'Connection failed') 
+      setTestResult({
+        success,
+        message: result.message || (success ? t('settings.modelConfig.connectionSuccess') : t('settings.modelConfig.connectionFailed'))
       })
       if (success) {
         setApiKeyValidated(true)
       }
     } catch (error) {
-      setTestResult({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Connection test failed' 
+      setTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : t('settings.modelConfig.connectionFailed')
       })
     } finally {
       setTesting(false)
     }
-  }, [formProvider, formModel, formApiKey, formBaseUrl])
+  }, [formProvider, formModel, formApiKey, formBaseUrl, t])
 
   // Save provider (add or update)
   const handleSaveProvider = () => {
@@ -261,32 +263,32 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                Model Configuration
+                {t('settings.modelConfig.title')}
               </CardTitle>
               <CardDescription>
-                Manage your AI model providers.
+                {t('settings.modelConfig.description')}
               </CardDescription>
             </div>
             <Button size="sm" onClick={handleAddProvider}>
               <Plus className="h-4 w-4 mr-1" />
-              Add Provider
+              {t('settings.modelConfig.addProvider')}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {modelConfig.providers.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>No providers configured yet.</p>
-              <p className="text-sm">Click &ldquo;Add Provider&rdquo; to get started.</p>
+              <p>{t('settings.modelConfig.noProviders')}</p>
+              <p className="text-sm">{t('settings.modelConfig.noProvidersHint')}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>API Key</TableHead>
-                  <TableHead>Preferred Model</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead>{t('settings.modelConfig.provider')}</TableHead>
+                  <TableHead>{t('settings.modelConfig.apiKey')}</TableHead>
+                  <TableHead>{t('settings.modelConfig.preferredModel')}</TableHead>
+                  <TableHead className="w-[100px]">{t('settings.modelConfig.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -303,7 +305,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">
-                      {provider.id === 'ollama' ? '(Not required)' : maskApiKey(provider.apiKey)}
+                      {provider.id === 'ollama' ? t('settings.modelConfig.notRequired') : maskApiKey(provider.apiKey)}
                     </TableCell>
                     <TableCell className="text-sm">{provider.preferredModel}</TableCell>
                     <TableCell>
@@ -339,19 +341,19 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>
-              {editingProvider ? 'Edit Provider' : 'Add Provider'}
+              {editingProvider ? t('settings.modelConfig.editProvider') : t('settings.modelConfig.addProvider')}
             </DialogTitle>
             <DialogDescription>
-              {editingProvider 
-                ? 'Update the configuration for this provider.'
-                : 'Configure a new AI model provider.'}
+              {editingProvider
+                ? t('settings.modelConfig.editProviderDesc')
+                : t('settings.modelConfig.addProviderDesc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             {/* Model Selector */}
             <div className="space-y-2">
-              <Label>Provider & Model</Label>
+              <Label>{t('settings.modelConfig.providerAndModel')}</Label>
               <ModelSelector
                 value={formProvider && formModel ? { provider: formProvider, model: formModel } : undefined}
                 onChange={handleModelChange}
@@ -362,7 +364,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
             {formProvider && !isOllama && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>API Key</Label>
+                  <Label>{t('settings.modelConfig.apiKey')}</Label>
                   {providerInfo?.apiKeyUrl && (
                     <Button
                       variant="link"
@@ -370,7 +372,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
                       className="h-auto p-0 text-xs"
                       onClick={() => window.electronAPI.openExternal(providerInfo.apiKeyUrl)}
                     >
-                      Get API Key <ExternalLink className="ml-1 h-3 w-3" />
+                      {t('settings.modelConfig.getApiKey')} <ExternalLink className="ml-1 h-3 w-3" />
                     </Button>
                   )}
                 </div>
@@ -378,7 +380,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
                   <div className="relative flex-1">
                     <Input
                       type={showApiKey ? 'text' : 'password'}
-                      placeholder="Enter your API key"
+                      placeholder={t('settings.modelConfig.enterApiKey')}
                       value={formApiKey}
                       onChange={(e) => {
                         setFormApiKey(e.target.value)
@@ -412,7 +414,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
                     ) : (
                       <Zap className="h-4 w-4" />
                     )}
-                    <span className="ml-1">Test</span>
+                    <span className="ml-1">{t('settings.modelConfig.test')}</span>
                   </Button>
                 </div>
                 {testResult && (
@@ -426,7 +428,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
             {/* Custom Base URL (if required) */}
             {formProvider && providerInfo?.requiresBaseUrl && (
               <div className="space-y-2">
-                <Label>Base URL</Label>
+                <Label>{t('settings.modelConfig.baseUrl')}</Label>
                 <Input
                   placeholder={providerInfo.defaultBaseUrl || 'https://api.example.com/v1'}
                   value={formBaseUrl}
@@ -438,10 +440,10 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSaveProvider} disabled={!canSave}>
-              {editingProvider ? 'Update' : 'Add'}
+              {editingProvider ? t('settings.modelConfig.update') : t('settings.modelConfig.add')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -451,17 +453,17 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Provider</DialogTitle>
+            <DialogTitle>{t('settings.modelConfig.deleteProvider')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this provider? This action cannot be undone.
+              {t('settings.modelConfig.deleteProviderConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDeleteProvider}>
-              Delete
+              {t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { AlertTriangle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { ModelSettingsCard } from '@/components/ModelSettingsCard'
 import { PlatformSettingsCard } from '@/components/PlatformSettingsCard'
 import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 import { ImageSettingsCard } from '@/components/ImageSettingsCard'
+import { PreferencesSettingsCard } from '@/components/PreferencesSettingsCard'
 import type { SettingsSection } from '@/components/app-sidebar'
 
 interface SettingsProps {
@@ -35,6 +37,7 @@ export function Settings({
   onSavingChange,
   onCanSaveChange,
 }: SettingsProps) {
+  const { t } = useTranslation()
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -46,6 +49,7 @@ export function Settings({
     platform: null,
     agent: null,
     image: null,
+    preferences: null,
     danger: null,
   })
 
@@ -59,6 +63,8 @@ export function Settings({
     setAgentSettings,
     imageSettings,
     setImageSettings,
+    preferencesSettings,
+    setPreferencesSettings,
     loading,
     saving,
     saveError,
@@ -78,23 +84,24 @@ export function Settings({
         platformSettings,
         agentSettings,
         imageSettings,
+        preferencesSettings,
       })
       isInitialLoad.current = false
     }
-  }, [loading, modelConfig, platformSettings, agentSettings, imageSettings])
+  }, [loading, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings])
 
   // Show toast on save success or error
   useEffect(() => {
     if (saveSuccess) {
-      toast.success('Your configuration has been updated successfully.')
+      toast.success(t('settings.saveSuccess'))
     }
-  }, [saveSuccess])
+  }, [saveSuccess, t])
 
   useEffect(() => {
     if (saveError) {
-      toast.error('Save Failed', { description: saveError })
+      toast.error(t('settings.saveFailed'), { description: saveError })
     }
-  }, [saveError])
+  }, [saveError, t])
 
   // Detect changes (compare with saved snapshot)
   useEffect(() => {
@@ -104,11 +111,12 @@ export function Settings({
         platformSettings,
         agentSettings,
         imageSettings,
+        preferencesSettings,
       })
       const changed = currentSnapshot !== settingsSnapshot.current
       onHasChangesChange(changed)
     }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings, loading, onHasChangesChange])
+  }, [modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, loading, onHasChangesChange])
 
   // Update saving state
   useEffect(() => {
@@ -123,8 +131,8 @@ export function Settings({
   // Manual save handler
   const handleManualSave = useCallback(async () => {
     if (!modelConfigValid) {
-      toast.warning('Cannot Save', {
-        description: 'Please test your API connection before saving.'
+      toast.warning(t('settings.cannotSave'), {
+        description: t('settings.testApiFirst')
       })
       return
     }
@@ -136,9 +144,10 @@ export function Settings({
       platformSettings,
       agentSettings,
       imageSettings,
+      preferencesSettings,
     })
     onHasChangesChange(false)
-  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, onHasChangesChange])
+  }, [modelConfigValid, saveSettings, modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings, onHasChangesChange, t])
 
   // Expose save function to parent
   useEffect(() => {
@@ -182,7 +191,7 @@ export function Settings({
       <div className="flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading settings...</p>
+          <p className="text-sm text-muted-foreground">{t('settings.loading')}</p>
         </div>
       </div>
     )
@@ -227,6 +236,16 @@ export function Settings({
             </div>
           </BlurFade>
 
+          {/* Preferences */}
+          <BlurFade delay={0.45}>
+            <div ref={(el) => (sectionRefs.current.preferences = el)} className="scroll-mt-6">
+              <PreferencesSettingsCard
+                preferencesSettings={preferencesSettings}
+                setPreferencesSettings={setPreferencesSettings}
+              />
+            </div>
+          </BlurFade>
+
           {/* Danger Zone */}
           <BlurFade delay={0.5}>
             <Card
@@ -234,13 +253,13 @@ export function Settings({
               className="scroll-mt-6 border-destructive/50"
             >
               <CardHeader>
-                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardTitle className="text-destructive">{t('settings.dangerZone')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="mb-1 text-base font-semibold">Reset Configuration</h3>
+                  <h3 className="mb-1 text-base font-semibold">{t('settings.dangerZoneConfig.resetConfig')}</h3>
                   <p className="mb-3 text-sm text-muted-foreground">
-                    Delete configuration file and return to setup wizard
+                    {t('settings.dangerZoneConfig.resetConfigDesc')}
                   </p>
                   <Button
                     variant="outline"
@@ -248,7 +267,7 @@ export function Settings({
                     onClick={() => setResetDialogOpen(true)}
                   >
                     <AlertTriangle className="mr-2 h-4 w-4" />
-                    Reset Configuration
+                    {t('settings.dangerZoneConfig.resetButton')}
                   </Button>
                 </div>
               </CardContent>
@@ -263,32 +282,32 @@ export function Settings({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Reset Configuration?
+              {t('settings.dangerZoneConfig.resetDialogTitle')}
             </DialogTitle>
             <DialogDescription>
-              This will delete all your settings and redirect you to the setup wizard.
+              {t('settings.dangerZoneConfig.resetDialogDesc')}
             </DialogDescription>
           </DialogHeader>
 
           {errorMessage && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
+              <AlertTitle>{t('common.error')}</AlertTitle>
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">This will delete:</p>
+            <p className="text-sm font-medium">{t('settings.dangerZoneConfig.resetDialogItems.title')}</p>
             <ul className="list-disc space-y-1 pl-6 text-sm text-muted-foreground">
-              <li>AI model configuration</li>
-              <li>API keys and endpoints</li>
-              <li>All other preferences</li>
+              <li>{t('settings.dangerZoneConfig.resetDialogItems.aiConfig')}</li>
+              <li>{t('settings.dangerZoneConfig.resetDialogItems.apiKeys')}</li>
+              <li>{t('settings.dangerZoneConfig.resetDialogItems.preferences')}</li>
             </ul>
             <p className="text-sm font-semibold">
-              You will be redirected to the setup wizard to reconfigure everything.
+              {t('settings.dangerZoneConfig.resetDialogRedirect')}
             </p>
-            <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+            <p className="text-sm text-muted-foreground">{t('settings.dangerZoneConfig.resetDialogWarning')}</p>
           </div>
 
           <DialogFooter>
@@ -300,14 +319,14 @@ export function Settings({
               }}
               disabled={isResetting}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleResetConfig}
               disabled={isResetting}
             >
-              {isResetting ? 'Resetting...' : 'Yes, Reset Configuration'}
+              {isResetting ? t('settings.dangerZoneConfig.resetting') : t('common.yes') + ', ' + t('settings.dangerZoneConfig.resetButton')}
             </Button>
           </DialogFooter>
         </DialogContent>

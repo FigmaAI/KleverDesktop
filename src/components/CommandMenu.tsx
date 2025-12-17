@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useTranslation } from "react-i18next"
 import { FileText, FolderKanban } from "lucide-react"
 
 import {
@@ -22,6 +23,7 @@ interface CommandMenuProps {
 }
 
 export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask }: CommandMenuProps) {
+  const { t } = useTranslation()
   const [projects, setProjects] = React.useState<Project[]>([])
   const [loading, setLoading] = React.useState(false)
 
@@ -68,19 +70,19 @@ export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask 
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search projects and tasks..." />
+      <CommandInput placeholder={t('search.searchProjectsTasks')} />
       <CommandList>
         {loading ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            Loading...
+            {t('common.loading')}
           </div>
         ) : (
           <>
-            <CommandEmpty>No results found.</CommandEmpty>
-            
+            <CommandEmpty>{t('search.noResults')}</CommandEmpty>
+
             {projects.length > 0 && (
               <>
-                <CommandGroup heading="Projects">
+                <CommandGroup heading={t('search.projects')}>
                   {projects.map((project) => (
                     <CommandItem
                       key={project.id}
@@ -90,7 +92,7 @@ export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask 
                       <FolderKanban className="mr-2 h-4 w-4" />
                       <span>{project.name}</span>
                       <span className="ml-auto text-xs text-muted-foreground">
-                        {project.tasks.length} tasks
+                        {t('search.tasksCount', { count: project.tasks.length })}
                       </span>
                     </CommandItem>
                   ))}
@@ -100,7 +102,7 @@ export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask 
             )}
 
             {allTasks.length > 0 && (
-              <CommandGroup heading="Tasks">
+              <CommandGroup heading={t('search.tasks')}>
                 {allTasks.map((task) => {
                   const project = projects.find(p => p.id === task.projectId)
                   if (!project) return null
@@ -116,7 +118,7 @@ export function CommandMenu({ open, onOpenChange, onSelectProject, onSelectTask 
                           {task.goal || task.description || task.name}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          in {task.projectName}
+                          {t('search.inProject', { name: task.projectName })}
                         </span>
                       </div>
                     </CommandItem>

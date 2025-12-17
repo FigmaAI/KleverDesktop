@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import './i18n' // Initialize i18n
 
 import { Project, ProjectCreateInput, Task, TaskCreateInput } from './types/project'
 
@@ -85,7 +86,7 @@ if (!window.electronAPI) {
         android: { screenshotDir: '/sdcard', xmlDir: '/sdcard', sdkPath: '' },
         web: { browserType: 'chromium' as const, headless: false, viewportWidth: 1280, viewportHeight: 720 },
         image: { maxWidth: 512, maxHeight: 512, quality: 85, optimize: true },
-        preferences: { darkMode: false, minDist: 30, docRefine: false },
+        preferences: { darkMode: false, minDist: 30, docRefine: false, systemLanguage: 'en' as const },
       }
     }),
     configSave: async () => ({ success: true }),

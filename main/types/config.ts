@@ -112,6 +112,7 @@ export interface PreferencesConfig {
   darkMode: boolean;
   minDist: number;
   docRefine: boolean;
+  systemLanguage: 'en' | 'ko';  // System UI language
 }
 
 /**
@@ -338,6 +339,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     darkMode: false,
     minDist: 30,
     docRefine: false,
+    systemLanguage: 'en',
   },
 };
 
