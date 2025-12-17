@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { FolderOpen, RefreshCw, ExternalLink, Loader2, X, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -254,34 +255,34 @@ export function TaskMarkdownDialog({
 
       const result = await window.electronAPI.openPath(workspaceDir)
       if (!result.success) {
-        alert(t('errors.openFolderFailed', { error: result.error }))
+        toast.error(t('errors.openFolderFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error opening folder:', error)
-      alert(t('errors.openFolderFailedGeneric'))
+      toast.error(t('errors.openFolderFailedGeneric'))
     }
   }
 
   const handleOpenInEditor = async () => {
     try {
       if (!markdownPath) {
-        alert(t('errors.markdownNotFound'))
+        toast.error(t('errors.markdownNotFound'))
         return
       }
 
       const existsResult = await window.electronAPI.fileExists(markdownPath)
       if (!existsResult.success || !existsResult.exists) {
-        alert(t('errors.markdownNotExist'))
+        toast.error(t('errors.markdownNotExist'))
         return
       }
 
       const result = await window.electronAPI.openPath(markdownPath)
       if (!result.success) {
-        alert(t('errors.openFileFailed', { error: result.error }))
+        toast.error(t('errors.openFileFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error opening file:', error)
-      alert(t('errors.openFileFailedGeneric'))
+      toast.error(t('errors.openFileFailedGeneric'))
     }
   }
 
