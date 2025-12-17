@@ -7,6 +7,10 @@ log.transports.file.level = 'info';
 let isManualCheck = false;
 const UPDATE_CHECK_INTERVAL = 10 * 60 * 1000; // 10 minutes
 
+// Track updater state to prevent calling checkForUpdates while already in progress
+type UpdaterState = 'idle' | 'checking' | 'downloading' | 'downloaded';
+let updaterState: UpdaterState = 'idle';
+
 export function initializeUpdater() {
   // Exit early on unsupported platforms
   if (process.platform !== 'darwin' && process.platform !== 'win32') {
@@ -41,6 +45,7 @@ export function initializeUpdater() {
   // Add event listeners
   autoUpdater.on('error', (err) => {
     log.error('Auto-updater error:', err);
+    updaterState = 'idle';
     if (isManualCheck) {
       const focusedWindow = BrowserWindow.getFocusedWindow();
       if (focusedWindow) {
@@ -58,10 +63,12 @@ export function initializeUpdater() {
 
   autoUpdater.on('checking-for-update', () => {
     log.info('Checking for update...');
+    updaterState = 'checking';
   });
 
   autoUpdater.on('update-available', () => {
     log.info('Update available - downloading...');
+    updaterState = 'downloading';
     if (isManualCheck) {
       isManualCheck = false;
     }
@@ -69,6 +76,7 @@ export function initializeUpdater() {
 
   autoUpdater.on('update-not-available', () => {
     log.info('No updates available');
+    updaterState = 'idle';
     if (isManualCheck) {
       const focusedWindow = BrowserWindow.getFocusedWindow();
       if (focusedWindow) {
@@ -85,6 +93,7 @@ export function initializeUpdater() {
 
   autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName) => {
     log.info('Update downloaded:', releaseName);
+    updaterState = 'downloaded';
 
     const focusedWindow = BrowserWindow.getFocusedWindow();
     if (focusedWindow) {
@@ -105,9 +114,11 @@ export function initializeUpdater() {
   // Check for updates on startup
   autoUpdater.checkForUpdates();
 
-  // Check for updates every 10 minutes
+  // Check for updates every 10 minutes (only if idle)
   setInterval(() => {
-    autoUpdater.checkForUpdates();
+    if (updaterState === 'idle') {
+      autoUpdater.checkForUpdates();
+    }
   }, UPDATE_CHECK_INTERVAL);
 }
 
@@ -124,6 +135,46 @@ export function checkForUpdates(manual: boolean = false) {
           });
       }
       return;
+  }
+  
+  // Handle different updater states
+  if (updaterState === 'downloading') {
+    log.info('Update already downloading, skipping check');
+    if (manual) {
+      dialog.showMessageBox({
+        type: 'info',
+        title: 'Update In Progress',
+        message: 'An update is being downloaded.',
+        detail: 'Please wait for the download to complete. You will be prompted to restart when ready.'
+      });
+    }
+    return;
+  }
+  
+  if (updaterState === 'downloaded') {
+    log.info('Update already downloaded, prompting restart');
+    if (manual) {
+      const focusedWindow = BrowserWindow.getFocusedWindow();
+      if (focusedWindow) {
+        dialog.showMessageBox(focusedWindow, {
+          type: 'info',
+          buttons: ['Restart', 'Later'],
+          title: 'Update Ready',
+          message: 'An update has been downloaded.',
+          detail: 'Restart the application to apply the updates.'
+        }).then(({ response }) => {
+          if (response === 0) {
+            autoUpdater.quitAndInstall();
+          }
+        });
+      }
+    }
+    return;
+  }
+  
+  if (updaterState === 'checking') {
+    log.info('Already checking for updates, skipping');
+    return;
   }
   
   log.info(`Update check initiated (Manual: ${manual})`);
