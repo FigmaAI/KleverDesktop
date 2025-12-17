@@ -17,11 +17,41 @@ const resources = {
   ko: { translation: ko },
 };
 
+/**
+ * Detect system language and return supported language code
+ * Returns 'ko' if system is Korean, otherwise 'en'
+ */
+const detectSystemLanguage = (): SupportedLanguage => {
+  // Check localStorage first (user preference)
+  const savedLang = localStorage.getItem('klever-language');
+  if (savedLang && (savedLang === 'ko' || savedLang === 'en')) {
+    return savedLang;
+  }
+
+  // Detect system locale from browser/Electron
+  // navigator.language reflects system locale in Electron
+  const systemLocale = navigator.language 
+    || navigator.languages?.[0] 
+    || 'en';
+  
+  // Check if the system language starts with 'ko' (Korean)
+  const lang = systemLocale.toLowerCase();
+  if (lang.startsWith('ko')) {
+    return 'ko';
+  }
+  
+  // Default to English for all other languages
+  return 'en';
+};
+
+const detectedLanguage = detectSystemLanguage();
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
+    lng: detectedLanguage, // Use detected language as initial
     fallbackLng: 'en',
     defaultNS: 'translation',
 

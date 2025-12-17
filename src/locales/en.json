@@ -332,6 +332,26 @@
     "cancel": "Cancel",
     "cancelConfirm": "Are you sure you want to cancel this scheduled task?"
   },
+  "scheduleDialog": {
+    "title": "Schedule Task",
+    "tonight": "Tonight",
+    "tomorrowNight": "Tomorrow night",
+    "nextMorning": "Next morning",
+    "nextNight": "Next night",
+    "pickDateTime": "Pick date & time",
+    "navigate": "navigate",
+    "select": "select",
+    "customDescription": "Select a custom date and time to schedule your task",
+    "date": "Date",
+    "selectDate": "Select date",
+    "time": "Time",
+    "toConfirm": "to confirm",
+    "schedule": "Schedule",
+    "scheduling": "Scheduling...",
+    "taskScheduled": "Task scheduled",
+    "failedToSchedule": "Failed to schedule task",
+    "selectFutureDateTime": "Please select a future date and time"
+  },
   "keyboard": {
     "title": "Keyboard Shortcuts",
     "navigation": "Navigation",
