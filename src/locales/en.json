@@ -289,6 +289,9 @@
     "welcome": "Welcome to Klever Desktop",
     "welcomeDesc": "Let's set up your environment to get started",
     "step": "Step {{current}} of {{total}}",
+    "pythonRequired": "Please install Python before continuing. Click the \"Download Python\" button in Step 0.",
+    "configSaveFailed": "Failed to save configuration",
+    "configSaveFailedWithError": "Failed to save configuration: {{error}}",
     "environment": {
       "title": "Environment Setup",
       "checking": "Checking environment...",
@@ -386,6 +389,10 @@
     "deleteFailed": "Failed to delete project: {{error}}",
     "deleteFailedGeneric": "Failed to delete project",
     "openFolderFailed": "Failed to open folder: {{error}}",
-    "openFolderFailedGeneric": "Failed to open folder"
+    "openFolderFailedGeneric": "Failed to open folder",
+    "openFileFailed": "Failed to open file: {{error}}",
+    "openFileFailedGeneric": "Failed to open file in editor",
+    "markdownNotFound": "Markdown file path not found",
+    "markdownNotExist": "Markdown file does not exist yet"
   }
 }

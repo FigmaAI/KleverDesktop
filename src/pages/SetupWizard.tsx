@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Button } from '@/components/ui/button'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
@@ -21,6 +23,7 @@ const steps: StepConfig[] = [
 ]
 
 export function SetupWizard() {
+  const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(0)
 
   // Platform tools hook
@@ -57,7 +60,7 @@ export function SetupWizard() {
       // If moving from Step 0 (Platform Tools), validate Python is installed
       if (currentStep === 0) {
         if (!toolsStatus.python.installed) {
-          alert('Please install Python before continuing. Click the "Download Python" button in Step 0.')
+          toast.error(t('setup.pythonRequired'))
           return
         }
       }
@@ -148,12 +151,12 @@ export function SetupWizard() {
         // Note: Navigation is handled by caller (either step progression or final navigation)
       } else {
         console.error('[SetupWizard] Failed to save config:', result.error)
-        alert(`Failed to save configuration: ${result.error}`)
+        toast.error(t('setup.configSaveFailedWithError', { error: result.error }))
         throw new Error(result.error)
       }
     } catch (error) {
       console.error('[SetupWizard] Error saving configuration:', error)
-      alert('Failed to save configuration')
+      toast.error(t('setup.configSaveFailed'))
       throw error
     }
   }
