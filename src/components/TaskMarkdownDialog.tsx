@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FolderOpen, RefreshCw, ExternalLink, Loader2, X, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -91,6 +92,7 @@ export function TaskMarkdownDialog({
   workspaceDir,
   taskResultPath,
 }: TaskMarkdownDialogProps) {
+  const { t } = useTranslation()
   const [content, setContent] = useState<string>('')
   const [translatedContent, setTranslatedContent] = useState<string>('')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
@@ -252,34 +254,34 @@ export function TaskMarkdownDialog({
 
       const result = await window.electronAPI.openPath(workspaceDir)
       if (!result.success) {
-        alert(`Failed to open folder: ${result.error}`)
+        alert(t('errors.openFolderFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error opening folder:', error)
-      alert('Failed to open folder')
+      alert(t('errors.openFolderFailedGeneric'))
     }
   }
 
   const handleOpenInEditor = async () => {
     try {
       if (!markdownPath) {
-        alert('Markdown file path not found')
+        alert(t('errors.markdownNotFound'))
         return
       }
 
       const existsResult = await window.electronAPI.fileExists(markdownPath)
       if (!existsResult.success || !existsResult.exists) {
-        alert('Markdown file does not exist yet')
+        alert(t('errors.markdownNotExist'))
         return
       }
 
       const result = await window.electronAPI.openPath(markdownPath)
       if (!result.success) {
-        alert(`Failed to open file: ${result.error}`)
+        alert(t('errors.openFileFailed', { error: result.error }))
       }
     } catch (error) {
       console.error('Error opening file:', error)
-      alert('Failed to open file in editor')
+      alert(t('errors.openFileFailedGeneric'))
     }
   }
 
