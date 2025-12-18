@@ -521,12 +521,75 @@ def _parse_action_string(act: str) -> list:
         return ["ERROR", act_name]
 
 
+def _extract_valid_json(rsp: str) -> dict:
+    """
+    Extract valid JSON object from response that may contain multiple JSON objects.
+    Some models return extra JSON like {"element":3} before the main response.
+    
+    Args:
+        rsp: Raw response string that may contain multiple JSON objects
+        
+    Returns:
+        Parsed JSON dict from the valid response object
+        
+    Raises:
+        json.JSONDecodeError if no valid JSON found
+    """
+    # First try direct parsing
+    try:
+        data = json.loads(rsp)
+        # Check if this is the expected format (has Observation or observation key)
+        if "Observation" in data or "observation" in data or "Decision" in data or "decision" in data:
+            return data
+    except json.JSONDecodeError:
+        pass
+    
+    # Try to find multiple JSON objects (model sometimes returns multiple)
+    # Look for JSON objects that start with { and end with }
+    json_objects = []
+    brace_count = 0
+    start_idx = -1
+    
+    for i, char in enumerate(rsp):
+        if char == '{':
+            if brace_count == 0:
+                start_idx = i
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0 and start_idx >= 0:
+                json_str = rsp[start_idx:i+1]
+                try:
+                    obj = json.loads(json_str)
+                    json_objects.append(obj)
+                except json.JSONDecodeError:
+                    pass
+                start_idx = -1
+    
+    # Find the object that looks like a valid response (has expected keys)
+    for obj in json_objects:
+        if isinstance(obj, dict):
+            # Check for exploration/grid response keys
+            if any(k in obj for k in ["Observation", "observation", "Thought", "thought", "Action", "action"]):
+                return obj
+            # Check for reflection response keys
+            if any(k in obj for k in ["Decision", "decision"]):
+                return obj
+    
+    # If we found any JSON object, return the last one (usually the main response)
+    if json_objects:
+        return json_objects[-1]
+    
+    # No valid JSON found
+    raise json.JSONDecodeError("No valid JSON object found", rsp, 0)
+
+
 def parse_explore_rsp(rsp):
     """Parse exploration response. Tries JSON first, falls back to regex."""
     
-    # Try JSON parsing first
+    # Try JSON parsing first (with multi-object handling)
     try:
-        data = json.loads(rsp)
+        data = _extract_valid_json(rsp)
         # Handle case-insensitive keys
         observation = data.get("Observation") or data.get("observation", "")
         think = data.get("Thought") or data.get("thought", "")
@@ -643,9 +706,9 @@ def _parse_grid_action_string(act: str) -> list:
 def parse_grid_rsp(rsp):
     """Parse grid mode response. Tries JSON first, falls back to regex."""
     
-    # Try JSON parsing first
+    # Try JSON parsing first (with multi-object handling)
     try:
-        data = json.loads(rsp)
+        data = _extract_valid_json(rsp)
         observation = data.get("Observation") or data.get("observation", "")
         think = data.get("Thought") or data.get("thought", "")
         act = data.get("Action") or data.get("action", "")
@@ -734,9 +797,9 @@ def parse_reflect_rsp(rsp):
         print_with_color(f"Response: '{rsp}'", "red")
         return ["ERROR"]
     
-    # Try JSON parsing first
+    # Try JSON parsing first (with multi-object handling)
     try:
-        data = json.loads(rsp)
+        data = _extract_valid_json(rsp)
         decision = data.get("Decision") or data.get("decision", "")
         think = data.get("Thought") or data.get("thought", "")
         doc = data.get("Documentation") or data.get("documentation")

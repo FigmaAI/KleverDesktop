@@ -133,7 +133,8 @@ there is nothing to be done, you should output FINISH. You cannot output anythin
 in this field.>
 Summary: <Summarize your past actions along with your latest action in one or two sentences. Do not include the grid 
 area number in your summary>
-You can only take one action at a time, so please directly call the function."""
+You can only take one action at a time, so please directly call the function.
+You must respond in <system_language>."""
 
 self_explore_task_template = """You are an agent that is trained to complete certain tasks on a smartphone. You will be 
 given a screenshot of a smartphone app. The interactive UI elements on the screenshot are labeled with numeric tags 
@@ -177,7 +178,8 @@ there is nothing to be done, you should output FINISH. You cannot output anythin
 in this field.>
 Summary: <Summarize your past actions along with your latest action in one or two sentences. Do not include the numeric 
 tag in your summary>
-You can only take one action at a time, so please directly call the function."""
+You can only take one action at a time, so please directly call the function.
+You must respond in <system_language>."""
 
 self_explore_reflect_template = """I will give you screenshots of a mobile app before and after <action> the UI 
 element labeled with the number '<ui_element>' on the first screenshot. The numeric tag of each element is located at 
@@ -220,4 +222,4 @@ can use pronouns such as "the UI element" to refer to the element. Your output s
 Decision: SUCCESS
 Thought: <explain why you think the action successfully moved the task forward>
 Documentation: <describe the function of the UI element>
-"""
+You must respond in <system_language>."""

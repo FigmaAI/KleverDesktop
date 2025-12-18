@@ -2,13 +2,13 @@
 """
 LLM Service - Unified LLM interface using LiteLLM
 This script provides a simple request-response interface for LLM calls.
-Used by Electron for translation and other LLM tasks.
+Used by Electron for model testing and chat completions.
 
 Usage:
-    echo '{"action": "translate", "text": "Hello", "target_lang": "ko", ...}' | python llm_service.py
+    echo '{"action": "test", "model": "ollama/llama3.2-vision"}' | python llm_service.py --model dummy --stdin
     
     Or with args:
-    python llm_service.py --action translate --text "Hello" --target_lang ko --provider openrouter --model openrouter/openai/gpt-4.1-mini --api_key xxx
+    python llm_service.py --action test --model openrouter/openai/gpt-4.1-mini --api_key xxx
 """
 
 import argparse
@@ -29,85 +29,6 @@ except ImportError:
 def log_debug(msg: str):
     """Print debug message to stderr (so it doesn't interfere with JSON output)"""
     print(f"[llm_service] {msg}", file=sys.stderr, flush=True)
-
-
-def translate_text(text: str, target_lang: str, model: str, api_key: str = "", base_url: str = "") -> dict:
-    """
-    Translate text to target language using LiteLLM.
-    
-    Args:
-        text: Text to translate
-        target_lang: Target language code ('ko', 'ja', 'en')
-        model: LiteLLM model name (e.g., 'openrouter/openai/gpt-4.1-mini')
-        api_key: API key for the provider
-        base_url: Optional custom base URL
-    
-    Returns:
-        dict with 'success', 'translated_text' or 'error'
-    """
-    if not LITELLM_AVAILABLE:
-        return {"success": False, "error": "LiteLLM not installed"}
-    
-    log_debug(f"Translating to {target_lang}, model: {model}")
-    log_debug(f"Text length: {len(text)} chars")
-    
-    lang_names = {
-        "en": "English",
-        "ko": "Korean", 
-        "ja": "Japanese",
-    }
-    target_lang_name = lang_names.get(target_lang, target_lang)
-    
-    prompt = f"""Translate the following text to {target_lang_name}. Respond with ONLY the translation, without any explanation or additional text.
-
-Text to translate:
-{text}"""
-
-    try:
-        # Prepare completion parameters
-        completion_params = {
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
-            "max_tokens": 4096,
-            "timeout": 60,  # Increased timeout for large texts
-        }
-        
-        # Add API key if provided (skip for Ollama which doesn't need auth)
-        # Detect Ollama from model name
-        is_ollama = model.startswith("ollama/")
-        if api_key and api_key.strip() and not is_ollama:
-            completion_params["api_key"] = api_key
-            log_debug("API key provided")
-        
-        # Add base URL if provided
-        if base_url and base_url.strip():
-            completion_params["api_base"] = base_url
-            log_debug(f"Using base URL: {base_url}")
-        
-        log_debug("Calling LiteLLM completion...")
-        
-        # Make the API call via LiteLLM
-        response = completion(**completion_params)
-        
-        log_debug("Response received")
-        
-        # Extract response content
-        translated_text = response.choices[0].message.content.strip()
-        
-        if not translated_text:
-            return {"success": False, "error": "Empty response from model"}
-        
-        log_debug(f"Translation successful, {len(translated_text)} chars")
-        
-        return {
-            "success": True,
-            "translated_text": translated_text,
-        }
-        
-    except Exception as e:
-        log_debug(f"Error: {str(e)}")
-        return {"success": False, "error": str(e)}
 
 
 def chat_completion(prompt: str, model: str, api_key: str = "", base_url: str = "",
@@ -257,9 +178,8 @@ def test_connection(model: str, api_key: str = "", base_url: str = "") -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="LLM Service using LiteLLM")
-    parser.add_argument("--action", choices=["translate", "chat", "test"], help="Action to perform")
-    parser.add_argument("--text", help="Text to translate or prompt for chat")
-    parser.add_argument("--target_lang", help="Target language for translation (ko, ja, en)")
+    parser.add_argument("--action", choices=["chat", "test"], help="Action to perform")
+    parser.add_argument("--text", help="Prompt for chat")
     parser.add_argument("--model", required=True, help="LiteLLM model name")
     parser.add_argument("--api_key", default="", help="API key for the provider")
     parser.add_argument("--base_url", default="", help="Custom base URL")
@@ -276,15 +196,14 @@ def main():
             stdin_data = sys.stdin.read()
             log_debug(f"Received {len(stdin_data)} bytes from stdin")
             input_data = json.loads(stdin_data)
-            action = input_data.get("action", "translate")
+            action = input_data.get("action", "chat")
             text = input_data.get("text", "")
-            target_lang = input_data.get("target_lang", "en")
             model = input_data.get("model", args.model)
             api_key = input_data.get("api_key", args.api_key)
             base_url = input_data.get("base_url", args.base_url)
             temperature = input_data.get("temperature", args.temperature)
             max_tokens = input_data.get("max_tokens", args.max_tokens)
-            log_debug(f"Parsed action: {action}, target_lang: {target_lang}")
+            log_debug(f"Parsed action: {action}")
         except json.JSONDecodeError as e:
             log_debug(f"JSON decode error: {e}")
             print(json.dumps({"success": False, "error": f"Invalid JSON input: {e}"}))
@@ -292,7 +211,6 @@ def main():
     else:
         action = args.action
         text = args.text
-        target_lang = args.target_lang
         model = args.model
         api_key = args.api_key
         base_url = args.base_url
@@ -300,14 +218,7 @@ def main():
         max_tokens = args.max_tokens
     
     # Perform action
-    if action == "translate":
-        if not text:
-            result = {"success": False, "error": "No text provided for translation"}
-        elif not target_lang:
-            result = {"success": False, "error": "No target language specified"}
-        else:
-            result = translate_text(text, target_lang, model, api_key, base_url)
-    elif action == "chat":
+    if action == "chat":
         if not text:
             result = {"success": False, "error": "No prompt provided"}
         else:

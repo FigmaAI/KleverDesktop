@@ -113,11 +113,12 @@ export function buildEnvFromConfig(
     OPTIMIZE_IMAGES: config.image.optimize.toString(),
 
     // ========================================
-    // Preferences (3 variables)
+    // Preferences (4 variables)
     // ========================================
     DARK_MODE: config.preferences.darkMode.toString(),
     MIN_DIST: config.preferences.minDist.toString(),
     DOC_REFINE: config.preferences.docRefine.toString(),
+    SYSTEM_LANGUAGE: config.preferences.systemLanguage || 'en',
   };
 }
 
@@ -169,10 +170,11 @@ export function validateEnvVars(envVars: Record<string, string>): boolean {
     'IMAGE_MAX_HEIGHT',
     'IMAGE_QUALITY',
     'OPTIMIZE_IMAGES',
-    // Preferences (3)
+    // Preferences (4)
     'DARK_MODE',
     'MIN_DIST',
     'DOC_REFINE',
+    'SYSTEM_LANGUAGE',
   ];
 
   const missingVars = requiredVars.filter((varName) => !(varName in envVars));

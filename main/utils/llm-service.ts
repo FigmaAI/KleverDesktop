@@ -17,9 +17,8 @@ import { spawnBundledPython, getAppagentPath, checkVenvStatus } from './python-r
  * Request interface for LLM service
  */
 export interface LLMServiceRequest {
-  action: 'translate' | 'chat' | 'test';
-  text?: string;             // Required for 'translate' and 'chat' actions (optional for 'test')
-  target_lang?: string;      // Required for 'translate' action
+  action: 'chat' | 'test';
+  text?: string;             // Required for 'chat' action (optional for 'test')
   model: string;             // LiteLLM model name (e.g., 'openrouter/openai/gpt-4.1-mini')
   api_key?: string;
   base_url?: string;
@@ -32,7 +31,6 @@ export interface LLMServiceRequest {
  */
 export interface LLMServiceResponse {
   success: boolean;
-  translated_text?: string;  // For 'translate' action
   content?: string;          // For 'chat' action
   message?: string;          // For 'test' action
   response_time?: number;    // For 'test' action
@@ -161,7 +159,6 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
     const inputData = JSON.stringify({
       action: request.action,
       text: request.text,
-      target_lang: request.target_lang,
       model: request.model,
       api_key: request.api_key,
       base_url: request.base_url,
@@ -172,32 +169,6 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
     proc.stdin?.write(inputData);
     proc.stdin?.end();
   });
-}
-
-/**
- * Convenience function for translation
- */
-export async function translateWithLLM(
-  text: string,
-  targetLang: string,
-  model: string,
-  apiKey?: string,
-  baseUrl?: string
-): Promise<{ success: boolean; translatedText?: string; error?: string }> {
-  const response = await callLLMService({
-    action: 'translate',
-    text,
-    target_lang: targetLang,
-    model,
-    api_key: apiKey,
-    base_url: baseUrl,
-  });
-
-  return {
-    success: response.success,
-    translatedText: response.translated_text,
-    error: response.error,
-  };
 }
 
 /**

@@ -223,6 +223,9 @@ configs = load_config()
 if args["model_name"]:
     configs["MODEL_NAME"] = args["model_name"]
 
+# Get system language for report output (e.g., 'en', 'ko', 'ja')
+system_language = configs.get("SYSTEM_LANGUAGE", "en")
+
 # Unified model initialization - all providers use OpenAIModel via LiteLLM
 # LiteLLM supports: ollama/*, openai/*, anthropic/*, etc.
 # Priority: MODEL_NAME (env) > API_MODEL (env) > MODEL_NAME (config.yaml)
@@ -442,6 +445,7 @@ while round_count < configs["MAX_ROUNDS"]:
 
     prompt = re.sub(r"<task_description>", task_desc, prompts.self_explore_task_template)
     prompt = re.sub(r"<last_act>", last_act, prompt)
+    prompt = re.sub(r"<system_language>", system_language, prompt)
     base64_img_before = os.path.join(task_dir, f"{round_count}_before_labeled.png")
     print_with_color("Thinking about what to do in the next step...", "yellow")
     status, rsp, metadata = mllm.get_model_response(prompt, [base64_img_before])
@@ -632,6 +636,7 @@ while round_count < configs["MAX_ROUNDS"]:
             # Ask model for grid-based action
             prompt = re.sub(r"<task_description>", task_desc, prompts.task_template_grid)
             prompt = re.sub(r"<last_act>", last_act, prompt)
+            prompt = re.sub(r"<system_language>", system_language, prompt)
 
             status, grid_rsp, grid_metadata = mllm.get_model_response(prompt, [grid_screenshot])
 
@@ -805,6 +810,7 @@ while round_count < configs["MAX_ROUNDS"]:
     prompt = re.sub(r"<ui_element>", str(area), prompt)
     prompt = re.sub(r"<task_desc>", task_desc, prompt)
     prompt = re.sub(r"<last_act>", last_act, prompt)
+    prompt = re.sub(r"<system_language>", system_language, prompt)
 
     print_with_color("Reflecting on my previous action...", "yellow")
     status, rsp, reflect_metadata = mllm.get_model_response(prompt, [base64_img_before, base64_img_after])

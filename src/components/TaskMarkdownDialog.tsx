@@ -1,11 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { FolderOpen, RefreshCw, ExternalLink, Loader2, X, Sparkles } from 'lucide-react'
+import { FolderOpen, RefreshCw, ExternalLink, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { LanguageSelector } from './LanguageSelector'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -95,16 +94,11 @@ export function TaskMarkdownDialog({
 }: TaskMarkdownDialogProps) {
   const { t } = useTranslation()
   const [content, setContent] = useState<string>('')
-  const [translatedContent, setTranslatedContent] = useState<string>('')
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('en')
-  const [isTranslating, setIsTranslating] = useState(false)
-  const [translationModel, setTranslationModel] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [markdownPath, setMarkdownPath] = useState<string>('')
   const [markdownDir, setMarkdownDir] = useState<string>('')
   const contentBoxRef = useRef<HTMLDivElement>(null)
-  const translationCancelledRef = useRef(false)
 
   const loadMarkdown = useCallback(async () => {
     setLoading(true)
@@ -155,72 +149,9 @@ export function TaskMarkdownDialog({
     }
   }, [taskName, workspaceDir, taskResultPath])
 
-  // Translate markdown content when language changes
-  const handleLanguageChange = useCallback(async (lang: string) => {
-    setSelectedLanguage(lang)
-
-    if (lang === 'en' || !content) {
-      setTranslatedContent('')
-      setTranslationModel('')
-      return
-    }
-
-    // Reset cancellation flag
-    translationCancelledRef.current = false
-
-    // Get current model info for display
-    try {
-      const configResult = await window.electronAPI.configLoad()
-      if (configResult.success && configResult.config?.model?.lastUsed) {
-        const { provider, model } = configResult.config.model.lastUsed
-        setTranslationModel(`${provider}/${model}`)
-      } else if (configResult.success && configResult.config?.model?.providers?.[0]) {
-        const firstProvider = configResult.config.model.providers[0]
-        setTranslationModel(`${firstProvider.id}/${firstProvider.preferredModel}`)
-      }
-    } catch {
-      setTranslationModel('AI Model')
-    }
-
-    setIsTranslating(true)
-    try {
-      const result = await window.electronAPI.translateMarkdown(content, lang)
-      
-      // Check if cancelled during translation
-      if (translationCancelledRef.current) {
-        setTranslatedContent('')
-        return
-      }
-
-      if (result.success && result.translatedText) {
-        setTranslatedContent(result.translatedText)
-      } else {
-        console.error('Translation failed:', result.error)
-        setTranslatedContent('')
-      }
-    } catch (err) {
-      console.error('Translation error:', err)
-      setTranslatedContent('')
-    } finally {
-      setIsTranslating(false)
-      setTranslationModel('')
-    }
-  }, [content])
-
-  // Cancel translation
-  const handleCancelTranslation = useCallback(() => {
-    translationCancelledRef.current = true
-    setIsTranslating(false)
-    setTranslationModel('')
-    setSelectedLanguage('en')
-    setTranslatedContent('')
-  }, [])
-
   useEffect(() => {
     if (open) {
       loadMarkdown()
-      setSelectedLanguage('en')
-      setTranslatedContent('')
     }
   }, [open, loadMarkdown])
 
@@ -293,13 +224,8 @@ export function TaskMarkdownDialog({
           <DialogTitle>Task Result</DialogTitle>
           <DialogDescription className="sr-only">View the generated markdown output and screenshots from the completed task</DialogDescription>
 
-          {/* Toolbar: Language selector on left, Action buttons on right */}
-          <div className="flex items-center justify-between mt-4">
-            <LanguageSelector
-              value={selectedLanguage}
-              onChange={handleLanguageChange}
-            />
-
+          {/* Toolbar */}
+          <div className="flex items-center justify-end mt-4">
             <TooltipProvider>
               <div className="flex gap-1">
                 <Tooltip>
@@ -358,30 +284,6 @@ export function TaskMarkdownDialog({
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : isTranslating ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">Translating with AI...</span>
-                  {translationModel && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" />
-                      {translationModel}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelTranslation}
-                className="gap-2"
-              >
-                <X className="h-4 w-4" />
-                Cancel
-              </Button>
-            </div>
           ) : error ? (
             <div className="p-8 text-center">
               <p className="text-lg text-destructive mb-4">{error}</p>
@@ -423,7 +325,7 @@ export function TaskMarkdownDialog({
                   img: ({ src, alt }) => <MarkdownImage src={src} alt={alt} baseDir={markdownDir} />,
                 }}
               >
-                {selectedLanguage === 'en' ? content : (translatedContent || content)}
+                {content}
               </ReactMarkdown>
             </div>
           ) : (

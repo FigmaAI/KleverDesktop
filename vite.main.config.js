@@ -1,8 +1,5 @@
 import { defineConfig } from 'vite';
 import { builtinModules } from 'node:module';
-import fs from 'node:fs';
-
-const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 
 // Vite config for Electron main process (managed by @electron-forge/plugin-vite)
 // DO NOT specify outDir - electron-forge manages build output automatically

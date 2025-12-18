@@ -299,12 +299,6 @@ declare global {
       onScheduleCancelled: (callback: (data: { projectId: string; taskId: string }) => void) => () => void;
 
       // ============================================
-      // Translation
-      // ============================================
-      translateText: (text: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
-      translateMarkdown: (markdown: string, targetLang: string) => Promise<{ success: boolean; translatedText?: string; error?: string }>;
-
-      // ============================================
       // Google Login (Pre-authentication)
       // ============================================
       // Web browser login

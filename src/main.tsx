@@ -447,16 +447,6 @@ if (!window.electronAPI) {
       // Mock implementation - in real electron this would remove specific listener
     },
 
-    // Translation (mock)
-    translateText: async (text: string, targetLang: string) => ({
-      success: true,
-      translatedText: `[Mock translation to ${targetLang}]: ${text}`,
-    }),
-    translateMarkdown: async (markdown: string, targetLang: string) => ({
-      success: true,
-      translatedText: `[Mock markdown translation to ${targetLang}]:\n${markdown}`,
-    }),
-
     // Google Login (mock)
     googleLoginWebStart: async () => ({ success: true }),
     googleLoginWebStop: async () => ({ success: true }),

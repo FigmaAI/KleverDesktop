@@ -29,9 +29,9 @@ const detectSystemLanguage = (): SupportedLanguage => {
   }
 
   // Detect system locale from browser/Electron
-  // navigator.language reflects system locale in Electron
-  const systemLocale = navigator.language 
-    || navigator.languages?.[0] 
+  // window.navigator.language reflects system locale in Electron
+  const systemLocale = window.navigator.language 
+    || window.navigator.languages?.[0] 
     || 'en';
   
   // Check if the system language starts with 'ko' (Korean)

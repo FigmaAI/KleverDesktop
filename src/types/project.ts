@@ -41,7 +41,6 @@ export interface Task {
   modelName?: string // Model name for LiteLLM (e.g., "ollama/llama3.2-vision", "gpt-4o")
   // Legacy field (deprecated, use modelProvider + modelName instead)
   model?: string
-  language?: string // Output language preference (e.g., 'en', 'ko', 'ja')
   createdAt: string
   updatedAt: string
   lastRunAt?: string
@@ -85,7 +84,6 @@ export interface TaskCreateInput {
   goal: string
   modelProvider?: string  // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
   modelName?: string      // Model name for LiteLLM
-  language?: string       // Output language preference (e.g., 'en', 'ko', 'ja')
   url?: string            // Web platform only
   apkSource?: ApkSource   // Android only: APK file path or Play Store URL
   maxRounds?: number      // Max rounds override

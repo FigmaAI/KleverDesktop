@@ -46,4 +46,10 @@ def load_config(config_path=None):
     if 'API_BASE_URL' in os.environ:
         configs['API_BASE_URL'] = os.environ['API_BASE_URL']
 
+    # System language for report output (from Electron app)
+    if 'SYSTEM_LANGUAGE' in os.environ:
+        configs['SYSTEM_LANGUAGE'] = os.environ['SYSTEM_LANGUAGE']
+    elif 'SYSTEM_LANGUAGE' not in configs:
+        configs['SYSTEM_LANGUAGE'] = 'en'  # Default to English
+
     return configs

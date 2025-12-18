@@ -14,7 +14,6 @@ import { registerProjectHandlers, cleanupProjectProcesses } from './project';
 import { registerTaskHandlers, cleanupTaskProcesses } from './task';
 import { registerDialogHandlers } from './dialogs';
 import { registerGitHubHandlers } from './github';
-import { registerTranslatorHandlers } from './translator';
 import { registerGoogleLoginHandlers, cleanupGoogleLoginProcesses } from './google-login';
 import { registerScheduleHandlers } from './schedule';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
@@ -36,7 +35,6 @@ export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => Brows
   registerTaskHandlers(ipcMain, getMainWindow);
   registerDialogHandlers(ipcMain, getMainWindow);
   registerGitHubHandlers(ipcMain);
-  registerTranslatorHandlers(ipcMain);
   registerGoogleLoginHandlers(ipcMain, getMainWindow);
   registerScheduleHandlers(ipcMain);
 

@@ -1,8 +1,7 @@
-import { app, Menu, MenuItemConstructorOptions, shell, BrowserWindow, dialog } from 'electron';
+import { app, Menu, MenuItemConstructorOptions, shell, BrowserWindow } from 'electron';
 import { checkForUpdates } from './handlers/updater';
-import log from 'electron-log';
 
-export function createMenu(mainWindow: BrowserWindow) {
+export function createMenu(_mainWindow: BrowserWindow) {
   const isMac = process.platform === 'darwin';
 
   const template: MenuItemConstructorOptions[] = [

@@ -492,7 +492,6 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
         goal: taskInput.goal,
         modelProvider: taskInput.modelProvider,
         modelName: taskInput.modelName,
-        language: taskInput.language,
         maxRounds: taskInput.maxRounds,
         url: taskInput.url,
         apkSource: taskInput.apkSource,

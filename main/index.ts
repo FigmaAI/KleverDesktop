@@ -10,6 +10,7 @@ import squirrelStartup from 'electron-squirrel-startup';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (squirrelStartup) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('electron').app.quit();
 }
 

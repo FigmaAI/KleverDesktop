@@ -230,12 +230,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ============================================
-  // Translation
-  // ============================================
-  translateText: (text: string, targetLang: string) => ipcRenderer.invoke('translator:translateText', text, targetLang),
-  translateMarkdown: (markdown: string, targetLang: string) => ipcRenderer.invoke('translator:translateMarkdown', markdown, targetLang),
-
-  // ============================================
   // Google Login (Pre-authentication)
   // ============================================
   // Web browser login
