@@ -18,6 +18,13 @@ from config import load_config
 from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
 from web_controller import WebController
 from model import parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel
+
+# Browser-Use integration for improved web automation
+try:
+    from browser_use_wrapper import run_web_task_sync, is_browser_use_available
+    BROWSER_USE_AVAILABLE = is_browser_use_available()
+except ImportError:
+    BROWSER_USE_AVAILABLE = False
 from utils import print_with_color, draw_bbox_multi, append_to_log, append_images_as_table, draw_grid
 
 # Global flag to track if we started an emulator
@@ -374,6 +381,98 @@ if task_desc:
 else:
     print_with_color("Please enter the description of the task you want me to complete in a few sentences:", "blue")
     task_desc = input()
+
+# ============================================================================
+# Browser-Use Integration for Web Platform
+# ============================================================================
+# If web platform and Browser-Use is available, use it for improved accuracy
+if platform == "web" and BROWSER_USE_AVAILABLE:
+    print_with_color("=" * 60, "green")
+    print_with_color("Using Browser-Use for web automation (improved accuracy)", "green")
+    print_with_color("=" * 60, "green")
+    print_with_color(f"Task: {task_desc}", "blue")
+    print_with_color(f"URL: {url}", "blue")
+    print_with_color(f"Model: {model_name}", "blue")
+
+    # Write initial report
+    append_to_log(f"# User Testing Report for {app}", report_log_path)
+    append_to_log(task_name, report_log_path)
+    append_to_log(f"## Task Description", report_log_path)
+    append_to_log(task_desc, report_log_path)
+    append_to_log(f"\n## Execution Mode: Browser-Use\n", report_log_path)
+
+    # Run task with Browser-Use
+    result = run_web_task_sync(
+        task_desc=task_desc,
+        url=url,
+        model_name=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        max_rounds=configs["MAX_ROUNDS"],
+        task_dir=task_dir,
+        browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
+        headless=configs.get("WEB_HEADLESS", False),
+        viewport_width=configs.get("WEB_VIEWPORT_WIDTH", 1280),
+        viewport_height=configs.get("WEB_VIEWPORT_HEIGHT", 720),
+        emit_progress=emit_progress,
+        save_screenshots=True
+    )
+
+    # Process result
+    if result["success"]:
+        print_with_color(
+            f"Task completed successfully in {result['rounds']} steps",
+            "green"
+        )
+        print_with_color(
+            f"Total tokens: {result['total_tokens']} "
+            f"(input: {result['input_tokens']}, output: {result['output_tokens']})",
+            "yellow"
+        )
+
+        # Write success to report
+        append_to_log(f"## Execution Summary", report_log_path)
+        append_to_log(f"- **Platform:** Web (Browser-Use)", report_log_path)
+        append_to_log(f"- **Steps:** {result['rounds']}", report_log_path)
+        append_to_log(f"- **Total Tokens:** {result['total_tokens']}", report_log_path)
+        append_to_log(f"- **Input Tokens:** {result['input_tokens']}", report_log_path)
+        append_to_log(f"- **Output Tokens:** {result['output_tokens']}", report_log_path)
+        append_to_log(f"- **Response Time:** {result['total_response_time']}s", report_log_path)
+        append_to_log(f"- **Status:** ✅ Success", report_log_path)
+
+        # Write step history
+        if result.get("history"):
+            append_to_log(f"\n## Step History\n", report_log_path)
+            for step_info in result["history"]:
+                append_to_log(f"### Step {step_info['step']}", report_log_path)
+                append_to_log(f"**Action:** {step_info['action']}", report_log_path)
+                if step_info.get('url'):
+                    append_to_log(f"**URL:** {step_info['url']}", report_log_path)
+
+        # Emit final progress
+        emit_progress(result['rounds'], configs["MAX_ROUNDS"])
+        print_with_color(f"Autonomous exploration completed successfully.", "yellow")
+        sys.exit(0)
+    else:
+        error_msg = result.get('error', 'Unknown error')
+        print_with_color(f"Task failed: {error_msg}", "red")
+
+        # Write failure to report
+        append_to_log(f"## Execution Summary", report_log_path)
+        append_to_log(f"- **Platform:** Web (Browser-Use)", report_log_path)
+        append_to_log(f"- **Steps:** {result['rounds']}", report_log_path)
+        append_to_log(f"- **Status:** ❌ Failed", report_log_path)
+        append_to_log(f"- **Error:** {error_msg}", report_log_path)
+
+        # Emit final progress
+        emit_progress(result['rounds'], configs["MAX_ROUNDS"])
+        sys.exit(1)
+
+# ============================================================================
+# Legacy Mode: Original AppAgent behavior (Android + Web fallback)
+# ============================================================================
+if platform == "web" and not BROWSER_USE_AVAILABLE:
+    print_with_color("Browser-Use not available, using legacy WebController", "yellow")
 
 round_count = 0
 doc_count = 0
