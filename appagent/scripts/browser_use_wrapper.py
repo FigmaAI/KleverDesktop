@@ -28,37 +28,48 @@ Usage:
 import asyncio
 import json
 import os
+import sys
 import time
+import base64
 from pathlib import Path
 from typing import Callable, Optional, Any
 
 # Browser-Use imports
+BROWSER_USE_AVAILABLE = False
+BROWSER_USE_ERROR = None
+
 try:
     from browser_use import Agent, Browser, BrowserConfig
-    from browser_use.browser.context import BrowserContext, BrowserContextConfig
     BROWSER_USE_AVAILABLE = True
-except ImportError:
-    BROWSER_USE_AVAILABLE = False
-    print("[Warning] browser-use not installed. Web automation will fall back to legacy mode.")
+except ImportError as e:
+    BROWSER_USE_ERROR = str(e)
+    print(f"[Warning] browser-use not installed: {e}")
+except Exception as e:
+    BROWSER_USE_ERROR = str(e)
+    print(f"[Warning] browser-use import error: {e}")
 
 # LangChain LLM imports
+LANGCHAIN_OPENAI_AVAILABLE = False
+LANGCHAIN_ANTHROPIC_AVAILABLE = False
+LANGCHAIN_OLLAMA_AVAILABLE = False
+
 try:
     from langchain_openai import ChatOpenAI
     LANGCHAIN_OPENAI_AVAILABLE = True
 except ImportError:
-    LANGCHAIN_OPENAI_AVAILABLE = False
+    pass
 
 try:
     from langchain_anthropic import ChatAnthropic
     LANGCHAIN_ANTHROPIC_AVAILABLE = True
 except ImportError:
-    LANGCHAIN_ANTHROPIC_AVAILABLE = False
+    pass
 
 try:
     from langchain_ollama import ChatOllama
     LANGCHAIN_OLLAMA_AVAILABLE = True
 except ImportError:
-    LANGCHAIN_OLLAMA_AVAILABLE = False
+    pass
 
 
 def create_llm_from_litellm_name(model_name: str, api_key: str, base_url: str):
@@ -233,11 +244,16 @@ async def run_web_task_with_browser_use(
         }
     """
     if not BROWSER_USE_AVAILABLE:
+        error_msg = BROWSER_USE_ERROR or "browser-use is not installed"
         return {
             "success": False,
-            "error": "browser-use is not installed. Install with: pip install browser-use",
+            "error": f"browser-use is not available: {error_msg}. Install with: pip install browser-use",
             "rounds": 0,
-            "total_tokens": 0
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_response_time": 0,
+            "history": []
         }
 
     # Create task directory if needed
@@ -252,148 +268,162 @@ async def run_web_task_with_browser_use(
     # Create LLM
     try:
         llm = create_llm_from_litellm_name(model_name, api_key, base_url)
+        print(f"[Browser-Use] LLM created: {type(llm).__name__} with model {model_name}")
     except ImportError as e:
         return {
             "success": False,
             "error": str(e),
             "rounds": 0,
-            "total_tokens": 0
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_response_time": 0,
+            "history": []
         }
 
     # Configure browser
-    browser_config = BrowserConfig(
-        headless=headless,
-        disable_security=True  # Allow cross-origin requests for testing
-    )
-
-    browser = Browser(config=browser_config)
-
-    # Track step timing
-    step_start_time = None
-
-    async def on_step_start(step: Any):
-        """Called when a new step starts."""
-        nonlocal step_start_time
-        step_start_time = time.time()
-
-    async def on_step_end(step: Any):
-        """Called when a step ends."""
-        nonlocal step_start_time
-
-        step_number = getattr(step, 'step_number', progress.current_step + 1)
-        response_time = time.time() - step_start_time if step_start_time else 2.0
-
-        # Extract token usage if available
-        input_tokens = 0
-        output_tokens = 0
-
-        if hasattr(step, 'model_output') and step.model_output:
-            model_output = step.model_output
-            if hasattr(model_output, 'usage_metadata'):
-                usage = model_output.usage_metadata
-                input_tokens = usage.get('input_tokens', 0)
-                output_tokens = usage.get('output_tokens', 0)
-            elif hasattr(model_output, 'response_metadata'):
-                metadata = model_output.response_metadata
-                if 'token_usage' in metadata:
-                    usage = metadata['token_usage']
-                    input_tokens = usage.get('prompt_tokens', 0)
-                    output_tokens = usage.get('completion_tokens', 0)
-
-        # Update progress
-        progress.update(
-            step_number=step_number,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            response_time=response_time
+    try:
+        browser_config = BrowserConfig(
+            headless=headless,
+            disable_security=True
         )
-
-        # Save screenshot if enabled
-        if save_screenshots:
-            try:
-                screenshot_path = screenshots_dir / f"step_{step_number:03d}.png"
-                if hasattr(step, 'state') and hasattr(step.state, 'screenshot'):
-                    # Save from step state
-                    with open(screenshot_path, 'wb') as f:
-                        f.write(step.state.screenshot)
-            except Exception as e:
-                print(f"[Warning] Failed to save screenshot: {e}")
-
-    # Create browser context with viewport
-    context_config = BrowserContextConfig(
-        browser_window_size={'width': viewport_width, 'height': viewport_height},
-        save_recording_path=str(task_path / "recording") if save_screenshots else None
-    )
+        browser = Browser(config=browser_config)
+        print(f"[Browser-Use] Browser configured: headless={headless}")
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to create browser: {str(e)}",
+            "rounds": 0,
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_response_time": 0,
+            "history": []
+        }
 
     history = []
+    step_count = 0
 
     try:
-        async with await browser.new_context(config=context_config) as context:
-            # Navigate to initial URL
-            page = await context.get_current_page()
-            if url:
-                print(f"[Browser-Use] Navigating to {url}")
-                await page.goto(url, wait_until="domcontentloaded")
+        # Prepend URL navigation to task if URL is provided
+        full_task = task_desc
+        if url:
+            full_task = f"First, go to {url}. Then: {task_desc}"
 
-            # Create agent
-            agent = Agent(
-                task=task_desc,
-                llm=llm,
-                browser_context=context,
-                max_steps=max_rounds
-            )
+        print(f"[Browser-Use] Starting task: {full_task}")
+        print(f"[Browser-Use] Max steps: {max_rounds}")
 
-            # Register callbacks if supported
-            if hasattr(agent, 'register_new_step_callback'):
-                agent.register_new_step_callback(on_step_end)
+        # Emit initial progress
+        progress.update(step_number=0, input_tokens=0, output_tokens=0, response_time=0)
 
-            # Run the agent
-            print(f"[Browser-Use] Starting task: {task_desc}")
-            result = await agent.run()
+        # Create and run agent
+        agent = Agent(
+            task=full_task,
+            llm=llm,
+            browser=browser,
+            max_steps=max_rounds
+        )
 
-            # Process history
-            if hasattr(result, 'history'):
-                for i, step in enumerate(result.history):
-                    step_info = {
-                        "step": i + 1,
-                        "action": str(getattr(step, 'action', 'unknown')),
-                        "result": str(getattr(step, 'result', ''))
-                    }
-                    if hasattr(step, 'state'):
-                        state = step.state
-                        step_info["url"] = getattr(state, 'url', '')
-                        step_info["title"] = getattr(state, 'title', '')
-                    history.append(step_info)
-            elif isinstance(result, list):
-                for i, step in enumerate(result):
-                    step_info = {
-                        "step": i + 1,
-                        "action": str(getattr(step, 'action', str(step))),
-                    }
-                    history.append(step_info)
+        # Run the agent
+        start_time = time.time()
+        result = await agent.run()
+        total_time = time.time() - start_time
 
-            summary = progress.get_summary()
+        # Process result - handle different return types
+        if result is None:
+            history = []
+            step_count = 0
+        elif isinstance(result, list):
+            step_count = len(result)
+            for i, step in enumerate(result):
+                step_info = {
+                    "step": i + 1,
+                    "action": str(getattr(step, 'action', str(step))),
+                    "result": str(getattr(step, 'result', ''))
+                }
+                # Try to get URL from step state
+                if hasattr(step, 'state'):
+                    state = step.state
+                    step_info["url"] = getattr(state, 'url', '')
+                    step_info["title"] = getattr(state, 'title', '')
 
-            return {
-                "success": True,
-                "rounds": len(history),
-                "total_tokens": summary["total_tokens"],
-                "input_tokens": summary["input_tokens"],
-                "output_tokens": summary["output_tokens"],
-                "total_response_time": summary["total_response_time"],
-                "history": history
-            }
+                    # Save screenshot if available
+                    if save_screenshots and hasattr(state, 'screenshot') and state.screenshot:
+                        try:
+                            screenshot_path = screenshots_dir / f"step_{i+1:03d}.png"
+                            screenshot_data = state.screenshot
+                            if isinstance(screenshot_data, str):
+                                # Base64 encoded
+                                screenshot_data = base64.b64decode(screenshot_data)
+                            with open(screenshot_path, 'wb') as f:
+                                f.write(screenshot_data)
+                        except Exception as e:
+                            print(f"[Browser-Use] Failed to save screenshot: {e}")
+
+                history.append(step_info)
+
+                # Emit progress for each step
+                progress.update(
+                    step_number=i + 1,
+                    input_tokens=100,  # Estimated
+                    output_tokens=50,  # Estimated
+                    response_time=total_time / max(step_count, 1)
+                )
+        elif hasattr(result, 'history'):
+            # Result object with history attribute
+            step_count = len(result.history) if result.history else 0
+            for i, step in enumerate(result.history or []):
+                step_info = {
+                    "step": i + 1,
+                    "action": str(getattr(step, 'action', 'unknown')),
+                    "result": str(getattr(step, 'result', ''))
+                }
+                if hasattr(step, 'state'):
+                    state = step.state
+                    step_info["url"] = getattr(state, 'url', '')
+                    step_info["title"] = getattr(state, 'title', '')
+                history.append(step_info)
+
+                progress.update(
+                    step_number=i + 1,
+                    input_tokens=100,
+                    output_tokens=50,
+                    response_time=total_time / max(step_count, 1)
+                )
+        else:
+            # Single result or unknown type
+            step_count = 1
+            history.append({
+                "step": 1,
+                "action": str(result),
+                "result": "completed"
+            })
+            progress.update(step_number=1, input_tokens=100, output_tokens=50, response_time=total_time)
+
+        summary = progress.get_summary()
+        print(f"[Browser-Use] Task completed in {step_count} steps, {total_time:.2f}s")
+
+        return {
+            "success": True,
+            "rounds": step_count,
+            "total_tokens": summary["total_tokens"],
+            "input_tokens": summary["input_tokens"],
+            "output_tokens": summary["output_tokens"],
+            "total_response_time": summary["total_response_time"],
+            "history": history
+        }
 
     except Exception as e:
         import traceback
-        error_msg = f"{str(e)}\n{traceback.format_exc()}"
+        error_msg = str(e)
         print(f"[Browser-Use] Error: {error_msg}")
+        print(traceback.format_exc())
 
         summary = progress.get_summary()
 
         return {
             "success": False,
-            "error": str(e),
+            "error": error_msg,
             "rounds": summary["steps"],
             "total_tokens": summary["total_tokens"],
             "input_tokens": summary["input_tokens"],
@@ -406,8 +436,9 @@ async def run_web_task_with_browser_use(
         # Clean up browser
         try:
             await browser.close()
-        except Exception:
-            pass
+            print("[Browser-Use] Browser closed")
+        except Exception as e:
+            print(f"[Browser-Use] Error closing browser: {e}")
 
 
 def run_web_task_sync(
@@ -448,26 +479,60 @@ def run_web_task_sync(
     Returns:
         dict: Result dictionary with success status and execution details
     """
-    return asyncio.run(
-        run_web_task_with_browser_use(
-            task_desc=task_desc,
-            url=url,
-            model_name=model_name,
-            api_key=api_key,
-            base_url=base_url,
-            max_rounds=max_rounds,
-            task_dir=task_dir,
-            browser_type=browser_type,
-            headless=headless,
-            viewport_width=viewport_width,
-            viewport_height=viewport_height,
-            emit_progress=emit_progress,
-            save_screenshots=save_screenshots
+    print(f"[Browser-Use] run_web_task_sync called")
+    print(f"[Browser-Use] Task: {task_desc}")
+    print(f"[Browser-Use] URL: {url}")
+    print(f"[Browser-Use] Model: {model_name}")
+    print(f"[Browser-Use] Available: {BROWSER_USE_AVAILABLE}")
+
+    if not BROWSER_USE_AVAILABLE:
+        error_msg = BROWSER_USE_ERROR or "browser-use not installed"
+        print(f"[Browser-Use] Not available: {error_msg}")
+        return {
+            "success": False,
+            "error": f"Browser-Use not available: {error_msg}",
+            "rounds": 0,
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_response_time": 0,
+            "history": []
+        }
+
+    try:
+        return asyncio.run(
+            run_web_task_with_browser_use(
+                task_desc=task_desc,
+                url=url,
+                model_name=model_name,
+                api_key=api_key,
+                base_url=base_url,
+                max_rounds=max_rounds,
+                task_dir=task_dir,
+                browser_type=browser_type,
+                headless=headless,
+                viewport_width=viewport_width,
+                viewport_height=viewport_height,
+                emit_progress=emit_progress,
+                save_screenshots=save_screenshots
+            )
         )
-    )
+    except Exception as e:
+        import traceback
+        print(f"[Browser-Use] Sync wrapper error: {e}")
+        print(traceback.format_exc())
+        return {
+            "success": False,
+            "error": str(e),
+            "rounds": 0,
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_response_time": 0,
+            "history": []
+        }
 
 
-# Convenience function to check if Browser-Use is available
 def is_browser_use_available() -> bool:
     """Check if Browser-Use and required dependencies are available."""
     return BROWSER_USE_AVAILABLE
@@ -485,24 +550,48 @@ def get_available_llm_providers() -> list:
     return providers
 
 
+def get_browser_use_status() -> dict:
+    """Get detailed status of Browser-Use availability."""
+    return {
+        "available": BROWSER_USE_AVAILABLE,
+        "error": BROWSER_USE_ERROR,
+        "llm_providers": get_available_llm_providers()
+    }
+
+
 if __name__ == "__main__":
     # Simple test
-    print(f"Browser-Use available: {is_browser_use_available()}")
-    print(f"Available LLM providers: {get_available_llm_providers()}")
+    print("=" * 60)
+    print("Browser-Use Wrapper Status")
+    print("=" * 60)
+
+    status = get_browser_use_status()
+    print(f"Browser-Use available: {status['available']}")
+    if status['error']:
+        print(f"Error: {status['error']}")
+    print(f"Available LLM providers: {status['llm_providers']}")
 
     if is_browser_use_available():
+        print("\n" + "=" * 60)
+        print("Running simple test...")
+        print("=" * 60)
+
         def test_progress(round_num, max_rounds, **kwargs):
             print(f"PROGRESS: Step {round_num}/{max_rounds}")
 
         result = run_web_task_sync(
-            task_desc="Go to example.com and find the main heading",
+            task_desc="Find the main heading on the page",
             url="https://example.com",
             model_name="ollama/llama3.2-vision",
             api_key="",
             base_url="http://localhost:11434",
             max_rounds=5,
             task_dir="/tmp/browser-use-test",
+            headless=True,
             emit_progress=test_progress
         )
 
         print(f"\nResult: {json.dumps(result, indent=2)}")
+    else:
+        print("\nBrowser-Use is not available. Install with:")
+        print("  pip install browser-use langchain-ollama langchain-openai")

@@ -357,22 +357,34 @@ else:  # web
     else:
         print_with_color("Please enter the URL you want to explore:", "blue")
         url = input()
-    # Use persistent browser profile if configured (for login sessions)
-    user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
-    if user_data_dir:
-        print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
 
-    controller = WebController(
-        browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
-        headless=configs.get("WEB_HEADLESS", False),
-        url=url,
-        user_data_dir=user_data_dir if user_data_dir else None
-    )
-    # Store reference for cleanup on exit
-    _web_controller = controller
-    width = controller.width
-    height = controller.height
-    print_with_color(f"Browser resolution: {width}x{height}", "yellow")
+    # Check if Browser-Use is available for Web platform
+    if BROWSER_USE_AVAILABLE:
+        # Skip WebController initialization - Browser-Use will handle everything
+        print_with_color("Browser-Use is available - will use for web automation", "green")
+        controller = None
+        _web_controller = None
+        width = configs.get("WEB_VIEWPORT_WIDTH", 1280)
+        height = configs.get("WEB_VIEWPORT_HEIGHT", 720)
+    else:
+        # Fallback to legacy WebController
+        print_with_color("Browser-Use not available - using legacy WebController", "yellow")
+        # Use persistent browser profile if configured (for login sessions)
+        user_data_dir = configs.get("WEB_USER_DATA_DIR", "")
+        if user_data_dir:
+            print_with_color(f"Using browser profile for login session: {user_data_dir}", "yellow")
+
+        controller = WebController(
+            browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
+            headless=configs.get("WEB_HEADLESS", False),
+            url=url,
+            user_data_dir=user_data_dir if user_data_dir else None
+        )
+        # Store reference for cleanup on exit
+        _web_controller = controller
+        width = controller.width
+        height = controller.height
+        print_with_color(f"Browser resolution: {width}x{height}", "yellow")
 
 # Get task description from CLI argument or prompt
 task_desc = args["task_desc"]
