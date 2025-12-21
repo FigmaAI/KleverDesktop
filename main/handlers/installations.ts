@@ -25,6 +25,13 @@ import {
   getPythonEnv
 } from '../utils/python-runtime';
 import { downloadPython } from '../utils/python-download';
+import { 
+  checkSyncNeeded, 
+  syncPythonEnvironment, 
+  updateManifest,
+  resetManifest,
+  SyncCheckResult 
+} from '../utils/python-sync';
 
 /**
  * Register all installation handlers
@@ -60,6 +67,9 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // Check venv status
       const venvStatus = checkVenvStatus();
 
+      // Check sync status
+      const syncStatus = checkSyncNeeded();
+
       const result = {
         success: true,
         bundledPython: {
@@ -75,7 +85,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         appagent: {
           path: pythonStatus.appagentPath,
           exists: true,
-        }
+        },
+        sync: syncStatus,
       };
 
       return result;
@@ -160,6 +171,10 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       if (!playwrightResult.success) {
         throw new Error(`Failed to install Playwright: ${playwrightResult.error}`);
       }
+
+      // 5. Update environment manifest for future sync checks
+      updateManifest();
+      mainWindow?.webContents.send('env:progress', '✓ Environment manifest updated\\n');
 
       // Success!
       mainWindow?.webContents.send('env:progress', '\n✅ Environment setup complete!\n');
@@ -620,6 +635,68 @@ print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[android:getStatus] Error:', message);
       return { success: false, devices: [], emulators: [], error: message };
+    }
+  });
+
+  // ============================================
+  // Python Environment Sync Handlers
+  // ============================================
+
+  // Check if environment sync is needed
+  ipcMain.handle('sync:check', async (): Promise<SyncCheckResult> => {
+    try {
+      return checkSyncNeeded();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[sync:check] Error:', message);
+      return {
+        needsSync: false,
+        currentAppVersion: '',
+        currentRequirementsHash: '',
+      };
+    }
+  });
+
+  // Run environment sync
+  ipcMain.handle('sync:run', async (_event, forceRecreateVenv: boolean = false) => {
+    try {
+      const mainWindow = getMainWindow();
+      
+      const onProgress = (message: string) => {
+        mainWindow?.webContents.send('sync:progress', message);
+      };
+
+      const result = await syncPythonEnvironment(onProgress, forceRecreateVenv);
+      
+      return result;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[sync:run] Error:', message);
+      return { success: false, error: message, synced: false };
+    }
+  });
+
+  // Reset sync manifest (forces resync on next check)
+  ipcMain.handle('sync:reset', async () => {
+    try {
+      resetManifest();
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[sync:reset] Error:', message);
+      return { success: false, error: message };
+    }
+  });
+
+  // Force update manifest without syncing
+  ipcMain.handle('sync:updateManifest', async () => {
+    try {
+      updateManifest();
+      return { success: true };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('[sync:updateManifest] Error:', message);
+      return { success: false, error: message };
     }
   });
 }

@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   envSetup: () => ipcRenderer.invoke('env:setup'),
   envReset: () => ipcRenderer.invoke('env:reset'),
 
+  // NEW: Python Environment Sync (for post-update synchronization)
+  syncCheck: () => ipcRenderer.invoke('sync:check'),
+  syncRun: (forceRecreateVenv?: boolean) => ipcRenderer.invoke('sync:run', forceRecreateVenv),
+  syncReset: () => ipcRenderer.invoke('sync:reset'),
+  syncUpdateManifest: () => ipcRenderer.invoke('sync:updateManifest'),
+
   // Python Runtime Management (Post-Install Download)
   pythonCheckInstalled: () => ipcRenderer.invoke('python:checkInstalled'),
   pythonGetInstallPath: () => ipcRenderer.invoke('python:getInstallPath'),
@@ -95,6 +101,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event: IpcRendererEvent, data: string) => callback(data);
     ipcRenderer.on('python:progress', handler);
     return () => ipcRenderer.removeListener('python:progress', handler);
+  },
+  onSyncProgress: (callback: (data: string) => void) => {
+    const handler = (_event: IpcRendererEvent, data: string) => callback(data);
+    ipcRenderer.on('sync:progress', handler);
+    return () => ipcRenderer.removeListener('sync:progress', handler);
+  },
+  onPythonSyncNeeded: (callback: (data: { reason: string; currentVersion: string; previousVersion?: string }) => void) => {
+    const handler = (_event: IpcRendererEvent, data: { reason: string; currentVersion: string; previousVersion?: string }) => callback(data);
+    ipcRenderer.on('python:sync-needed', handler);
+    return () => ipcRenderer.removeListener('python:sync-needed', handler);
   },
   onOllamaPullProgress: (callback: (data: string) => void) => {
     const handler = (_event: IpcRendererEvent, data: string) => callback(data);

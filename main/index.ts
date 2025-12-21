@@ -20,6 +20,7 @@ import { registerAllHandlers, cleanupAllProcesses } from './handlers';
 import { cleanupZombieTasks } from './utils/project-storage';
 import { createMenu } from './menu';
 import { initializeUpdater } from './handlers/updater';
+import { checkSyncNeeded } from './utils/python-sync';
 
 /**
  * Enable crash reporting for debugging (Build 13+)
@@ -155,7 +156,57 @@ app.whenReady().then(() => {
   
   createWindow();
   registerAllHandlers(ipcMain, getMainWindow);
+  
+  // Check Python environment sync after window is ready
+  // This runs asynchronously and notifies the renderer if sync is needed
+  checkPythonSync();
 });
+
+/**
+ * Check if Python environment needs synchronization after app update
+ * Runs asynchronously after app startup
+ */
+async function checkPythonSync(): Promise<void> {
+  try {
+    const syncCheck = checkSyncNeeded();
+    
+    if (syncCheck.needsSync) {
+      console.log('[Python Sync] Environment sync needed:', syncCheck.reason);
+      console.log('[Python Sync] App version:', syncCheck.currentAppVersion, '/', syncCheck.manifestAppVersion);
+      
+      // Notify the renderer process that sync is needed
+      // The renderer can then show a dialog or progress indicator
+      const window = getMainWindow();
+      if (window) {
+        window.webContents.on('did-finish-load', () => {
+          window.webContents.send('python:sync-needed', {
+            reason: syncCheck.reason,
+            currentVersion: syncCheck.currentAppVersion,
+            previousVersion: syncCheck.manifestAppVersion,
+          });
+        });
+      }
+      
+      // Auto-sync in background (optional - can be disabled for user control)
+      // Uncomment the following lines to enable auto-sync:
+      /*
+      console.log('[Python Sync] Starting automatic sync...');
+      const result = await syncPythonEnvironment((msg) => {
+        console.log('[Python Sync]', msg);
+      });
+      if (result.success) {
+        console.log('[Python Sync] Environment synchronized successfully');
+      } else {
+        console.error('[Python Sync] Failed to sync environment:', result.error);
+      }
+      */
+    } else {
+      console.log('[Python Sync] Environment is up to date');
+    }
+  } catch (error) {
+    console.error('[Python Sync] Error checking sync status:', error);
+  }
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
