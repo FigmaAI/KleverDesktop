@@ -96,12 +96,10 @@ export function buildEnvFromConfig(
     ANDROID_SDK_PATH: config.android.sdkPath,
 
     // ========================================
-    // Web Configuration (5 variables)
+    // Web Configuration (3 variables)
     // ========================================
     WEB_BROWSER_TYPE: config.web.browserType,
     WEB_HEADLESS: config.web.headless.toString(),
-    WEB_VIEWPORT_WIDTH: config.web.viewportWidth.toString(),
-    WEB_VIEWPORT_HEIGHT: config.web.viewportHeight.toString(),
     WEB_USER_DATA_DIR: getBrowserProfilePath(),  // Browser profile for login sessions
 
     // ========================================

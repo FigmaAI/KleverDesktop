@@ -88,11 +88,25 @@ export interface AndroidConfig {
 /**
  * Web platform configuration
  */
+/**
+ * Browser channels supported by Browser-Use/Playwright
+ */
+export type BrowserChannel =
+  | 'chromium'        // Playwright's isolated Chromium (default)
+  | 'chrome'          // Google Chrome
+  | 'chrome-beta'     // Chrome Beta
+  | 'chrome-dev'      // Chrome Dev
+  | 'chrome-canary'   // Chrome Canary
+  | 'msedge'          // Microsoft Edge
+  | 'msedge-beta'     // Edge Beta
+  | 'msedge-dev'      // Edge Dev
+  | 'msedge-canary'   // Edge Canary
+  | 'firefox'         // Mozilla Firefox
+  | 'webkit';         // WebKit (Safari engine)
+
 export interface WebConfig {
-  browserType: 'chromium' | 'firefox' | 'webkit';
+  browserType: BrowserChannel;
   headless: boolean;
-  viewportWidth: number;
-  viewportHeight: number;
 }
 
 /**
@@ -326,8 +340,6 @@ export const DEFAULT_CONFIG: AppConfig = {
   web: {
     browserType: 'chromium',
     headless: false,
-    viewportWidth: 1280,
-    viewportHeight: 720,
   },
   image: {
     maxWidth: 512,
@@ -365,11 +377,9 @@ export const ENV_VAR_MAPPING = {
   ANDROID_XML_DIR: 'android.xmlDir',
   ANDROID_SDK_PATH: 'android.sdkPath',
 
-  // Web configuration (4 variables)
+  // Web configuration (2 variables)
   WEB_BROWSER_TYPE: 'web.browserType',
   WEB_HEADLESS: 'web.headless',
-  WEB_VIEWPORT_WIDTH: 'web.viewportWidth',
-  WEB_VIEWPORT_HEIGHT: 'web.viewportHeight',
 
   // Image configuration (4 variables)
   IMAGE_MAX_WIDTH: 'image.maxWidth',

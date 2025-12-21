@@ -21,6 +21,8 @@ def load_config(config_path=None):
                 'IMAGE_MAX_WIDTH', 'IMAGE_MAX_HEIGHT', 'IMAGE_QUALITY', 'MAX_ROUNDS', 'MIN_DIST',
                 'REQUEST_TIMEOUT', 'QWEN3_TIMEOUT']
     float_keys = ['TEMPERATURE']
+    # String keys that should be read from environment (no conversion needed)
+    string_keys = ['WEB_CDP_URL', 'WEB_USER_DATA_DIR', 'WEB_BROWSER_TYPE']
 
     for key in configs.keys():
         if key in os.environ:

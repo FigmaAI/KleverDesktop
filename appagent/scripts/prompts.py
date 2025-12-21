@@ -1,3 +1,59 @@
+# =============================================================================
+# Language Configuration - Shared across Android and Web platforms
+# =============================================================================
+
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "ko": "Korean (한국어)",
+    "ja": "Japanese (日本語)",
+    "zh": "Chinese (中文)",
+    "es": "Spanish (Español)",
+    "fr": "French (Français)",
+    "de": "German (Deutsch)",
+    "pt": "Portuguese (Português)",
+    "it": "Italian (Italiano)",
+    "ru": "Russian (Русский)",
+    "ar": "Arabic (العربية)",
+    "hi": "Hindi (हिन्दी)",
+    "vi": "Vietnamese (Tiếng Việt)",
+    "th": "Thai (ไทย)",
+}
+
+def get_language_name(language_code: str) -> str:
+    """Get the display name for a language code.
+    
+    Args:
+        language_code: ISO 639-1 language code (e.g., 'en', 'ko', 'ja')
+    
+    Returns:
+        Language display name (e.g., 'Korean (한국어)')
+    """
+    return SUPPORTED_LANGUAGES.get(language_code, language_code)
+
+
+def get_language_instruction(language_code: str) -> str:
+    """Get language instruction for Browser-Use web automation.
+    
+    This adds a language requirement to the task description for web automation.
+    For Android, the `<system_language>` placeholder in templates is used instead.
+    
+    Args:
+        language_code: ISO 639-1 language code (e.g., 'en', 'ko', 'ja')
+    
+    Returns:
+        Language instruction string, or empty string for English
+    """
+    if language_code == "en":
+        return ""
+    
+    lang_name = get_language_name(language_code)
+    return f"IMPORTANT: You must respond and provide all output, observations, thoughts, and final results in {lang_name}."
+
+
+# =============================================================================
+# Android Documentation Templates
+# =============================================================================
+
 tap_doc_template = """I will give you the screenshot of a mobile app before and after tapping the UI element labeled 
 with the number <ui_element> on the screen. The numeric tag of each element is located at the center of the element. 
 Tapping this UI element is a necessary part of proceeding with a larger task, which is to <task_desc>. Your task is to 

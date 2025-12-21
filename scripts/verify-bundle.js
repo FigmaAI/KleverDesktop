@@ -53,7 +53,6 @@ const REQUIRED_FILES = {
   'appagent': [
     'appagent/scripts/self_explorer.py',
     'appagent/scripts/and_controller.py',
-    'appagent/scripts/web_controller.py',
     'appagent/scripts/model.py',
     'appagent/requirements.txt',
   ],
