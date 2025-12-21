@@ -130,7 +130,7 @@ export function PlatformSettingsCard({
                 onValueChange={(value) =>
                   setPlatformSettings({
                     ...platformSettings,
-                    webBrowserType: value as 'chromium' | 'firefox' | 'webkit',
+                    webBrowserType: value as typeof platformSettings.webBrowserType,
                   })
                 }
               >
@@ -138,7 +138,18 @@ export function PlatformSettingsCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* Chromium-based browsers */}
                   <SelectItem value="chromium">{t('settings.platformConfig.chromium')}</SelectItem>
+                  <SelectItem value="chrome">{t('settings.platformConfig.chrome')}</SelectItem>
+                  <SelectItem value="chrome-beta">{t('settings.platformConfig.chromeBeta')}</SelectItem>
+                  <SelectItem value="chrome-dev">{t('settings.platformConfig.chromeDev')}</SelectItem>
+                  <SelectItem value="chrome-canary">{t('settings.platformConfig.chromeCanary')}</SelectItem>
+                  {/* Edge browsers */}
+                  <SelectItem value="msedge">{t('settings.platformConfig.msedge')}</SelectItem>
+                  <SelectItem value="msedge-beta">{t('settings.platformConfig.msedgeBeta')}</SelectItem>
+                  <SelectItem value="msedge-dev">{t('settings.platformConfig.msedgeDev')}</SelectItem>
+                  <SelectItem value="msedge-canary">{t('settings.platformConfig.msedgeCanary')}</SelectItem>
+                  {/* Other engines */}
                   <SelectItem value="firefox">{t('settings.platformConfig.firefox')}</SelectItem>
                   <SelectItem value="webkit">{t('settings.platformConfig.webkit')}</SelectItem>
                 </SelectContent>
@@ -170,42 +181,6 @@ export function PlatformSettingsCard({
               <p className="text-sm text-muted-foreground">
                 {t('settings.platformConfig.headlessDesc')}
               </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('settings.platformConfig.viewportWidth')}</Label>
-                <Input
-                  type="number"
-                  value={platformSettings.webViewportWidth}
-                  onChange={(e) =>
-                    setPlatformSettings({
-                      ...platformSettings,
-                      webViewportWidth: parseInt(e.target.value) || 1280,
-                    })
-                  }
-                  min={320}
-                  max={3840}
-                />
-                <p className="text-sm text-muted-foreground">{t('settings.platformConfig.pixelRangeWidth')}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t('settings.platformConfig.viewportHeight')}</Label>
-                <Input
-                  type="number"
-                  value={platformSettings.webViewportHeight}
-                  onChange={(e) =>
-                    setPlatformSettings({
-                      ...platformSettings,
-                      webViewportHeight: parseInt(e.target.value) || 720,
-                    })
-                  }
-                  min={240}
-                  max={2160}
-                />
-                <p className="text-sm text-muted-foreground">{t('settings.platformConfig.pixelRangeHeight')}</p>
-              </div>
             </div>
 
             {/* Web Google Login */}

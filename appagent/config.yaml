@@ -6,7 +6,7 @@
 
 # Model (set via Electron app environment variables: MODEL_NAME, API_KEY, API_BASE_URL)
 # Fallback defaults when not provided by Electron app
-MODEL_NAME: "ollama/qwen3-vl:8b"  # Default model for standalone execution
+MODEL_NAME: "gpt-5.1-2025-11-13"  # Last used model from Electron app
 API_KEY: ""
 API_BASE_URL: ""
 
@@ -45,11 +45,15 @@ ANDROID_XML_DIR: "/sdcard"
 ANDROID_SDK_PATH: "/Volumes/Backup/Android/sdk"
 
 # Web Configuration
+# Browser channel options:
+#   - chromium (default, Playwright's isolated Chromium)
+#   - chrome (Google Chrome)
+#   - chrome-beta, chrome-dev, chrome-canary
+#   - msedge, msedge-beta, msedge-dev, msedge-canary
 WEB_BROWSER_TYPE: "chromium"
 WEB_HEADLESS: false
-WEB_VIEWPORT_WIDTH: 1280
-WEB_VIEWPORT_HEIGHT: 720
-WEB_USER_DATA_DIR: ""  # Browser profile for persistent login sessions (set by Electron)
+WEB_USER_DATA_DIR: ""  # Browser profile for persistent login sessions
+WEB_CDP_URL: ""  # CDP URL for connecting to existing Chrome (e.g., http://localhost:9222)
 
 # Image Optimization
 IMAGE_MAX_WIDTH: 512

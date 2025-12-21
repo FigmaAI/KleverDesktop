@@ -129,8 +129,6 @@ export function SetupWizard() {
         web: {
           browserType: 'chromium' as const,
           headless: false,
-          viewportWidth: 1280,
-          viewportHeight: 720,
         },
         image: {
           maxWidth: 512,

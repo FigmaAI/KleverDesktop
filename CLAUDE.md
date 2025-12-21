@@ -127,7 +127,7 @@ npm run publish        # Build and publish to GitHub Releases
 │  appagent/scripts/ - Automation scripts (12 files)      │
 │  - self_explorer.py - Main automation loop              │
 │  - and_controller.py - Android automation (ADB)         │
-│  - web_controller.py - Web automation (Playwright)      │
+│  - browser_use_wrapper.py - Web automation (Browser-Use)│
 │  - model.py - AI model integration (LiteLLM)            │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -222,7 +222,7 @@ KleverDesktop/
 │   ├── scripts/                       # Main automation code (12 files)
 │   │   ├── self_explorer.py           # Main automation loop
 │   │   ├── and_controller.py          # Android automation (ADB)
-│   │   ├── web_controller.py          # Web automation (Playwright)
+│   │   ├── browser_use_wrapper.py     # Web automation (Browser-Use)
 │   │   ├── task_executor.py           # Task execution orchestration
 │   │   ├── model.py                   # AI model integration (LiteLLM)
 │   │   ├── config.py                  # Config loading

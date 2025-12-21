@@ -9,3 +9,6 @@ pyyaml
 requests
 litellm
 anthropic
+
+# Browser-Use integration (LiteLLM direct, no LangChain)
+browser-use>=0.1.40

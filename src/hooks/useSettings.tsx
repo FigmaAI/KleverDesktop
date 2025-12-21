@@ -8,10 +8,16 @@ export interface PlatformSettings {
   androidSdkPath: string
 
   // Web settings
-  webBrowserType: 'chromium' | 'firefox' | 'webkit'
+  // Browser channel options supported by Browser-Use/Playwright
+  webBrowserType: 
+    | 'chromium'  // Playwright's isolated Chromium (default)
+    | 'chrome'    // Google Chrome
+    | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
+    | 'msedge'    // Microsoft Edge
+    | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
+    | 'firefox'   // Mozilla Firefox
+    | 'webkit'    // WebKit (Safari engine)
   webHeadless: boolean
-  webViewportWidth: number
-  webViewportHeight: number
 }
 
 export interface AgentSettings {
@@ -59,8 +65,6 @@ export function useSettings() {
     androidSdkPath: '',
     webBrowserType: 'chromium',
     webHeadless: false,
-    webViewportWidth: 1280,
-    webViewportHeight: 720,
   })
 
   // Agent settings
@@ -130,8 +134,6 @@ export function useSettings() {
           androidSdkPath: config.android?.sdkPath || '',
           webBrowserType: config.web?.browserType || 'chromium',
           webHeadless: config.web?.headless ?? false,
-          webViewportWidth: config.web?.viewportWidth || 1280,
-          webViewportHeight: config.web?.viewportHeight || 720,
         })
 
         // Load agent settings
@@ -195,8 +197,6 @@ export function useSettings() {
         web: {
           browserType: platformSettings.webBrowserType,
           headless: platformSettings.webHeadless,
-          viewportWidth: platformSettings.webViewportWidth,
-          viewportHeight: platformSettings.webViewportHeight,
         },
         image: {
           maxWidth: imageSettings.imageMaxWidth,

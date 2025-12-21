@@ -562,7 +562,6 @@ export function checkPythonRuntime(): {
     const criticalScripts = [
       'scripts/self_explorer.py',
       'scripts/and_controller.py',
-      'scripts/web_controller.py',
       'scripts/model.py',
     ];
 

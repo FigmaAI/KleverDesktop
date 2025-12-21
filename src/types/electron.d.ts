@@ -64,10 +64,15 @@ interface AppConfig {
     sdkPath: string;
   };
   web: {
-    browserType: 'chromium' | 'firefox' | 'webkit';
+    browserType: 
+      | 'chromium'        // Playwright's isolated Chromium (default)
+      | 'chrome'          // Google Chrome
+      | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
+      | 'msedge'          // Microsoft Edge
+      | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
+      | 'firefox'         // Mozilla Firefox
+      | 'webkit';         // WebKit (Safari engine)
     headless: boolean;
-    viewportWidth: number;
-    viewportHeight: number;
   };
   image: {
     maxWidth: number;
