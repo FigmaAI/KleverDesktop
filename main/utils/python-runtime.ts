@@ -148,6 +148,50 @@ export function getAppagentPath(): string {
 }
 
 /**
+ * Get engines directory path (new architecture)
+ * Contains GELab, Browser-Use, and other agent engines
+ */
+export function getEnginesPath(): string {
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev) {
+    // In dev: ../../engines
+    return path.join(__dirname, '..', '..', 'engines');
+  } else {
+    // Production: engines is an extraResource in Resources/engines
+    const enginesPath = path.join(process.resourcesPath, 'engines');
+
+    if (!fs.existsSync(enginesPath)) {
+      console.error('[Python Runtime] Engines directory not found at:', enginesPath);
+    }
+
+    return enginesPath;
+  }
+}
+
+/**
+ * Get common layer directory path
+ * Contains shared utilities like LLM adapter, config loader
+ */
+export function getCommonPath(): string {
+  const isDev = process.env.NODE_ENV === 'development';
+
+  if (isDev) {
+    // In dev: ../../common
+    return path.join(__dirname, '..', '..', 'common');
+  } else {
+    // Production: common is an extraResource in Resources/common
+    const commonPath = path.join(process.resourcesPath, 'common');
+
+    if (!fs.existsSync(commonPath)) {
+      console.error('[Python Runtime] Common layer not found at:', commonPath);
+    }
+
+    return commonPath;
+  }
+}
+
+/**
  * Execute Python script with bundled runtime
  */
 export function executePythonScript(
