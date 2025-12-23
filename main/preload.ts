@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testModelConnection: (config: Record<string, unknown>) => ipcRenderer.invoke('model:testConnection', config),
   saveModelConfig: (config: Record<string, unknown>) => ipcRenderer.invoke('model:saveConfig', config),
   fetchApiModels: (config: Record<string, unknown>) => ipcRenderer.invoke('model:fetchApiModels', config),
-  fetchLiteLLMModels: () => ipcRenderer.invoke('model:fetchLiteLLMModels'),
+  fetchLiteLLMModels: (forceRefresh?: boolean) => ipcRenderer.invoke('model:fetchLiteLLMModels', forceRefresh),
 
   // Integration test
   runIntegrationTest: (config: Record<string, unknown>) => ipcRenderer.invoke('integration:test', config),

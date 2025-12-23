@@ -34,6 +34,7 @@ import {
   Trash2,
   Monitor,
   Cloud,
+  RefreshCw,
 } from 'lucide-react'
 import { ModelSelector, ModelSelection } from './ModelSelector'
 import { ProviderConfig, MultiProviderModelSettings } from '@/types/setupWizard'
@@ -47,21 +48,21 @@ interface ModelSettingsCardProps {
 
 export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationChange }: ModelSettingsCardProps) {
   const { t } = useTranslation()
-  const { getProvider } = useLiteLLMProviders()
-  
+  const { getProvider, fetchProviders, loading: providersRefreshing } = useLiteLLMProviders()
+
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<ProviderConfig | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [providerToDelete, setProviderToDelete] = useState<string | null>(null)
-  
+
   // Form state for add/edit dialog
   const [formProvider, setFormProvider] = useState('')
   const [formModel, setFormModel] = useState('')
   const [formApiKey, setFormApiKey] = useState('')
   const [formBaseUrl, setFormBaseUrl] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
-  
+
   // Connection test state
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -72,7 +73,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
     if (p.id === 'ollama') return !!p.preferredModel
     return !!p.apiKey && !!p.preferredModel
   })
-  
+
   // Notify parent of validation state changes (must be in useEffect to avoid setState during render)
   useEffect(() => {
     onValidationChange?.(isValid)
@@ -101,6 +102,11 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
     setTestResult(null)
     setApiKeyValidated(false)
     setDialogOpen(true)
+
+    // Fetch providers when dialog opens (if not already loaded)
+    if (!providersRefreshing) {
+      fetchProviders()
+    }
   }
 
   // Open edit provider dialog
@@ -113,6 +119,11 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
     setTestResult(null)
     setApiKeyValidated(provider.id === 'ollama' || !!provider.apiKey)
     setDialogOpen(true)
+
+    // Fetch providers when dialog opens (if not already loaded)
+    if (!providersRefreshing) {
+      fetchProviders()
+    }
   }
 
   // Handle model selection change in dialog
@@ -121,7 +132,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
     setFormModel(selection.model)
     setTestResult(null)
     setApiKeyValidated(selection.provider === 'ollama')
-    
+
     // Set default base URL for provider
     if (selection.provider === 'ollama') {
       setFormBaseUrl('http://localhost:11434')
@@ -217,7 +228,7 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
       ...modelConfig,
       providers: newProviders,
     })
-    
+
     setDialogOpen(false)
   }
 
@@ -230,23 +241,23 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
   // Delete provider
   const handleDeleteProvider = () => {
     if (!providerToDelete) return
-    
+
     const newProviders = modelConfig.providers.filter(p => p.id !== providerToDelete)
-    
+
     // Update lastUsed if we're deleting the last used provider
     let newLastUsed = modelConfig.lastUsed
     if (modelConfig.lastUsed?.provider === providerToDelete) {
-      newLastUsed = newProviders.length > 0 
+      newLastUsed = newProviders.length > 0
         ? { provider: newProviders[0].id, model: newProviders[0].preferredModel }
         : undefined
     }
-    
+
     setModelConfig({
       ...modelConfig,
       providers: newProviders,
       lastUsed: newLastUsed,
     })
-    
+
     setDeleteDialogOpen(false)
     setProviderToDelete(null)
   }
@@ -438,13 +449,26 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              {t('common.cancel')}
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fetchProviders(true)}
+              disabled={providersRefreshing}
+              title={t('settings.modelConfig.refreshProviders')}
+              className="gap-1.5"
+            >
+              <RefreshCw className={`h-4 w-4 ${providersRefreshing ? 'animate-spin' : ''}`} />
+              {t('settings.modelConfig.refreshProviders')}
             </Button>
-            <Button onClick={handleSaveProvider} disabled={!canSave}>
-              {editingProvider ? t('settings.modelConfig.update') : t('settings.modelConfig.add')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button onClick={handleSaveProvider} disabled={!canSave}>
+                {editingProvider ? t('settings.modelConfig.update') : t('settings.modelConfig.add')}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

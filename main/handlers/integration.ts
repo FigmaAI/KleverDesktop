@@ -10,7 +10,7 @@ import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
-import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath } from '../utils/python-runtime';
 import { ensureDirectoryExists, loadProjects, saveProjects, getProjectWorkspaceDir } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
@@ -27,8 +27,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
   ipcMain.handle('integration:test', async (_event, config: ModelConfig) => {
     try {
       const mainWindow = getMainWindow();
-      const appagentPath = getAppagentPath();
-      const selfExplorerScript = path.join(appagentPath, 'scripts', 'self_explorer.py');
+      const legacyScriptsPath = getLegacyScriptsPath();
+      const selfExplorerScript = path.join(legacyScriptsPath, 'scripts', 'self_explorer.py');
 
       if (!fs.existsSync(selfExplorerScript)) {
         mainWindow?.webContents.send('integration:output', `Error: self_explorer.py not found at ${selfExplorerScript}\n`);
@@ -52,8 +52,8 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       // Prepare environment variables (merge with venv environment)
       const venvEnv = getPythonEnv();
 
-      // Add appagent/scripts to PYTHONPATH so imports work
-      const scriptsDir = path.join(appagentPath, 'scripts');
+      // Add legacy scripts to PYTHONPATH so imports work
+      const scriptsDir = path.join(legacyScriptsPath, 'scripts');
       const existingPythonPath = venvEnv.PYTHONPATH || '';
       const pythonPath = existingPythonPath
         ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
@@ -173,7 +173,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           'https://www.google.com',
         ],
         {
-          cwd: appagentPath, // Run from appagent directory to ensure relative imports work
+          cwd: legacyScriptsPath, // Run from legacy scripts directory to ensure relative imports work
           env: env,
         }
       );

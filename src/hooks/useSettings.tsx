@@ -9,14 +9,14 @@ export interface PlatformSettings {
 
   // Web settings
   // Browser channel options supported by Browser-Use/Playwright
-  webBrowserType: 
-    | 'chromium'  // Playwright's isolated Chromium (default)
-    | 'chrome'    // Google Chrome
-    | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
-    | 'msedge'    // Microsoft Edge
-    | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
-    | 'firefox'   // Mozilla Firefox
-    | 'webkit'    // WebKit (Safari engine)
+  webBrowserType:
+  | 'chromium'  // Playwright's isolated Chromium (default)
+  | 'chrome'    // Google Chrome
+  | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
+  | 'msedge'    // Microsoft Edge
+  | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
+  | 'firefox'   // Mozilla Firefox
+  | 'webkit'    // WebKit (Safari engine)
   webHeadless: boolean
 }
 
@@ -99,16 +99,11 @@ export function useSettings() {
 
   // Load all settings from config
   const loadSettings = useCallback(async () => {
-    console.log('[useSettings] === LOADING SETTINGS ===')
     setLoading(true)
     try {
       const result = await window.electronAPI.configLoad()
-      console.log('[useSettings] configLoad result:', result.success)
-
       if (result.success && result.config) {
         const config = result.config
-        console.log('[useSettings] Loaded model config from file:', JSON.stringify(config.model, null, 2))
-
         // Load multi-provider model config
         const loadedModelConfig: MultiProviderModelSettings = {
           providers: config.model?.providers || [
@@ -124,7 +119,6 @@ export function useSettings() {
             model: 'ollama/llama3.2-vision',
           },
         }
-        console.log('[useSettings] Setting modelConfig to:', JSON.stringify(loadedModelConfig, null, 2))
         setModelConfig(loadedModelConfig)
 
         // Load platform settings
@@ -169,8 +163,6 @@ export function useSettings() {
 
   // Save all settings to config
   const saveSettings = useCallback(async () => {
-    console.log('[useSettings] === SAVING SETTINGS ===')
-    console.log('[useSettings] Current modelConfig:', JSON.stringify(modelConfig, null, 2))
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
@@ -212,16 +204,13 @@ export function useSettings() {
         },
       }
 
-      console.log('[useSettings] Calling configSave with model:', JSON.stringify(config.model, null, 2))
       const result = await window.electronAPI.configSave(config)
-      console.log('[useSettings] configSave result:', result)
 
       if (result.success) {
-        console.log('[useSettings] === SAVE SUCCESS ===')
         setSaveSuccess(true)
         setTimeout(() => setSaveSuccess(false), 3000) // Clear success message after 3s
       } else {
-        console.error('[useSettings] === SAVE FAILED ===', result.error)
+        console.error('[useSettings] Save failed:', result.error)
         setSaveError(result.error || 'Failed to save settings')
       }
     } catch (error) {

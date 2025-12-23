@@ -44,7 +44,14 @@ export function ModelSelector({
   const [ollamaLoading, setOllamaLoading] = useState(false)
 
   // Use LiteLLM providers hook for API providers
-  const { providers, loading: providersLoading, error: providersError, getProviderModels } = useLiteLLMProviders()
+  const { providers, loading: providersLoading, error: providersError, getProviderModels, fetchProviders } = useLiteLLMProviders()
+
+  // Fetch providers on mount
+  useEffect(() => {
+    if (providers.length === 0 && !providersLoading) {
+      fetchProviders()
+    }
+  }, []) // Only run once on mount
 
   // Add Ollama to providers list if not already present
   const allProviders = useMemo(() => {

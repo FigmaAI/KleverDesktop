@@ -217,7 +217,7 @@ declare global {
         models?: string[];
         error?: string
       }>;
-      fetchLiteLLMModels: () => Promise<{
+      fetchLiteLLMModels: (forceRefresh?: boolean) => Promise<{
         success: boolean;
         providers?: Array<{
           id: string;

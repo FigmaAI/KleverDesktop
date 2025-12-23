@@ -589,12 +589,14 @@ function categorizeModels(modelData: Record<string, LiteLLMModelData>): LiteLLMP
 /**
  * Main fetch function with caching strategy
  */
-export async function fetchLiteLLMModels(): Promise<FetchResult> {
-  console.log('[LiteLLM] === fetchLiteLLMModels called ===');
+export async function fetchLiteLLMModels(forceRefresh = false): Promise<FetchResult> {
+  // Clear cache if force refresh requested
+  if (forceRefresh) {
+    cachedProviders = null;
+  }
   
   // Return in-memory cache if available
   if (cachedProviders) {
-    console.log(`[LiteLLM] Returning in-memory cache (${cachedProviders.length} providers)`);
     return { success: true, providers: cachedProviders, source: 'cache' };
   }
   

@@ -18,7 +18,7 @@ import {
 } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getAppagentPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath } from '../utils/python-runtime';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -188,9 +188,9 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       // Build 23 environment variables from config.json
       const configEnvVars = buildEnvFromConfig(appConfig);
 
-      // Python 실행 위치 = appagent 디렉토리
-      const appagentDir = getAppagentPath();
-      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
+      // Python 실행 위치 = legacy scripts 디렉토리
+      const legacyScriptsDir = getLegacyScriptsPath();
+      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from legacy scripts dir
 
       // Sanitize app name (remove spaces) to match learn.py behavior
       const sanitizedAppName = sanitizeAppName(projectConfig.name);
@@ -227,7 +227,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
     exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
 `;
 
-      const wrapperPath = path.join(appagentDir, '_project_wrapper.py');
+      const wrapperPath = path.join(legacyScriptsDir, '_project_wrapper.py');
       fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
 
       // Update args to use wrapper script instead of direct script
@@ -237,7 +237,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
       const pythonEnv = getPythonEnv();
 
       pythonProcess = spawnBundledPython(args, {
-        cwd: appagentDir,  // ✅ Python 실행 환경 = appagent 디렉토리
+        cwd: legacyScriptsDir,  // ✅ Python 실행 환경 = legacy scripts 디렉토리
         env: {
           ...pythonEnv,         // Python bundled environment variables
           ...configEnvVars      // 23 config settings from config.json

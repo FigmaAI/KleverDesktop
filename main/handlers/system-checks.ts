@@ -7,7 +7,7 @@ import { IpcMain } from 'electron';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getAppagentPath } from '../utils/python-runtime';
+import { getLegacyScriptsPath } from '../utils/python-runtime';
 
 /**
  * Register all system check handlers
@@ -41,8 +41,8 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
   // Check Python packages
   ipcMain.handle('check:packages', async () => {
     return new Promise((resolve) => {
-      const appagentPath = getAppagentPath();
-      const requirementsPath = path.join(appagentPath, 'requirements.txt');
+      const legacyScriptsPath = getLegacyScriptsPath();
+      const requirementsPath = path.join(legacyScriptsPath, 'requirements.txt');
 
       // Try to install with --dry-run to see if all packages can be installed
       exec(`python -m pip install --dry-run -r "${requirementsPath}"`, { timeout: 10000 }, (error, stdout, stderr) => {

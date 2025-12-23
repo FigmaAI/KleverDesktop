@@ -20,7 +20,7 @@ import {
   checkVenvStatus,
   createVirtualEnvironment,
   installRequirements,
-  getAppagentPath,
+  getLegacyScriptsPath,
   spawnBundledPython,
   getPythonEnv
 } from '../utils/python-runtime';
@@ -82,8 +82,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         playwright: {
           installed: playwrightInstalled,
         },
-        appagent: {
-          path: pythonStatus.appagentPath,
+        legacyScripts: {
+          path: pythonStatus.legacyScriptsPath,
           exists: true,
         },
         sync: syncStatus,
@@ -147,8 +147,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // 3. Install requirements.txt packages
       mainWindow?.webContents.send('env:progress', '\n📦 Installing Python packages from requirements.txt...\n');
       
-      const appagentPath = getAppagentPath();
-      const requirementsPath = path.join(appagentPath, 'requirements.txt');
+      const legacyScriptsPath = getLegacyScriptsPath();
+      const requirementsPath = path.join(legacyScriptsPath, 'requirements.txt');
 
       const requirementsResult = await installRequirements(
         requirementsPath,
@@ -501,9 +501,9 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         return { success: false, error: 'Python environment not ready. Please run Setup Wizard.' };
       }
 
-      const appagentDir = getAppagentPath();
+      const legacyScriptsDir = getLegacyScriptsPath();
       const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(appagentDir, 'scripts');
+      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
 
       // Build Python code to run prelaunch_app function
       const apkSourceJson = JSON.stringify(apkSource);
@@ -520,7 +520,7 @@ print('PRELAUNCH_RESULT:' + json.dumps(result))
 
       return new Promise((resolve) => {
         const process = spawnBundledPython(['-u', '-c', prelaunchCode], {
-          cwd: appagentDir,
+          cwd: legacyScriptsDir,
           env: {
             ...pythonEnv,
             PYTHONPATH: scriptsDir,
@@ -582,9 +582,9 @@ print('PRELAUNCH_RESULT:' + json.dumps(result))
         };
       }
 
-      const appagentDir = getAppagentPath();
+      const legacyScriptsDir = getLegacyScriptsPath();
       const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(appagentDir, 'scripts');
+      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
 
       const statusCode = `
 import sys
@@ -599,7 +599,7 @@ print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}
 
       return new Promise((resolve) => {
         const process = spawnBundledPython(['-u', '-c', statusCode], {
-          cwd: appagentDir,
+          cwd: legacyScriptsDir,
           env: {
             ...pythonEnv,
             PYTHONPATH: scriptsDir,

@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getAppagentPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath, getCommonPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
@@ -42,21 +42,21 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
       }
 
       // Call Python script to stop emulator
-      const appagentDir = getAppagentPath();
+      const legacyScriptsDir = getLegacyScriptsPath();
       const pythonEnv = getPythonEnv();
 
       // Run cleanup script using Python -c with inline code
-      const scriptsDir = path.join(appagentDir, 'scripts');
+      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
       const cleanupCode = `
 import sys
-sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
+sys.path.insert(0, '${legacyScriptsDir.replace(/\\/g, '/')}')
 sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
 from scripts.and_controller import stop_emulator
 stop_emulator()
 `;
       
       const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-        cwd: appagentDir,
+        cwd: legacyScriptsDir,
         env: pythonEnv,
       });
 
@@ -111,9 +111,9 @@ export async function startTaskExecution(
         output: '[Setup] Preparing Android device and app...\n' 
       });
 
-      const appagentDir = getAppagentPath();
+      const legacyScriptsDir = getLegacyScriptsPath();
       const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(appagentDir, 'scripts');
+      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
 
       const apkSourceJson = JSON.stringify(task.apkSource);
       const setupCode = `
@@ -129,7 +129,7 @@ print('SETUP_RESULT:' + json.dumps(result))
 
       const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
         const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
-          cwd: appagentDir,
+          cwd: legacyScriptsDir,
           env: {
             ...pythonEnv,
             PYTHONPATH: scriptsDir,
@@ -224,64 +224,69 @@ print('SETUP_RESULT:' + json.dumps(result))
       : undefined;
     const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
 
-    // Start Python process
-    const appagentDir = getAppagentPath();
-    const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from appagent dir
+    // Start Python process via Common Controller
+    const commonPath = getCommonPath();
+    const controllerPath = path.join(commonPath, 'controller.py');
+    const legacyScriptsDir = getLegacyScriptsPath();
+    const legacyScriptsSubDir = path.join(legacyScriptsDir, 'scripts');
 
-    // Build CLI parameters
-    // Project info (always required)
+    // Build parameters for the new controller
+    const taskParams = {
+      platform: project.platform,
+      app: sanitizedAppName,
+      root_dir: project.workspaceDir,
+      task_dir: taskDir,
+      task_desc: task.goal || task.description,
+      url: project.platform === 'web' ? task.url : undefined,
+      model_name: task.modelName,
+      max_rounds: task.maxRounds
+      // Add other necessary params here
+    };
+
+    // Build CLI parameters for controller
     const args = [
-      '-u',  // Unbuffered output for real-time logging
-      scriptPath,
-      '--platform', project.platform,
-      '--app', sanitizedAppName,
-      '--root_dir', project.workspaceDir,
-      '--task_dir', taskDir,
+      '-u',  // Unbuffered output
+      controllerPath,
+      '--engine', 'gelab', // Explicitly use GELab engine
+      '--action', 'execute',
+      '--task', task.goal || task.description || 'No description',
+      '--params', JSON.stringify(taskParams)
     ];
-
-    // Task description (required) - passed as CLI parameter
-    const taskDescription = task.goal || task.description;
-    if (taskDescription) {
-      args.push('--task_desc', taskDescription);
-    }
-
-    // Web URL (required for web platform) - passed as CLI parameter
-    if (project.platform === 'web' && task.url) {
-      args.push('--url', task.url);
-    }
-
-    // Model override (optional) - passed as CLI parameter
-    // modelName now contains full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-    if (task.modelName) {
-      args.push('--model_name', task.modelName);
-    }
 
     // Get Python environment and merge with config environment variables
     const pythonEnv = getPythonEnv();
-
-    // Add appagent/scripts to PYTHONPATH so imports work
-    const scriptsDir = path.join(appagentDir, 'scripts');
-    const existingPythonPath = pythonEnv.PYTHONPATH || '';
-    const pythonPath = existingPythonPath
-      ? `${scriptsDir}${path.delimiter}${existingPythonPath}`
-      : scriptsDir;
 
     // Add Android SDK default paths to PATH for adb/emulator detection
     const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
     const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
     const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
 
-    // NO WRAPPER: Run self_explorer.py directly
-    // This simplifies execution and avoids path/import issues
-    console.log(`[task:${taskId}] Starting Python process with args:`, args);
-    console.log(`[task:${taskId}] Working directory:`, appagentDir);
+    console.log(`[task:${taskId}] Starting Python Controller with args:`, args);
     
+    // Set PYTHONPATH to include project root so common and engines modules are resolvable
+    // We assume the structure is:
+    // root/
+    //   common/
+    //   engines/
+    //   resources/engines/appagent_legacy/scripts/ (legacy)
+    
+    // In dev, commonPath is .../common. In prod, it's resources/common.
+    // We want the parent of commonPath to be in PYTHONPATH.
+    const projectRoot = path.dirname(commonPath);
+    
+    const extendedPythonPath = [
+      projectRoot, 
+      legacyScriptsDir, 
+      legacyScriptsSubDir, 
+      pythonEnv.PYTHONPATH
+    ].filter(Boolean).join(path.delimiter);
+
     const taskProcess = spawnBundledPython(args, {
-      cwd: appagentDir,  // Run from appagent directory to ensure relative imports work
+      cwd: projectRoot,  // Run from project root
       env: {
         ...pythonEnv,         // Python bundled environment variables
         ...configEnvVars,     // 22 config settings from config.json
-        PYTHONPATH: pythonPath, // Add scripts directory to PYTHONPATH
+        PYTHONPATH: extendedPythonPath, // Extended PYTHONPATH
         PATH: updatedPath,    // Add Android SDK tools to PATH
         PYTHONUNBUFFERED: '1', // Force unbuffered output
         PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
@@ -656,18 +661,18 @@ export async function cleanupTaskProcesses(): Promise<void> {
       return;
     }
 
-    const appagentDir = getAppagentPath();
+    const legacyScriptsDir = getLegacyScriptsPath();
     const pythonEnv = getPythonEnv();
 
     const cleanupCode = `
 import sys
-sys.path.insert(0, '${appagentDir.replace(/\\/g, '/')}')
+sys.path.insert(0, '${legacyScriptsDir.replace(/\\/g, '/')}')
 from scripts.and_controller import cleanup_emulators
 cleanup_emulators()
 `;
 
     const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-      cwd: appagentDir,
+      cwd: legacyScriptsDir,
       env: pythonEnv,
     });
 

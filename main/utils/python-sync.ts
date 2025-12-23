@@ -22,7 +22,7 @@ import {
   getKleverDir, 
   checkVenvStatus, 
   installRequirements,
-  getAppagentPath,
+  getLegacyScriptsPath,
   createVirtualEnvironment
 } from './python-runtime';
 
@@ -110,7 +110,7 @@ function writeManifest(manifest: EnvManifest): void {
  * Get the path to requirements.txt
  */
 function getRequirementsPath(): string {
-  return path.join(getAppagentPath(), 'requirements.txt');
+  return path.join(getLegacyScriptsPath(), 'requirements.txt');
 }
 
 /**

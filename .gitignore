@@ -65,3 +65,5 @@ gcp-service-account.json
 resources
 *.p8
 /tools
+__pycache__/
+*.py[cod]

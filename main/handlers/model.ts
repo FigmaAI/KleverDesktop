@@ -118,9 +118,9 @@ export function registerModelHandlers(ipcMain: IpcMain): void {
   });
 
   // Fetch all LiteLLM providers and models from GitHub
-  ipcMain.handle('model:fetchLiteLLMModels', async () => {
+  ipcMain.handle('model:fetchLiteLLMModels', async (_event, forceRefresh: boolean = false) => {
     try {
-      const result = await fetchLiteLLMModels();
+      const result = await fetchLiteLLMModels(forceRefresh);
 
       if (!result.success && result.error) {
         console.error(`[model:fetchLiteLLMModels] Failed: ${result.error}`);

@@ -2,7 +2,7 @@
  * Hook to fetch and manage LiteLLM providers and models
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface LiteLLMModel {
   id: string;
@@ -27,13 +27,13 @@ export function useLiteLLMProviders() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  const fetchProviders = useCallback(async () => {
+  const fetchProviders = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError('');
-    
+
     try {
-      const result = await window.electronAPI.fetchLiteLLMModels();
-      
+      const result = await window.electronAPI.fetchLiteLLMModels(forceRefresh);
+
       if (result.success && result.providers) {
         setProviders(result.providers);
       } else {
@@ -46,10 +46,8 @@ export function useLiteLLMProviders() {
     }
   }, []);
 
-  // Auto-fetch on mount (only once)
-  useEffect(() => {
-    fetchProviders();
-  }, [fetchProviders]);
+  // Providers are loaded lazily when fetchProviders() is called
+  // (e.g., when Add Provider dialog opens)
 
   /**
    * Get provider by ID - memoized to prevent infinite loops

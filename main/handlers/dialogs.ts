@@ -1,3 +1,9 @@
+/**
+ * Dialog handlers
+ * Handles folder selection and opening folders
+ */
+
+
 import { dialog, shell, BrowserWindow, IpcMain } from 'electron'
 import { existsSync } from 'fs'
 import { exec } from 'child_process'

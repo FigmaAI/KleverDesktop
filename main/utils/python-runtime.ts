@@ -126,24 +126,27 @@ export function isPythonInstalled(): boolean {
 }
 
 /**
- * Get appagent directory path
+ * Get legacy scripts directory path (appagent folder)
+ * 
+ * NOTE: This points to the legacy appagent/scripts/ folder.
+ * Pending migration to engines/ architecture.
+ * For new code, use getEnginesPath() or getCommonPath() instead.
  */
-export function getAppagentPath(): string {
+export function getLegacyScriptsPath(): string {
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    // In dev: ../../appagent
-    return path.join(__dirname, '..', '..', 'appagent');
+    // In dev: ../../engines/appagent_legacy
+    return path.join(__dirname, '..', '..', 'engines', 'appagent_legacy');
   } else {
-    // Production: appagent is an extraResource in Resources/appagent
-    // process.resourcesPath points to app/Contents/Resources/ (macOS) or resources/ (Windows)
-    const appagentPath = path.join(process.resourcesPath, 'appagent');
+    // Production: appagent_legacy is an extraResource in Resources/engines/appagent_legacy
+    const legacyPath = path.join(process.resourcesPath, 'engines', 'appagent_legacy');
 
-    if (!fs.existsSync(appagentPath)) {
-      console.error('[Python Runtime] Appagent directory not found at:', appagentPath);
+    if (!fs.existsSync(legacyPath)) {
+      console.error('[Python Runtime] Legacy scripts directory not found at:', legacyPath);
     }
 
-    return appagentPath;
+    return legacyPath;
   }
 }
 
@@ -200,19 +203,19 @@ export function executePythonScript(
   options?: SpawnOptions
 ) {
   const pythonExe = getPythonPath();
-  const appagentDir = getAppagentPath();
-  const fullScriptPath = path.join(appagentDir, scriptPath);
+  const legacyScriptsDir = getLegacyScriptsPath();
+  const fullScriptPath = path.join(legacyScriptsDir, scriptPath);
 
   const env = {
     ...process.env,
-    PYTHONPATH: appagentDir,
+    PYTHONPATH: legacyScriptsDir,
     PYTHONUNBUFFERED: '1',
   };
 
   return spawn(pythonExe, ['-u', fullScriptPath, ...args], {
     ...options,
     env,
-    cwd: appagentDir,
+    cwd: legacyScriptsDir,
   });
 }
 
@@ -545,12 +548,12 @@ export async function installPlaywrightBrowsers(
  */
 // eslint-disable-next-line no-undef
 export function getPythonEnv(): NodeJS.ProcessEnv {
-  const appagentDir = getAppagentPath();
+  const legacyScriptsDir = getLegacyScriptsPath();
 
   const env = { ...process.env };
 
-  // Set PYTHONPATH to appagent directory
-  env.PYTHONPATH = appagentDir;
+  // Set PYTHONPATH to legacy scripts directory
+  env.PYTHONPATH = legacyScriptsDir;
 
   // Force unbuffered output for real-time logging
   env.PYTHONUNBUFFERED = '1';
@@ -566,11 +569,11 @@ export function spawnBundledPython(
   options?: SpawnOptions
 ) {
   const pythonExe = getVenvPythonPath();
-  const appagentDir = getAppagentPath();
+  const legacyScriptsDir = getLegacyScriptsPath();
 
   const env = {
     ...process.env,
-    PYTHONPATH: appagentDir,
+    PYTHONPATH: legacyScriptsDir,
     PYTHONUNBUFFERED: '1',
     ...options?.env,
   };
@@ -587,18 +590,18 @@ export function spawnBundledPython(
 export function checkPythonRuntime(): {
   available: boolean;
   pythonPath?: string;
-  appagentPath?: string;
+  legacyScriptsPath?: string;
   error?: string;
 } {
   try {
     const pythonPath = getPythonPath();
-    const appagentPath = getAppagentPath();
+    const legacyScriptsPath = getLegacyScriptsPath();
 
-    // Verify appagent exists
-    if (!fs.existsSync(appagentPath)) {
+    // Verify legacy scripts directory exists
+    if (!fs.existsSync(legacyScriptsPath)) {
       return {
         available: false,
-        error: `appagent directory not found at ${appagentPath}`,
+        error: `Legacy scripts directory not found at ${legacyScriptsPath}`,
       };
     }
 
@@ -610,12 +613,12 @@ export function checkPythonRuntime(): {
     ];
 
     for (const script of criticalScripts) {
-      const scriptPath = path.join(appagentPath, script);
+      const scriptPath = path.join(legacyScriptsPath, script);
       if (!fs.existsSync(scriptPath)) {
         return {
           available: false,
           pythonPath,
-          appagentPath,
+          legacyScriptsPath,
           error: `Critical script missing: ${script}`,
         };
       }
@@ -624,7 +627,7 @@ export function checkPythonRuntime(): {
     return {
       available: true,
       pythonPath,
-      appagentPath,
+      legacyScriptsPath,
     };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
