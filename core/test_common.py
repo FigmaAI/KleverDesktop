@@ -22,8 +22,8 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from common.llm_adapter import test_llm_connection, LLMAdapter
-from common.config import get_config, load_config
+from core.llm_adapter import test_llm_connection, LLMAdapter
+from core.config import get_config, load_config
 
 
 def main():

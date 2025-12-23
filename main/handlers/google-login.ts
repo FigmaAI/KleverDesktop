@@ -7,7 +7,7 @@ import { IpcMain, BrowserWindow, dialog, app } from 'electron';
 import { ChildProcess, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawnBundledPython, getPythonEnv, getCommonPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getCorePath } from '../utils/python-runtime';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 
 let webLoginProcess: ChildProcess | null = null;
@@ -135,11 +135,11 @@ export function registerGoogleLoginHandlers(
     try {
       const mainWindow = getMainWindow();
       const profilePath = getBrowserProfilePath();
-      const commonPath = getCommonPath();
-      const loginScript = path.join(commonPath, 'auth', 'google_login.py');
+      const corePath = getCorePath();
+      const loginScript = path.join(corePath, 'auth', 'google_login.py');
 
       if (!fs.existsSync(loginScript)) {
-        return { success: false, error: 'google_login.py script not found in common/auth/' };
+        return { success: false, error: 'google_login.py script not found in core/auth/' };
       }
 
       // Kill existing process if running
@@ -152,8 +152,8 @@ export function registerGoogleLoginHandlers(
 
       // Spawn Python process
       const env = getPythonEnv();
-      const authDir = path.join(commonPath, 'auth');
-      env.PYTHONPATH = `${commonPath}:${authDir}`;
+      const authDir = path.join(corePath, 'auth');
+      env.PYTHONPATH = `${corePath}:${authDir}`;
       env.PYTHONIOENCODING = 'utf-8';
 
       webLoginProcess = spawnBundledPython(
@@ -168,7 +168,7 @@ export function registerGoogleLoginHandlers(
           'https://accounts.google.com',
         ],
         {
-          cwd: commonPath,
+          cwd: corePath,
           env,
         }
       );
@@ -356,11 +356,11 @@ export function registerGoogleLoginHandlers(
   ipcMain.handle('google-login:android:start', async (_event, deviceId?: string) => {
     try {
       const mainWindow = getMainWindow();
-      const commonPath = getCommonPath();
-      const loginScript = path.join(commonPath, 'auth', 'google_login_android.py');
+      const corePath = getCorePath();
+      const loginScript = path.join(corePath, 'auth', 'google_login_android.py');
 
       if (!fs.existsSync(loginScript)) {
-        return { success: false, error: 'google_login_android.py script not found in common/auth/' };
+        return { success: false, error: 'google_login_android.py script not found in core/auth/' };
       }
 
       mainWindow?.webContents.send('google-login:android:status', 'starting');
@@ -370,23 +370,23 @@ export function registerGoogleLoginHandlers(
       const sdkPath = config.android?.sdkPath;
 
       const env = getPythonEnv();
-      const authDir = path.join(commonPath, 'auth');
-      env.PYTHONPATH = `${commonPath}:${authDir}`;
+      const authDir = path.join(corePath, 'auth');
+      env.PYTHONPATH = `${corePath}:${authDir}`;
       env.PYTHONIOENCODING = 'utf-8';
 
       // Inject Android SDK path if available
       if (sdkPath) {
         env.ANDROID_HOME = sdkPath;
         env.ANDROID_SDK_ROOT = sdkPath;
-        
+
         // Add platform-tools and emulator to PATH to ensure find_tool works
         const platformTools = path.join(sdkPath, 'platform-tools');
         const emulatorTools = path.join(sdkPath, 'emulator');
         const cmdlineTools = path.join(sdkPath, 'cmdline-tools', 'latest', 'bin');
-        
+
         // Prepend to PATH
         env.PATH = `${platformTools}${path.delimiter}${emulatorTools}${path.delimiter}${cmdlineTools}${path.delimiter}${env.PATH || ''}`;
-        
+
         console.log('[Google Login Android] Injected SDK path:', sdkPath);
       } else {
         console.warn('[Google Login Android] Android SDK path not configured in settings');
@@ -398,7 +398,7 @@ export function registerGoogleLoginHandlers(
         '--mode',
         'login',
       ];
-      
+
       // Add device ID if specified
       if (deviceId) {
         args.push('--device', deviceId);
@@ -411,7 +411,7 @@ export function registerGoogleLoginHandlers(
       }
 
       androidLoginProcess = spawnBundledPython(args, {
-        cwd: commonPath,
+        cwd: corePath,
         env,
       });
 

@@ -1,8 +1,8 @@
 # =============================================================================
-# Engines Configuration
+# Engines Configuration Template
 # =============================================================================
-# Centralized configuration for all agent engines (GELab, Browser-Use, etc.)
-# API keys should be added below. Consider adding this file to .gitignore
+# Copy this file to config.yaml and add your API keys.
+# config.yaml is gitignored to protect your credentials.
 
 # -----------------------------------------------------------------------------
 # LLM Providers
@@ -16,25 +16,25 @@ providers:
     api_base: "http://localhost:11434"
     api_key: ""
     default_model: "gelab-zero-4b-preview"
-  
+
   # OpenAI - just api_key needed
   openai:
     api_key: ""  # Add your OpenAI API key here
     default_model: "gpt-4o"
-  
+
   # Anthropic - just api_key needed
   anthropic:
-    api_key: ""
+    api_key: ""  # Add your Anthropic API key here
     default_model: "claude-3-5-sonnet-20241022"
-  
+
   # OpenRouter - just api_key needed (LiteLLM knows the URL)
   openrouter:
-    api_key: ""
+    api_key: ""  # Add your OpenRouter API key here
     default_model: "openai/gpt-4o"
-  
+
   # Google Gemini - just api_key needed
   gemini:
-    api_key: ""
+    api_key: ""  # Add your Google API key here
     default_model: "gemini/gemini-2.0-flash"
 
 # -----------------------------------------------------------------------------

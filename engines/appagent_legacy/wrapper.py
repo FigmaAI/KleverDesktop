@@ -1,5 +1,5 @@
-from common.engine_interface import EngineInterface
-from common.utils import print_with_color
+from core.engine_interface import EngineInterface
+from core.utils import print_with_color
 import os
 import sys
 

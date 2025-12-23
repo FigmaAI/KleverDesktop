@@ -51,10 +51,10 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         "providers": {}
     }
     
-    # Try to load from engines/config.yaml (for defaults and standalone testing)
+    # Try to load from config.yaml 
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
-    engines_config = os.path.join(parent_dir, "engines", "config.yaml")
+    engines_config = os.path.join(parent_dir, "config.yaml")
     
     if os.path.exists(engines_config):
         with open(engines_config, 'r') as f:

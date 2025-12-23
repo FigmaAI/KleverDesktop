@@ -11,8 +11,9 @@ module.exports = {
     asar: true, // Enable asar for performance and security
     arch: 'universal', // Universal binary for macOS (Intel + Apple Silicon)
     extraResource: [
-      'appagent', // Python scripts only, not Python runtime
-      'dist' // Renderer build output (Vite builds to dist/)
+      'core',    // Core shared infrastructure (formerly 'common')
+      'engines', // Engine implementations (gelab, browser_use, legacy)
+      'dist'     // Renderer build output (Vite builds to dist/)
     ],
     extendInfo: {
       ITSAppUsesNonExemptEncryption: false

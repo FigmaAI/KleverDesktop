@@ -15,7 +15,7 @@ import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath, getCommonPath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath, getCorePath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
 import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
@@ -224,9 +224,9 @@ print('SETUP_RESULT:' + json.dumps(result))
       : undefined;
     const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
 
-    // Start Python process via Common Controller
-    const commonPath = getCommonPath();
-    const controllerPath = path.join(commonPath, 'controller.py');
+    // Start Python process via Core Controller
+    const corePath = getCorePath();
+    const controllerPath = path.join(corePath, 'controller.py');
     const legacyScriptsDir = getLegacyScriptsPath();
     const legacyScriptsSubDir = path.join(legacyScriptsDir, 'scripts');
 
@@ -263,16 +263,16 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     console.log(`[task:${taskId}] Starting Python Controller with args:`, args);
     
-    // Set PYTHONPATH to include project root so common and engines modules are resolvable
+    // Set PYTHONPATH to include project root so core and engines modules are resolvable
     // We assume the structure is:
     // root/
-    //   common/
+    //   core/
     //   engines/
     //   resources/engines/appagent_legacy/scripts/ (legacy)
-    
-    // In dev, commonPath is .../common. In prod, it's resources/common.
-    // We want the parent of commonPath to be in PYTHONPATH.
-    const projectRoot = path.dirname(commonPath);
+
+    // In dev, corePath is .../core. In prod, it's resources/core.
+    // We want the parent of corePath to be in PYTHONPATH.
+    const projectRoot = path.dirname(corePath);
     
     const extendedPythonPath = [
       projectRoot, 

@@ -10,7 +10,7 @@ project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from common.utils import print_with_color
+from core.utils import print_with_color
 
 def load_engine(engine_name):
     """Dynamically load the requested engine"""

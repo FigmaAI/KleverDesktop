@@ -127,10 +127,10 @@ export function isPythonInstalled(): boolean {
 
 /**
  * Get legacy scripts directory path (appagent folder)
- * 
+ *
  * NOTE: This points to the legacy appagent/scripts/ folder.
  * Pending migration to engines/ architecture.
- * For new code, use getEnginesPath() or getCommonPath() instead.
+ * For new code, use getEnginesPath() or getCorePath() instead.
  */
 export function getLegacyScriptsPath(): string {
   const isDev = process.env.NODE_ENV === 'development';
@@ -173,24 +173,24 @@ export function getEnginesPath(): string {
 }
 
 /**
- * Get common layer directory path
+ * Get core layer directory path
  * Contains shared utilities like LLM adapter, config loader
  */
-export function getCommonPath(): string {
+export function getCorePath(): string {
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    // In dev: ../../common
-    return path.join(__dirname, '..', '..', 'common');
+    // In dev: ../../core
+    return path.join(__dirname, '..', '..', 'core');
   } else {
-    // Production: common is an extraResource in Resources/common
-    const commonPath = path.join(process.resourcesPath, 'common');
+    // Production: core is an extraResource in Resources/core
+    const corePath = path.join(process.resourcesPath, 'core');
 
-    if (!fs.existsSync(commonPath)) {
-      console.error('[Python Runtime] Common layer not found at:', commonPath);
+    if (!fs.existsSync(corePath)) {
+      console.error('[Python Runtime] Core layer not found at:', corePath);
     }
 
-    return commonPath;
+    return corePath;
   }
 }
 

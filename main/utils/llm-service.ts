@@ -11,7 +11,7 @@
  */
 
 import * as path from 'path';
-import { spawnBundledPython, getCommonPath, checkVenvStatus } from './python-runtime';
+import { spawnBundledPython, getCorePath, checkVenvStatus } from './python-runtime';
 
 /**
  * Request interface for LLM service
@@ -60,9 +60,9 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
     };
   }
 
-  // Use common layer instead of appagent
-  const commonDir = getCommonPath();
-  const scriptPath = path.join(commonDir, 'llm_adapter.py');
+  // Use core layer instead of appagent
+  const coreDir = getCorePath();
+  const scriptPath = path.join(coreDir, 'llm_adapter.py');
 
   return new Promise((resolve) => {
     // Use stdin JSON mode to safely pass large texts with special characters
@@ -77,7 +77,7 @@ export async function callLLMService(request: LLMServiceRequest): Promise<LLMSer
 
     // Spawn Python process
     const proc = spawnBundledPython(args, {
-      cwd: commonDir,
+      cwd: coreDir,
     });
 
     let stdout = '';

@@ -5,12 +5,12 @@ This module provides a unified LLM interface using LiteLLM,
 supporting 100+ providers including Ollama, OpenAI, Anthropic, etc.
 
 Usage:
-    from common.llm_adapter import LLMAdapter, test_llm_connection
-    
+    from core.llm_adapter import LLMAdapter, test_llm_connection
+
     # Test connection
     result = test_llm_connection("ollama/gelab-zero-4b-preview")
     print(result)
-    
+
     # Full usage
     adapter = LLMAdapter()
     response = adapter.chat("Hello, how are you?")
@@ -35,7 +35,7 @@ except ImportError:
     LITELLM_AVAILABLE = False
     print("[WARNING] LiteLLM not available. Install with: pip install litellm")
 
-from config import get_config
+from .config import get_config
 
 
 class LLMAdapter:

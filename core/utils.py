@@ -3,7 +3,7 @@ import os
 import cv2
 import pyshine as ps
 from colorama import Fore, Style
-from common.config import load_config  # Updated import
+from core.config import load_config  # Updated import
 
 def print_with_color(text: str, color="", log_file=None, heading_level=None):
     try:
