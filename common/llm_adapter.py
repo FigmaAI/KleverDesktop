@@ -174,9 +174,21 @@ class LLMAdapter:
             "max_tokens": kwargs.get("max_tokens", self.max_tokens),
         }
         
-        # Add API base and key if available
-        if self.api_base:
+        # Only add api_base for Ollama or custom endpoints
+        # Standard providers (OpenAI, Anthropic, etc.) don't need it - LiteLLM handles their URLs
+        model_lower = self.model.lower()
+        needs_api_base = (
+            model_lower.startswith("ollama/") or
+            "localhost" in self.api_base or
+            (self.api_base and not any(std in self.api_base for std in [
+                "openai.com", "anthropic.com", "googleapis.com", "openrouter.ai"
+            ]))
+        )
+        
+        if self.api_base and needs_api_base:
             litellm_kwargs["api_base"] = self.api_base
+        
+        # Always pass API key if available
         if self.api_key:
             litellm_kwargs["api_key"] = self.api_key
         

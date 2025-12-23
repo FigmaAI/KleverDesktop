@@ -1,0 +1,62 @@
+# =============================================================================
+# Engines Configuration
+# =============================================================================
+# Centralized configuration for all agent engines (GELab, Browser-Use, etc.)
+# API keys should be added below. Consider adding this file to .gitignore
+
+# -----------------------------------------------------------------------------
+# LLM Providers
+# -----------------------------------------------------------------------------
+# LiteLLM automatically handles base URLs for major providers.
+# Only Ollama and custom endpoints need api_base.
+
+providers:
+  # Ollama (Local) - base URL required
+  ollama:
+    api_base: "http://localhost:11434"
+    api_key: ""
+    default_model: "gelab-zero-4b-preview"
+  
+  # OpenAI - just api_key needed
+  openai:
+    api_key: ""  # Add your OpenAI API key here
+    default_model: "gpt-4o"
+  
+  # Anthropic - just api_key needed
+  anthropic:
+    api_key: ""
+    default_model: "claude-3-5-sonnet-20241022"
+  
+  # OpenRouter - just api_key needed (LiteLLM knows the URL)
+  openrouter:
+    api_key: ""
+    default_model: "openai/gpt-4o"
+  
+  # Google Gemini - just api_key needed
+  gemini:
+    api_key: ""
+    default_model: "gemini/gemini-2.0-flash"
+
+# -----------------------------------------------------------------------------
+# Default Provider
+# -----------------------------------------------------------------------------
+default_provider: "ollama"
+
+# -----------------------------------------------------------------------------
+# GELab Engine Settings
+# -----------------------------------------------------------------------------
+gelab:
+  temperature: 0.5
+  max_tokens: 512
+  top_p: 1.0
+  frequency_penalty: 0.0
+  coordinate_range: 1000  # GELab uses 0-1000 normalized coordinates
+
+# -----------------------------------------------------------------------------
+# Browser-Use Engine Settings
+# -----------------------------------------------------------------------------
+browser_use:
+  browser_type: "chromium"
+  headless: false
+  temperature: 0.7
+  max_tokens: 4096

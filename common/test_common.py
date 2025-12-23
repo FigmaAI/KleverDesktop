@@ -34,27 +34,45 @@ def main():
     # Show current config
     config = get_config()
     print("\n📋 Current Configuration:")
-    print(f"   Provider: {config.get('model', {}).get('provider', 'N/A')}")
-    print(f"   Model: {config.get('model', {}).get('model_name', 'N/A')}")
-    print(f"   API Base: {config.get('model', {}).get('api_base', 'N/A')}")
+    print(f"   Default Provider: {config.get('model', {}).get('provider', 'N/A')}")
+    print(f"   Default Model: {config.get('model', {}).get('model_name', 'N/A')}")
     
     # Get model from command line if provided
     model = None
-    api_base = None
     api_key = None
+    api_base = None
+    provider = None
     
     if len(sys.argv) > 1:
         model = sys.argv[1]
         print(f"\n🔧 Using model from argument: {model}")
+        
+        # Auto-detect provider from model name
+        providers = config.get("providers", {})
+        model_lower = model.lower()
+        
+        if model_lower.startswith("ollama/") or "gelab" in model_lower or "qwen" in model_lower or "llama" in model_lower:
+            provider = "ollama"
+        elif model_lower.startswith("gpt") or model_lower.startswith("o1") or model_lower.startswith("o3"):
+            provider = "openai"
+        elif model_lower.startswith("claude") or model_lower.startswith("anthropic/"):
+            provider = "anthropic"
+        elif model_lower.startswith("gemini"):
+            provider = "gemini"
+        elif "/" in model_lower:  # e.g., "openrouter/..."
+            provider = model_lower.split("/")[0]
+        
+        if provider and provider in providers:
+            provider_cfg = providers[provider]
+            api_key = provider_cfg.get("api_key", "")
+            api_base = provider_cfg.get("api_base")  # None if not specified
+            print(f"   Auto-detected provider: {provider}")
+            print(f"   API Key: {'[SET]' if api_key else '[NOT SET]'}")
     
-    if len(sys.argv) > 2:
-        api_base = sys.argv[2]
-        print(f"   API Base: {api_base}")
-    
-    # Check environment
+    # Environment variable overrides
     if os.environ.get("API_KEY"):
         api_key = os.environ["API_KEY"]
-        print("   API Key: [SET FROM ENV]")
+        print("   API Key (from env): [SET]")
     
     if os.environ.get("API_BASE_URL"):
         api_base = os.environ["API_BASE_URL"]

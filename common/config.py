@@ -1,9 +1,16 @@
 """
 Configuration loader for the common layer.
 
-Reads configuration from:
-1. Environment variables (set by Electron)
-2. config.yaml file
+Follows the same pattern as appagent/scripts/config.py:
+1. Environment variables (set by Electron via ModelSelector) - HIGHEST PRIORITY
+2. engines/config.yaml (for defaults and standalone testing)
+3. Default values - LOWEST PRIORITY
+
+Environment variables set by Electron:
+- MODEL_PROVIDER: Provider name (e.g., 'openai', 'ollama', 'anthropic')
+- MODEL_NAME: Model identifier (e.g., 'gpt-4o', 'gelab-zero-4b-preview')
+- API_KEY: API key for the provider
+- API_BASE_URL: Custom API base URL (optional, mainly for Ollama)
 """
 import os
 import yaml
@@ -14,81 +21,97 @@ DEFAULT_CONFIG = {
     "model": {
         "provider": "ollama",
         "model_name": "gelab-zero-4b-preview",
-        "api_base": "http://localhost:11434",
+        "api_base": "",
         "api_key": "",
         "temperature": 0.5,
         "max_tokens": 512,
     },
-    "android": {
-        "screenshot_dir": "/sdcard/klever",
-        "xml_dir": "/sdcard/klever",
-        "sdk_path": "",
-    },
-    "image": {
-        "max_width": 1080,
-        "max_height": 1920,
-        "quality": 85,
-        "optimize": True,
-    }
+    "providers": {}
 }
-
-_config: Dict[str, Any] = {}
 
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Load configuration from file and environment variables.
+    Load configuration from environment variables and config files.
     
-    Priority:
-    1. Environment variables (highest)
-    2. config.yaml file
-    3. Default values (lowest)
+    Priority (highest to lowest):
+    1. Environment variables (MODEL_PROVIDER, MODEL_NAME, API_KEY, API_BASE_URL)
+    2. engines/config.yaml file
+    3. Default values
     
-    Args:
-        config_path: Optional path to config.yaml
+    This follows the same pattern as appagent/scripts/config.py,
+    allowing Electron to pass configuration via environment variables.
     
     Returns:
         Configuration dictionary
     """
-    global _config
-    
     # Start with defaults
-    config = DEFAULT_CONFIG.copy()
-    
-    # Try to load from file
-    if config_path and os.path.exists(config_path):
-        with open(config_path, 'r') as f:
-            file_config = yaml.safe_load(f) or {}
-            _deep_update(config, file_config)
-    
-    # Override with environment variables (set by Electron)
-    env_mappings = {
-        "API_BASE_URL": ("model", "api_base"),
-        "API_KEY": ("model", "api_key"),
-        "MODEL_PROVIDER": ("model", "provider"),
-        "MODEL_NAME": ("model", "model_name"),
-        "TEMPERATURE": ("model", "temperature"),
-        "MAX_TOKENS": ("model", "max_tokens"),
-        "ANDROID_SDK_PATH": ("android", "sdk_path"),
-        "ANDROID_SCREENSHOT_DIR": ("android", "screenshot_dir"),
-        "ANDROID_XML_DIR": ("android", "xml_dir"),
+    config = {
+        "model": DEFAULT_CONFIG["model"].copy(),
+        "providers": {}
     }
     
-    for env_key, config_path_tuple in env_mappings.items():
-        env_value = os.environ.get(env_key)
-        if env_value:
-            section, key = config_path_tuple
-            if section not in config:
-                config[section] = {}
-            # Type conversion
-            if key in ("temperature",):
-                config[section][key] = float(env_value)
-            elif key in ("max_tokens", "max_width", "max_height", "quality"):
-                config[section][key] = int(env_value)
-            else:
-                config[section][key] = env_value
+    # Try to load from engines/config.yaml (for defaults and standalone testing)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    engines_config = os.path.join(parent_dir, "engines", "config.yaml")
     
-    _config = config
+    if os.path.exists(engines_config):
+        with open(engines_config, 'r') as f:
+            engines_cfg = yaml.safe_load(f) or {}
+            
+            # Store all providers for lookup
+            config["providers"] = engines_cfg.get("providers", {})
+            
+            # Load default provider settings only as fallback
+            default_provider = engines_cfg.get("default_provider", "ollama")
+            providers = config["providers"]
+            
+            if default_provider in providers:
+                provider_cfg = providers[default_provider]
+                config["model"]["provider"] = default_provider
+                # Only get api_key and model_name from provider config
+                # api_base should only come from env var or explicit request
+                config["model"]["api_key"] = provider_cfg.get("api_key", "")
+                config["model"]["model_name"] = provider_cfg.get("default_model", "")
+            
+            # Load engine-specific settings
+            if "gelab" in engines_cfg:
+                gelab_cfg = engines_cfg["gelab"]
+                config["model"]["temperature"] = gelab_cfg.get("temperature", 0.5)
+                config["model"]["max_tokens"] = gelab_cfg.get("max_tokens", 512)
+    
+    # HIGHEST PRIORITY: Environment variables (set by Electron)
+    # This is how ModelSelector.tsx passes config to Python scripts
+    if os.environ.get("MODEL_PROVIDER"):
+        provider = os.environ["MODEL_PROVIDER"]
+        config["model"]["provider"] = provider
+        
+        # Also load API key for this provider from config if not in env
+        if provider in config.get("providers", {}) and not os.environ.get("API_KEY"):
+            provider_cfg = config["providers"][provider]
+            config["model"]["api_key"] = provider_cfg.get("api_key", "")
+    
+    if os.environ.get("MODEL_NAME"):
+        config["model"]["model_name"] = os.environ["MODEL_NAME"]
+    
+    if os.environ.get("API_KEY"):
+        config["model"]["api_key"] = os.environ["API_KEY"]
+    
+    # api_base only from explicit environment variable
+    # LiteLLM handles standard provider URLs automatically
+    if os.environ.get("API_BASE_URL"):
+        config["model"]["api_base"] = os.environ["API_BASE_URL"]
+    else:
+        config["model"]["api_base"] = ""  # Empty = let LiteLLM handle it
+    
+    # Additional env vars for compatibility
+    if os.environ.get("TEMPERATURE"):
+        config["model"]["temperature"] = float(os.environ["TEMPERATURE"])
+    
+    if os.environ.get("MAX_TOKENS"):
+        config["model"]["max_tokens"] = int(os.environ["MAX_TOKENS"])
+    
     return config
 
 
@@ -97,29 +120,50 @@ def get_config(section: Optional[str] = None) -> Dict[str, Any]:
     Get configuration values.
     
     Args:
-        section: Optional section name (e.g., 'model', 'android')
+        section: Optional section name (e.g., 'model', 'providers')
     
     Returns:
         Configuration dictionary or section
     """
-    global _config
-    if not _config:
-        load_config()
+    config = load_config()
     
     if section:
-        return _config.get(section, {})
-    return _config
+        return config.get(section, {})
+    return config
 
 
-def _deep_update(base: dict, update: dict) -> dict:
-    """Deep update a dictionary."""
-    for key, value in update.items():
-        if key in base and isinstance(base[key], dict) and isinstance(value, dict):
-            _deep_update(base[key], value)
-        else:
-            base[key] = value
-    return base
-
-
-# Load config on import
-load_config()
+def get_provider_config(provider: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Get configuration for a specific provider.
+    
+    If provider is None, returns config for the current MODEL_PROVIDER.
+    
+    Args:
+        provider: Provider name (e.g., 'openai', 'ollama')
+    
+    Returns:
+        Provider configuration dict with api_key, api_base, default_model
+    """
+    config = load_config()
+    
+    if provider is None:
+        # Use current model config (from env vars or defaults)
+        return {
+            "provider": config["model"]["provider"],
+            "api_key": config["model"]["api_key"],
+            "api_base": config["model"]["api_base"],
+            "model_name": config["model"]["model_name"],
+        }
+    
+    # Get specific provider from providers list
+    providers = config.get("providers", {})
+    if provider in providers:
+        provider_cfg = providers[provider]
+        return {
+            "provider": provider,
+            "api_key": provider_cfg.get("api_key", ""),
+            "api_base": provider_cfg.get("api_base", ""),
+            "model_name": provider_cfg.get("default_model", ""),
+        }
+    
+    return {"provider": provider, "api_key": "", "api_base": "", "model_name": ""}
