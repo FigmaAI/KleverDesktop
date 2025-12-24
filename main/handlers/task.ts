@@ -41,22 +41,21 @@ async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProject
         return;
       }
 
-      // Call Python script to stop emulator
-      const legacyScriptsDir = getLegacyScriptsPath();
+      // Phase C Migration: Use core.android instead of legacy and_controller
+      const corePath = getCorePath();
       const pythonEnv = getPythonEnv();
+      const projectRoot = path.dirname(corePath);
 
       // Run cleanup script using Python -c with inline code
-      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
       const cleanupCode = `
 import sys
-sys.path.insert(0, '${legacyScriptsDir.replace(/\\/g, '/')}')
-sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
-from scripts.and_controller import stop_emulator
+sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
+from core.android import stop_emulator
 stop_emulator()
 `;
-      
+
       const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-        cwd: legacyScriptsDir,
+        cwd: projectRoot,
         env: pythonEnv,
       });
 
@@ -103,25 +102,28 @@ export async function startTaskExecution(
       return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
     }
 
-    // Common Python environment variables
+    // Common Python environment variables (Phase C: use core path for Android utilities)
+    const corePath = getCorePath();
     const legacyScriptsDir = getLegacyScriptsPath();
     const pythonEnv = getPythonEnv();
     const scriptsDir = path.join(legacyScriptsDir, 'scripts');
+    const projectRoot = path.dirname(corePath);
 
     // For Android platform with APK source, install/prepare app before running task
     if (project.platform === 'android' && task.apkSource) {
-      mainWindow?.webContents.send('task:output', { 
-        projectId, 
-        taskId, 
-        output: '[Setup] Preparing Android device and app...\n' 
+      mainWindow?.webContents.send('task:output', {
+        projectId,
+        taskId,
+        output: '[Setup] Preparing Android device and app...\n'
       });
 
+      // Phase C Migration: Use core.android for prelaunch_app
       const apkSourceJson = JSON.stringify(task.apkSource);
       const setupCode = `
 import sys
 import json
-sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
-from and_controller import prelaunch_app
+sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
+from core.android import prelaunch_app
 
 apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
 result = prelaunch_app(apk_source)
@@ -130,10 +132,10 @@ print('SETUP_RESULT:' + json.dumps(result))
 
       const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
         const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
-          cwd: legacyScriptsDir,
+          cwd: projectRoot,
           env: {
             ...pythonEnv,
-            PYTHONPATH: scriptsDir,
+            PYTHONPATH: projectRoot,
             PYTHONUNBUFFERED: '1'
           }
         });
@@ -175,20 +177,20 @@ print('SETUP_RESULT:' + json.dumps(result))
         task.output = `App setup failed: ${setupResult.error}`;
         task.completedAt = new Date().toISOString();
         saveProjects(data);
-        
-        mainWindow?.webContents.send('task:error', { 
-          projectId, 
-          taskId, 
-          error: `App setup failed: ${setupResult.error}` 
+
+        mainWindow?.webContents.send('task:error', {
+          projectId,
+          taskId,
+          error: `App setup failed: ${setupResult.error}`
         });
-        
+
         return { success: false, error: `App setup failed: ${setupResult.error}` };
       }
 
-      mainWindow?.webContents.send('task:output', { 
-        projectId, 
-        taskId, 
-        output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n` 
+      mainWindow?.webContents.send('task:output', {
+        projectId,
+        taskId,
+        output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n`
       });
     }
 
@@ -225,8 +227,7 @@ print('SETUP_RESULT:' + json.dumps(result))
       : undefined;
     const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
 
-    // Start Python process via Core Controller
-    const corePath = getCorePath();
+    // Start Python process via Core Controller (corePath already declared above)
     const controllerPath = path.join(corePath, 'controller.py');
 
     // Build parameters for the new controller
@@ -242,11 +243,16 @@ print('SETUP_RESULT:' + json.dumps(result))
       // Add other necessary params here
     };
 
+    // Select engine based on platform
+    // - web: browser_use (independent web automation engine)
+    // - android: gelab (multi-platform engine, currently stub)
+    const engineName = project.platform === 'web' ? 'browser_use' : 'gelab';
+
     // Build CLI parameters for controller
     const args = [
       '-u',  // Unbuffered output
       controllerPath,
-      '--engine', 'gelab', // Explicitly use GELab engine
+      '--engine', engineName,
       '--action', 'execute',
       '--task', task.goal || task.description || 'No description',
       '--params', JSON.stringify(taskParams)
@@ -258,7 +264,7 @@ print('SETUP_RESULT:' + json.dumps(result))
     const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
 
     console.log(`[task:${taskId}] Starting Python Controller with args:`, args);
-    
+
     // Set PYTHONPATH to include project root so core and engines modules are resolvable
     // We assume the structure is:
     // root/
@@ -268,12 +274,12 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     // In dev, corePath is .../core. In prod, it's resources/core.
     // We want the parent of corePath to be in PYTHONPATH.
-    const projectRoot = path.dirname(corePath);
-    
+    // projectRoot already declared at the top of this function
+
     const extendedPythonPath = [
-      projectRoot, 
-      legacyScriptsDir, 
-      scriptsDir, 
+      projectRoot,
+      legacyScriptsDir,
+      scriptsDir,
       pythonEnv.PYTHONPATH
     ].filter(Boolean).join(path.delimiter);
 
@@ -372,7 +378,7 @@ print('SETUP_RESULT:' + json.dumps(result))
       const error = data.toString();
       // Log stderr to console for debugging
       console.error(`[task:${taskId}] stderr:`, error);
-      
+
       mainWindow?.webContents.send('task:error', { projectId, taskId, error });
 
       // Append to task output (stderr also goes to output)
@@ -387,7 +393,7 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     taskProcess.on('close', async (code) => {
       console.log(`[task:${taskId}] Process closed with exit code:`, code);
-      
+
       const currentData = loadProjects();
       const currentProject = currentData.projects.find((p) => p.id === projectId);
       const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
@@ -408,8 +414,8 @@ print('SETUP_RESULT:' + json.dumps(result))
 
             // Calculate tokens per second for local models
             if (currentTask.metrics.isLocalModel &&
-                currentTask.metrics.tokens &&
-                currentTask.metrics.durationMs > 0) {
+              currentTask.metrics.tokens &&
+              currentTask.metrics.durationMs > 0) {
               currentTask.metrics.tokensPerSecond = Math.round(
                 currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
               );
@@ -437,10 +443,10 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     taskProcess.on('error', (error) => {
       console.error(`[task:${taskId}] Process error:`, error);
-      mainWindow?.webContents.send('task:error', { 
-        projectId, 
-        taskId, 
-        error: `Process error: ${error.message}` 
+      mainWindow?.webContents.send('task:error', {
+        projectId,
+        taskId,
+        error: `Process error: ${error.message}`
       });
 
       // Update task status to failed on process error
@@ -606,6 +612,22 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       taskProcess.kill('SIGTERM');
       taskProcesses.delete(taskId);
 
+      // Cleanup browser processes spawned by Browser-Use
+      // Browser-Use's internal signal handler uses os._exit(0) which bypasses our Python cleanup
+      // So we need to kill Chromium processes from Electron side
+      const { execSync } = require('child_process');
+      try {
+        // Kill Chrome for Testing processes (cross-platform)
+        if (process.platform === 'darwin' || process.platform === 'linux') {
+          execSync('pkill -f "Google Chrome for Testing" 2>/dev/null || true');
+        } else if (process.platform === 'win32') {
+          execSync('taskkill /F /IM "Google Chrome for Testing.exe" /T 2>nul || exit 0', { shell: true });
+        }
+        console.log(`[task:${taskId}] Browser processes cleaned up`);
+      } catch (e) {
+        // Ignore errors - browser may already be closed
+      }
+
       // Update task status to 'cancelled' (user-initiated stop)
       const data = loadProjects();
       const project = data.projects.find((p) => p.id === projectId);
@@ -657,18 +679,20 @@ export async function cleanupTaskProcesses(): Promise<void> {
       return;
     }
 
-    const legacyScriptsDir = getLegacyScriptsPath();
+    // Phase C Migration: Use core.android for cleanup_emulators
+    const corePath = getCorePath();
     const pythonEnv = getPythonEnv();
+    const projectRoot = path.dirname(corePath);
 
     const cleanupCode = `
 import sys
-sys.path.insert(0, '${legacyScriptsDir.replace(/\\/g, '/')}')
-from scripts.and_controller import cleanup_emulators
+sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
+from core.android import cleanup_emulators
 cleanup_emulators()
 `;
 
     const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-      cwd: legacyScriptsDir,
+      cwd: projectRoot,
       env: pythonEnv,
     });
 

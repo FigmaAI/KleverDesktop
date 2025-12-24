@@ -5,11 +5,12 @@ const os = require('os');
 
 const KLEVER_DIR = path.join(os.homedir(), '.klever-desktop');
 const VENV_PATH = path.join(KLEVER_DIR, 'python-env');
-const REQUIREMENTS_PATH = path.join(__dirname, '..', 'appagent', 'requirements.txt');
+// Phase C Migration: Requirements now centralized in core/
+const REQUIREMENTS_PATH = path.join(__dirname, '..', 'core', 'requirements.txt');
 
 const isWin = os.platform() === 'win32';
-const pythonExe = isWin 
-  ? path.join(VENV_PATH, 'Scripts', 'python.exe') 
+const pythonExe = isWin
+  ? path.join(VENV_PATH, 'Scripts', 'python.exe')
   : path.join(VENV_PATH, 'bin', 'python');
 
 if (!fs.existsSync(pythonExe)) {

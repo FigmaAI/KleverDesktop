@@ -1,0 +1,15 @@
+argparse
+beautifulsoup4
+colorama
+opencv-python
+Pillow
+playwright
+pyshine
+pyyaml
+requests
+litellm
+anthropic
+
+# Browser-Use integration (LiteLLM direct, no LangChain)
+# Using latest version which requires Playwright 1.57+ (Chrome for Testing)
+browser-use>=0.1.40

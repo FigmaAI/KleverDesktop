@@ -158,16 +158,23 @@ def start_google_login(profile_dir: str, timeout: int = 600, status_callback=Non
             
             report_status("LOGIN_SUCCESS", "Google login session confirmed")
             
-            # Wait for close signal
+            # Wait for close signal from Electron (SIGTERM)
+            # Use a loop with short timeouts so signal can be processed
             report_status("WAITING_CONFIRM", "Waiting for confirmation...")
             try:
-                page.wait_for_event("close", timeout=0)
-            except:
+                while True:
+                    try:
+                        page.wait_for_event("close", timeout=1000)  # 1 second timeout
+                        break  # Browser was closed
+                    except Exception:
+                        pass  # Timeout, continue waiting
+            except KeyboardInterrupt:
                 pass
             
+            # Close browser context
             try:
                 context.close()
-            except:
+            except Exception:
                 pass
             
             return {'success': True, 'profile_path': profile_dir, 'error': None}
@@ -198,16 +205,23 @@ def start_google_login(profile_dir: str, timeout: int = 600, status_callback=Non
             
             report_status("LOGIN_SUCCESS", "Google login detected successfully")
             
-            # Wait for close signal
+            # Wait for close signal from Electron (SIGTERM)
+            # Use a loop with short timeouts so signal can be processed
             report_status("WAITING_CONFIRM", "Waiting for confirmation...")
             try:
-                page.wait_for_event("close", timeout=0)
-            except:
+                while True:
+                    try:
+                        page.wait_for_event("close", timeout=1000)  # 1 second timeout
+                        break  # Browser was closed
+                    except Exception:
+                        pass  # Timeout, continue waiting
+            except KeyboardInterrupt:
                 pass
             
+            # Close browser context
             try:
                 context.close()
-            except:
+            except Exception:
                 pass
             
             return {'success': True, 'profile_path': profile_dir, 'error': None}

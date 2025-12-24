@@ -18,12 +18,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { app } from 'electron';
-import { 
-  getKleverDir, 
-  checkVenvStatus, 
+import {
+  getKleverDir,
+  checkVenvStatus,
   installRequirements,
-  getLegacyScriptsPath,
-  createVirtualEnvironment
+  createVirtualEnvironment,
+  getCorePath
 } from './python-runtime';
 
 // Manifest file structure
@@ -107,10 +107,11 @@ function writeManifest(manifest: EnvManifest): void {
 }
 
 /**
- * Get the path to requirements.txt
+ * Get the path to requirements.txt (now in core/ directory)
  */
 function getRequirementsPath(): string {
-  return path.join(getLegacyScriptsPath(), 'requirements.txt');
+  // Phase C Migration: Requirements now centralized in core/
+  return path.join(getCorePath(), 'requirements.txt');
 }
 
 /**
@@ -121,7 +122,7 @@ export function checkSyncNeeded(): SyncCheckResult {
   const currentAppVersion = app.getVersion();
   const requirementsPath = getRequirementsPath();
   const currentRequirementsHash = calculateFileHash(requirementsPath);
-  
+
   // Check if venv is valid first
   const venvStatus = checkVenvStatus();
   if (!venvStatus.valid) {
@@ -132,10 +133,10 @@ export function checkSyncNeeded(): SyncCheckResult {
       currentRequirementsHash,
     };
   }
-  
+
   // Read manifest
   const manifest = readManifest();
-  
+
   if (!manifest) {
     // First install or manifest was deleted
     return {
@@ -145,7 +146,7 @@ export function checkSyncNeeded(): SyncCheckResult {
       currentRequirementsHash,
     };
   }
-  
+
   // Check app version
   if (manifest.appVersion !== currentAppVersion) {
     console.log(`[Python Sync] App version mismatch: ${manifest.appVersion} -> ${currentAppVersion}`);
@@ -158,7 +159,7 @@ export function checkSyncNeeded(): SyncCheckResult {
       manifestRequirementsHash: manifest.requirementsHash,
     };
   }
-  
+
   // Check requirements.txt hash
   if (manifest.requirementsHash !== currentRequirementsHash) {
     console.log('[Python Sync] Requirements hash mismatch');
@@ -171,7 +172,7 @@ export function checkSyncNeeded(): SyncCheckResult {
       manifestRequirementsHash: manifest.requirementsHash,
     };
   }
-  
+
   // Everything is in sync
   return {
     needsSync: false,
@@ -191,12 +192,12 @@ export async function syncPythonEnvironment(
   forceRecreateVenv: boolean = false
 ): Promise<SyncResult> {
   const syncCheck = checkSyncNeeded();
-  
+
   if (!syncCheck.needsSync && !forceRecreateVenv) {
     console.log('[Python Sync] Environment is up to date');
     return { success: true, synced: false };
   }
-  
+
   const reasonMessages: Record<string, string> = {
     'version_mismatch': `App updated from ${syncCheck.manifestAppVersion} to ${syncCheck.currentAppVersion}`,
     'requirements_changed': 'requirements.txt has been modified',
@@ -204,13 +205,13 @@ export async function syncPythonEnvironment(
     'manifest_missing': 'First synchronization or manifest was reset',
     'first_install': 'First time environment setup',
   };
-  
+
   const reason = syncCheck.reason || 'unknown';
   const reasonMessage = reasonMessages[reason] || 'Unknown reason';
-  
+
   onProgress?.(`🔄 Syncing Python environment...\n`);
   onProgress?.(`Reason: ${reasonMessage}\n\n`);
-  
+
   try {
     // Check if we need to recreate venv
     const venvStatus = checkVenvStatus();
@@ -221,35 +222,35 @@ export async function syncPythonEnvironment(
         onProgress
       );
       if (!venvResult.success) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: `Failed to create venv: ${venvResult.error}`,
           synced: false,
-          reason: reasonMessage 
+          reason: reasonMessage
         };
       }
       onProgress?.('✓ Virtual environment created\n\n');
     }
-    
+
     // Install requirements
     onProgress?.('📦 Installing Python packages...\n');
     const requirementsPath = getRequirementsPath();
-    
+
     const installResult = await installRequirements(
       requirementsPath,
       onProgress,
       onProgress
     );
-    
+
     if (!installResult.success) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: `Failed to install packages: ${installResult.error}`,
         synced: false,
-        reason: reasonMessage 
+        reason: reasonMessage
       };
     }
-    
+
     // Update manifest
     const newManifest: EnvManifest = {
       appVersion: syncCheck.currentAppVersion,
@@ -258,25 +259,25 @@ export async function syncPythonEnvironment(
       pythonVersion: '3.11.9',
       syncReason: reason,
     };
-    
+
     writeManifest(newManifest);
-    
+
     onProgress?.('\n✅ Python environment synchronized successfully!\n');
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       synced: true,
-      reason: reasonMessage 
+      reason: reasonMessage
     };
-    
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Python Sync] Error during sync:', message);
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: message,
       synced: false,
-      reason: reasonMessage 
+      reason: reasonMessage
     };
   }
 }
@@ -289,7 +290,7 @@ export function updateManifest(): void {
   const currentAppVersion = app.getVersion();
   const requirementsPath = getRequirementsPath();
   const currentRequirementsHash = calculateFileHash(requirementsPath);
-  
+
   const manifest: EnvManifest = {
     appVersion: currentAppVersion,
     requirementsHash: currentRequirementsHash,
@@ -297,7 +298,7 @@ export function updateManifest(): void {
     pythonVersion: '3.11.9',
     syncReason: 'manual_update',
   };
-  
+
   writeManifest(manifest);
 }
 

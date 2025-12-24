@@ -1,6 +1,6 @@
 # Appagent → Core/Engines Migration Status
 **Date:** 2025-12-24
-**Status:** Phase A & B Completed / Phase C (Testing) In Progress
+**Status:** Phase A, B, & C Completed ✅
 
 ## 🎯 Objective
 Transition Klever Desktop from a single-script runner (`appagent`) to a **Multi-Engine Architecture**.
@@ -22,6 +22,8 @@ The backbone ensuring consistent behavior across engines. **Renamed from `common
 | **Configuration** | ✅ Complete | `core/config.py` (Global setup) |
 | **Authentication** | ✅ Complete | `core/auth/` (Independent Google Login) |
 | **Utilities** | ✅ Complete | `core/utils.py` (Logging, Image Processing from `utils.py`) |
+| **Android Utilities** | ✅ Complete | `core/android.py` (Device control, APK management) |
+| **Requirements** | ✅ Complete | `core/requirements.txt` (Centralized Python dependencies) |
 
 ### 2. `engines/` (Pluggable Automation Cores)
 
@@ -31,10 +33,11 @@ The new standard for UI automation.
 - **Features:** Self-contained logic (Controller, Recorder, Executor) optimized for performance and reliability.
 - **Dependency:** Uses `core` for I/O (Screenshots, Logs) and LLM, but manages Device Control internally if needed (or via core if aligned).
 
-#### B. `engines/appagent-legacy/` (Archive)
+#### B. `engines/appagent_legacy/` (Archive)
 The current `appagent` folder moved here.
 - **Status:** Maintenance Mode / Archive.
 - **Usage:** Fallback until GELab is feature-complete.
+- **Note:** All TypeScript handlers NOW use `core/` utilities instead of `appagent_legacy/scripts/` directly.
 
 ---
 
@@ -46,7 +49,7 @@ The current `appagent` folder moved here.
 
 ---
 
-## 🚀 Phase B: Multi-Engine Migration Plan (Completed)
+## ✅ Phase B: Multi-Engine Migration Plan (Completed)
 
 ### Step 1: Foundation (Core Layer) ✅
 - [x] **Define Interface**: Create `core/engine_interface.py` (Abstract Base Class).
@@ -67,4 +70,44 @@ The current `appagent` folder moved here.
 - [x] **Update All References**: All Python and TypeScript imports updated from `common` to `core`.
 - [x] **Update Build Config**: `forge.config.js` extraResource updated to include `core` and `engines`.
 - [x] **Engine Selection**: Defaulting to `gelab` engine in `task.ts` (Explicit Engine selection UI planned for Phase C).
-```
+
+---
+
+## ✅ Phase C: Legacy Cleanup & Core Centralization (Completed 2025-12-24)
+
+### Step 1: Core Android Utilities ✅
+- [x] **Create `core/android.py`**: Extract Android device management functions from `and_controller.py`.
+- [x] **Functions Migrated**: `get_android_sdk_path`, `find_sdk_tool`, `execute_adb`, `list_all_devices`, `list_available_emulators`, `start_emulator`, `stop_emulator`, `cleanup_emulators`, `prelaunch_app`, `install_apk`, `AndroidElement`.
+
+### Step 2: Requirements Centralization ✅
+- [x] **Create `core/requirements.txt`**: Centralized Python dependencies.
+- [x] **Update `scripts/python-sync.js`**: Points to `core/requirements.txt`.
+- [x] **Update `main/utils/python-sync.ts`**: Uses `getCorePath()` for requirements path.
+
+### Step 3: TypeScript Handler Updates ✅
+- [x] **`installations.ts`**: Uses `core.android` for prelaunch and device status.
+- [x] **`system-checks.ts`**: Uses `core/requirements.txt` for package checks.
+- [x] **`task.ts`**: Uses `core.android` for emulator cleanup and APK setup.
+- [x] **`integration.ts`**: Uses `core/controller.py` with gelab engine.
+- [x] **`project.ts`**: Uses `core/controller.py` with gelab engine.
+
+### Step 4: Verification ✅
+- [x] **TypeScript Compilation**: All handlers compile without errors.
+- [x] **Python Import Test**: `from core.android import list_all_devices` works.
+
+---
+
+## 🚀 Next Steps (Phase D)
+
+### 1. Full GELab Implementation
+- [ ] Replace current stub with actual gelab-zero logic
+- [ ] Implement complete browser-use integration
+
+### 2. UI Updates
+- [ ] Add engine selection UI in project settings
+- [ ] Add engine status indicators in task execution
+
+### 3. Cleanup
+- [ ] Remove deprecated wrapper scripts
+- [ ] Consider removing `engines/appagent_legacy/` after full validation
+

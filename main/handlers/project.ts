@@ -18,7 +18,7 @@ import {
 } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getCorePath, getLegacyScriptsPath } from '../utils/python-runtime';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
 
 let pythonProcess: ChildProcess | null = null;
@@ -78,7 +78,7 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         };
       }
 
-      // Create the work_dir structure that self_explorer.py expects
+      // Create the work_dir structure that gelab engine expects
       // Structure: {workspaceDir}/apps/{sanitized_app_name}
       const appsDir = path.join(newProject.workspaceDir, 'apps');
       const appsDirCreated = ensureDirectoryExists(appsDir);
@@ -171,7 +171,7 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     }
   });
 
-  // Start self_explorer for a project
+  // Start project execution via core/controller.py with gelab engine
   ipcMain.handle('project:start', async (_event, projectConfig: {
     platform: string;
     name: string;
@@ -188,59 +188,46 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       // Build 23 environment variables from config.json
       const configEnvVars = buildEnvFromConfig(appConfig);
 
-      // Python 실행 위치 = legacy scripts 디렉토리
-      const legacyScriptsDir = getLegacyScriptsPath();
-      const scriptPath = path.join('scripts', 'self_explorer.py'); // Relative path from legacy scripts dir
+      // Phase C Migration: Use core/controller.py with gelab engine
+      const corePath = getCorePath();
+      const controllerPath = path.join(corePath, 'controller.py');
+      const projectRoot = path.dirname(corePath);
 
       // Sanitize app name (remove spaces) to match learn.py behavior
       const sanitizedAppName = sanitizeAppName(projectConfig.name);
 
+      // Build parameters for the controller
+      const taskParams = {
+        platform: projectConfig.platform,
+        app: sanitizedAppName,
+        root_dir: projectConfig.workspaceDir,
+        url: projectConfig.platform === 'web' ? projectConfig.url : undefined,
+        device: projectConfig.device,
+      };
+
+      // Select engine based on platform
+      // - web: browser_use (independent web automation engine)
+      // - android: gelab (multi-platform engine)
+      const engineName = projectConfig.platform === 'web' ? 'browser_use' : 'gelab';
+
       const args = [
         '-u',  // Unbuffered output for real-time logging
-        scriptPath,
-        '--platform', projectConfig.platform,
-        '--app', sanitizedAppName,
-        '--root_dir', projectConfig.workspaceDir  // ← 결과물 저장 위치 (--root_dir)
+        controllerPath,
+        '--engine', engineName,
+        '--action', 'execute',
+        '--task', `Explore ${projectConfig.name}`,
+        '--params', JSON.stringify(taskParams),
       ];
-
-      if (projectConfig.platform === 'web' && projectConfig.url) {
-        args.push('--url', projectConfig.url);
-      }
-
-      if (projectConfig.device) {
-        args.push('--device', projectConfig.device);
-      }
-
-      // Create a wrapper script to add scripts directory to sys.path before importing
-      // This ensures imports work correctly on all platforms (especially Windows)
-      const wrapperScript = `import sys
-import os
-
-# Add scripts directory to sys.path for imports
-scripts_dir = os.path.join(os.path.dirname(__file__), 'scripts')
-sys.path.insert(0, scripts_dir)
-
-# Change to scripts directory and execute self_explorer
-os.chdir(scripts_dir)
-with open('self_explorer.py', 'r', encoding='utf-8') as f:
-    code = compile(f.read(), 'self_explorer.py', 'exec')
-    exec(code, {'__name__': '__main__', '__file__': os.path.join(scripts_dir, 'self_explorer.py')})
-`;
-
-      const wrapperPath = path.join(legacyScriptsDir, '_project_wrapper.py');
-      fs.writeFileSync(wrapperPath, wrapperScript, 'utf-8');
-
-      // Update args to use wrapper script instead of direct script
-      args[1] = wrapperPath;  // Replace scriptPath with wrapperPath
 
       // Get Python environment and merge with config environment variables
       const pythonEnv = getPythonEnv();
 
       pythonProcess = spawnBundledPython(args, {
-        cwd: legacyScriptsDir,  // ✅ Python 실행 환경 = legacy scripts 디렉토리
+        cwd: projectRoot,  // Run from project root
         env: {
           ...pythonEnv,         // Python bundled environment variables
-          ...configEnvVars      // 23 config settings from config.json
+          ...configEnvVars,     // 23 config settings from config.json
+          PYTHONPATH: projectRoot,
         }
       });
 
@@ -263,7 +250,7 @@ with open('self_explorer.py', 'r', encoding='utf-8') as f:
     }
   });
 
-  // Stop self_explorer
+  // Stop project execution
   ipcMain.handle('project:stop', async () => {
     if (pythonProcess) {
       pythonProcess.kill('SIGTERM');

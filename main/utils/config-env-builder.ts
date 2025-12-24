@@ -101,6 +101,7 @@ export function buildEnvFromConfig(
     WEB_BROWSER_TYPE: config.web.browserType,
     WEB_HEADLESS: config.web.headless.toString(),
     WEB_USER_DATA_DIR: getBrowserProfilePath(),  // Browser profile for login sessions
+    WEB_STORAGE_STATE_PATH: path.join(getBrowserProfilePath(), 'google-auth.json'),  // Playwright storage state with cookies
 
     // ========================================
     // Image Configuration (4 variables)

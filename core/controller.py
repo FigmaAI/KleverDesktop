@@ -16,15 +16,18 @@ def load_engine(engine_name):
     """Dynamically load the requested engine"""
     try:
         if engine_name == 'gelab':
-            # Will be implemented in Phase B Step 3
             from engines.gelab.main import GELabEngine
             return GELabEngine()
+        elif engine_name == 'browser_use':
+            # Independent web automation engine
+            from engines.browser_use.main import BrowserUseEngine
+            return BrowserUseEngine()
         elif engine_name == 'legacy':
-            # Will be implemented in Phase B Step 2
             from engines.appagent_legacy.wrapper import LegacyEngineWrapper
             return LegacyEngineWrapper()
         else:
             print_with_color(f"[CONTROLLER] Unknown engine: {engine_name}", "red")
+            print_with_color("[CONTROLLER] Available engines: gelab, browser_use, legacy", "yellow")
             return None
     except ImportError as e:
         print_with_color(f"[CONTROLLER] Failed to load engine '{engine_name}'. Module not found.", "red")
@@ -37,7 +40,7 @@ def load_engine(engine_name):
 
 def main():
     parser = argparse.ArgumentParser(description="Klever Desktop Engine Controller")
-    parser.add_argument("--engine", default="gelab", help="Target engine (gelab, legacy)")
+    parser.add_argument("--engine", default="gelab", help="Target engine (gelab, browser_use, legacy)")
     parser.add_argument("--action", required=True, choices=['start', 'stop', 'execute', 'status'])
     parser.add_argument("--task", help="Task description or ID")
     parser.add_argument("--params", help="JSON string of additional parameters")

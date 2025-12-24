@@ -13,10 +13,36 @@ from pathlib import Path
 from typing import Callable, Optional, Any, TypeVar, overload
 
 from pydantic import BaseModel
+from core.utils import print_with_color
 
 BROWSER_USE_AVAILABLE = False
 BROWSER_USE_ERROR = None
 LITELLM_AVAILABLE = False
+
+# Global browser reference for cleanup on signal
+_current_browser = None
+
+# Cache Playwright Chromium path at module load time (before asyncio loop)
+# This avoids the "Sync API inside asyncio loop" error
+_PLAYWRIGHT_CHROMIUM_PATH = None
+
+def _get_playwright_chromium_path():
+    """Get Playwright Chromium executable path. Called once at module load."""
+    global _PLAYWRIGHT_CHROMIUM_PATH
+    if _PLAYWRIGHT_CHROMIUM_PATH is not None:
+        return _PLAYWRIGHT_CHROMIUM_PATH
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            _PLAYWRIGHT_CHROMIUM_PATH = p.chromium.executable_path
+            print(f"[wrapper.py] Cached Playwright Chromium path: {_PLAYWRIGHT_CHROMIUM_PATH}")
+    except Exception as e:
+        print(f"[wrapper.py] Warning: Could not get Playwright Chromium path: {e}")
+        _PLAYWRIGHT_CHROMIUM_PATH = None
+    return _PLAYWRIGHT_CHROMIUM_PATH
+
+# Cache the path immediately at module load
+_get_playwright_chromium_path()
 
 # Fallback stub classes when browser_use is not available
 Agent = None
@@ -492,7 +518,8 @@ async def run_web_task_with_browser_use(
     cdp_url: Optional[str] = None,
     user_data_dir: Optional[str] = None,
     on_step_complete: Optional[Callable] = None,
-    system_language: str = "en"
+    system_language: str = "en",
+    storage_state_path: Optional[str] = None
 ) -> dict:
     """Execute web task using Browser-Use.
     
@@ -501,6 +528,7 @@ async def run_web_task_with_browser_use(
                          Signature: on_step_complete(step_info: dict) -> None
         system_language: Language code for report output (e.g., 'en', 'ko', 'ja').
                         The agent will respond in this language.
+        storage_state_path: Path to storage_state.json file containing cookies/auth from Google Login.
     """
     if not BROWSER_USE_AVAILABLE:
         return {
@@ -529,14 +557,59 @@ async def run_web_task_with_browser_use(
         }
 
     try:
-        browser_options = {"disable_security": True, "channel": browser_type}
-        if user_data_dir:
+        # Browser-Use Browser options
+        # IMPORTANT: Browser-Use 0.11.2 ignores 'channel' param when is_local=True
+        # We must use 'executable_path' to force use of Playwright bundled Chromium
+        browser_options = {"disable_security": True}
+        
+        # DEBUG: Print received browser_type
+        print(f"[DEBUG] wrapper.py received browser_type: '{browser_type}'")
+        
+        # Determine browser executable path based on browser_type
+        if browser_type == "chromium" or browser_type is None or browser_type == "":
+            # Use Playwright's bundled Chrome for Testing
+            # Use cached path (obtained at module load time, before async loop)
+            chromium_path = _PLAYWRIGHT_CHROMIUM_PATH
+            if chromium_path:
+                browser_options["executable_path"] = chromium_path
+                print(f"[DEBUG] Using Playwright Chromium: {chromium_path}")
+                print_with_color(f"   Browser: Playwright Chromium (Chrome for Testing)", "white")
+            else:
+                print("[DEBUG] Warning: Playwright Chromium path not cached, using channel fallback")
+                browser_options["channel"] = "chromium"
+        elif browser_type in ("chrome", "msedge", "chrome-beta", "msedge-beta", "msedge-dev"):
+            # Use system browser via channel param
+            browser_options["channel"] = browser_type
+            print(f"[DEBUG] Using system browser channel: {browser_type}")
+            print_with_color(f"   Browser: System {browser_type}", "white")
+        else:
+            # Unknown browser type, try as channel
+            browser_options["channel"] = browser_type
+            print(f"[DEBUG] Using unknown browser type as channel: {browser_type}")
+        
+        print(f"[DEBUG] Final browser_options: {browser_options}")
+        
+        # Storage state (cookies) takes priority over user_data_dir
+        # Browser-Use warns about using both simultaneously
+        if storage_state_path:
+            browser_options["storage_state"] = storage_state_path
+            print(f"[DEBUG] Using storage_state for auth: {storage_state_path}")
+        elif user_data_dir:
             browser_options["user_data_dir"] = user_data_dir
+            print(f"[DEBUG] Using user_data_dir for profile: {user_data_dir}")
+        
         if cdp_url:
             browser = Browser(cdp_url=cdp_url, **browser_options)
         else:
             browser_options["headless"] = headless
+            # IMPORTANT: is_local=True tells Browser-Use to launch browser locally
+            browser_options["is_local"] = True
+            print(f"[DEBUG] Creating local browser with options: {browser_options}")
             browser = Browser(**browser_options)
+        
+        # Store browser reference for cleanup on SIGTERM
+        global _current_browser
+        _current_browser = browser
     except Exception as e:
         return {
             "success": False, "error": f"Browser creation failed: {e}",
@@ -569,14 +642,34 @@ async def run_web_task_with_browser_use(
                     step_info = _process_step(step, step_count[0], screenshots_dir, save_screenshots)
                     history.append(step_info)
                     
-                    # Update progress
-                    progress.update(step_number=step_count[0], input_tokens=100, output_tokens=50)
+                    # Try to extract token usage from step metadata
+                    input_tokens_step = 0
+                    output_tokens_step = 0
+                    
+                    # Check if step has metadata with token info
+                    if hasattr(step, 'model_output') and step.model_output:
+                        mo = step.model_output
+                        # Some steps may have usage info in metadata
+                        if hasattr(mo, 'usage') and mo.usage:
+                            input_tokens_step = getattr(mo.usage, 'prompt_tokens', 0) or 0
+                            output_tokens_step = getattr(mo.usage, 'completion_tokens', 0) or 0
+                    
+                    # Fallback: estimate based on typical usage (varies by model)
+                    if input_tokens_step == 0 and output_tokens_step == 0:
+                        # Vision models use more tokens due to screenshots
+                        # GPT-4o: ~500-2000 input (with image), ~100-300 output per step
+                        # Estimate conservatively
+                        input_tokens_step = 800  # Vision prompt + screenshot
+                        output_tokens_step = 150  # Action response
+                    
+                    # Update progress with token estimates
+                    progress.update(step_number=step_count[0], input_tokens=input_tokens_step, output_tokens=output_tokens_step)
                     
                     # Call user callback for real-time report update
                     if on_step_complete:
                         on_step_complete(step_info)
 
-        agent = Agent(task=full_task, llm=llm, browser=browser, max_steps=max_rounds)
+        agent = Agent(task=full_task, llm=llm, browser=browser, max_steps=max_rounds, calculate_cost=True)
 
         start_time = time.time()
         result = await agent.run(on_step_end=on_step_end)
@@ -632,6 +725,7 @@ async def run_web_task_with_browser_use(
         }
 
     finally:
+        # _current_browser is already declared global above
         try:
             if hasattr(browser, 'stop'):
                 await browser.stop()
@@ -639,6 +733,8 @@ async def run_web_task_with_browser_use(
                 await browser.close()
         except Exception:
             pass
+        finally:
+            _current_browser = None
 
 
 def run_web_task_sync(
@@ -656,7 +752,8 @@ def run_web_task_sync(
     cdp_url: Optional[str] = None,
     user_data_dir: Optional[str] = None,
     on_step_complete: Optional[Callable] = None,
-    system_language: str = "en"
+    system_language: str = "en",
+    storage_state_path: Optional[str] = None
 ) -> dict:
     """Synchronous wrapper for run_web_task_with_browser_use.
     
@@ -664,6 +761,7 @@ def run_web_task_sync(
         on_step_complete: Callback called after each step with step_info dict.
                          Enables real-time report updates.
         system_language: Language code for report output (e.g., 'en', 'ko', 'ja').
+        storage_state_path: Path to storage_state.json file containing cookies/auth from Google Login.
     """
     if not BROWSER_USE_AVAILABLE:
         return {
@@ -681,7 +779,8 @@ def run_web_task_sync(
                 emit_progress=emit_progress, save_screenshots=save_screenshots,
                 cdp_url=cdp_url, user_data_dir=user_data_dir,
                 on_step_complete=on_step_complete,
-                system_language=system_language
+                system_language=system_language,
+                storage_state_path=storage_state_path
             )
         )
     except Exception as e:
@@ -704,6 +803,52 @@ def get_browser_use_status() -> dict:
     }
 
 
+async def _async_stop_browser():
+    """Async helper to stop browser."""
+    global _current_browser
+    if _current_browser is not None:
+        try:
+            if hasattr(_current_browser, 'stop'):
+                await _current_browser.stop()
+            elif hasattr(_current_browser, 'close'):
+                await _current_browser.close()
+        except Exception:
+            pass
+        finally:
+            _current_browser = None
+
+
+def force_stop_browser():
+    """Force stop the current browser. Call this on SIGTERM/SIGINT.
+    
+    Uses Browser-Use's built-in stop/close methods which are cross-platform.
+    This is called when Electron sends SIGTERM to the Python process.
+    """
+    global _current_browser
+    
+    if _current_browser is None:
+        print("[DEBUG] force_stop_browser: No browser to close")
+        return True
+    
+    print("[DEBUG] force_stop_browser: Attempting to close browser...")
+    
+    try:
+        # Run async cleanup in a new event loop
+        # (We're in a sync context after receiving SIGTERM)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_async_stop_browser())
+        loop.close()
+        print("[DEBUG] force_stop_browser: Browser closed successfully")
+    except Exception as e:
+        print(f"[DEBUG] force_stop_browser: Error closing browser: {e}")
+    finally:
+        _current_browser = None
+    
+    return True
+
+
 if __name__ == "__main__":
     status = get_browser_use_status()
     print(f"Browser-Use: {status['available']}, LiteLLM: {status['litellm_available']}")
+

@@ -10,7 +10,7 @@ import { ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ModelConfig, Task } from '../types';
-import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getCorePath, getLegacyScriptsPath } from '../utils/python-runtime';
 import { ensureDirectoryExists, loadProjects, saveProjects, getProjectWorkspaceDir } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
 import { buildEnvFromConfig } from '../utils/config-env-builder';
@@ -27,11 +27,15 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
   ipcMain.handle('integration:test', async (_event, config: ModelConfig) => {
     try {
       const mainWindow = getMainWindow();
-      const legacyScriptsPath = getLegacyScriptsPath();
-      const selfExplorerScript = path.join(legacyScriptsPath, 'scripts', 'self_explorer.py');
 
-      if (!fs.existsSync(selfExplorerScript)) {
-        mainWindow?.webContents.send('integration:output', `Error: self_explorer.py not found at ${selfExplorerScript}\n`);
+      // Phase C Migration: Use core/controller.py instead of self_explorer.py directly
+      const corePath = getCorePath();
+      const controllerPath = path.join(corePath, 'controller.py');
+      const projectRoot = path.dirname(corePath);
+      const legacyScriptsPath = getLegacyScriptsPath();
+
+      if (!fs.existsSync(controllerPath)) {
+        mainWindow?.webContents.send('integration:output', `Error: controller.py not found at ${controllerPath}\n`);
         mainWindow?.webContents.send('integration:complete', false);
         return { success: false };
       }
@@ -99,11 +103,11 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       // Setup workspace directory for integration test
       // Use getProjectWorkspaceDir helper which uses standard userData path
       const workspaceDir = getProjectWorkspaceDir('Feeling_Lucky');
-      
+
       // Create or get project
       const data = loadProjects();
       let project = data.projects.find(p => p.name === 'Feeling_Lucky');
-      
+
       if (!project) {
         project = {
           id: `proj_${Date.now()}`,
@@ -145,7 +149,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       const appsDir = path.join(workspaceDir, 'apps', 'Feeling_Lucky');
       const demosDir = path.join(appsDir, 'demos');
       currentTaskDir = path.join(demosDir, `self_explore_${timestamp.replace(/-/g, '_')}`);
-      
+
       ensureDirectoryExists(appsDir);
       ensureDirectoryExists(demosDir);
       ensureDirectoryExists(currentTaskDir);
@@ -153,28 +157,32 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
       mainWindow?.webContents.send('integration:output', `📝 Created task "${taskName}"\n`);
       mainWindow?.webContents.send('integration:output', `   Task directory: ${currentTaskDir}\n\n`);
 
-      // Run self_explorer.py directly (no wrapper)
-      // This avoids the wrapper script path issues and simplifies execution
+      // Phase C Migration: Run via core/controller.py
+      // Integration test is web platform, so use browser_use engine
+      const taskParams = {
+        platform: 'web',
+        app: 'Feeling_Lucky',
+        root_dir: workspaceDir,
+        task_dir: currentTaskDir,
+        task_desc: 'Find and click the "I\'m Feeling Lucky" button',
+        url: 'https://www.google.com',
+      };
+
       integrationTestProcess = spawnBundledPython(
         [
           '-u',
-          selfExplorerScript,
-          '--app',
-          'Feeling_Lucky',
-          '--platform',
-          'web',
-          '--root_dir',
-          workspaceDir,
-          '--task_dir',
-          currentTaskDir,
-          '--task_desc',
-          'Find and click the "I\'m Feeling Lucky" button',
-          '--url',
-          'https://www.google.com',
+          controllerPath,
+          '--engine', 'browser_use',  // Web platform uses browser_use engine
+          '--action', 'execute',
+          '--task', 'Find and click the "I\'m Feeling Lucky" button',
+          '--params', JSON.stringify(taskParams),
         ],
         {
-          cwd: legacyScriptsPath, // Run from legacy scripts directory to ensure relative imports work
-          env: env,
+          cwd: projectRoot, // Run from project root to ensure core and engines are resolvable
+          env: {
+            ...env,
+            PYTHONPATH: projectRoot,
+          },
         }
       );
 
@@ -194,21 +202,21 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
 
       integrationTestProcess.on('close', (code) => {
         mainWindow?.webContents.send('integration:output', '\n============================================================\n');
-        
+
         // Update task status based on result
         try {
           const data = loadProjects();
           const project = data.projects.find(p => p.name === 'Feeling_Lucky');
-          
+
           if (project && currentTask && currentTaskDir) {
             const taskToUpdate = project.tasks.find(t => t.id === currentTask!.id);
-            
+
             if (taskToUpdate) {
               taskToUpdate.status = code === 0 ? 'completed' : 'failed';
               taskToUpdate.completedAt = new Date().toISOString();
               taskToUpdate.updatedAt = new Date().toISOString();
               taskToUpdate.resultPath = currentTaskDir;
-              
+
               // Check if log file exists and read it for output
               const reportPath = path.join(currentTaskDir, 'log_report.md');
               if (fs.existsSync(reportPath)) {
@@ -235,7 +243,7 @@ export function registerIntegrationHandlers(ipcMain: IpcMain, getMainWindow: () 
           mainWindow?.webContents.send('integration:output', `❌ Integration test FAILED (exit code: ${code})\n`);
           mainWindow?.webContents.send('integration:output', '============================================================\n');
         }
-        
+
         mainWindow?.webContents.send('integration:complete', code === 0);
         integrationTestProcess = null;
         currentTask = null;

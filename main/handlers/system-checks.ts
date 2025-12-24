@@ -7,7 +7,7 @@ import { IpcMain } from 'electron';
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getLegacyScriptsPath } from '../utils/python-runtime';
+import { getCorePath } from '../utils/python-runtime';
 
 /**
  * Register all system check handlers
@@ -41,8 +41,9 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
   // Check Python packages
   ipcMain.handle('check:packages', async () => {
     return new Promise((resolve) => {
-      const legacyScriptsPath = getLegacyScriptsPath();
-      const requirementsPath = path.join(legacyScriptsPath, 'requirements.txt');
+      // Phase C Migration: Use core/requirements.txt
+      const corePath = getCorePath();
+      const requirementsPath = path.join(corePath, 'requirements.txt');
 
       // Try to install with --dry-run to see if all packages can be installed
       exec(`python -m pip install --dry-run -r "${requirementsPath}"`, { timeout: 10000 }, (error, stdout, stderr) => {
@@ -128,12 +129,12 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
                 sdkPath = adbFullPath.substring(0, platformToolsIndex);
               }
             }
-            
-            resolve({ 
-              success: true, 
-              version: version, 
-              method: 'adb_command', 
-              path: sdkPath 
+
+            resolve({
+              success: true,
+              version: version,
+              method: 'adb_command',
+              path: sdkPath
             });
           });
           return;
@@ -146,11 +147,11 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            resolve({ 
-              success: true, 
-              version: 'installed', 
-              method: 'env_variable', 
-              path: androidHome 
+            resolve({
+              success: true,
+              version: 'installed',
+              method: 'env_variable',
+              path: androidHome
             });
             return;
           }
@@ -168,11 +169,11 @@ export function registerSystemCheckHandlers(ipcMain: IpcMain): void {
           const adbPathExe = adbPath + (process.platform === 'win32' ? '.exe' : '');
 
           if (fs.existsSync(adbPathExe)) {
-            resolve({ 
-              success: true, 
-              version: 'installed', 
-              method: 'common_path', 
-              path: checkSdkPath 
+            resolve({
+              success: true,
+              version: 'installed',
+              method: 'common_path',
+              path: checkSdkPath
             });
             return;
           }

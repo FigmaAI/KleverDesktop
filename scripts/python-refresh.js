@@ -40,22 +40,39 @@ venv.on('close', (code) => {
 
   // 3. Install requirements
   console.log('Virtual environment created. Installing requirements...');
-  const pythonExe = isWin 
-    ? path.join(VENV_PATH, 'Scripts', 'python.exe') 
+  const pythonExe = isWin
+    ? path.join(VENV_PATH, 'Scripts', 'python.exe')
     : path.join(VENV_PATH, 'bin', 'python');
-    
-  const REQUIREMENTS_PATH = path.join(__dirname, '..', 'appagent', 'requirements.txt');
+
+  // Phase C Migration: Requirements now centralized in core/
+  const REQUIREMENTS_PATH = path.join(__dirname, '..', 'core', 'requirements.txt');
 
   const pip = spawn(pythonExe, ['-m', 'pip', 'install', '-r', REQUIREMENTS_PATH], {
     stdio: 'inherit'
   });
 
   pip.on('close', (code) => {
-    if (code === 0) {
-      console.log('Python environment refreshed successfully!');
-    } else {
+    if (code !== 0) {
       console.error('Failed to install requirements.');
       process.exit(code);
     }
+
+    // 4. Install Playwright browsers
+    console.log('Requirements installed. Installing Playwright browsers...');
+    const playwright = spawn(pythonExe, ['-m', 'playwright', 'install', 'chromium'], {
+      stdio: 'inherit'
+    });
+
+    playwright.on('close', (pwCode) => {
+      if (pwCode === 0) {
+        console.log('Python environment refreshed successfully!');
+        console.log('✅ Virtual environment created');
+        console.log('✅ Python packages installed');
+        console.log('✅ Playwright Chromium installed');
+      } else {
+        console.error('Failed to install Playwright browsers.');
+        process.exit(pwCode);
+      }
+    });
   });
 });

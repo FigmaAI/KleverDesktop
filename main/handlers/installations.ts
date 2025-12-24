@@ -21,16 +21,17 @@ import {
   createVirtualEnvironment,
   installRequirements,
   getLegacyScriptsPath,
+  getCorePath,
   spawnBundledPython,
   getPythonEnv
 } from '../utils/python-runtime';
 import { downloadPython } from '../utils/python-download';
-import { 
-  checkSyncNeeded, 
-  syncPythonEnvironment, 
+import {
+  checkSyncNeeded,
+  syncPythonEnvironment,
   updateManifest,
   resetManifest,
-  SyncCheckResult 
+  SyncCheckResult
 } from '../utils/python-sync';
 
 /**
@@ -106,19 +107,19 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       // 1. Check if Python is downloaded
       if (!isPythonInstalled()) {
         mainWindow?.webContents.send('env:progress', '📦 Python runtime not found. Downloading...\n');
-        
+
         const onProgress = (message: string) => {
           mainWindow?.webContents.send('env:progress', message);
         };
 
         const downloadResult = await downloadPython(onProgress);
-        
+
         if (!downloadResult.success) {
           const errorMsg = `Failed to download Python: ${downloadResult.error}`;
           mainWindow?.webContents.send('env:progress', `❌ ${errorMsg}\n`);
           return { success: false, error: errorMsg };
         }
-        
+
         mainWindow?.webContents.send('env:progress', '✓ Python runtime downloaded\n');
       }
 
@@ -126,10 +127,10 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
 
       // 2. Check virtual environment status
       const venvStatus = checkVenvStatus();
-      
+
       if (!venvStatus.valid) {
         mainWindow?.webContents.send('env:progress', '\n📦 Creating virtual environment...\n');
-        
+
         const venvResult = await createVirtualEnvironment(
           (data: string) => mainWindow?.webContents.send('env:progress', data),
           (data: string) => mainWindow?.webContents.send('env:progress', data)
@@ -144,11 +145,11 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         mainWindow?.webContents.send('env:progress', '✓ Virtual environment already exists\n');
       }
 
-      // 3. Install requirements.txt packages
+      // 3. Install requirements.txt packages (Phase C: now in core/)
       mainWindow?.webContents.send('env:progress', '\n📦 Installing Python packages from requirements.txt...\n');
-      
-      const legacyScriptsPath = getLegacyScriptsPath();
-      const requirementsPath = path.join(legacyScriptsPath, 'requirements.txt');
+
+      const corePath = getCorePath();
+      const requirementsPath = path.join(corePath, 'requirements.txt');
 
       const requirementsResult = await installRequirements(
         requirementsPath,
@@ -192,11 +193,11 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   ipcMain.handle('env:reset', async () => {
     try {
       const kleverDir = path.join(os.homedir(), '.klever-desktop');
-      
+
       if (fs.existsSync(kleverDir)) {
         fs.rmSync(kleverDir, { recursive: true, force: true });
       }
-      
+
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -282,7 +283,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
           }
         });
 
-      // Windows: Try Chocolatey
+        // Windows: Try Chocolatey
       } else if (platform === 'win32') {
         // Check if Chocolatey is available
         exec('choco --version', { timeout: 3000 }, (chocoError) => {
@@ -312,18 +313,18 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
             });
           } else {
             // Chocolatey not available
-            resolve({ 
-              success: false, 
+            resolve({
+              success: false,
               error: 'Please install Chocolatey first or download Android SDK manually.',
               needsManualInstall: true
             });
           }
         });
 
-      // Linux
+        // Linux
       } else {
-        resolve({ 
-          success: false, 
+        resolve({
+          success: false,
           error: 'Please install Android SDK manually.',
           needsManualInstall: true
         });
@@ -385,15 +386,15 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   // Download and install Python runtime
   ipcMain.handle('python:download', async () => {
     const mainWindow = getMainWindow();
-    
+
     // Re-run check first
     if (isPythonInstalled()) {
-       mainWindow?.webContents.send('python:progress', '✅ Python is already installed.\n');
-       return { success: true };
+      mainWindow?.webContents.send('python:progress', '✅ Python is already installed.\n');
+      return { success: true };
     }
 
     mainWindow?.webContents.send('python:progress', '🚀 Starting Python download...\n');
-    
+
     const onProgress = (message: string) => {
       mainWindow?.webContents.send('python:progress', message);
     };
@@ -401,9 +402,9 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
     // Import dynamically to avoid circular dependencies if any, or just use the imported one
     // We need to import downloadPython at the top of the file first.
     // Assuming it's imported as `import { downloadPython } from '../utils/python-download';`
-    
+
     const result = await downloadPython(onProgress);
-    
+
     if (result.success) {
       mainWindow?.webContents.send('python:progress', '\n✅ Python installed successfully!\n');
     } else {
@@ -438,7 +439,7 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       }
 
       const apkPath = result.filePaths[0];
-      
+
       // Verify the file exists and has .apk extension
       if (!fs.existsSync(apkPath)) {
         return { success: false, error: 'Selected file does not exist' };
@@ -494,24 +495,25 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
   ipcMain.handle('android:prelaunch', async (_event, apkSource: ApkSource, _projectName?: string) => {
     try {
       const mainWindow = getMainWindow();
-      
+
       // Check if Python environment is ready
       const venvStatus = checkVenvStatus();
       if (!venvStatus.valid) {
         return { success: false, error: 'Python environment not ready. Please run Setup Wizard.' };
       }
 
-      const legacyScriptsDir = getLegacyScriptsPath();
+      // Phase C Migration: Use core.android instead of legacy and_controller
+      const corePath = getCorePath();
       const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
+      const projectRoot = path.dirname(corePath);
 
-      // Build Python code to run prelaunch_app function
+      // Build Python code to run prelaunch_app function from core.android
       const apkSourceJson = JSON.stringify(apkSource);
       const prelaunchCode = `
 import sys
 import json
-sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
-from and_controller import prelaunch_app
+sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
+from core.android import prelaunch_app
 
 apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
 result = prelaunch_app(apk_source)
@@ -520,10 +522,10 @@ print('PRELAUNCH_RESULT:' + json.dumps(result))
 
       return new Promise((resolve) => {
         const process = spawnBundledPython(['-u', '-c', prelaunchCode], {
-          cwd: legacyScriptsDir,
+          cwd: projectRoot,
           env: {
             ...pythonEnv,
-            PYTHONPATH: scriptsDir,
+            PYTHONPATH: projectRoot,
             PYTHONUNBUFFERED: '1'
           }
         });
@@ -574,23 +576,24 @@ print('PRELAUNCH_RESULT:' + json.dumps(result))
     try {
       const venvStatus = checkVenvStatus();
       if (!venvStatus.valid) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: 'Python environment not ready',
           devices: [],
           emulators: []
         };
       }
 
-      const legacyScriptsDir = getLegacyScriptsPath();
+      // Phase C Migration: Use core.android instead of legacy and_controller
+      const corePath = getCorePath();
       const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
+      const projectRoot = path.dirname(corePath);
 
       const statusCode = `
 import sys
 import json
-sys.path.insert(0, '${scriptsDir.replace(/\\/g, '/')}')
-from and_controller import list_all_devices, list_available_emulators
+sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
+from core.android import list_all_devices, list_available_emulators
 
 devices = list_all_devices()
 emulators = list_available_emulators()
@@ -599,10 +602,10 @@ print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}
 
       return new Promise((resolve) => {
         const process = spawnBundledPython(['-u', '-c', statusCode], {
-          cwd: legacyScriptsDir,
+          cwd: projectRoot,
           env: {
             ...pythonEnv,
-            PYTHONPATH: scriptsDir,
+            PYTHONPATH: projectRoot,
             PYTHONUNBUFFERED: '1'
           }
         });
@@ -661,13 +664,13 @@ print('STATUS_RESULT:' + json.dumps({'devices': devices, 'emulators': emulators}
   ipcMain.handle('sync:run', async (_event, forceRecreateVenv: boolean = false) => {
     try {
       const mainWindow = getMainWindow();
-      
+
       const onProgress = (message: string) => {
         mainWindow?.webContents.send('sync:progress', message);
       };
 
       const result = await syncPythonEnvironment(onProgress, forceRecreateVenv);
-      
+
       return result;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
