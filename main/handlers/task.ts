@@ -103,6 +103,11 @@ export async function startTaskExecution(
       return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
     }
 
+    // Common Python environment variables
+    const legacyScriptsDir = getLegacyScriptsPath();
+    const pythonEnv = getPythonEnv();
+    const scriptsDir = path.join(legacyScriptsDir, 'scripts');
+
     // For Android platform with APK source, install/prepare app before running task
     if (project.platform === 'android' && task.apkSource) {
       mainWindow?.webContents.send('task:output', { 
@@ -110,10 +115,6 @@ export async function startTaskExecution(
         taskId, 
         output: '[Setup] Preparing Android device and app...\n' 
       });
-
-      const legacyScriptsDir = getLegacyScriptsPath();
-      const pythonEnv = getPythonEnv();
-      const scriptsDir = path.join(legacyScriptsDir, 'scripts');
 
       const apkSourceJson = JSON.stringify(task.apkSource);
       const setupCode = `
@@ -227,8 +228,6 @@ print('SETUP_RESULT:' + json.dumps(result))
     // Start Python process via Core Controller
     const corePath = getCorePath();
     const controllerPath = path.join(corePath, 'controller.py');
-    const legacyScriptsDir = getLegacyScriptsPath();
-    const legacyScriptsSubDir = path.join(legacyScriptsDir, 'scripts');
 
     // Build parameters for the new controller
     const taskParams = {
@@ -253,9 +252,6 @@ print('SETUP_RESULT:' + json.dumps(result))
       '--params', JSON.stringify(taskParams)
     ];
 
-    // Get Python environment and merge with config environment variables
-    const pythonEnv = getPythonEnv();
-
     // Add Android SDK default paths to PATH for adb/emulator detection
     const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
     const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
@@ -277,7 +273,7 @@ print('SETUP_RESULT:' + json.dumps(result))
     const extendedPythonPath = [
       projectRoot, 
       legacyScriptsDir, 
-      legacyScriptsSubDir, 
+      scriptsDir, 
       pythonEnv.PYTHONPATH
     ].filter(Boolean).join(path.delimiter);
 
