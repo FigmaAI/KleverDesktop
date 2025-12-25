@@ -109,6 +109,9 @@ export async function startTaskExecution(
     const scriptsDir = path.join(legacyScriptsDir, 'scripts');
     const projectRoot = path.dirname(corePath);
 
+    // Store prelaunch result to pass to GELab
+    let androidSetupResult: { success: boolean; device?: string; package_name?: string; error?: string } | undefined;
+
     // For Android platform with APK source, install/prepare app before running task
     if (project.platform === 'android' && task.apkSource) {
       mainWindow?.webContents.send('task:output', {
@@ -130,7 +133,7 @@ result = prelaunch_app(apk_source)
 print('SETUP_RESULT:' + json.dumps(result))
 `;
 
-      const setupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
+      androidSetupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
         const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
           cwd: projectRoot,
           env: {
@@ -171,26 +174,26 @@ print('SETUP_RESULT:' + json.dumps(result))
         });
       });
 
-      if (!setupResult.success) {
+      if (!androidSetupResult.success) {
         // Update task status to failed
         task.status = 'failed';
-        task.output = `App setup failed: ${setupResult.error}`;
+        task.output = `App setup failed: ${androidSetupResult.error}`;
         task.completedAt = new Date().toISOString();
         saveProjects(data);
 
         mainWindow?.webContents.send('task:error', {
           projectId,
           taskId,
-          error: `App setup failed: ${setupResult.error}`
+          error: `App setup failed: ${androidSetupResult.error}`
         });
 
-        return { success: false, error: `App setup failed: ${setupResult.error}` };
+        return { success: false, error: `App setup failed: ${androidSetupResult.error}` };
       }
 
       mainWindow?.webContents.send('task:output', {
         projectId,
         taskId,
-        output: `[Setup] Device ready: ${setupResult.device}, Package: ${setupResult.package_name}\n`
+        output: `[Setup] Device ready: ${androidSetupResult.device}, Package: ${androidSetupResult.package_name}\n`
       });
     }
 
@@ -239,14 +242,17 @@ print('SETUP_RESULT:' + json.dumps(result))
       task_desc: task.goal || task.description,
       url: project.platform === 'web' ? task.url : undefined,
       model_name: task.modelName,
-      max_rounds: task.maxRounds
+      max_rounds: task.maxRounds,
+      // Pass device and package info from prelaunch_app for GELab to use
+      device: androidSetupResult?.device,
+      package_name: androidSetupResult?.package_name,
       // Add other necessary params here
     };
 
     // Select engine based on platform
     // - web: browser_use (independent web automation engine)
-    // - android: gelab (multi-platform engine, currently stub)
-    const engineName = project.platform === 'web' ? 'browser_use' : 'gelab';
+    // - android: appagent (legacy AppAgent engine)
+    const engineName = project.platform === 'web' ? 'browser_use' : 'appagent';
 
     // Build CLI parameters for controller
     const args = [

@@ -13,3 +13,13 @@ anthropic
 # Browser-Use integration (LiteLLM direct, no LangChain)
 # Using latest version which requires Playwright 1.57+ (Chrome for Testing)
 browser-use>=0.1.40
+
+# GELab engine dependencies
+jsonlines
+megfile
+pydantic
+fastapi
+uvicorn
+pandas
+openpyxl
+tqdm

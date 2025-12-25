@@ -515,7 +515,7 @@ function MainApp() {
               onCanSaveChange={setSettingsCanSave}
             />
           ) : currentView === 'schedules' ? (
-            <ScheduledTasks 
+            <ScheduledTasks
               section={activeScheduleSection}
               projects={projects}
               onProjectsChange={loadProjects}
@@ -574,7 +574,7 @@ function MainApp() {
         <DrawerContent className="max-h-[85vh]">
           <DrawerTitle className="sr-only">Universal Terminal</DrawerTitle>
           <DrawerDescription className="sr-only">View and manage terminal output from running tasks and operations</DrawerDescription>
-          <div className="flex flex-col h-full min-h-[60vh] overflow-hidden">
+          <div className="flex flex-col h-full min-h-[60vh] overflow-hidden dark:bg-zinc-950">
             <TerminalHeader />
             <TerminalOutput />
           </div>

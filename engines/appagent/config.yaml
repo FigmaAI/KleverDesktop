@@ -1,0 +1,68 @@
+# =============================================================================
+# AppAgent Configuration
+# =============================================================================
+# Note: Most settings are overridden by Electron app via environment variables.
+# This file provides defaults for standalone script execution.
+
+# Model (set via Electron app environment variables: MODEL_NAME, API_KEY, API_BASE_URL)
+# Fallback defaults when not provided by Electron app
+MODEL_NAME: "gpt-5.1-2025-11-13"  # Last used model from Electron app
+API_KEY: ""
+API_BASE_URL: ""
+
+# -------------------------------------------------------------------------
+# LiteLLM Model Examples (uncomment and modify to use)
+# -------------------------------------------------------------------------
+# OpenAI:
+#   MODEL_NAME: "gpt-4.1-mini"
+#   API_KEY: "sk-..."
+#   API_BASE_URL: ""  # Leave empty for default OpenAI endpoint
+#
+# Ollama (local):
+#   MODEL_NAME: "ollama/llama3.2-vision"
+#   API_KEY: ""
+#   API_BASE_URL: ""
+#
+#
+# OpenRouter (100+ models):
+#   MODEL_NAME: "openrouter/openai/gpt-4.1-mini"
+#   API_KEY: "sk-or-..."
+#   API_BASE_URL: "https://openrouter.ai/api/v1"
+# -------------------------------------------------------------------------
+
+# Model Parameters
+MAX_TOKENS: 8192
+TEMPERATURE: 0.0
+REQUEST_INTERVAL: 10
+
+# Timeout Settings
+REQUEST_TIMEOUT: 300   # Default: 5 minutes
+QWEN3_TIMEOUT: 600     # Qwen3 models: 10 minutes (for <think> processing)
+
+# Android Configuration
+ANDROID_SCREENSHOT_DIR: "/sdcard"
+ANDROID_XML_DIR: "/sdcard"
+ANDROID_SDK_PATH: "/Volumes/Backup/Android/sdk"
+
+# Web Configuration
+# Browser channel options:
+#   - chromium (default, Playwright's isolated Chromium)
+#   - chrome (Google Chrome)
+#   - chrome-beta, chrome-dev, chrome-canary
+#   - msedge, msedge-beta, msedge-dev, msedge-canary
+WEB_BROWSER_TYPE: "chromium"
+WEB_HEADLESS: false
+WEB_USER_DATA_DIR: ""  # Browser profile for persistent login sessions
+WEB_CDP_URL: ""  # CDP URL for connecting to existing Chrome (e.g., http://localhost:9222)
+
+# Image Optimization
+IMAGE_MAX_WIDTH: 512
+IMAGE_MAX_HEIGHT: 512
+IMAGE_QUALITY: 85
+OPTIMIZE_IMAGES: true
+
+# Agent Behavior
+DOC_REFINE: false
+MAX_ROUNDS: 20
+DARK_MODE: false
+MIN_DIST: 30

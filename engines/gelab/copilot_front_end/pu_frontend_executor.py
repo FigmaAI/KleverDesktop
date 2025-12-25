@@ -14,6 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from copilot_front_end.package_map import find_package_name
+from core.utils import append_to_log
 
 
 def parser0729_to_frontend_action(parser_action):
@@ -217,9 +218,18 @@ def _detect_screen_orientation(device_id):
 
     result_str = result.stdout.strip()
 
-    result = int(result_str.strip())
+    # Handle empty or invalid result - default to portrait (0)
+    if not result_str:
+        return 0
+    
+    try:
+        orientation = int(result_str.strip())
+    except ValueError:
+        # If parsing fails, default to portrait orientation
+        print(f"Warning: Could not parse screen orientation '{result_str}', defaulting to 0")
+        orientation = 0
 
-    return result
+    return orientation
 
 
 def act_on_device(frontend_action, device_id, wm_size, print_command = False, reflush_app = True):
@@ -250,6 +260,11 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
     """
     valid_actions = ["CLICK", "LONGPRESS", "TYPE", "SCROLL", "AWAKE", "SLIDE", "BACK", "HOME", "COMPLETE", "ABORT", "INFO", "WAIT", "HOT_KEY"]
 
+    def _log_report(msg):
+        report_path = os.environ.get("GELAB_REPORT_PATH")
+        if report_path:
+            append_to_log(msg, report_path)
+
     assert "action_type" in frontend_action, "Missing action_type in frontend_action"
     assert frontend_action["action_type"] in valid_actions, f"Invalid action type: {frontend_action['action_type']}"
 
@@ -270,7 +285,7 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
             print(f"Executing command: {cmd}")
         
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
+        _log_report(f"- **CLICK** ({x}, {y}): {'✅' if result.returncode == 0 else '❌'}")
         return result
     
     elif action_type == "LONGPRESS":
@@ -283,7 +298,7 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
         if print_command:
             print(f"Executing command: {cmd}")
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
+        _log_report(f"- **LONGPRESS** ({x}, {y}): {'✅' if result.returncode == 0 else '❌'}")
         return result
 
     # adb shell app_process -Djava.class.path=/data/local/tmp/yadb /data/local/tmp com.ysbing.yadb.Main -keyboard "{text}"
@@ -315,6 +330,7 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
             print(f"Executing command: {cmd}")
 
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        _log_report(f"- **TYPE** '{value}': {'✅' if result.returncode == 0 else '❌'}")
         return result
     
     elif action_type == "SCROLL":
@@ -346,7 +362,7 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
             print(f"Executing command: {cmd}")
 
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
+        _log_report(f"- **SCROLL** {direction}: {'✅' if result.returncode == 0 else '❌'}")
         return result
         
     elif action_type == "AWAKE":
@@ -384,7 +400,7 @@ def act_on_device(frontend_action, device_id, wm_size, print_command = False, re
             print(f"Executing command: {cmd}")
 
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-
+        _log_report(f"- **SLIDE** ({x1},{y1})->({x2},{y2}): {'✅' if result.returncode == 0 else '❌'}")
         return result
     
     elif action_type == "BACK":

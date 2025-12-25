@@ -1,0 +1,8 @@
+config.yaml
+*/*.pyc
+tmp_screenshot
+output/
+running_log
+gelab-zero-4b-preview/
+
+model_config.yaml

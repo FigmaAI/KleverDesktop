@@ -1,0 +1,90 @@
+agent_loop_config: {
+    # the gui agent protocol, e.g., parser_0922_summary
+    "task_type": "parser_0922_summary",
+
+    # the gui main model config
+    "model_config": {
+        "model_name": "gelab-zero-4b-preview",
+        "model_provider": "local",
+
+        "args": {
+            "temperature": 0.1,
+            "top_p": 0.95,
+            "frequency_penalty": 0.0,
+            "max_tokens": 4096,
+        },
+        
+        # optional to resize image
+        "image_preprocess": {
+            "is_resize": True,
+            "target_image_size": [728, 728]
+        }
+    },
+
+    # the maximum steps for the agent loop
+    "max_steps": 400,
+
+    # the delay time after each action to next capture screenshot
+    "delay_after_capture": 2,
+
+    # debug mode if True will print more logs
+    "debug": False,
+
+    # reply_config:
+    # optional, the config for auto reply with llm
+    # if auto reply is enabled in the agent loop, if this config is not provided,
+    # the main model_config will be used for auto reply
+    # if provided, will use this config for auto reply
+    "reply_config": {
+        "model_config": {
+            "model_name": "gelab-zero-4b-preview",
+            "model_provider": "local",
+
+            "args": {
+                "temperature": 0.5,
+                "top_p": 0.95,
+                "frequency_penalty": 0.0,
+                "max_tokens": 512,
+            },
+
+            # optional to resize image
+            "image_preprocess": {
+                "is_resize": True,
+                "target_image_size": [728, 728]
+            }
+        }
+    },
+
+    # caption config: 
+    # optional, the config for image captioning
+    # if image captioning is enabled in the agent loop, this config will be used
+    # to caption the image before sending to the model
+    "caption_config": {
+        "model_config": {
+            "model_name": "gelab-zero-4b-preview",
+            "model_provider": "local",
+
+            "args": {
+                "temperature": 0.5,
+                "top_p": 0.95,
+                "frequency_penalty": 0.0,
+                "max_tokens": 512,
+            },
+
+            # optional to resize image
+            "image_preprocess": {
+                "is_resize": True,
+                "target_image_size": [728, 728]
+            }
+        }
+    },
+
+}
+
+server_config : {
+    "mcp_server_port": 8704,
+    "log_dir": "running_log/server_log/os-copilot-local-eval-logs/traces",
+    "image_dir": "running_log/server_log/os-copilot-local-eval-logs/images",
+    "debug": False
+}
+

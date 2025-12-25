@@ -58,31 +58,47 @@ def draw_points(image_path, image_path_save, points, color=(255, 0, 0, 128), ret
     else:
         image = image_path
 
+    # Convert to RGB to avoid alpha issues
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    
     draw = ImageDraw.Draw(image)
-
     width, height = image.size
 
-    # color = (255, 0, 0, 128)  # Red, semi-transparent (alpha=128)
+    fill_color = (255, 0, 0)  # Solid Red
+    outline_color = (0, 0, 0) # Black outline
 
     for x, y in points:
         if type(x) == int or x > 1:
             x = float(int(x))/1000.0
             y = float(int(y))/1000.0
 
-        radius = 0.005 * max(width, height)     # radius
+        radius = 0.02 * max(width, height)  # 2% radius for visibility
 
-    
         absolute_center_x = float(x * width)
         absolute_center_y = float(y * height)
 
+        # Draw outline (larger circle behind)
+        outline_radius = radius + 3
         draw.ellipse(
             (
-                absolute_center_x - radius,  # left top x coordinate
-                absolute_center_y - radius,  # left top y coordinate
-                absolute_center_x + radius,  # right bottom x coordinate
-                absolute_center_y + radius   # right bottom y coordinate
+                absolute_center_x - outline_radius,
+                absolute_center_y - outline_radius,
+                absolute_center_x + outline_radius,
+                absolute_center_y + outline_radius
             ),
-            fill=color
+            fill=outline_color
+        )
+
+        # Draw inner circle
+        draw.ellipse(
+            (
+                absolute_center_x - radius,
+                absolute_center_y - radius,
+                absolute_center_x + radius,
+                absolute_center_y + radius
+            ),
+            fill=fill_color
         )
 
     drawrd_image = image.copy()

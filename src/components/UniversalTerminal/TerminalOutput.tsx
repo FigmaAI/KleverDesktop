@@ -37,7 +37,7 @@ export function TerminalOutput() {
           <>
             {lines.map((line) => (
               <AnimatedSpan key={line.id} className="font-mono text-xs">
-                <span className="text-[#7d8590] text-[0.65rem] opacity-70 mr-2">
+                <span className="text-zinc-500 dark:text-zinc-500 text-[0.65rem] opacity-70 mr-2">
                   {line.timestamp.toLocaleTimeString('en-US', {
                     hour12: false,
                     hour: '2-digit',
@@ -46,14 +46,13 @@ export function TerminalOutput() {
                   })}
                 </span>
                 <span
-                  className={`text-[0.65rem] font-semibold mr-2 ${
-                    {
-                      task: 'text-[#7ee787]',
-                      project: 'text-[#79c0ff]',
-                      env: 'text-[#d2a8ff]',
-                      integration: 'text-[#ffa657]',
-                    }[line.source]
-                  }`}
+                  className={`text-[0.65rem] font-semibold mr-2 ${{
+                    task: 'text-green-600 dark:text-green-400',
+                    project: 'text-blue-600 dark:text-blue-400',
+                    env: 'text-purple-600 dark:text-purple-400',
+                    integration: 'text-orange-600 dark:text-orange-400',
+                  }[line.source]
+                    }`}
                 >
                   [
                   {
@@ -69,10 +68,10 @@ export function TerminalOutput() {
                 <span
                   className={
                     line.level === 'error'
-                      ? 'text-[#ff7b72]'
+                      ? 'text-red-600 dark:text-red-400'
                       : line.level === 'warning'
-                        ? 'text-[#ffa657]'
-                        : 'text-[#e6edf3]'
+                        ? 'text-orange-600 dark:text-orange-400'
+                        : 'text-zinc-800 dark:text-zinc-200'
                   }
                 >
                   {renderAnsi(line.content)}

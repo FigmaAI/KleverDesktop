@@ -1,72 +1,56 @@
 /**
  * ANSI Parser Utility
  * Converts ANSI escape codes to React elements with proper styling
+ * Uses Tailwind CSS classes for light/dark mode support
  */
 
 import { Fragment, type JSX } from 'react'
 
-// ANSI color codes mapping
-const ANSI_COLORS: Record<string, string> = {
+// ANSI color code to Tailwind class mapping
+// Format: 'light-mode-class dark:dark-mode-class'
+const ANSI_COLOR_CLASSES: Record<string, string> = {
   // Foreground colors
-  '30': '#000000', // Black
-  '31': '#e06c75', // Red
-  '32': '#98c379', // Green
-  '33': '#e5c07b', // Yellow
-  '34': '#61afef', // Blue
-  '35': '#c678dd', // Magenta
-  '36': '#56b6c2', // Cyan
-  '37': '#abb2bf', // White
-  '90': '#5c6370', // Bright Black (Gray)
-  '91': '#e06c75', // Bright Red
-  '92': '#98c379', // Bright Green
-  '93': '#e5c07b', // Bright Yellow
-  '94': '#61afef', // Bright Blue
-  '95': '#c678dd', // Bright Magenta
-  '96': '#56b6c2', // Bright Cyan
-  '97': '#ffffff', // Bright White
-
-  // Background colors
-  '40': 'bgBlack',
-  '41': 'bgRed',
-  '42': 'bgGreen',
-  '43': 'bgYellow',
-  '44': 'bgBlue',
-  '45': 'bgMagenta',
-  '46': 'bgCyan',
-  '47': 'bgWhite',
-  '100': 'bgBrightBlack',
-  '101': 'bgBrightRed',
-  '102': 'bgBrightGreen',
-  '103': 'bgBrightYellow',
-  '104': 'bgBrightBlue',
-  '105': 'bgBrightMagenta',
-  '106': 'bgBrightCyan',
-  '107': 'bgBrightWhite',
+  '30': 'text-zinc-900 dark:text-zinc-900', // Black
+  '31': 'text-red-600 dark:text-red-400', // Red
+  '32': 'text-green-600 dark:text-green-400', // Green
+  '33': 'text-amber-600 dark:text-amber-400', // Yellow
+  '34': 'text-blue-600 dark:text-blue-400', // Blue
+  '35': 'text-purple-600 dark:text-purple-400', // Magenta
+  '36': 'text-cyan-600 dark:text-cyan-400', // Cyan
+  '37': 'text-zinc-700 dark:text-zinc-300', // White
+  '90': 'text-zinc-500 dark:text-zinc-500', // Bright Black (Gray)
+  '91': 'text-red-500 dark:text-red-400', // Bright Red
+  '92': 'text-green-500 dark:text-green-400', // Bright Green
+  '93': 'text-yellow-600 dark:text-yellow-400', // Bright Yellow
+  '94': 'text-blue-500 dark:text-blue-400', // Bright Blue
+  '95': 'text-purple-500 dark:text-purple-400', // Bright Magenta
+  '96': 'text-cyan-500 dark:text-cyan-400', // Bright Cyan
+  '97': 'text-zinc-900 dark:text-white', // Bright White
 }
 
-const ANSI_BG_COLORS: Record<string, string> = {
-  bgBlack: '#000000',
-  bgRed: '#e06c75',
-  bgGreen: '#98c379',
-  bgYellow: '#e5c07b',
-  bgBlue: '#61afef',
-  bgMagenta: '#c678dd',
-  bgCyan: '#56b6c2',
-  bgWhite: '#abb2bf',
-  bgBrightBlack: '#5c6370',
-  bgBrightRed: '#e06c75',
-  bgBrightGreen: '#98c379',
-  bgBrightYellow: '#e5c07b',
-  bgBrightBlue: '#61afef',
-  bgBrightMagenta: '#c678dd',
-  bgBrightCyan: '#56b6c2',
-  bgBrightWhite: '#ffffff',
+const ANSI_BG_CLASSES: Record<string, string> = {
+  '40': 'bg-zinc-900 dark:bg-zinc-900', // Black
+  '41': 'bg-red-600 dark:bg-red-500', // Red
+  '42': 'bg-green-600 dark:bg-green-500', // Green
+  '43': 'bg-amber-500 dark:bg-amber-500', // Yellow
+  '44': 'bg-blue-600 dark:bg-blue-500', // Blue
+  '45': 'bg-purple-600 dark:bg-purple-500', // Magenta
+  '46': 'bg-cyan-600 dark:bg-cyan-500', // Cyan
+  '47': 'bg-zinc-200 dark:bg-zinc-300', // White
+  '100': 'bg-zinc-500 dark:bg-zinc-500', // Bright Black
+  '101': 'bg-red-500 dark:bg-red-400', // Bright Red
+  '102': 'bg-green-500 dark:bg-green-400', // Bright Green
+  '103': 'bg-yellow-500 dark:bg-yellow-400', // Bright Yellow
+  '104': 'bg-blue-500 dark:bg-blue-400', // Bright Blue
+  '105': 'bg-purple-500 dark:bg-purple-400', // Bright Magenta
+  '106': 'bg-cyan-500 dark:bg-cyan-400', // Bright Cyan
+  '107': 'bg-white dark:bg-white', // Bright White
 }
 
 interface TextSegment {
   text: string
-  color?: string
-  bgColor?: string
+  colorClass?: string
+  bgClass?: string
   bold?: boolean
   italic?: boolean
   underline?: boolean
@@ -76,9 +60,6 @@ interface TextSegment {
  * Parse ANSI escape codes and convert to styled text segments
  */
 export function parseAnsi(text: string): TextSegment[] {
-  // Remove common ANSI escape sequences patterns
-  // Pattern: \x1b[<codes>m or \x1b[<codes>m or \[<codes>m
-  // ANSI escape sequence를 파싱하기 위해 제어 문자가 필요합니다
   // eslint-disable-next-line no-control-regex
   const ansiRegex = /\x1b\[([0-9;]*)m|\[([0-9;]*)m/g
 
@@ -116,18 +97,12 @@ export function parseAnsi(text: string): TextSegment[] {
       } else if (code === '4') {
         // Underline
         currentStyle.underline = true
-      } else if (ANSI_COLORS[code]) {
-        // Color code
-        const firstChar = code.charAt(0)
-        const firstTwoChars = code.substring(0, 2)
-        if (firstChar === '4' || firstTwoChars === '10') {
-          // Background color
-          const bgName = ANSI_COLORS[code]
-          currentStyle.bgColor = ANSI_BG_COLORS[bgName]
-        } else {
-          // Foreground color
-          currentStyle.color = ANSI_COLORS[code]
-        }
+      } else if (ANSI_COLOR_CLASSES[code]) {
+        // Foreground color
+        currentStyle.colorClass = ANSI_COLOR_CLASSES[code]
+      } else if (ANSI_BG_CLASSES[code]) {
+        // Background color
+        currentStyle.bgClass = ANSI_BG_CLASSES[code]
       }
     }
 
@@ -152,7 +127,7 @@ export function parseAnsi(text: string): TextSegment[] {
 }
 
 /**
- * Render ANSI text as React elements
+ * Render ANSI text as React elements with Tailwind classes
  */
 export function renderAnsi(text: string): JSX.Element {
   const segments = parseAnsi(text)
@@ -160,31 +135,31 @@ export function renderAnsi(text: string): JSX.Element {
   return (
     <>
       {segments.map((segment, index) => {
-        const style: React.CSSProperties = {}
+        const classes: string[] = []
 
-        if (segment.color) {
-          style.color = segment.color
+        if (segment.colorClass) {
+          classes.push(segment.colorClass)
         }
-        if (segment.bgColor) {
-          style.backgroundColor = segment.bgColor
+        if (segment.bgClass) {
+          classes.push(segment.bgClass)
         }
         if (segment.bold) {
-          style.fontWeight = 'bold'
+          classes.push('font-bold')
         }
         if (segment.italic) {
-          style.fontStyle = 'italic'
+          classes.push('italic')
         }
         if (segment.underline) {
-          style.textDecoration = 'underline'
+          classes.push('underline')
         }
 
         // If no styles, just return text
-        if (Object.keys(style).length === 0) {
+        if (classes.length === 0) {
           return <Fragment key={index}>{segment.text}</Fragment>
         }
 
         return (
-          <span key={index} style={style}>
+          <span key={index} className={classes.join(' ')}>
             {segment.text}
           </span>
         )
