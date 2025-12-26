@@ -368,6 +368,7 @@
     "view": "View",
     "listNavigation": "List Navigation",
     "goToProjects": "Go to Projects",
+    "goToScheduledTasks": "Go to Scheduled Tasks",
     "goToSettings": "Go to Settings",
     "goBack": "Go back",
     "newProject": "New Project",

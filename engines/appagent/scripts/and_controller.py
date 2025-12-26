@@ -1197,3 +1197,127 @@ def prelaunch_app(apk_source: dict, device_serial: str = None, status_callback=N
         'package_name': package_name,
         'error': None
     }
+
+
+# ============================================
+# Coordinate-based Action Functions (for GELab connector)
+# ============================================
+
+def tap_coords(x: int, y: int, device_serial: str = None):
+    """
+    Standalone coordinate-based tap function.
+    
+    Used by GELab connector for coordinate-based actions.
+    
+    Args:
+        x: X coordinate in pixels
+        y: Y coordinate in pixels
+        device_serial: Device serial (optional, uses first device)
+    
+    Returns:
+        Command result or "ERROR"
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    adb_command = f"adb -s {device_serial} shell input tap {x} {y}"
+    return execute_adb(adb_command)
+
+
+def swipe_coords(x1: int, y1: int, x2: int, y2: int, duration: int = 300, device_serial: str = None):
+    """
+    Standalone coordinate-based swipe function.
+    
+    Args:
+        x1, y1: Start coordinates
+        x2, y2: End coordinates
+        duration: Swipe duration in ms (default: 300)
+        device_serial: Device serial (optional)
+    
+    Returns:
+        Command result or "ERROR"
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    adb_command = f"adb -s {device_serial} shell input swipe {x1} {y1} {x2} {y2} {duration}"
+    return execute_adb(adb_command)
+
+
+def long_press_coords(x: int, y: int, duration: int = 1000, device_serial: str = None):
+    """
+    Standalone coordinate-based long press function.
+    
+    Args:
+        x: X coordinate in pixels
+        y: Y coordinate in pixels
+        duration: Press duration in ms (default: 1000)
+        device_serial: Device serial (optional)
+    
+    Returns:
+        Command result or "ERROR"
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    # Long press is implemented as swipe from same point to same point
+    adb_command = f"adb -s {device_serial} shell input swipe {x} {y} {x} {y} {duration}"
+    return execute_adb(adb_command)
+
+
+def gelab_coords_to_device(point: list, device_size: tuple) -> tuple:
+    """
+    Convert GELab normalized coordinates (0-1000) to device pixels.
+    
+    GELab uses a 0-1000 coordinate system normalized to screen dimensions.
+    This function converts to actual device pixel coordinates.
+    
+    Args:
+        point: [x, y] in 0-1000 range
+        device_size: (width, height) in pixels
+    
+    Returns:
+        (x, y) pixel coordinates
+    """
+    x = int(point[0] / 1000 * device_size[0])
+    y = int(point[1] / 1000 * device_size[1])
+    return (x, y)
+
+
+def get_device_size(device_serial: str = None) -> tuple:
+    """
+    Get device screen size in pixels.
+    
+    Args:
+        device_serial: Device serial (optional, uses first device)
+    
+    Returns:
+        (width, height) or (0, 0) on error
+    """
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return (0, 0)
+        device_serial = devices[0]
+    
+    adb_command = f"adb -s {device_serial} shell wm size"
+    result = execute_adb(adb_command)
+    
+    if result != "ERROR":
+        try:
+            size_str = result.split(": ")[1]
+            width, height = map(int, size_str.split("x"))
+            return (width, height)
+        except (IndexError, ValueError):
+            pass
+    
+    return (0, 0)

@@ -13,6 +13,13 @@ import time
 import cv2
 # Add current script directory to sys.path to ensure imports work
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Add project root for core module imports (needed for GELab connector)
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(_script_dir)))
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 import prompts
 from config import load_config
 from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
@@ -482,6 +489,60 @@ if platform == "web":
 # ============================================================================
 # Android Platform: Main Exploration Loop
 # ============================================================================
+
+# Check if using GELab model - use specialized runner
+try:
+    from core.model_connectors.gelab_task_runner import is_gelab_model, run_gelab_task
+    USE_GELAB_RUNNER = is_gelab_model(model_name)
+except ImportError:
+    USE_GELAB_RUNNER = False
+
+if USE_GELAB_RUNNER:
+    # GELab Mode: Use specialized task runner
+    print_with_color("=" * 60, "green")
+    print_with_color("🚀 GELab Model Detected - Using GELab Task Runner", "green")
+    print_with_color("=" * 60, "green")
+    
+    # Write report header
+    append_to_log(f"# User Testing Report for {app}", report_log_path)
+    append_to_log(task_name, report_log_path)
+    append_to_log(f"## Task Description", report_log_path)
+    append_to_log(task_desc, report_log_path)
+    append_to_log(f"\n## Execution Mode: GELab ({model_name})\n", report_log_path)
+    
+    # Run GELab task
+    gelab_result = run_gelab_task(
+        controller=controller,
+        task_desc=task_desc,
+        task_dir=task_dir,
+        model_name=model_name,
+        api_key=api_key,
+        base_url=base_url,
+        max_rounds=configs["MAX_ROUNDS"],
+        report_log_path=report_log_path,
+        emit_progress=emit_progress,
+        configs=configs
+    )
+    
+    # Write summary
+    append_to_log(f"\n## Execution Summary", report_log_path)
+    append_to_log(f"- **Platform:** Android (GELab)", report_log_path)
+    append_to_log(f"- **Model:** {model_name}", report_log_path)
+    append_to_log(f"- **Rounds:** {gelab_result['rounds']}", report_log_path)
+    append_to_log(f"- **Total Tokens:** {gelab_result['total_tokens']}", report_log_path)
+    append_to_log(f"- **Total Time:** {gelab_result['total_time']:.2f}s", report_log_path)
+    
+    if gelab_result["success"]:
+        append_to_log(f"- **Status:** ✅ Success", report_log_path)
+        print_with_color("✅ GELab task completed successfully!", "green")
+        sys.exit(0)
+    else:
+        append_to_log(f"- **Status:** ❌ Failed", report_log_path)
+        append_to_log(f"- **Error:** {gelab_result.get('error', 'Unknown')}", report_log_path)
+        print_with_color(f"❌ GELab task failed: {gelab_result.get('error')}", "red")
+        sys.exit(1)
+
+# Standard AppAgent Mode (non-GELab models)
 round_count = 0
 doc_count = 0
 useless_list = set()
@@ -493,6 +554,7 @@ append_to_log(f"# User Testing Report for {app}", report_log_path)
 append_to_log(task_name, report_log_path)
 append_to_log(f"## Task Description", report_log_path)
 append_to_log(task_desc, report_log_path)
+
 
 while round_count < configs["MAX_ROUNDS"]:
     round_count += 1
