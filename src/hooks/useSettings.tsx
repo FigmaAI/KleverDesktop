@@ -34,12 +34,7 @@ export interface PreferencesSettings {
   systemLanguage: 'en' | 'ko'
 }
 
-export interface ImageSettings {
-  optimizeImages: boolean
-  imageMaxWidth: number
-  imageMaxHeight: number
-  imageQuality: number
-}
+
 
 export function useSettings() {
   // Multi-provider model configuration
@@ -78,13 +73,7 @@ export function useSettings() {
     minDist: 30,
   })
 
-  // Image settings
-  const [imageSettings, setImageSettings] = useState<ImageSettings>({
-    optimizeImages: true,
-    imageMaxWidth: 512,
-    imageMaxHeight: 512,
-    imageQuality: 85,
-  })
+
 
   // Preferences settings (including system language)
   const [preferencesSettings, setPreferencesSettings] = useState<PreferencesSettings>({
@@ -141,13 +130,7 @@ export function useSettings() {
           minDist: config.preferences?.minDist || 30,
         })
 
-        // Load image settings
-        setImageSettings({
-          optimizeImages: config.image?.optimize ?? true,
-          imageMaxWidth: config.image?.maxWidth || 512,
-          imageMaxHeight: config.image?.maxHeight || 512,
-          imageQuality: config.image?.quality || 85,
-        })
+
 
         // Load preferences settings (including system language)
         setPreferencesSettings({
@@ -190,12 +173,7 @@ export function useSettings() {
           browserType: platformSettings.webBrowserType,
           headless: platformSettings.webHeadless,
         },
-        image: {
-          maxWidth: imageSettings.imageMaxWidth,
-          maxHeight: imageSettings.imageMaxHeight,
-          quality: imageSettings.imageQuality,
-          optimize: imageSettings.optimizeImages,
-        },
+
         preferences: {
           darkMode: agentSettings.darkMode,
           minDist: agentSettings.minDist,
@@ -219,7 +197,7 @@ export function useSettings() {
     } finally {
       setSaving(false)
     }
-  }, [modelConfig, platformSettings, agentSettings, imageSettings, preferencesSettings])
+  }, [modelConfig, platformSettings, agentSettings, preferencesSettings])
 
   // Auto-load settings on mount
   useEffect(() => {
@@ -233,8 +211,7 @@ export function useSettings() {
     setPlatformSettings,
     agentSettings,
     setAgentSettings,
-    imageSettings,
-    setImageSettings,
+
     preferencesSettings,
     setPreferencesSettings,
     loading,

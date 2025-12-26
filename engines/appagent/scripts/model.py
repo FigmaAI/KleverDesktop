@@ -7,7 +7,11 @@ from typing import List, Optional, Dict, Any, Union
 import requests
 
 try:
+    import litellm
     from litellm import completion
+    # Enable drop_params to automatically remove unsupported parameters
+    # This fixes issues like GPT-5 models not supporting temperature=0.0
+    litellm.drop_params = True
     LITELLM_AVAILABLE = True
 except ImportError:
     LITELLM_AVAILABLE = False
@@ -18,7 +22,7 @@ try:
 except ImportError:
     PSUTIL_AVAILABLE = False
 
-from utils import print_with_color, encode_image, optimize_image
+from utils import print_with_color, encode_image
 
 
 class BaseModel:
@@ -189,12 +193,6 @@ class OpenAIModel(BaseModel):
         """Get response using LiteLLM (supports all modern providers)."""
         start_time = time.time()
 
-        # Optimize images before encoding
-        optimized_images = []
-        for img_path in images:
-            optimized_path = optimize_image(img_path)
-            optimized_images.append(optimized_path)
-
         # Build content array
         # Add JSON instruction if JSON mode is enabled
         json_params = self._get_json_format_params()
@@ -207,15 +205,15 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
         content = [{"type": "text", "text": prompt}]
 
         # Add images
-        for img in optimized_images:
-            base64_img = encode_image(img)
+        for img_path in images:
+            base64_img = encode_image(img_path)
             content.append({
                 "type": "image_url",
                 "image_url": {
                     "url": f"data:image/jpeg;base64,{base64_img}"
                 }
             })
-            print_with_color(f"Image encoded: {img}", "cyan")
+            print_with_color(f"Image encoded: {img_path}", "cyan")
 
         try:
             # Prepare completion parameters
@@ -382,12 +380,6 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
         """Legacy implementation using requests (basic OpenAI compatibility only)."""
         start_time = time.time()
 
-        # Optimize images before encoding
-        optimized_images = []
-        for img_path in images:
-            optimized_path = optimize_image(img_path)
-            optimized_images.append(optimized_path)
-
         content = [
             {
                 "type": "text",
@@ -396,15 +388,15 @@ IMPORTANT: You must respond with valid JSON only. Follow the exact field names s
         ]
 
         # Encode images to base64
-        for img in optimized_images:
-            base64_img = encode_image(img)
+        for img_path in images:
+            base64_img = encode_image(img_path)
             content.append({
                 "type": "image_url",
                 "image_url": {
                     "url": f"data:image/jpeg;base64,{base64_img}"
                 }
             })
-            print_with_color(f"Image encoded to base64: {img}", "cyan")
+            print_with_color(f"Image encoded to base64: {img_path}", "cyan")
 
         headers = {
             "Content-Type": "application/json",

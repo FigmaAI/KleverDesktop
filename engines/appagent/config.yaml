@@ -44,23 +44,6 @@ ANDROID_SCREENSHOT_DIR: "/sdcard"
 ANDROID_XML_DIR: "/sdcard"
 ANDROID_SDK_PATH: "/Volumes/Backup/Android/sdk"
 
-# Web Configuration
-# Browser channel options:
-#   - chromium (default, Playwright's isolated Chromium)
-#   - chrome (Google Chrome)
-#   - chrome-beta, chrome-dev, chrome-canary
-#   - msedge, msedge-beta, msedge-dev, msedge-canary
-WEB_BROWSER_TYPE: "chromium"
-WEB_HEADLESS: false
-WEB_USER_DATA_DIR: ""  # Browser profile for persistent login sessions
-WEB_CDP_URL: ""  # CDP URL for connecting to existing Chrome (e.g., http://localhost:9222)
-
-# Image Optimization
-IMAGE_MAX_WIDTH: 512
-IMAGE_MAX_HEIGHT: 512
-IMAGE_QUALITY: 85
-OPTIMIZE_IMAGES: true
-
 # Agent Behavior
 DOC_REFINE: false
 MAX_ROUNDS: 20

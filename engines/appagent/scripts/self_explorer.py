@@ -24,13 +24,6 @@ import prompts
 from config import load_config
 from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
 from model import parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel
-
-# Browser-Use integration for improved web automation
-try:
-    from browser_use_wrapper import run_web_task_sync, is_browser_use_available
-    BROWSER_USE_AVAILABLE = is_browser_use_available()
-except ImportError:
-    BROWSER_USE_AVAILABLE = False
 from utils import print_with_color, draw_bbox_multi, append_to_log, append_images_as_table, draw_grid
 
 # Global flag to track if we started an emulator
@@ -206,11 +199,10 @@ arg_desc = "AppAgent - Autonomous Exploration"
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=arg_desc)
 parser.add_argument("--app")
 parser.add_argument("--root_dir", default="./")
-parser.add_argument("--platform", choices=["android", "web"], default="android", help="Platform to automate")
+parser.add_argument("--platform", choices=["android"], default="android", help="Platform to automate")
 
 # Task parameters (each Task may have different values)
 parser.add_argument("--task_desc", default=None, help="Task description (if not provided, will prompt)")
-parser.add_argument("--url", default=None, help="URL for web platform (if not provided, will prompt)")
 
 # Model override parameters (Task-specific model selection)
 parser.add_argument("--model", default=None,
@@ -373,118 +365,6 @@ if task_desc:
 else:
     print_with_color("Please enter the description of the task you want me to complete in a few sentences:", "blue")
     task_desc = input()
-
-# ============================================================================
-# Web Platform: Browser-Use (required)
-# ============================================================================
-if platform == "web":
-    print_with_color("=" * 60, "green")
-    print_with_color("Using Browser-Use for web automation (improved accuracy)", "green")
-    print_with_color("=" * 60, "green")
-    print_with_color(f"Task: {task_desc}", "blue")
-    print_with_color(f"URL: {url}", "blue")
-    print_with_color(f"Model: {model_name}", "blue")
-
-    # Write initial report header
-    append_to_log(f"# User Testing Report for {app}", report_log_path)
-    append_to_log(task_name, report_log_path)
-    append_to_log(f"## Task Description", report_log_path)
-    append_to_log(task_desc, report_log_path)
-    append_to_log(f"\n## Execution Mode: Browser-Use\n", report_log_path)
-    append_to_log(f"## Step History\n", report_log_path)
-
-    # Define callback for real-time step updates
-    def on_step_complete(step_info: dict):
-        """Called after each step to update report in real-time."""
-        append_to_log(f"### Step {step_info['step']}", report_log_path)
-        append_to_log(f"**Action:** {step_info['action']}", report_log_path)
-        if step_info.get('url'):
-            append_to_log(f"**URL:** {step_info['url']}", report_log_path)
-        if step_info.get('title'):
-            append_to_log(f"**Title:** {step_info['title']}", report_log_path)
-        if step_info.get('clicked_element'):
-            append_to_log(f"**Element:** {step_info['clicked_element']}", report_log_path)
-        
-        # Add reasoning info (Observation/Thought/Next Goal) - like Android's format
-        if step_info.get('observation'):
-            append_to_log(f"\n**Observation:** {step_info['observation']}\n", report_log_path)
-        if step_info.get('thought'):
-            append_to_log(f"**Thought:** {step_info['thought']}\n", report_log_path)
-        if step_info.get('next_goal'):
-            append_to_log(f"**Next Goal:** {step_info['next_goal']}\n", report_log_path)
-        
-        # Add screenshots as table (original + action highlighted)
-        images = []
-        if step_info.get('screenshot'):
-            rel_path = "screenshots/" + os.path.basename(step_info['screenshot'])
-            images.append(("Screenshot", rel_path))
-        if step_info.get('screenshot_action'):
-            rel_path = "screenshots/" + os.path.basename(step_info['screenshot_action'])
-            images.append(("Action", rel_path))
-        if images:
-            append_images_as_table(images, report_log_path)
-        
-        print_with_color(f"Step {step_info['step']}: {step_info['action']}", "cyan")
-
-    # Run task with Browser-Use (with real-time step callback)
-    result = run_web_task_sync(
-        task_desc=task_desc,
-        url=url,
-        model_name=model_name,
-        api_key=api_key,
-        base_url=base_url,
-        max_rounds=configs["MAX_ROUNDS"],
-        task_dir=task_dir,
-        browser_type=configs.get("WEB_BROWSER_TYPE", "chromium"),
-        headless=configs.get("WEB_HEADLESS", False),
-        user_data_dir=configs.get("WEB_USER_DATA_DIR", "") or None,
-        cdp_url=configs.get("WEB_CDP_URL", "") or None,
-        emit_progress=emit_progress,
-        save_screenshots=True,
-        on_step_complete=on_step_complete,
-        system_language=system_language
-    )
-
-    # Process result and write summary
-    if result["success"]:
-        print_with_color(
-            f"Task completed successfully in {result['rounds']} steps",
-            "green"
-        )
-        print_with_color(
-            f"Total tokens: {result['total_tokens']} "
-            f"(input: {result['input_tokens']}, output: {result['output_tokens']})",
-            "yellow"
-        )
-
-        # Write execution summary at the end
-        append_to_log(f"\n## Execution Summary", report_log_path)
-        append_to_log(f"- **Platform:** Web (Browser-Use)", report_log_path)
-        append_to_log(f"- **Steps:** {result['rounds']}", report_log_path)
-        append_to_log(f"- **Total Tokens:** {result['total_tokens']}", report_log_path)
-        append_to_log(f"- **Input Tokens:** {result['input_tokens']}", report_log_path)
-        append_to_log(f"- **Output Tokens:** {result['output_tokens']}", report_log_path)
-        append_to_log(f"- **Response Time:** {result['total_response_time']}s", report_log_path)
-        append_to_log(f"- **Status:** ✅ Success", report_log_path)
-
-        # Emit final progress
-        emit_progress(result['rounds'], configs["MAX_ROUNDS"])
-        print_with_color(f"Autonomous exploration completed successfully.", "yellow")
-        sys.exit(0)
-    else:
-        error_msg = result.get('error', 'Unknown error')
-        print_with_color(f"Task failed: {error_msg}", "red")
-
-        # Write failure to report
-        append_to_log(f"## Execution Summary", report_log_path)
-        append_to_log(f"- **Platform:** Web (Browser-Use)", report_log_path)
-        append_to_log(f"- **Steps:** {result['rounds']}", report_log_path)
-        append_to_log(f"- **Status:** ❌ Failed", report_log_path)
-        append_to_log(f"- **Error:** {error_msg}", report_log_path)
-
-        # Emit final progress
-        emit_progress(result['rounds'], configs["MAX_ROUNDS"])
-        sys.exit(1)
 
 # ============================================================================
 # Android Platform: Main Exploration Loop
@@ -711,6 +591,12 @@ while round_count < configs["MAX_ROUNDS"]:
             if ret == "ERROR":
                 print_with_color("ERROR: text execution failed", "red")
                 break
+
+            # Auto-press Enter after text input (executes search in search fields)
+            # This makes text input more reliable since user doesn't need to manually tap search button
+            time.sleep(0.3)  # Small delay to ensure text is fully entered
+            controller.enter()
+            print_with_color("Auto-pressed Enter after text input", "cyan")
         elif act_name == "long_press":
             _, area, _, _, _, _ = res
             

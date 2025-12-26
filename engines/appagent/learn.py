@@ -9,7 +9,7 @@ arg_desc = "AppAgent - exploration phase"
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=arg_desc)
 parser.add_argument("--app")
 parser.add_argument("--root_dir", default="./")
-parser.add_argument("--platform", choices=["android", "web"], help="Platform to automate")
+parser.add_argument("--platform", choices=["android"], default="android", help="Platform to automate")
 args = vars(parser.parse_args())
 
 app = args["app"]
@@ -26,18 +26,7 @@ print_with_color("Welcome to the exploration phase of AppAgent!\nThe exploration
                  "the user to show the agent how to complete the given task, and the agent will generate "
                  "documentations for the elements interacted during the human demo.", "yellow")
 
-# Platform selection
-if not platform:
-    print_with_color("\nChoose platform:\n1. Android\n2. Web\nType 1 or 2.", "blue")
-    platform_input = ""
-    while platform_input not in ["1", "2"]:
-        platform_input = input()
-    platform = "android" if platform_input == "1" else "web"
-
-if platform == "android":
-    print_with_color("Please enter the main interface of the app on your Android device.", "yellow")
-else:
-    print_with_color("Web automation mode selected. You will be prompted for URL during execution.", "yellow")
+print_with_color("Please enter the main interface of the app on your Android device.", "yellow")
 
 # Mode selection
 print_with_color("\nChoose from the following modes:\n1. autonomous exploration\n2. human demonstration\n"
@@ -47,10 +36,7 @@ while user_input != "1" and user_input != "2":
     user_input = input()
 
 if not app:
-    if platform == "android":
-        print_with_color("What is the name of the target app?", "blue")
-    else:
-        print_with_color("What name would you like to give to this web exploration session?", "blue")
+    print_with_color("What is the name of the target app?", "blue")
     app = input()
     app = app.replace(" ", "")
 

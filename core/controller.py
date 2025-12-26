@@ -76,7 +76,8 @@ def main():
             
             result = engine.execute_task(args.task, params)
             print(json.dumps(result)) # Output result as JSON for Electron to parse
-            sys.exit(0)
+            # Exit with appropriate code based on task success
+            sys.exit(0 if result.get("success", False) else 1)
             
         elif args.action == "status":
             status = engine.get_status()

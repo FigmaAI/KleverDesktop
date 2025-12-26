@@ -74,7 +74,7 @@ interface AppConfig {
       | 'webkit';         // WebKit (Safari engine)
     headless: boolean;
   };
-  image: {
+  image?: {
     maxWidth: number;
     maxHeight: number;
     quality: number;

@@ -11,14 +11,14 @@ import * as path from 'path';
 import * as os from 'os';
 import { app } from 'electron';
 import { AppConfig, DEFAULT_CONFIG, isLegacyConfig, isSingleProviderConfig, migrateConfig, migrateSingleProviderConfig } from '../types/config';
+import { getKleverDir } from './python-runtime';
 
 /**
  * Get the path to config.json in user data directory
  * @returns Path to ~/.klever-desktop/config.json
  */
 export function getConfigJsonPath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'config.json');
+  return path.join(getKleverDir(), 'config.json');
 }
 
 /**
@@ -134,14 +134,12 @@ export function configExists(): boolean {
  * This action cannot be undone!
  */
 export function hardResetUserData(): void {
-  const userDataPath = app.getPath('userData');
-  const homeDir = os.homedir();
-  const legacyPath = path.join(homeDir, '.klever-desktop');
+  const kleverDir = getKleverDir();
 
   console.log('[config-storage] Hard reset starting...');
 
   // 1. Delete all project workspace directories first
-  const projectsJsonPath = path.join(userDataPath, 'projects.json');
+  const projectsJsonPath = path.join(kleverDir, 'projects.json');
   if (fs.existsSync(projectsJsonPath)) {
     try {
       const projectsData = JSON.parse(fs.readFileSync(projectsJsonPath, 'utf8'));
@@ -182,9 +180,10 @@ export function hardResetUserData(): void {
     'Trust Tokens-journal'
   ];
 
-  if (fs.existsSync(userDataPath)) {
+  // 2. Delete all items in ~/.klever-desktop/
+  if (fs.existsSync(kleverDir)) {
     for (const item of itemsToDelete) {
-      const itemPath = path.join(userDataPath, item);
+      const itemPath = path.join(kleverDir, item);
       if (fs.existsSync(itemPath)) {
         try {
           fs.rmSync(itemPath, { recursive: true, force: true });
@@ -192,15 +191,6 @@ export function hardResetUserData(): void {
           // Ignore deletion errors
         }
       }
-    }
-  }
-
-  // 3. Delete legacy path if it exists
-  if (fs.existsSync(legacyPath)) {
-    try {
-      fs.rmSync(legacyPath, { recursive: true, force: true });
-    } catch {
-      // Ignore deletion errors
     }
   }
 

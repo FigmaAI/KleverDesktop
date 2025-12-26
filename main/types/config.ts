@@ -111,6 +111,7 @@ export interface WebConfig {
 
 /**
  * Image processing configuration
+ * @deprecated Image optimization is deprecated and no longer used
  */
 export interface ImageConfig {
   maxWidth: number;
@@ -166,7 +167,7 @@ export interface AppConfig {
   execution: ExecutionConfig;
   android: AndroidConfig;
   web: WebConfig;
-  image: ImageConfig;
+  image?: ImageConfig;  // @deprecated - image optimization is no longer used
   preferences: PreferencesConfig;
   googleLogin?: GoogleLoginConfig;  // Optional Google login pre-authentication
 }
@@ -181,7 +182,7 @@ export interface LegacyAppConfig {
   execution: ExecutionConfig;
   android: AndroidConfig;
   web: WebConfig;
-  image: ImageConfig;
+  image?: ImageConfig;  // @deprecated - image optimization is no longer used
   preferences: PreferencesConfig;
 }
 
@@ -266,7 +267,7 @@ export function migrateConfig(legacy: LegacyAppConfig): AppConfig {
     execution: legacy.execution,
     android: legacy.android,
     web: legacy.web,
-    image: legacy.image,
+
     preferences: legacy.preferences,
   };
 }
@@ -280,7 +281,7 @@ export function migrateSingleProviderConfig(config: {
   execution: ExecutionConfig;
   android: AndroidConfig;
   web: WebConfig;
-  image: ImageConfig;
+
   preferences: PreferencesConfig;
 }): AppConfig {
   const { provider, model, apiKey, baseUrl } = config.model;
@@ -302,7 +303,7 @@ export function migrateSingleProviderConfig(config: {
     execution: config.execution,
     android: config.android,
     web: config.web,
-    image: config.image,
+
     preferences: config.preferences,
   };
 }
@@ -335,18 +336,13 @@ export const DEFAULT_CONFIG: AppConfig = {
   android: {
     screenshotDir: '/sdcard',
     xmlDir: '/sdcard',
-    sdkPath: '',
+    sdkPath: '/Volumes/Backup/Android/sdk',
   },
   web: {
     browserType: 'chromium',
     headless: false,
   },
-  image: {
-    maxWidth: 512,
-    maxHeight: 512,
-    quality: 85,
-    optimize: true,
-  },
+
   preferences: {
     darkMode: false,
     minDist: 30,
@@ -380,12 +376,6 @@ export const ENV_VAR_MAPPING = {
   // Web configuration (2 variables)
   WEB_BROWSER_TYPE: 'web.browserType',
   WEB_HEADLESS: 'web.headless',
-
-  // Image configuration (4 variables)
-  IMAGE_MAX_WIDTH: 'image.maxWidth',
-  IMAGE_MAX_HEIGHT: 'image.maxHeight',
-  IMAGE_QUALITY: 'image.quality',
-  OPTIMIZE_IMAGES: 'image.optimize',
 
   // Preferences (3 variables)
   DARK_MODE: 'preferences.darkMode',

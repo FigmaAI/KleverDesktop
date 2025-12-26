@@ -17,14 +17,12 @@ arg_desc = "AppAgent Executor"
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=arg_desc)
 parser.add_argument("--app")
 parser.add_argument("--root_dir", default="./")
-parser.add_argument("--platform", choices=["android", "web"], default="android",
+parser.add_argument("--platform", choices=["android"], default="android",
                     help="Platform to automate")
 
 # Task parameters (each Task may have different values)
 parser.add_argument("--task_desc", default=None,
                     help="Task description (if not provided, will prompt)")
-parser.add_argument("--url", default=None,
-                    help="URL for web platform")
 
 # Model override parameters (Task-specific model selection)
 parser.add_argument("--model", default=None,

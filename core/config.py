@@ -108,10 +108,20 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     # Additional env vars for compatibility
     if os.environ.get("TEMPERATURE"):
         config["model"]["temperature"] = float(os.environ["TEMPERATURE"])
-    
+
     if os.environ.get("MAX_TOKENS"):
         config["model"]["max_tokens"] = int(os.environ["MAX_TOKENS"])
-    
+
+    # Android SDK Path (from Electron or config.yaml)
+    if os.environ.get("ANDROID_SDK_PATH"):
+        config["ANDROID_SDK_PATH"] = os.environ["ANDROID_SDK_PATH"]
+    elif config_path is None and os.path.exists(engines_config):
+        # Try to read from config.yaml
+        with open(engines_config, 'r') as f:
+            engines_cfg = yaml.safe_load(f) or {}
+            if "ANDROID_SDK_PATH" in engines_cfg:
+                config["ANDROID_SDK_PATH"] = engines_cfg["ANDROID_SDK_PATH"]
+
     return config
 
 

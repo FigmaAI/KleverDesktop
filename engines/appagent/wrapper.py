@@ -30,15 +30,14 @@ class LegacyEngineWrapper(EngineInterface):
     def execute_task(self, task: str, params=None) -> dict:
         """
         Execute a task using self_explorer.py via subprocess.
-        
+
         Args:
             task: Task description
             params: Dictionary containing:
-                - platform: 'android' or 'web'
+                - platform: 'android'
                 - app: App name
                 - task_dir: Directory for task output
                 - root_dir: Root directory for apps
-                - url: URL for web platform
                 - model_name: Model to use
         """
         params = params or {}
@@ -72,8 +71,6 @@ class LegacyEngineWrapper(EngineInterface):
                 cmd.extend(["--root_dir", params["root_dir"]])
             if params.get("platform"):
                 cmd.extend(["--platform", params["platform"]])
-            if params.get("url"):
-                cmd.extend(["--url", params["url"]])
             if params.get("model_name"):
                 cmd.extend(["--model_name", params["model_name"]])
             
