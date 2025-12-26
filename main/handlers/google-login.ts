@@ -7,7 +7,7 @@ import { IpcMain, BrowserWindow, dialog, app } from 'electron';
 import { ChildProcess, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawnBundledPython, getPythonEnv, getCorePath } from '../utils/python-runtime';
+import { spawnBundledPython, getPythonEnv, getCorePath, getKleverDir } from '../utils/python-runtime';
 import { loadAppConfig, saveAppConfig } from '../utils/config-storage';
 
 let webLoginProcess: ChildProcess | null = null;
@@ -17,8 +17,7 @@ let androidLoginProcess: ChildProcess | null = null;
  * Get browser profile directory path
  */
 function getBrowserProfilePath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'browser-profile');
+  return path.join(getKleverDir(), 'browser-profile');
 }
 
 /**

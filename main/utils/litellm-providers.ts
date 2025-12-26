@@ -13,6 +13,7 @@
 import { net, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getKleverDir } from './python-runtime';
 
 /**
  * Raw model data from LiteLLM API
@@ -263,7 +264,7 @@ const BUNDLED_PROVIDERS: LiteLLMProvider[] = [
 
 // Cache paths
 function getCachePath(): string {
-  return path.join(app.getPath('userData'), 'litellm-models-cache.json');
+  return path.join(getKleverDir(), 'litellm-models-cache.json');
 }
 
 // In-memory cache

@@ -112,6 +112,15 @@ export async function startTaskExecution(
     // Store prelaunch result to pass to GELab
     let androidSetupResult: { success: boolean; device?: string; package_name?: string; error?: string } | undefined;
 
+    // Load global config from config.json BEFORE setup
+    const appConfig = loadAppConfig();
+
+    // Build environment variables from config.json with task-specific model selection and max rounds
+    const taskModel = task.modelProvider && task.modelName
+      ? { provider: task.modelProvider, model: task.modelName }
+      : undefined;
+    const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
+
     // For Android platform with APK source, install/prepare app before running task
     if (project.platform === 'android' && task.apkSource) {
       mainWindow?.webContents.send('task:output', {
@@ -138,6 +147,7 @@ print('SETUP_RESULT:' + json.dumps(result))
           cwd: projectRoot,
           env: {
             ...pythonEnv,
+            ...configEnvVars,  // ← Add config env vars (includes ANDROID_SDK_PATH)
             PYTHONPATH: projectRoot,
             PYTHONUNBUFFERED: '1'
           }
@@ -221,14 +231,7 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     saveProjects(data);
 
-    // Load global config from config.json
-    const appConfig = loadAppConfig();
-
-    // Build environment variables from config.json with task-specific model selection and max rounds
-    const taskModel = task.modelProvider && task.modelName
-      ? { provider: task.modelProvider, model: task.modelName }
-      : undefined;
-    const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
+    // Note: appConfig and configEnvVars already loaded above before setup
 
     // Start Python process via Core Controller (corePath already declared above)
     const controllerPath = path.join(corePath, 'controller.py');

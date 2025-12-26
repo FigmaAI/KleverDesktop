@@ -16,13 +16,12 @@ def load_config(config_path=None):
 
     # Override with environment variables (higher priority)
     # Convert string 'true'/'false' to boolean for specific keys
-    bool_keys = ['WEB_HEADLESS', 'OPTIMIZE_IMAGES', 'DOC_REFINE', 'DARK_MODE', 'USE_JSON_MODE', 'USE_STREAMING']
-    int_keys = ['MAX_TOKENS', 'REQUEST_INTERVAL', 'WEB_VIEWPORT_WIDTH', 'WEB_VIEWPORT_HEIGHT',
-                'IMAGE_MAX_WIDTH', 'IMAGE_MAX_HEIGHT', 'IMAGE_QUALITY', 'MAX_ROUNDS', 'MIN_DIST',
+    bool_keys = ['DOC_REFINE', 'DARK_MODE', 'USE_JSON_MODE', 'USE_STREAMING']
+    int_keys = ['MAX_TOKENS', 'REQUEST_INTERVAL', 'MAX_ROUNDS', 'MIN_DIST',
                 'REQUEST_TIMEOUT', 'QWEN3_TIMEOUT']
     float_keys = ['TEMPERATURE']
     # String keys that should be read from environment (no conversion needed)
-    string_keys = ['WEB_CDP_URL', 'WEB_USER_DATA_DIR', 'WEB_BROWSER_TYPE']
+    string_keys = []
 
     for key in configs.keys():
         if key in os.environ:

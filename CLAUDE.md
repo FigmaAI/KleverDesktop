@@ -998,20 +998,24 @@ anthropic
 ### 4. File Paths Reference
 
 **User Data Directory:**
-- macOS: `~/Library/Application Support/klever-desktop/`
-- Windows: `%APPDATA%\klever-desktop\`
-- Linux: `~/.klever-desktop/`
+
+All application data is stored in a single directory for consistency:
+- **All platforms**: `~/.klever-desktop/`
+
+This directory contains all user data, configuration, Python runtime, and project workspaces.
 
 **Key Files & Directories:**
 
 | Path | Purpose |
 |------|---------|
-| `~/.klever-desktop/config.json` | Application configuration |
+| `~/.klever-desktop/config.json` | Application configuration (Android SDK path, model settings, etc.) |
 | `~/.klever-desktop/projects.json` | Projects and tasks database |
 | `~/.klever-desktop/python/{platform}-{arch}/python/` | Downloaded Python runtime |
-| `~/.klever-desktop/python-env/` | Python virtual environment |
-| `~/Documents/{projectName}/` | Project workspace directory |
-| `~/Documents/{projectName}/apps/{app}/demos/self_explore_{timestamp}/` | Task result directory |
+| `~/.klever-desktop/python-env/` | Python virtual environment (pip packages) |
+| `~/.klever-desktop/browser-profile/` | Browser profile for persistent Google login sessions |
+| `~/.klever-desktop/litellm-models-cache.json` | Cached LiteLLM model information |
+| `~/.klever-desktop/Projects/{projectName}/` | Project workspace directories |
+| `~/.klever-desktop/Projects/{projectName}/apps/{app}/demos/self_explore_{timestamp}/` | Task result directory |
 
 **App Resources (Production):**
 - `process.resourcesPath/appagent/` - Python automation scripts

@@ -42,15 +42,21 @@ configs = load_config()
 
 def get_android_sdk_path() -> str:
     """
-    Get Android SDK path from config.
+    Get Android SDK path from environment variable or config.
 
     Priority:
-    1. configs['ANDROID_SDK_PATH'] (set by SetupWizard or Settings, passed via Electron env var)
-    2. Empty string (will trigger common_paths fallback in find_sdk_tool)
+    1. ANDROID_SDK_PATH environment variable (set by Electron)
+    2. ANDROID_SDK_PATH from core/config.yaml
+    3. Empty string (will trigger common_paths fallback in find_sdk_tool)
 
     Returns:
         str: Android SDK path or empty string
     """
+    # Check environment variable first (highest priority - set by Electron)
+    if 'ANDROID_SDK_PATH' in os.environ:
+        return os.environ['ANDROID_SDK_PATH']
+
+    # Fallback to config (for standalone usage)
     return configs.get('ANDROID_SDK_PATH', '')
 
 
@@ -241,8 +247,9 @@ def start_emulator(avd_name: str = None, wait_for_boot: bool = True) -> bool:
         return False
 
     # Start emulator in background with cold boot
+    # -no-snapshot: Don't load or save snapshots (true cold boot every time)
     print_with_color(f"Starting emulator: {avd_name} (cold boot)...", "green")
-    subprocess.Popen([emulator_path, '-avd', avd_name, '-no-snapshot-load'],
+    subprocess.Popen([emulator_path, '-avd', avd_name, '-no-snapshot'],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL)
 
@@ -730,10 +737,28 @@ def prelaunch_app(apk_source: Dict[str, Any], device_serial: str = None, status_
         target_device = devices[0]
     else:
         # No devices - try to start emulator
+        print_with_color("No devices connected. Attempting to start emulator...", "yellow")
         emulators = list_available_emulators()
-        if not emulators:
-            return {'success': False, 'device': None, 'package_name': package_name, 'error': 'No devices or emulators available'}
         
+        if not emulators:
+            # Check if SDK is configured
+            sdk_path = get_android_sdk_path()
+            if not sdk_path:
+                return {
+                    'success': False, 
+                    'device': None, 
+                    'package_name': package_name, 
+                    'error': 'No devices connected and Android SDK path not configured. Please set SDK path in Settings.'
+                }
+            else:
+                return {
+                    'success': False, 
+                    'device': None, 
+                    'package_name': package_name, 
+                    'error': 'No devices connected and no Android Virtual Devices (AVDs) found. Please create an AVD using Android Studio (Tools > Device Manager > Create Virtual Device).'
+                }
+        
+        print_with_color(f"Starting emulator: {emulators[0]}...", "green")
         if not start_emulator(emulators[0], wait_for_boot=True):
             return {'success': False, 'device': None, 'package_name': package_name, 'error': 'Failed to start emulator'}
         
@@ -742,6 +767,7 @@ def prelaunch_app(apk_source: Dict[str, Any], device_serial: str = None, status_
             return {'success': False, 'device': None, 'package_name': package_name, 'error': 'Emulator started but not detected'}
         
         target_device = devices[0]
+        print_with_color(f"✓ Emulator ready: {target_device}", "green")
     
     # Step 2: Determine package name and install if needed
     if source_type == 'apk_file' and apk_path:

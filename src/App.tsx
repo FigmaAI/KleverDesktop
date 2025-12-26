@@ -50,7 +50,6 @@ const settingsSectionLabelKeys: Record<SettingsSection, string> = {
   model: 'settings.model',
   platform: 'settings.platform',
   agent: 'settings.agent',
-  image: 'settings.image',
   preferences: 'settings.preferences',
   danger: 'settings.dangerZone',
 }

@@ -12,7 +12,7 @@ import {
   Circle,
   Brain,
   Sparkles,
-  Image as ImageIcon,
+
   AlertTriangle,
   FolderOpen,
   Trash2,
@@ -41,7 +41,7 @@ import logoImg from "@/assets/logo.png"
 import { cn } from "@/lib/utils"
 
 export type AppView = 'projects' | 'settings' | 'schedules'
-export type SettingsSection = 'model' | 'platform' | 'agent' | 'image' | 'preferences' | 'danger'
+export type SettingsSection = 'model' | 'platform' | 'agent' | 'preferences' | 'danger'
 export type ScheduleSection = 'active' | 'history'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -68,7 +68,7 @@ const settingsMenuItems: { id: SettingsSection; labelKey: string; icon: React.El
   { id: 'model', labelKey: 'settings.model', icon: Brain },
   { id: 'platform', labelKey: 'settings.platform', icon: Smartphone },
   { id: 'agent', labelKey: 'settings.agent', icon: Sparkles },
-  { id: 'image', labelKey: 'settings.image', icon: ImageIcon },
+
   { id: 'preferences', labelKey: 'settings.preferences', icon: Globe },
   { id: 'danger', labelKey: 'settings.dangerZone', icon: AlertTriangle },
 ]

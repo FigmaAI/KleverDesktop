@@ -12,13 +12,13 @@
 import { app } from 'electron';
 import path from 'path';
 import { AppConfig, ProviderConfig } from '../types/config';
+import { getKleverDir } from './python-runtime';
 
 /**
  * Get browser profile path for persistent login sessions
  */
 function getBrowserProfilePath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'browser-profile');
+  return path.join(getKleverDir(), 'browser-profile');
 }
 
 /**
@@ -104,14 +104,6 @@ export function buildEnvFromConfig(
     WEB_STORAGE_STATE_PATH: path.join(getBrowserProfilePath(), 'google-auth.json'),  // Playwright storage state with cookies
 
     // ========================================
-    // Image Configuration (4 variables)
-    // ========================================
-    IMAGE_MAX_WIDTH: config.image.maxWidth.toString(),
-    IMAGE_MAX_HEIGHT: config.image.maxHeight.toString(),
-    IMAGE_QUALITY: config.image.quality.toString(),
-    OPTIMIZE_IMAGES: config.image.optimize.toString(),
-
-    // ========================================
     // Preferences (4 variables)
     // ========================================
     DARK_MODE: config.preferences.darkMode.toString(),
@@ -164,11 +156,6 @@ export function validateEnvVars(envVars: Record<string, string>): boolean {
     'WEB_VIEWPORT_WIDTH',
     'WEB_VIEWPORT_HEIGHT',
     'WEB_USER_DATA_DIR',
-    // Image (4)
-    'IMAGE_MAX_WIDTH',
-    'IMAGE_MAX_HEIGHT',
-    'IMAGE_QUALITY',
-    'OPTIMIZE_IMAGES',
     // Preferences (4)
     'DARK_MODE',
     'MIN_DIST',

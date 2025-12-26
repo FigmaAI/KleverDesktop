@@ -8,56 +8,14 @@ import * as path from 'path';
 import * as os from 'os';
 import { app } from 'electron';
 import { ProjectsData } from '../types';
+import { getKleverDir } from './python-runtime';
 
 /**
  * Get the path to the projects storage file
- * Now uses Electron userData path for consistency with config.json
- * @returns Path to ~/Library/Application Support/klever-desktop/projects.json (macOS)
- */
-export function getProjectsStoragePath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'projects.json');
-}
-
-/**
- * Get the legacy projects storage path (for migration)
  * @returns Path to ~/.klever-desktop/projects.json
  */
-function getLegacyProjectsStoragePath(): string {
-  const homeDir = os.homedir();
-  const storageDir = path.join(homeDir, '.klever-desktop');
-  return path.join(storageDir, 'projects.json');
-}
-
-/**
- * Migrate projects.json from legacy location to new userData location
- * This runs automatically on first load
- */
-function migrateProjectsIfNeeded(): void {
-  const newPath = getProjectsStoragePath();
-  const legacyPath = getLegacyProjectsStoragePath();
-
-  // If new location already has projects.json, no migration needed
-  if (fs.existsSync(newPath)) {
-    return;
-  }
-
-  // If legacy location has projects.json, migrate it
-  if (fs.existsSync(legacyPath)) {
-    try {
-      // Ensure userData directory exists
-      const userDataPath = app.getPath('userData');
-      if (!fs.existsSync(userDataPath)) {
-        fs.mkdirSync(userDataPath, { recursive: true });
-      }
-
-      // Copy the file
-      const data = fs.readFileSync(legacyPath, 'utf8');
-      fs.writeFileSync(newPath, data, 'utf8');
-    } catch (error) {
-      console.error('[project-storage] Migration failed:', error);
-    }
-  }
+export function getProjectsStoragePath(): string {
+  return path.join(getKleverDir(), 'projects.json');
 }
 
 /**
@@ -65,9 +23,6 @@ function migrateProjectsIfNeeded(): void {
  * @returns Projects data object
  */
 export function loadProjects(): ProjectsData {
-  // Migrate from legacy location if needed
-  migrateProjectsIfNeeded();
-
   const projectsPath = getProjectsStoragePath();
 
   if (!fs.existsSync(projectsPath)) {
@@ -95,15 +50,12 @@ export function saveProjects(data: ProjectsData): void {
 /**
  * Get the workspace directory for a project
  * @param projectName - Name of the project
- * @returns Path to ~/Documents/{projectName}
+ * @returns Path to ~/.klever-desktop/Projects/{projectName}
  *
- * Projects are stored directly in the Documents folder for better user accessibility.
+ * Projects are stored in ~/.klever-desktop/Projects/ for consistency with other app data.
  */
 export function getProjectWorkspaceDir(projectName: string): string {
-  // Use userData/Projects as the default location for better reliability on both Windows and macOS
-  // This avoids permission issues with the Documents folder
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'Projects', projectName);
+  return path.join(getKleverDir(), 'Projects', projectName);
 }
 
 /**
