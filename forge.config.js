@@ -20,13 +20,7 @@ module.exports = {
     },
 
     // macOS Signing & Notarization (Developer ID)
-    osxSign: {
-      identity: 'Developer ID Application', // Will pick up certificate from Keychain
-      'hardened-runtime': true,
-      'gatekeeper-assess': false,
-      entitlements: path.join(__dirname, 'build/entitlements.mac.plist'),
-      'entitlements-inherit': path.join(__dirname, 'build/entitlements.mac.plist'),
-    },
+    osxSign: {},
     osxNotarize: process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD && process.env.APPLE_TEAM_ID ? {
       appleId: process.env.APPLE_ID,
       appleIdPassword: process.env.APPLE_ID_PASSWORD,

@@ -1,7 +1,0 @@
-local:
-    api_base: "http://localhost:11434/v1"
-    api_key: "EMPTY"
-
-stepfun:
-    api_base: "https://api.stepfun.com/v1"
-    api_key: "EMPTY"
