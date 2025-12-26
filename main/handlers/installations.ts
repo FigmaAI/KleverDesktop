@@ -62,7 +62,13 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
       }
 
       // Check Playwright browsers
-      const playwrightInstalled = await checkPlaywrightBrowsers();
+      const playwrightCheck = await checkPlaywrightBrowsers();
+      
+      if (!playwrightCheck.installed) {
+        console.error('[env:check] Playwright check failed:', playwrightCheck.error);
+      } else {
+        console.log('[env:check] Playwright check passed, path:', playwrightCheck.path);
+      }
 
       // Check venv status
       const venvStatus = checkVenvStatus();
@@ -80,7 +86,8 @@ export function registerInstallationHandlers(ipcMain: IpcMain, getMainWindow: ()
         },
         venv: venvStatus,
         playwright: {
-          installed: playwrightInstalled,
+          installed: playwrightCheck.installed,
+          error: playwrightCheck.error,
         },
         legacyScripts: {
           path: pythonStatus.legacyScriptsPath,

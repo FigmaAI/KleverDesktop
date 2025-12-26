@@ -3,7 +3,7 @@
  * Type definitions for the Universal Terminal UI
  */
 
-export type TerminalSource = 'env' | 'task' | 'project' | 'integration'
+export type TerminalSource = 'env' | 'task' | 'project' | 'integration' | 'ollama'
 export type TerminalType = 'stdout' | 'stderr' | 'system'
 export type TerminalLevel = 'info' | 'warning' | 'error'
 export type TerminalTab = 'all' | 'tasks' | 'projects' | 'setup'

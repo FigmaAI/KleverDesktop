@@ -82,12 +82,27 @@ export function usePlatformTools() {
       // Environment is ready if venv is valid AND Playwright is installed
       const envReady = envCheck.success && envCheck.venv?.valid && envCheck.playwright?.installed
 
+      // Determine specific error if not ready
+      let errorMsg: string | undefined;
+
+      if (!envReady) {
+        if (!envCheck.success) {
+          errorMsg = envCheck.error || 'Environment check failed';
+        } else if (!envCheck.venv?.valid) {
+          errorMsg = 'Virtual Environment invalid';
+        } else if (!envCheck.playwright?.installed) {
+          errorMsg = `Playwright missing: ${envCheck.playwright?.error || 'Unknown error'}`;
+        } else {
+          errorMsg = 'Python env is not set up';
+        }
+      }
+
       setToolsStatus((prev) => ({
         ...prev,
         pythonEnv: {
           checking: false,
           installed: envReady || false,
-          error: envReady ? undefined : 'Python env is not set up',
+          error: errorMsg,
           installing: false,
         },
       }))
@@ -122,12 +137,12 @@ export function usePlatformTools() {
       const result = await window.electronAPI.checkOllama()
       setToolsStatus((prev) => ({
         ...prev,
-        ollama: { 
-          checking: false, 
-          installed: result.installed || false, 
+        ollama: {
+          checking: false,
+          installed: result.installed || false,
           version: result.version,
           error: result.installed ? undefined : 'Ollama not installed',
-          installing: false 
+          installing: false
         },
       }))
     } catch {

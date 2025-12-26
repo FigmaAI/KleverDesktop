@@ -119,6 +119,7 @@ declare global {
         };
         playwright?: {
           installed: boolean;
+          error?: string;
         };
         appagent?: {
           path?: string;

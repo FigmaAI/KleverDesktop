@@ -51,6 +51,7 @@ export function TerminalOutput() {
                     project: 'text-blue-600 dark:text-blue-400',
                     env: 'text-purple-600 dark:text-purple-400',
                     integration: 'text-orange-600 dark:text-orange-400',
+                    ollama: 'text-cyan-600 dark:text-cyan-400',
                   }[line.source]
                     }`}
                 >
@@ -61,6 +62,7 @@ export function TerminalOutput() {
                       project: 'PROJ',
                       env: 'SETUP',
                       integration: 'TEST',
+                      ollama: 'OLLAMA',
                     }[line.source]
                   }
                   ]

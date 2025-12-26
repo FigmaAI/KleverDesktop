@@ -314,6 +314,33 @@
     "complete": {
       "title": "설정 완료",
       "description": "모든 준비가 완료되었습니다! 프로젝트를 만들어 보세요."
+    },
+    "localModelStep": {
+      "label": "로컬 모델 설정",
+      "description": "오프라인 및 개인정보 보호를 위해 로컬 AI 모델을 설치합니다.",
+      "recommendTitle": "추천 모델",
+      "modelName": "Gelab Zero Preview (4B)",
+      "modelDescription": "이 모델은 4B 파라미터의 강력한 모델로, 에이전트 워크플로우에 최적화되어 있습니다.",
+      "notice": "stepfun-ai/gelab-zero",
+      "installButton": "모델 설치",
+      "installed": "설치 완료",
+      "installing": "설치 중...",
+      "installingButton": "설치 중...",
+      "successMessage": "모델 설치 완료",
+      "successDescription": "이제 이 모델을 사용하여 작업을 수행할 수 있습니다.",
+      "terminalTitle": "터미널 출력",
+      "terminalLog": "설치 로그",
+      "terminalPlaceholder": "설치를 시작하려면 설치 버튼을 클릭하세요..."
+    },
+    "steps": {
+      "platformTools": "플랫폼 도구",
+      "platformToolsDesc": "Python, Android Studio, Playwright 확인",
+      "platformConfig": "플랫폼 설정",
+      "platformConfigDesc": "Android SDK 경로 구성",
+      "localFirst": "로컬 모델 설정",
+      "localFirstDesc": "Gelab Zero 설정 (선택 사항)",
+      "modelSetup": "모델 구성",
+      "modelSetupDesc": "Ollama 또는 API 구성"
     }
   },
   "terminal": {

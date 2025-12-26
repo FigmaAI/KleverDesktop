@@ -271,6 +271,13 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       window.electronAPI.onProjectError(handleProjectError),
       window.electronAPI.onIntegrationTestOutput(handleIntegrationOutput),
       window.electronAPI.onIntegrationTestComplete(handleIntegrationComplete),
+      window.electronAPI.onOllamaPullProgress((data: string) => {
+        addLine({
+          source: 'ollama',
+          type: 'stdout',
+          content: data,
+        })
+      }),
     ]
 
     // Cleanup when effect re-runs (e.g., when addLine/updateProcess changes)

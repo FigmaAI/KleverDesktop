@@ -6,25 +6,31 @@ import { Button } from '@/components/ui/button'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
-import { IntegrationTestStep } from '@/components/IntegrationTestStep'
+import { LocalModelSetupStep } from '@/components/LocalModelSetupStep'
 import { PageHeader } from '@/components/PageHeader'
 import { usePlatformTools } from '@/hooks/usePlatformTools'
 import { useModelConfig } from '@/hooks/useModelConfig'
-import { useIntegrationTest } from '@/hooks/useIntegrationTest'
+import { useRecommendedModelSetup } from '@/hooks/useRecommendedModelSetup'
 import { StepConfig } from '@/types/setupWizard'
 import { cn } from '@/lib/utils'
 import logoImg from '@/assets/logo.png'
 
-const steps: StepConfig[] = [
-  { label: 'Platform Tools', description: 'Check Python, Android Studio, Playwright' },
-  { label: 'Platform Config', description: 'Configure Android SDK path' },
-  { label: 'Model Setup', description: 'Configure Ollama or API' },
-  { label: 'Final Check', description: 'Run integration test' },
-]
+
 
 export function SetupWizard() {
   const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(0)
+  const [isModelVerified, setIsModelVerified] = useState(false)
+
+  const steps: StepConfig[] = [
+    { label: t('setup.steps.platformTools'), description: t('setup.steps.platformToolsDesc') },
+    { label: t('setup.steps.platformConfig'), description: t('setup.steps.platformConfigDesc') },
+    { label: t('setup.steps.localFirst'), description: t('setup.steps.localFirstDesc') },
+    { label: t('setup.steps.modelSetup'), description: t('setup.steps.modelSetupDesc') },
+  ]
+
+  // Constants
+  const GELAB_ZERO_ID = 'ahmadwaqar/gelab-zero-4b-preview:q8_0'
 
   // Platform tools hook
   const { toolsStatus, setToolsStatus, checkPlatformTools, androidSdkPath, setAndroidSdkPath } = usePlatformTools()
@@ -40,13 +46,18 @@ export function SetupWizard() {
   } = useModelConfig(currentStep)
 
   // Integration test hook
+  // Local Model Setup hook
   const {
-    integrationTestRunning,
-    integrationTestComplete,
-    integrationTestSuccess,
-    handleRunIntegrationTest,
-    handleStopIntegrationTest,
-  } = useIntegrationTest()
+    isInstalling: isLocalModelInstalling,
+    isSuccess: isLocalModelSuccess,
+    startInstall: startLocalModelInstall,
+  } = useRecommendedModelSetup(GELAB_ZERO_ID)
+
+  // ... (useEffects)
+
+  // ... (render)
+
+
 
   // Auto-check platform tools on Step 0
   useEffect(() => {
@@ -65,28 +76,18 @@ export function SetupWizard() {
         }
       }
 
-      // If moving from Step 2 (Model Config) to Step 3 (Integration Test), save config first
-      if (currentStep === 2) {
-        try {
-          await handleSaveConfig()
-          // Config saved successfully, move to next step
-          setCurrentStep(currentStep + 1)
-        } catch {
-          // Error already handled in handleSaveConfig (alert shown)
-          console.error('[SetupWizard] Failed to save config, staying on current step')
-        }
-      } else {
-        setCurrentStep(currentStep + 1)
-      }
-    } else if (integrationTestSuccess) {
-      // Cleanup integration test project before completing setup
+      // If moving from Step 2 (Local Model Setup), just proceed
+      setCurrentStep(currentStep + 1)
+    } else {
+      // Final step completed (Model Config)
       try {
-        await window.electronAPI.cleanupIntegrationTest()
-      } catch (error) {
-        console.error('[SetupWizard] Failed to cleanup integration test project:', error)
+        await handleSaveConfig()
+        // Config saved successfully, reload to trigger App checkSetup
+        window.location.reload()
+      } catch {
+        console.error('[SetupWizard] Failed to save config')
+        // Error toast already shown in handleSaveConfig
       }
-      // Already saved config in step 2, reload to trigger App checkSetup
-      window.location.reload()
     }
   }
 
@@ -173,6 +174,13 @@ export function SetupWizard() {
   }
 
   const canProceedFromStep2 = () => {
+    // Step 2: Local Model Setup
+    // It's optional, but we disable Next while installing to prevent state issues
+    return !isLocalModelInstalling
+  }
+
+  const canProceedFromStep3 = () => {
+    // Step 3: Model Configuration
     // Must have provider and model selected
     if (!modelConfig.provider || !modelConfig.model) return false
 
@@ -257,8 +265,22 @@ export function SetupWizard() {
                 />
               )}
 
-              {/* Step 2: Model Configuration */}
+              {/* Step 2: Local Model Setup (Optional) */}
               {currentStep === 2 && (
+                <LocalModelSetupStep
+                  recommendedModel={{
+                    name: t('setup.localModelStep.modelName'),
+                    description: t('setup.localModelStep.modelDescription'),
+                    id: GELAB_ZERO_ID
+                  }}
+                  isInstalling={isLocalModelInstalling}
+                  isSuccess={isLocalModelSuccess}
+                  onInstall={startLocalModelInstall}
+                />
+              )}
+
+              {/* Step 3: Model Configuration */}
+              {currentStep === 3 && (
                 <ModelConfigStep
                   modelConfig={modelConfig}
                   setModelConfig={setModelConfig}
@@ -266,19 +288,10 @@ export function SetupWizard() {
                   ollamaLoading={ollamaLoading}
                   ollamaError={ollamaError}
                   fetchOllamaModels={fetchOllamaModels}
+                  onVerified={setIsModelVerified}
                 />
               )}
 
-              {/* Step 3: Integration Test */}
-              {currentStep === 3 && (
-                <IntegrationTestStep
-                  integrationTestRunning={integrationTestRunning}
-                  integrationTestComplete={integrationTestComplete}
-                  integrationTestSuccess={integrationTestSuccess}
-                  onRunTest={() => handleRunIntegrationTest(modelConfig)}
-                  onStopTest={handleStopIntegrationTest}
-                />
-              )}
             </BlurFade>
           </div>
 
@@ -319,7 +332,7 @@ export function SetupWizard() {
             ) : (
               <Button
                 onClick={handleNext}
-                disabled={!integrationTestSuccess}
+                disabled={!canProceedFromStep3() || !isModelVerified}
                 className="min-w-[100px]"
               >
                 Get Started

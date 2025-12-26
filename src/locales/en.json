@@ -314,6 +314,33 @@
     "complete": {
       "title": "Setup Complete",
       "description": "You're all set! Start creating projects."
+    },
+    "localModelStep": {
+      "label": "Local Model Setup",
+      "description": "Install a local AI model for offline privacy-focused use.",
+      "recommendTitle": "Recommended Model",
+      "modelName": "Gelab Zero Preview (4B)",
+      "modelDescription": "A powerful 4B parameter model optimized for local use Agentic workflows.",
+      "notice": "stepfun-ai/gelab-zero",
+      "installButton": "Install Model",
+      "installed": "Installed",
+      "installing": "Installing...",
+      "installingButton": "Installing...",
+      "successMessage": "Model Successfully Installed",
+      "successDescription": "You can now use this model for your tasks.",
+      "terminalTitle": "Terminal Output",
+      "terminalLog": "Installation Log",
+      "terminalPlaceholder": "Click Install to start downloading..."
+    },
+    "steps": {
+      "platformTools": "Platform Tools",
+      "platformToolsDesc": "Check Python, Android Studio, Playwright",
+      "platformConfig": "Platform Config",
+      "platformConfigDesc": "Configure Android SDK path",
+      "localFirst": "Local Model Setup",
+      "localFirstDesc": "Optional: Setup Gelab Zero",
+      "modelSetup": "Model Configuration",
+      "modelSetupDesc": "Configure Ollama or API"
     }
   },
   "terminal": {

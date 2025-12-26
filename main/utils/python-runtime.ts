@@ -136,11 +136,11 @@ export function getLegacyScriptsPath(): string {
   const isDev = process.env.NODE_ENV === 'development';
 
   if (isDev) {
-    // In dev: ../../engines/appagent_legacy
-    return path.join(__dirname, '..', '..', 'engines', 'appagent_legacy');
+    // In dev: ../../engines/appagent
+    return path.join(__dirname, '..', '..', 'engines', 'appagent');
   } else {
-    // Production: appagent_legacy is an extraResource in Resources/engines/appagent_legacy
-    const legacyPath = path.join(process.resourcesPath, 'engines', 'appagent_legacy');
+    // Production: appagent is an extraResource in Resources/engines/appagent
+    const legacyPath = path.join(process.resourcesPath, 'engines', 'appagent');
 
     if (!fs.existsSync(legacyPath)) {
       console.error('[Python Runtime] Legacy scripts directory not found at:', legacyPath);
@@ -441,7 +441,7 @@ export async function installRequirements(
 /**
  * Check if Playwright browsers are installed
  */
-export async function checkPlaywrightBrowsers(): Promise<boolean> {
+export async function checkPlaywrightBrowsers(): Promise<{ installed: boolean; error?: string; path?: string }> {
   try {
     // Use venv python to check for installed packages
     const venvStatus = checkVenvStatus();
@@ -449,20 +449,39 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
     
     if (!venvStatus.valid) {
       console.log('[Playwright Check] Venv invalid, returning false');
-      return false;
+      return { installed: false, error: 'Virtual environment invalid' };
     }
     const pythonExe = getVenvPythonPath();
     console.log('[Playwright Check] Using Python executable:', pythonExe);
 
     return new Promise((resolve) => {
-      // Check if chromium is installed using python script
-      const checkBrowsers = spawn(pythonExe, ['-c',
-        'import playwright.sync_api; from pathlib import Path; ' +
-        'pw = playwright.sync_api.sync_playwright().start(); ' +
-        'browser_path = Path(pw.chromium.executable_path); ' +
-        'print("installed" if browser_path.exists() else "not_installed"); ' +
-        'pw.stop()'
-      ]);
+      // Check if playwright package is installed. 
+      // We relax the requirement for the browser binary itself, as Browser-Use has fallbacks.
+      const pythonScript = `
+import sys
+import json
+try:
+    from pathlib import Path
+    import playwright.sync_api
+    is_installed = True
+    browser_path = None
+    browser_error = None
+    try:
+        with playwright.sync_api.sync_playwright() as p:
+            path_obj = Path(p.chromium.executable_path)
+            if path_obj.exists():
+                browser_path = str(path_obj)
+    except Exception as e:
+        browser_error = str(e)
+    
+    print(json.dumps({"installed": is_installed, "path": browser_path, "browser_error": browser_error}))
+except ImportError:
+    print(json.dumps({"installed": False, "error": "playwright package not installed"}))
+except Exception as e:
+    print(json.dumps({"installed": False, "error": str(e)}))
+`;
+
+      const checkBrowsers = spawn(pythonExe, ['-c', pythonScript]);
 
       let output = '';
       let errorOutput = '';
@@ -480,17 +499,22 @@ export async function checkPlaywrightBrowsers(): Promise<boolean> {
         console.log('[Playwright Check] Output:', output.trim());
         if (errorOutput) console.error('[Playwright Check] Stderr:', errorOutput);
         
-        resolve(checkCode === 0 && output.includes('installed'));
+        try {
+          const result = JSON.parse(output.trim());
+          resolve(result);
+        } catch {
+          resolve({ installed: false, error: `Failed to parse output: ${output} (stderr: ${errorOutput})` });
+        }
       });
 
       checkBrowsers.on('error', (error) => {
         console.error('[Playwright Check] Browser check error:', error);
-        resolve(false);
+        resolve({ installed: false, error: error.message });
       });
     });
   } catch (error) {
     console.error('[Python Runtime] Error checking Playwright browsers:', error);
-    return false;
+    return { installed: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 

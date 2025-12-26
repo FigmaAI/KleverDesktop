@@ -60,6 +60,17 @@ interface TextSegment {
  * Parse ANSI escape codes and convert to styled text segments
  */
 export function parseAnsi(text: string): TextSegment[] {
+  // Strip ANSI control codes (cursor movements, clear line, etc.)
+  // Keeps only SGR codes (ending in 'm') for colors/styles
+  // Regex matches: \x1b[ (CSI), optional parameters [?0-9;], and any final byte EXCEPT 'm'
+  // eslint-disable-next-line no-control-regex
+  text = text.replace(/\x1b\[[?0-9;]*[A-Za-ln-z]/g, '')
+
+  // Also strip common "missing escape" versions for specific terminal modes seen in logs
+  // (e.g. [?2026h, [?25l)
+  text = text.replace(/\[\?2026[hl]|\[\?25[hl]/g, '')
+
+
   // eslint-disable-next-line no-control-regex
   const ansiRegex = /\x1b\[([0-9;]*)m|\[([0-9;]*)m/g
 

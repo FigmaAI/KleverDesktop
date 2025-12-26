@@ -35,7 +35,10 @@ except ImportError:
     LITELLM_AVAILABLE = False
     print("[WARNING] LiteLLM not available. Install with: pip install litellm")
 
-from .config import get_config
+try:
+    from .config import get_config
+except ImportError:
+    from config import get_config
 
 
 class LLMAdapter:
