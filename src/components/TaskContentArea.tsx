@@ -254,7 +254,7 @@ export function TaskContentArea({
   }, [sortedTasks, selectedTaskIndex, onTaskClick, focusArea, handleDeleteTask])
 
   // Ensure selectedTaskIndex is always valid (bounded to list length)
-  const validSelectedIndex = useMemo(() => 
+  const validSelectedIndex = useMemo(() =>
     Math.min(selectedTaskIndex, Math.max(0, sortedTasks.length - 1)),
     [selectedTaskIndex, sortedTasks.length]
   )
@@ -288,6 +288,7 @@ export function TaskContentArea({
       {
         categoryKey: 'keyboard.navigation', items: [
           { keys: [modKey, '1'], descriptionKey: 'keyboard.goToProjects' },
+          { keys: [modKey, '2'], descriptionKey: 'keyboard.goToScheduledTasks' },
           { keys: [modKey, ','], descriptionKey: 'keyboard.goToSettings' },
           { keys: ['Esc'], descriptionKey: 'keyboard.goBack' },
         ]
