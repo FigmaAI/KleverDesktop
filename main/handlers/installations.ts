@@ -20,7 +20,6 @@ import {
   checkVenvStatus,
   createVirtualEnvironment,
   installRequirements,
-  getLegacyScriptsPath,
   getCorePath,
   spawnBundledPython,
   getPythonEnv

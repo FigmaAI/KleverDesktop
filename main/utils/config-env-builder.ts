@@ -9,7 +9,6 @@
  * - Ollama requires api_base: "http://localhost:11434"
  */
 
-import { app } from 'electron';
 import path from 'path';
 import { AppConfig, ProviderConfig } from '../types/config';
 import { getKleverDir } from './python-runtime';

@@ -8,7 +8,7 @@
  */
 
 import { IpcMain, BrowserWindow } from 'electron';
-import { ChildProcess } from 'child_process';
+import { ChildProcess, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -624,16 +624,16 @@ export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => Brow
       // Cleanup browser processes spawned by Browser-Use
       // Browser-Use's internal signal handler uses os._exit(0) which bypasses our Python cleanup
       // So we need to kill Chromium processes from Electron side
-      const { execSync } = require('child_process');
+
       try {
         // Kill Chrome for Testing processes (cross-platform)
         if (process.platform === 'darwin' || process.platform === 'linux') {
           execSync('pkill -f "Google Chrome for Testing" 2>/dev/null || true');
         } else if (process.platform === 'win32') {
-          execSync('taskkill /F /IM "Google Chrome for Testing.exe" /T 2>nul || exit 0', { shell: true });
+          execSync('taskkill /F /IM "Google Chrome for Testing.exe" /T 2>nul || exit 0', { shell: 'cmd.exe' });
         }
         console.log(`[task:${taskId}] Browser processes cleaned up`);
-      } catch (e) {
+      } catch {
         // Ignore errors - browser may already be closed
       }
 

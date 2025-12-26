@@ -3,7 +3,7 @@
  * Handles Google login for web browsers (Playwright) and Android devices (ADB)
  */
 
-import { IpcMain, BrowserWindow, dialog, app } from 'electron';
+import { IpcMain, BrowserWindow, dialog } from 'electron';
 import { ChildProcess, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';

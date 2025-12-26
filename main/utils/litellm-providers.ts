@@ -10,7 +10,7 @@
  * 3. On failure, use cached data or bundled fallback
  */
 
-import { net, app } from 'electron';
+import { net } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getKleverDir } from './python-runtime';

@@ -51,13 +51,14 @@ export function ModelSelector({
     if (providers.length === 0 && !providersLoading) {
       fetchProviders()
     }
-  }, []) // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run once on mount (intentional)
 
   // Add Ollama to providers list if not already present
   const allProviders = useMemo(() => {
     let providerList = providers
     const hasOllama = providers.some(p => p.id === 'ollama')
-    
+
     if (!hasOllama) {
       // Add Ollama as first provider
       providerList = [
