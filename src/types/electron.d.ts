@@ -1,4 +1,4 @@
-export {};
+export { };
 
 import type { Project, ProjectCreateInput, Task, TaskCreateInput, TaskMetrics } from './project';
 
@@ -64,14 +64,14 @@ interface AppConfig {
     sdkPath: string;
   };
   web: {
-    browserType: 
-      | 'chromium'        // Playwright's isolated Chromium (default)
-      | 'chrome'          // Google Chrome
-      | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
-      | 'msedge'          // Microsoft Edge
-      | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
-      | 'firefox'         // Mozilla Firefox
-      | 'webkit';         // WebKit (Safari engine)
+    browserType:
+    | 'chromium'        // Playwright's isolated Chromium (default)
+    | 'chrome'          // Google Chrome
+    | 'chrome-beta' | 'chrome-dev' | 'chrome-canary'
+    | 'msedge'          // Microsoft Edge
+    | 'msedge-beta' | 'msedge-dev' | 'msedge-canary'
+    | 'firefox'         // Mozilla Firefox
+    | 'webkit';         // WebKit (Safari engine)
     headless: boolean;
   };
   image?: {
@@ -162,6 +162,7 @@ declare global {
       checkPlaywright: () => Promise<{ success: boolean; output?: string; error?: string }>;
 
       // Ollama operations
+      ollamaCheck: () => Promise<{ installed: boolean; path: string | null; version?: string; error?: string }>;
       ollamaList: () => Promise<{ success: boolean; models?: string[]; error?: string }>;
       ollamaPull: (modelName: string) => Promise<{ success: boolean }>;
 

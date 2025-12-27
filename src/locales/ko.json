@@ -299,6 +299,8 @@
     "welcomeDesc": "시작하기 위해 환경을 설정해 보겠습니다",
     "step": "{{total}}단계 중 {{current}}단계",
     "pythonRequired": "계속하기 전에 Python을 설치해주세요. Step 0의 \"Python 다운로드\" 버튼을 클릭하세요.",
+    "ollamaNotInstalled": "Ollama가 설치되어 있지 않습니다",
+    "ollamaNotInstalledDesc": "먼저 Ollama를 설치해주세요. ollama.com에서 다운로드한 후 Platform Tools 단계로 돌아가세요.",
     "configSaveFailed": "설정 저장 실패",
     "configSaveFailedWithError": "설정 저장 실패: {{error}}",
     "environment": {

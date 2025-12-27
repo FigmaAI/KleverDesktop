@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkChocolatey: () => ipcRenderer.invoke('check:chocolatey'),
 
   // Ollama operations
+  ollamaCheck: () => ipcRenderer.invoke('ollama:check'),
   ollamaList: () => ipcRenderer.invoke('ollama:list'),
   ollamaPull: (modelName: string) => ipcRenderer.invoke('ollama:pull', modelName),
 
@@ -147,7 +148,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
   },
-  
+
   // Remove a specific listener (safer than removeAllListeners)
   removeListener: (channel: string, callback: (...args: unknown[]) => void) => {
     ipcRenderer.removeListener(channel, callback);
@@ -223,9 +224,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Schedule Management (Task-based)
   // ============================================
   scheduleList: () => ipcRenderer.invoke('schedule:list'),
-  scheduleAdd: (projectId: string, taskId: string, scheduledAt: string) => 
+  scheduleAdd: (projectId: string, taskId: string, scheduledAt: string) =>
     ipcRenderer.invoke('schedule:add', projectId, taskId, scheduledAt),
-  scheduleCancel: (projectId: string, taskId: string) => 
+  scheduleCancel: (projectId: string, taskId: string) =>
     ipcRenderer.invoke('schedule:cancel', projectId, taskId),
 
   // Schedule event listeners (return cleanup function)

@@ -1,6 +1,6 @@
 {
   "name": "klever-desktop",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "description": "GUI Wrapper for AppAgent - Electron-based desktop application that makes Python-based UI automation accessible to non-developers. Wraps the external AppAgent open-source project with a user-friendly interface for Android (ADB) and Web (Playwright) automation.",
   "main": ".vite/build/index.js",
   "scripts": {

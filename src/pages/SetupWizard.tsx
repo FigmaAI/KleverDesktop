@@ -50,8 +50,21 @@ export function SetupWizard() {
   const {
     isInstalling: isLocalModelInstalling,
     isSuccess: isLocalModelSuccess,
+    ollamaInstalled,
     startInstall: startLocalModelInstall,
   } = useRecommendedModelSetup(GELAB_ZERO_ID)
+
+  // Handle local model install with Ollama not installed fallback
+  const handleLocalModelInstall = (modelId: string) => {
+    startLocalModelInstall(modelId, () => {
+      // Ollama is not installed - show toast and redirect to Step 0
+      toast.error(t('setup.ollamaNotInstalled'), {
+        description: t('setup.ollamaNotInstalledDesc'),
+        duration: 5000,
+      })
+      setCurrentStep(0)
+    })
+  }
 
   // ... (useEffects)
 
@@ -103,18 +116,8 @@ export function SetupWizard() {
       const config = {
         version: '3.0',
         model: {
-          providers: [
-            {
-              id: modelConfig.provider,
-              apiKey: modelConfig.apiKey,
-              preferredModel: modelConfig.model,
-              baseUrl: modelConfig.baseUrl || undefined,
-            },
-          ],
-          lastUsed: {
-            provider: modelConfig.provider,
-            model: modelConfig.model,
-          },
+          providers: modelConfig.providers,
+          lastUsed: modelConfig.lastUsed,
         },
         execution: {
           maxTokens: 4096,
@@ -181,13 +184,8 @@ export function SetupWizard() {
 
   const canProceedFromStep3 = () => {
     // Step 3: Model Configuration
-    // Must have provider and model selected
-    if (!modelConfig.provider || !modelConfig.model) return false
-
-    // For non-Ollama providers, API key is required
-    if (modelConfig.provider !== 'ollama' && !modelConfig.apiKey) return false
-
-    return true
+    // At least one valid provider must be configured and validated
+    return isModelVerified
   }
 
   return (
@@ -275,7 +273,8 @@ export function SetupWizard() {
                   }}
                   isInstalling={isLocalModelInstalling}
                   isSuccess={isLocalModelSuccess}
-                  onInstall={startLocalModelInstall}
+                  ollamaInstalled={ollamaInstalled}
+                  onInstall={handleLocalModelInstall}
                 />
               )}
 

@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { CheckCircle, Download, TerminalSquare, ExternalLink } from 'lucide-react'
+import { CheckCircle, Download, TerminalSquare, ExternalLink, AlertTriangle } from 'lucide-react'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ interface LocalModelSetupStepProps {
     recommendedModel: RecommendedModel
     isInstalling: boolean
     isSuccess: boolean
+    ollamaInstalled: boolean | null  // null = not checked yet
     onInstall: (modelId: string) => void
 }
 
@@ -26,6 +27,7 @@ export function LocalModelSetupStep({
     recommendedModel,
     isInstalling,
     isSuccess,
+    ollamaInstalled,
     onInstall,
 }: LocalModelSetupStepProps) {
     const { t } = useTranslation()
@@ -88,23 +90,36 @@ export function LocalModelSetupStep({
 
                             {/* Install Button */}
                             {!isSuccess ? (
-                                <Button
-                                    onClick={() => onInstall(recommendedModel.id)}
-                                    className="w-full"
-                                    disabled={isInstalling}
-                                >
-                                    {isInstalling ? (
-                                        <>
-                                            <TerminalSquare className="h-4 w-4" />
-                                            {t('setup.localModelStep.installingButton')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Download className="h-4 w-4" />
-                                            {t('setup.localModelStep.installButton')}
-                                        </>
+                                <div className="space-y-3">
+                                    {ollamaInstalled === false && (
+                                        <Alert className="bg-yellow-500/10 border-yellow-500/20">
+                                            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                            <AlertTitle className="text-yellow-600 font-semibold mb-1">
+                                                {t('setup.ollamaNotInstalled')}
+                                            </AlertTitle>
+                                            <AlertDescription className="text-yellow-600/90 text-xs">
+                                                {t('setup.ollamaNotInstalledDesc')}
+                                            </AlertDescription>
+                                        </Alert>
                                     )}
-                                </Button>
+                                    <Button
+                                        onClick={() => onInstall(recommendedModel.id)}
+                                        className="w-full"
+                                        disabled={isInstalling || ollamaInstalled === false}
+                                    >
+                                        {isInstalling ? (
+                                            <>
+                                                <TerminalSquare className="h-4 w-4" />
+                                                {t('setup.localModelStep.installingButton')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Download className="h-4 w-4" />
+                                                {t('setup.localModelStep.installButton')}
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
                             ) : (
                                 <Alert className="bg-green-500/10 border-green-500/20">
                                     <CheckCircle className="h-4 w-4 text-green-500" />

@@ -299,6 +299,8 @@
     "welcomeDesc": "Let's set up your environment to get started",
     "step": "Step {{current}} of {{total}}",
     "pythonRequired": "Please install Python before continuing. Click the \"Download Python\" button in Step 0.",
+    "ollamaNotInstalled": "Ollama is not installed",
+    "ollamaNotInstalledDesc": "Please install Ollama first. You can download it from ollama.com, then return to Platform Tools step.",
     "configSaveFailed": "Failed to save configuration",
     "configSaveFailedWithError": "Failed to save configuration: {{error}}",
     "environment": {

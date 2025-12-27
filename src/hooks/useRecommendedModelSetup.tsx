@@ -5,7 +5,9 @@ export interface RecommendedModelSetup {
     isInstalling: boolean
     isSuccess: boolean
     error: string | null
-    startInstall: (modelName: string) => Promise<void>
+    ollamaInstalled: boolean | null  // null = not checked yet
+    checkOllamaInstalled: () => Promise<boolean>
+    startInstall: (modelName: string, onOllamaNotInstalled?: () => void) => Promise<void>
 }
 
 export function useRecommendedModelSetup(targetModelId?: string): RecommendedModelSetup {
@@ -13,6 +15,26 @@ export function useRecommendedModelSetup(targetModelId?: string): RecommendedMod
     const [isInstalling, setIsInstalling] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null)
+
+    // Check if Ollama is installed
+    const checkOllamaInstalled = useCallback(async (): Promise<boolean> => {
+        try {
+            const result = await window.electronAPI.ollamaCheck()
+            const installed = result.installed
+            setOllamaInstalled(installed)
+            return installed
+        } catch (e) {
+            console.error('[useRecommendedModelSetup] Failed to check Ollama installation:', e)
+            setOllamaInstalled(false)
+            return false
+        }
+    }, [])
+
+    // Check Ollama installation on mount
+    useEffect(() => {
+        checkOllamaInstalled()
+    }, [checkOllamaInstalled])
 
     // Check if model is already installed on mount
     useEffect(() => {
@@ -45,7 +67,17 @@ export function useRecommendedModelSetup(targetModelId?: string): RecommendedMod
 
     // Listen for ollama pull progress...
 
-    const startInstall = useCallback(async (modelName: string) => {
+    const startInstall = useCallback(async (modelName: string, onOllamaNotInstalled?: () => void) => {
+        // First, check if Ollama is installed
+        const installed = await checkOllamaInstalled()
+        if (!installed) {
+            setError('Ollama is not installed')
+            if (onOllamaNotInstalled) {
+                onOllamaNotInstalled()
+            }
+            return
+        }
+
         setIsInstalling(true)
         setIsSuccess(false)
         setError(null)
@@ -104,12 +136,14 @@ export function useRecommendedModelSetup(targetModelId?: string): RecommendedMod
         } finally {
             setIsInstalling(false)
         }
-    }, [addProcess, addLine, updateProcess, setIsOpen])
+    }, [addProcess, addLine, updateProcess, setIsOpen, checkOllamaInstalled])
 
     return {
         isInstalling,
         isSuccess,
         error,
+        ollamaInstalled,
+        checkOllamaInstalled,
         startInstall,
     }
 }
