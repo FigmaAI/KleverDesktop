@@ -413,7 +413,8 @@
   },
   "language": {
     "en": "영어",
-    "ko": "한국어"
+    "ko": "한국어",
+    "zh_CN": "중국어(간체)"
   },
   "search": {
     "placeholder": "검색...",
