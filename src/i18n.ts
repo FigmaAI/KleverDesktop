@@ -9,7 +9,7 @@ import zh_CN from './locales/zh_CN.json';
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'ko', name: 'Korean', nativeName: '한국어' },
-  { code: 'zh_CN', name: 'Chinese (Simplified)', nativeName: '中文（简体）' },
+  { code: 'zh_CN', name: 'Simplified Chinese', nativeName: '中文（简体）' },
 ] as const;
 
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number]['code'];

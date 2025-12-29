@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import type { Platform, Project } from '../types/project'
+import { Analytics } from '@/utils/analytics'
 
 interface ProjectCreateDialogProps {
   open: boolean
@@ -56,6 +57,9 @@ export function ProjectCreateDialog({
       })
 
       if (result.success && result.project) {
+        // Track project creation
+        Analytics.projectCreated(platform, !!workspaceDir);
+
         const message = result.message || `Project created at ${result.project.workspaceDir}`
         toast.success(t('projects.createDialog.projectCreated'), { description: message })
         onProjectCreated?.(result.project)

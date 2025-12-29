@@ -72,6 +72,26 @@ export function PreferencesSettingsCard({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Analytics Notice */}
+        <div className="space-y-2 pt-4 border-t">
+          <Label>{t('settings.preferencesConfig.analytics')}</Label>
+          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+            <p className="text-sm font-medium">
+              {t('settings.preferencesConfig.analyticsTitle')}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t('settings.preferencesConfig.analyticsDesc')}
+            </p>
+            <button
+              type="button"
+              onClick={() => window.electronAPI.openExternal('https://github.com/FigmaAI/KleverDesktop/blob/main/PRIVACY.md')}
+              className="text-sm text-primary hover:underline"
+            >
+              {t('settings.preferencesConfig.analyticsLearnMore')} →
+            </button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )

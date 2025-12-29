@@ -47,6 +47,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { ModelSelector, ModelSelection } from "./ModelSelector";
 import type { Task, Project, ApkSourceType, ApkSource } from "../types/project";
+import { Analytics } from "@/utils/analytics";
 
 interface TaskCreateDialogProps {
   open: boolean;
@@ -329,6 +330,19 @@ export function TaskCreateDialog({
     try {
       const task = await createTask();
 
+      // Track task creation
+      if (task) {
+        Analytics.taskCreated({
+          platform: platform,
+          modelProvider: selectedModel!.provider,
+          modelName: selectedModel!.model,
+          isScheduled: false,
+          hasUrl: platform === 'web' && !!url.trim(),
+          hasApkSource: platform === 'android' && isApkSourceValid(),
+          customMaxRounds: maxRounds !== globalMaxRounds,
+        });
+      }
+
       if (task && runImmediately && currentProjectId) {
         // Check if another task is already running (fetches fresh data)
         if (await hasRunningTask()) {
@@ -341,6 +355,9 @@ export function TaskCreateDialog({
           );
 
           if (scheduleResult.success) {
+            // Track task queueing
+            Analytics.taskQueued(platform, 1);
+
             toast.info(t('tasks.createDialog.taskQueued'), {
               description: t('tasks.createDialog.taskQueuedDesc'),
             });
@@ -381,9 +398,16 @@ export function TaskCreateDialog({
     if (!validateForm()) return;
 
     const task = await createTask(scheduledAt);
+
+    // Track schedule creation
+    if (task) {
+      const futureMinutes = Math.round((scheduledAt.getTime() - Date.now()) / 60000);
+      Analytics.scheduleCreated(platform, 'custom', futureMinutes);
+    }
+
     onTaskCreated?.(task!);
     handleClose();
-  }, [validateForm, createTask, onTaskCreated, handleClose]);
+  }, [validateForm, createTask, onTaskCreated, handleClose, platform]);
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     // ⌥⌘⏎ or Alt+Ctrl+Enter: Open schedule dialog

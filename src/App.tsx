@@ -41,6 +41,7 @@ import { TaskContentArea } from '@/components/TaskContentArea'
 import { TaskDetail } from '@/components/TaskDetail'
 import { GitHubLink } from '@/components/GitHubLink'
 import type { Project, Task } from '@/types/project'
+import { Analytics } from '@/utils/analytics'
 
 type AppView = 'projects' | 'settings' | 'schedules'
 type ScheduleSection = 'active' | 'history'
@@ -120,6 +121,16 @@ function MainApp() {
     try {
       const result = await window.electronAPI.projectDelete(project.id)
       if (result.success) {
+        // Track project deletion
+        const projectAgeDays = Math.round(
+          (Date.now() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        Analytics.projectDeleted(
+          project.platform,
+          project.tasks.length,
+          projectAgeDays
+        );
+
         setSelectedProject(null)
         loadProjects()
       } else {
@@ -647,6 +658,20 @@ function App() {
 
     loadLanguageFromConfig()
   }, [])
+
+  // Track app opened (DAU tracking)
+  useEffect(() => {
+    if (setupComplete) {
+      // Track app open with platform info
+      // Version tracking is handled by Aptabase automatically
+      Analytics.appOpened(
+        true, // setupComplete
+        window.navigator.platform,
+        '2.0.10' // App version from package.json
+      );
+      console.log('[Analytics] App opened event sent');
+    }
+  }, [setupComplete])
 
   useEffect(() => {
     const checkSetup = async () => {
