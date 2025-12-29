@@ -413,7 +413,8 @@
   },
   "language": {
     "en": "English",
-    "ko": "Korean"
+    "ko": "Korean",
+    "zh_CN": "Chinese (Simplified)"
   },
   "search": {
     "placeholder": "Search...",
