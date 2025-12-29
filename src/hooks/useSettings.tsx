@@ -31,7 +31,7 @@ export interface AgentSettings {
 }
 
 export interface PreferencesSettings {
-  systemLanguage: 'en' | 'ko' | 'zh'
+  systemLanguage: 'en' | 'ko' | 'zh_CN'
 }
 
 

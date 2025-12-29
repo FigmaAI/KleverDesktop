@@ -127,7 +127,7 @@ export interface PreferencesConfig {
   darkMode: boolean;
   minDist: number;
   docRefine: boolean;
-  systemLanguage: 'en' | 'ko' | 'zh';  // System UI language
+  systemLanguage: 'en' | 'ko' | 'zh_CN';  // System UI language (zh_TW will be added later)
 }
 
 /**

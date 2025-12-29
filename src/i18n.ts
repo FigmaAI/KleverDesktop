@@ -4,12 +4,12 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import en from './locales/en.json';
 import ko from './locales/ko.json';
-import zh from './locales/zh.json';
+import zh_CN from './locales/zh_CN.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'ko', name: 'Korean', nativeName: '한국어' },
-  { code: 'zh', name: 'Chinese', nativeName: '中文（简体）' },
+  { code: 'zh_CN', name: 'Chinese (Simplified)', nativeName: '中文（简体）' },
 ] as const;
 
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number]['code'];
@@ -17,18 +17,18 @@ export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number]['code'];
 const resources = {
   en: { translation: en },
   ko: { translation: ko },
-  zh: { translation: zh },
+  zh_CN: { translation: zh_CN },
 };
 
 /**
  * Detect system language and return supported language code
- * Returns 'ko' if system is Korean, 'zh' if Chinese, otherwise 'en'
+ * Returns 'ko' for Korean, 'zh_CN' for Simplified Chinese, otherwise 'en'
  */
 const detectSystemLanguage = (): SupportedLanguage => {
   // Check localStorage first (user preference)
   const savedLang = localStorage.getItem('klever-language');
-  if (savedLang && (savedLang === 'ko' || savedLang === 'en' || savedLang === 'zh')) {
-    return savedLang;
+  if (savedLang && SUPPORTED_LANGUAGES.some(l => l.code === savedLang)) {
+    return savedLang as SupportedLanguage;
   }
 
   // Detect system locale from browser/Electron
@@ -39,11 +39,22 @@ const detectSystemLanguage = (): SupportedLanguage => {
 
   // Check if the system language starts with supported language codes
   const lang = systemLocale.toLowerCase();
+
   if (lang.startsWith('ko')) {
     return 'ko';
   }
+
+  // Chinese language detection
   if (lang.startsWith('zh')) {
-    return 'zh';
+    // Traditional Chinese: Taiwan, Hong Kong, Macau
+    if (lang.includes('tw') || lang.includes('hk') || lang.includes('mo') || lang.includes('hant')) {
+      // For now, default to Simplified until zh_TW is added
+      // TODO: Return 'zh_TW' when Traditional Chinese support is added
+      return 'zh_CN';
+    }
+    // Simplified Chinese: Mainland China, Singapore, or general Chinese
+    // zh, zh-CN, zh-SG, zh-Hans all map to Simplified
+    return 'zh_CN';
   }
 
   // Default to English for all other languages
@@ -81,7 +92,7 @@ i18n
 
 /**
  * Change the application language
- * @param language - Language code ('en', 'ko', or 'zh')
+ * @param language - Language code ('en', 'ko', or 'zh_CN')
  */
 export const changeLanguage = async (language: SupportedLanguage): Promise<void> => {
   await i18n.changeLanguage(language);

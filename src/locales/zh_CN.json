@@ -414,7 +414,7 @@
   "language": {
     "en": "English",
     "ko": "한국어",
-    "zh": "中文（简体）"
+    "zh_CN": "中文（简体）"
   },
   "search": {
     "placeholder": "搜索...",
