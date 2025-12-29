@@ -155,7 +155,11 @@
       "description": "配置应用程序偏好设置",
       "systemLanguage": "系统语言",
       "systemLanguageDesc": "选择应用程序界面的语言",
-      "darkMode": "深色模式"
+      "darkMode": "深色模式",
+      "analytics": "数据分析",
+      "analyticsTitle": "隐私友好型数据分析",
+      "analyticsDesc": "我们使用 Aptabase 进行匿名数据分析以改进应用。不会收集任何个人数据。",
+      "analyticsLearnMore": "了解更多隐私政策"
     },
     "dangerZoneConfig": {
       "title": "危险区域",

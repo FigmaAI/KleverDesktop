@@ -21,6 +21,7 @@ import { AgentSettingsCard } from '@/components/AgentSettingsCard'
 
 import { PreferencesSettingsCard } from '@/components/PreferencesSettingsCard'
 import type { SettingsSection } from '@/components/app-sidebar'
+import { Analytics } from '@/utils/analytics'
 
 interface SettingsProps {
   activeSection: SettingsSection
@@ -135,6 +136,37 @@ export function Settings({
         description: t('settings.testApiFirst')
       })
       return
+    }
+
+    // Track which sections changed before saving
+    const previousSettings = JSON.parse(settingsSnapshot.current || '{}')
+    const currentSettings = {
+      modelConfig,
+      platformSettings,
+      agentSettings,
+      preferencesSettings,
+    }
+
+    // Detect changed sections
+    const changedSections: string[] = []
+    if (JSON.stringify(previousSettings.modelConfig) !== JSON.stringify(currentSettings.modelConfig)) {
+      changedSections.push('model')
+    }
+    if (JSON.stringify(previousSettings.platformSettings) !== JSON.stringify(currentSettings.platformSettings)) {
+      changedSections.push('platform')
+    }
+    if (JSON.stringify(previousSettings.agentSettings) !== JSON.stringify(currentSettings.agentSettings)) {
+      changedSections.push('agent')
+    }
+    if (JSON.stringify(previousSettings.preferencesSettings) !== JSON.stringify(currentSettings.preferencesSettings)) {
+      changedSections.push('preferences')
+    }
+
+    // Track settings change
+    if (changedSections.length > 0) {
+      changedSections.forEach(section => {
+        Analytics.settingsChanged(section, 'saved');
+      });
     }
 
     await saveSettings()

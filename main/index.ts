@@ -7,6 +7,7 @@
 /// <reference path="./vite-env.d.ts" />
 
 import squirrelStartup from 'electron-squirrel-startup';
+import { initialize } from '@aptabase/electron/main';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (squirrelStartup) {
@@ -50,6 +51,11 @@ if (!app.isPackaged) {
   // app.commandLine.appendSwitch('enable-logging');
   // app.commandLine.appendSwitch('v', '1');
 }
+
+/**
+ * Initialize Aptabase analytics
+ */
+initialize('A-US-5848273087');
 
 let mainWindow: BrowserWindow | null = null;
 

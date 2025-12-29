@@ -155,7 +155,11 @@
       "description": "Configure application preferences",
       "systemLanguage": "System Language",
       "systemLanguageDesc": "Choose the language for the application interface",
-      "darkMode": "Dark Mode"
+      "darkMode": "Dark Mode",
+      "analytics": "Analytics",
+      "analyticsTitle": "Privacy-Friendly Analytics",
+      "analyticsDesc": "We use Aptabase for anonymous analytics to improve the app. No personal data is collected.",
+      "analyticsLearnMore": "Learn more about our privacy practices"
     },
     "dangerZoneConfig": {
       "title": "Danger Zone",
@@ -414,7 +418,7 @@
   "language": {
     "en": "English",
     "ko": "Korean",
-    "zh_CN": "Chinese (Simplified)"
+    "zh_CN": "Simplified Chinese"
   },
   "search": {
     "placeholder": "Search...",

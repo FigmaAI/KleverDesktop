@@ -19,6 +19,7 @@ import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath, getCorePath, ch
 import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
 import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
+import { trackTaskEvent } from '../utils/analytics';
 
 const taskProcesses = new Map<string, ChildProcess>();
 
@@ -231,6 +232,15 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     saveProjects(data);
 
+    // Track task started event
+    trackTaskEvent('task_started', {
+      platform: project.platform,
+      modelProvider: task.modelProvider || 'default',
+      modelName: task.modelName || 'default',
+      maxRounds: task.maxRounds || appConfig.execution.maxRounds,
+      isScheduled: !!task.scheduledAt,
+    });
+
     // Note: appConfig and configEnvVars already loaded above before setup
 
     // Start Python process via Core Controller (corePath already declared above)
@@ -440,6 +450,23 @@ print('SETUP_RESULT:' + json.dumps(result))
           // Trigger schedule queue to check for next pending scheduled task
           scheduleQueueManager.triggerCheck();
         }
+
+        // IMPORTANT: Track task completion for ALL cases (completed, failed, cancelled)
+        // This must be outside the 'running' check to capture user stops and errors
+        trackTaskEvent('task_completed', {
+          platform: currentProject.platform,
+          status: currentTask.status, // Will be 'completed', 'failed', or 'cancelled'
+          modelProvider: currentTask.modelProvider || 'unknown',
+          modelName: currentTask.modelName || 'unknown',
+          rounds: currentTask.metrics?.rounds || 0,
+          tokens: currentTask.metrics?.tokens || 0,
+          inputTokens: currentTask.metrics?.inputTokens || 0,
+          outputTokens: currentTask.metrics?.outputTokens || 0,
+          estimatedCost: currentTask.metrics?.estimatedCost || 0,
+          durationMs: currentTask.metrics?.durationMs || 0,
+          tokensPerSecond: currentTask.metrics?.tokensPerSecond || 0,
+          exitCode: code,
+        });
       }
 
       taskProcesses.delete(taskId);
@@ -452,6 +479,17 @@ print('SETUP_RESULT:' + json.dumps(result))
 
     taskProcess.on('error', (error) => {
       console.error(`[task:${taskId}] Process error:`, error);
+
+      // Track error event
+      const errorData = loadProjects();
+      const errorProject = errorData.projects.find((p) => p.id === projectId);
+      trackTaskEvent('error_occurred', {
+        errorType: 'task_process_error',
+        errorMessage: error.message.substring(0, 100), // First 100 chars only
+        context: 'task_execution',
+        platform: errorProject?.platform || 'unknown',
+      });
+
       mainWindow?.webContents.send('task:error', {
         projectId,
         taskId,

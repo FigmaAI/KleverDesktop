@@ -14,6 +14,7 @@ import { useRecommendedModelSetup } from '@/hooks/useRecommendedModelSetup'
 import { StepConfig } from '@/types/setupWizard'
 import { cn } from '@/lib/utils'
 import logoImg from '@/assets/logo.png'
+import { Analytics } from '@/utils/analytics'
 
 
 
@@ -21,6 +22,7 @@ export function SetupWizard() {
   const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(0)
   const [isModelVerified, setIsModelVerified] = useState(false)
+  const [onboardingStartTime] = useState(Date.now())
 
   const steps: StepConfig[] = [
     { label: t('setup.steps.platformTools'), description: t('setup.steps.platformToolsDesc') },
@@ -71,6 +73,11 @@ export function SetupWizard() {
   // ... (render)
 
 
+
+  // Track onboarding started on mount
+  useEffect(() => {
+    Analytics.onboardingStarted();
+  }, [])
 
   // Auto-check platform tools on Step 0
   useEffect(() => {
@@ -150,6 +157,15 @@ export function SetupWizard() {
       const result = await window.electronAPI.configSave(config)
 
       if (result.success) {
+        // Track onboarding completion
+        const durationSeconds = Math.round((Date.now() - onboardingStartTime) / 1000);
+        Analytics.onboardingCompleted(
+          durationSeconds,
+          toolsStatus.python.installed,
+          toolsStatus.ollama?.installed || false,
+          modelConfig.providers.length
+        );
+
         // Note: Navigation is handled by caller (either step progression or final navigation)
       } else {
         console.error('[SetupWizard] Failed to save config:', result.error)

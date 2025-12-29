@@ -39,6 +39,7 @@ import {
 import { ModelSelector, ModelSelection } from './ModelSelector'
 import { ProviderConfig, MultiProviderModelSettings } from '@/types/setupWizard'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
+import { Analytics } from '@/utils/analytics'
 
 interface ModelSettingsCardProps {
   modelConfig: MultiProviderModelSettings
@@ -202,6 +203,16 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
       // Remove the original provider first
       newProviders = modelConfig.providers.filter(p => p.id !== editingProvider.id)
 
+      // Track model switch if model changed
+      if (editingProvider.preferredModel !== newProvider.preferredModel) {
+        Analytics.modelSwitched(
+          editingProvider.id,
+          editingProvider.preferredModel,
+          newProvider.id,
+          newProvider.preferredModel
+        );
+      }
+
       // Check if the new provider ID already exists (in case user changed the provider)
       const existingIndex = newProviders.findIndex(p => p.id === formProvider)
       if (existingIndex >= 0) {
@@ -219,7 +230,8 @@ export function ModelSettingsCard({ modelConfig, setModelConfig, onValidationCha
         newProviders = [...modelConfig.providers]
         newProviders[existingIndex] = newProvider
       } else {
-        // Add new
+        // Add new provider - track model usage
+        Analytics.modelUsed(newProvider.id, newProvider.preferredModel, 'provider_added');
         newProviders = [...modelConfig.providers, newProvider]
       }
     }

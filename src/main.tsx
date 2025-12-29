@@ -62,6 +62,7 @@ if (!window.electronAPI) {
     checkOllama: async () => ({ success: true, running: true, models: [] }),
     checkAndroidStudio: async () => ({ success: true, version: 'installed' }),
     checkPlaywright: async () => ({ success: true }),
+    ollamaCheck: async () => ({ installed: true, path: '/usr/local/bin/ollama', version: '0.1.0' }),
     ollamaList: async () => ({ success: true, models: [] }),
     ollamaPull: async () => ({ success: true }),
     configLoad: async () => ({

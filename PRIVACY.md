@@ -1,6 +1,6 @@
 # Privacy Policy for Klever Desktop
 
-**Last Updated: November 20, 2025**
+**Last Updated: December 29, 2025**
 
 ## Introduction
 
@@ -25,10 +25,24 @@ The app operates entirely locally on your device and only accesses:
    - Android Debug Bridge (ADB) for device automation
    - Network connections initiated by your automation tasks
 
+### Analytics
+
+Klever Desktop uses **[Aptabase](https://aptabase.com)** for privacy-friendly, anonymous analytics to help us understand how the app is used and improve the user experience.
+
+**What Aptabase collects**:
+- ✅ Anonymized usage events (e.g., feature usage, app launches)
+- ✅ Basic session information (without unique identifiers)
+
+**What Aptabase does NOT collect**:
+- ❌ Device identifiers, cookies, or fingerprinting
+- ❌ Personal information that can identify you
+- ❌ Data that can be linked back to individual users
+
+Aptabase is **GDPR, CCPA, and PECR compliant**. All data is anonymized and cannot be traced back to you. For more information, see [Aptabase Privacy Policy](https://aptabase.com/legal/privacy).
+
 ### What We Don't Collect
 
 - ❌ Personal identification information
-- ❌ Usage analytics or telemetry
 - ❌ Crash reports sent to external servers
 - ❌ Login credentials or authentication tokens
 - ❌ Any data uploaded to our servers (we don't have any servers)
@@ -59,6 +73,7 @@ When you use AI features with Ollama or other services:
 - We do not intercept, store, or have access to this communication
 
 Please refer to the privacy policies of these third-party services if you choose to use them:
+- [Aptabase Privacy Policy](https://aptabase.com/legal/privacy) - Anonymous analytics
 - [Ollama Privacy Policy](https://ollama.com/privacy)
 
 ## External Network Requests
