@@ -690,7 +690,7 @@ export function TaskCreateDialog({
           </div>
 
           {/* Bottom Controls */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between gap-4 pt-2">
             {/* Left: Model Selection - now editable with registered providers filter */}
             <ModelSelector
               value={selectedModel}
@@ -701,7 +701,7 @@ export function TaskCreateDialog({
             />
 
             {/* Right: Split Button (Run + Schedule dropdown) */}
-            <div className="flex">
+            <div className="flex shrink-0">
               {/* Main Run Button */}
               <Button
                 size="sm"

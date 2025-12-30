@@ -55,67 +55,61 @@ export function Combobox({
 
   const selectedOption = options.find((option) => option.value === value)
 
-  const buttonContent = (
-    <Button
-      variant="outline"
-      role="combobox"
-      aria-expanded={open}
-      className={cn("justify-between", className)}
-      disabled={disabled}
-    >
-      <span className="truncate">
-        {selectedOption ? selectedOption.label : placeholder}
-      </span>
-      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-    </Button>
-  )
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {selectedOption?.tooltip ? (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {buttonContent}
-              </TooltipTrigger>
-              <TooltipContent side="top" align="start">
-                <p>{selectedOption.tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          buttonContent
+    <TooltipProvider delayDuration={300}>
+      <Tooltip open={selectedOption?.tooltip && !open ? undefined : false}>
+        <Popover open={open} onOpenChange={setOpen}>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className={cn("justify-between", className)}
+                disabled={disabled}
+              >
+                <span className="truncate">
+                  {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <PopoverContent className="w-[380px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder={searchPlaceholder} />
+              <CommandList>
+                <CommandEmpty>{emptyText}</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      onSelect={(currentValue) => {
+                        onValueChange?.(currentValue === value ? "" : currentValue)
+                        setOpen(false)
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.itemLabel ?? option.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {selectedOption?.tooltip && (
+          <TooltipContent side="top" align="start">
+            <p>{selectedOption.tooltip}</p>
+          </TooltipContent>
         )}
-      </PopoverTrigger>
-      <PopoverContent className="w-[380px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onValueChange?.(currentValue === value ? "" : currentValue)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.itemLabel ?? option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
