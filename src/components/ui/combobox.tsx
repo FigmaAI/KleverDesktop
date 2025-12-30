@@ -54,6 +54,7 @@ export function Combobox({
   const [open, setOpen] = React.useState(false)
   const [isTruncated, setIsTruncated] = React.useState(false)
   const buttonTextRef = React.useRef<HTMLSpanElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((option) => option.value === value)
 
@@ -70,6 +71,20 @@ export function Combobox({
     window.addEventListener('resize', checkTruncation)
     return () => window.removeEventListener('resize', checkTruncation)
   }, [selectedOption])
+
+  // Enable wheel scrolling on the list
+  React.useEffect(() => {
+    const listElement = listRef.current
+    if (!listElement) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.stopPropagation()
+      listElement.scrollTop += e.deltaY
+    }
+
+    listElement.addEventListener('wheel', handleWheel, { passive: true })
+    return () => listElement.removeEventListener('wheel', handleWheel)
+  }, [open])
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -99,6 +114,7 @@ export function Combobox({
             <Command className="overflow-hidden" loop={false}>
               <CommandInput placeholder={searchPlaceholder} />
               <CommandList
+                ref={listRef}
                 className="max-h-[300px] overflow-y-auto overflow-x-hidden scroll-smooth"
                 style={{ overscrollBehavior: 'contain' }}
               >
