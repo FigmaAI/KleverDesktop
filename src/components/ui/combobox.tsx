@@ -74,7 +74,7 @@ export function Combobox({
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip open={selectedOption?.tooltip && isTruncated && !open ? undefined : false}>
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={setOpen} modal={false}>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
               <Button
@@ -91,12 +91,19 @@ export function Combobox({
               </Button>
             </PopoverTrigger>
           </TooltipTrigger>
-          <PopoverContent className="w-[380px] p-0" align="start">
-            <Command className="overflow-hidden">
+          <PopoverContent
+            className="w-[380px] p-0"
+            align="start"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <Command className="overflow-hidden" loop={false}>
               <CommandInput placeholder={searchPlaceholder} />
-              <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+              <CommandList
+                className="max-h-[300px] overflow-y-auto overflow-x-hidden scroll-smooth"
+                style={{ overscrollBehavior: 'contain' }}
+              >
                 <CommandEmpty>{emptyText}</CommandEmpty>
-                <CommandGroup>
+                <CommandGroup className="p-1">
                   {options.map((option) => {
                     // Use full value for tooltip if available, otherwise use label
                     const tooltipText = option.tooltip || option.value
