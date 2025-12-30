@@ -16,11 +16,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export interface ComboboxOption {
   value: string
   label: string
   itemLabel?: React.ReactNode  // Custom label for dropdown item (defaults to label)
+  tooltip?: string  // Optional tooltip for the selected value
 }
 
 interface ComboboxProps {
@@ -48,23 +55,40 @@ export function Combobox({
 
   const selectedOption = options.find((option) => option.value === value)
 
+  const buttonContent = (
+    <Button
+      variant="outline"
+      role="combobox"
+      aria-expanded={open}
+      className={cn("justify-between", className)}
+      disabled={disabled}
+    >
+      <span className="truncate">
+        {selectedOption ? selectedOption.label : placeholder}
+      </span>
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  )
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("justify-between", className)}
-          disabled={disabled}
-        >
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+        {selectedOption?.tooltip ? (
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {buttonContent}
+              </TooltipTrigger>
+              <TooltipContent side="top" align="start">
+                <p>{selectedOption.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          buttonContent
+        )}
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent className="w-[380px] p-0" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
