@@ -92,9 +92,9 @@ export function Combobox({
             </PopoverTrigger>
           </TooltipTrigger>
           <PopoverContent className="w-[380px] p-0" align="start">
-            <Command>
+            <Command className="overflow-hidden">
               <CommandInput placeholder={searchPlaceholder} />
-              <CommandList>
+              <CommandList className="max-h-[300px] overflow-y-auto overflow-x-hidden">
                 <CommandEmpty>{emptyText}</CommandEmpty>
                 <CommandGroup>
                   {options.map((option) => {
