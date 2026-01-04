@@ -385,64 +385,15 @@ else:
 # ============================================================================
 # Android Platform: Main Exploration Loop
 # ============================================================================
+# All models now use label-based approach (tap(n) format)
+# The previous coordinate-based runner has been removed for simplification
 
-# Check if using coordinate-based model - use specialized runner
-try:
-    from core.model_connectors.coordinate_task_runner import should_use_coordinate_runner, run_coordinate_task
-    USE_COORDINATE_RUNNER = should_use_coordinate_runner(model_name)
-except ImportError:
-    USE_COORDINATE_RUNNER = False
-
-if USE_COORDINATE_RUNNER:
-    # Coordinate-Based Mode: Use specialized task runner (GELab, Claude Sonnet/Haiku, etc.)
-    print_with_color("=" * 60, "green")
-    print_with_color("🚀 Coordinate-Based Model Detected - Using Specialized Runner", "green")
-    print_with_color("=" * 60, "green")
-    
-    # Write report header
-    append_to_log(f"# User Testing Report for {app}", report_log_path)
-    append_to_log(task_name, report_log_path)
-    append_to_log(f"## Task Description", report_log_path)
-    append_to_log(task_desc, report_log_path)
-    append_to_log(f"\n## Execution Mode: Coordinate-Based ({model_name})\n", report_log_path)
-    
-    # Run coordinate-based task
-    coord_result = run_coordinate_task(
-        controller=controller,
-        task_desc=task_desc,
-        task_dir=task_dir,
-        model_name=model_name,
-        api_key=api_key,
-        base_url=base_url,
-        max_rounds=configs["MAX_ROUNDS"],
-        report_log_path=report_log_path,
-        emit_progress=emit_progress,
-        configs=configs
-    )
-    
-    # Write summary
-    append_to_log(f"\n## Execution Summary", report_log_path)
-    append_to_log(f"- **Platform:** Android (Coordinate-Based)", report_log_path)
-    append_to_log(f"- **Model:** {model_name}", report_log_path)
-    append_to_log(f"- **Rounds:** {coord_result['rounds']}", report_log_path)
-    append_to_log(f"- **Total Tokens:** {coord_result['total_tokens']}", report_log_path)
-    append_to_log(f"- **Total Time:** {coord_result['total_time']:.2f}s", report_log_path)
-    
-    if coord_result["success"]:
-        append_to_log(f"- **Status:** ✅ Success", report_log_path)
-        print_with_color("✅ Coordinate-based task completed successfully!", "green")
-        sys.exit(0)
-    else:
-        append_to_log(f"- **Status:** ❌ Failed", report_log_path)
-        append_to_log(f"- **Error:** {coord_result.get('error', 'Unknown')}", report_log_path)
-        print_with_color(f"❌ Coordinate-based task failed: {coord_result.get('error')}", "red")
-        sys.exit(1)
-
-# Standard AppAgent Mode (non-GELab models)
+# Standard AppAgent Mode (all models)
 round_count = 0
 doc_count = 0
 useless_list = set()
 last_act = "None"
+
 task_complete = False
 
 # Write the report markdown file

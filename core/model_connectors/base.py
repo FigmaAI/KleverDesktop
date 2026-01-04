@@ -17,12 +17,11 @@ from typing import Dict, Any, List, Optional
 
 # Models that naturally think in pixel coordinates rather than UI element labels
 # These models will receive unlabeled screenshots and coordinate-based prompts
+# NOTE: Most VLM models work better with labeled UI elements, so this list is minimal
 COORDINATE_BASED_MODELS = [
-    # GELab models - designed for coordinate-based GUI automation
-    "gelab",
-    
-    # Note: Claude models removed - they work better with labeled UI elements
-    # Coordinate-based approach had issues with image resizing in API
+    # Currently empty - all models use label-based approach
+    # GELab has been migrated to label-based (see gelab.py)
+    # Claude has been migrated to label-based (see claude.py)
 ]
 
 # Models that work well with labeled UI elements (default behavior)
@@ -30,7 +29,9 @@ COORDINATE_BASED_MODELS = [
 LABEL_BASED_MODELS = [
     "gpt-",
     "gemini-",
-    "grok-",  # Grok works well with labeled screenshots
+    "grok-",
+    "gelab",    # GELab now uses labels
+    "claude-",  # Claude now uses labels
 ]
 
 
@@ -149,31 +150,26 @@ def get_connector(model_name: str) -> BaseConnector:
     """
     Get appropriate connector for a model.
     
-    Routes models to the correct connector based on their interaction style:
-    - GELab models → GELabConnector (action:CLICK\tpoint:x,y format)
-    - Coordinate-based models (Claude, Grok) → ClaudeConnector (tap(x, y) format)
-    - Others → DefaultConnector (tap(element_id) label format)
+    UNIFIED LABEL-BASED ARCHITECTURE:
+    All models use label-based approach (tap(n) format).
+    
+    Routes:
+    - GELab models → GELabConnector (optimized prompts for GUI Agent)
+    - All others → DefaultConnector (works for Claude, GPT, Gemini, etc.)
     
     Args:
-        model_name: Model name (e.g., 'openrouter/anthropic/claude-sonnet-4.5')
+        model_name: Model name (e.g., 'ollama/gelab-zero', 'anthropic/claude-sonnet')
         
     Returns:
         Connector instance
     """
     model_lower = model_name.lower()
     
-    # GELab uses its own special format (action:CLICK\tpoint:x,y)
+    # GELab models - use specialized connector (optimized prompts)
     if "gelab" in model_lower:
         from .gelab import GELabConnector
         return GELabConnector()
     
-    # Check if model is in coordinate-based list (excluding gelab which has its own format)
-    # These models prefer tap(x, y) coordinate format
-    coord_models = [m for m in COORDINATE_BASED_MODELS if m != "gelab"]
-    if any(coord_model in model_lower for coord_model in coord_models):
-        from .claude import ClaudeConnector
-        return ClaudeConnector()
-    
-    # Default: label-based approach (GPT, Gemini, etc.)
+    # All other models use DefaultConnector (Claude, GPT, Gemini, Grok, etc.)
     from .default import DefaultConnector
     return DefaultConnector()

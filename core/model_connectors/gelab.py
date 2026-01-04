@@ -1,15 +1,18 @@
 """
 GELab Connector - Adapter for GELab-Zero-4B-preview model.
 
-This connector handles:
-1. GELab-style prompts (coordinate-based, 0-1000 normalized)
-2. Response parsing (<THINK> tags + tab-separated key-values)
-3. Action normalization to AppAgent compatible format
+UNIFIED LABEL-BASED APPROACH:
+This connector has been updated to use label-based UI element identification
+instead of coordinate-based output. This provides:
+1. Consistent behavior with other VLM models (GPT, Gemini, Claude)
+2. Simpler execution flow (no coordinate conversion needed)
+3. Better accuracy through explicit UI element labeling
+
+The model receives labeled screenshots and outputs tap(n) style actions.
 """
 
 import re
 from typing import Dict, Any, List, Optional
-from collections import OrderedDict
 
 from .base import BaseConnector
 
@@ -18,51 +21,52 @@ class GELabConnector(BaseConnector):
     """
     Connector for GELab-Zero-4B-preview and similar GUI-specialized models.
     
-    Key differences from default AppAgent models:
-    - Uses raw screenshots (no UI element labeling)
-    - Outputs coordinates in 0-1000 normalized range
-    - Uses <THINK> tags for chain-of-thought
-    - Tab-separated key-value output format
+    Updated to use label-based approach:
+    - Screenshots WITH numbered UI element labels
+    - Outputs element IDs like tap(5), not coordinates
+    - Same format as DefaultConnector for unified execution
     """
     
-    SYSTEM_PROMPT = """You are a mobile GUI-Agent automation expert. Based on the user's task, mobile screen screenshots, and interaction history, you need to interact with the phone using the defined action space to complete the user's task.
-Remember, the phone screen coordinate system has the origin at the top-left corner, with the x-axis pointing right and y-axis pointing down. The value range is 0-1000 for both axes.
+    SYSTEM_PROMPT = """You are a mobile GUI-Agent automation expert. Based on the user's task, mobile screen screenshots, and interaction history, you need to interact with the phone using the defined action space.
 
-# Action Principles:
-
-1. You must clearly track your previous action. If it's a swipe, do not exceed 5 consecutive swipes.
-2. You must strictly follow the user's instructions. If you have had a conversation with the user, pay more attention to the latest instruction.
+IMPORTANT: The screenshot shows numbered labels on interactive UI elements. Each number is displayed at the CENTER of the UI element. Use these NUMBERS in your actions, NOT pixel coordinates.
 
 # Action Space:
 
-In the Android phone scenario, your action space includes the following 9 types of operations. All outputs must follow the corresponding parameter requirements:
-1. CLICK: Click on screen coordinates. Requires the click position point.
-Example: action:CLICK\tpoint:x,y
-2. TYPE: Input text in a text field. Requires the input content value and input field position point.
-Example: action:TYPE\tvalue:input content\tpoint:x,y
-3. COMPLETE: Report results to user after task completion. Requires the report content value.
-Example: action:COMPLETE\treturn:content to report to user after completing the task
-4. WAIT: Wait for a specified duration. Requires wait time value (in seconds).
-Example: action:WAIT\tvalue:wait time
-5. AWAKE: Wake up/launch a specified app. Requires the app name value.
-Example: action:AWAKE\tvalue:app name
-6. INFO: Ask user questions or request detailed information. Requires question content value.
-Example: action:INFO\tvalue:question content
-7. ABORT: Terminate current task. Use only when task cannot continue. Requires value explaining the reason.
-Example: action:ABORT\tvalue:reason for terminating task
-8. SLIDE: Swipe on mobile screen. Any direction allowed. Requires start point point1 and end point point2.
-Example: action:SLIDE\tpoint1:x1,y1\tpoint2:x2,y2
-9. LONGPRESS: Long press on screen coordinates. Requires the long press position point.
-Example: action:LONGPRESS\tpoint:x,y
+1. tap(element: int)
+   Tap the UI element with the given number.
+   Example: tap(5) - taps the element labeled "5"
+
+2. text(text_input: str)
+   Type text into the currently focused input field.
+   Example: text("Hello world")
+
+3. long_press(element: int)
+   Long press the UI element with the given number.
+   Example: long_press(3)
+
+4. swipe(element: int, direction: str, dist: str)
+   Swipe on the element. direction: "up", "down", "left", "right". dist: "short", "medium", "long"
+   Example: swipe(7, "up", "medium")
+
+5. FINISH
+   Report when the task is complete.
 """
 
-    OUTPUT_INSTRUCTION = """Before executing any action, please review your action history and the defined action space. First think and explain, then output the action and corresponding parameters:
-1. Thinking (THINK): Between <THINK> and </THINK> tags.
-2. Explanation (explain): In the action format, use explain: prefix to briefly describe the purpose and execution method of the current action.
-After executing the action, output a new history summary including the current step.
-Output format example:
-<THINK>thinking content</THINK>
-explain:explanation content\taction:action and parameters\tsummary:new history summary after current step
+    OUTPUT_INSTRUCTION = """Before executing any action, think step by step:
+1. Look at the numbered labels on the screenshot
+2. Identify which labeled element to interact with
+3. Choose the appropriate action
+
+Output format (JSON):
+{
+    "Observation": "What you see on the screen, including the numbered labels",
+    "Thought": "Your reasoning about which labeled element to interact with",
+    "Action": "tap(5) or text(...) or swipe(...) or FINISH",
+    "Summary": "Brief summary of your action"
+}
+
+CRITICAL: Use element NUMBERS like tap(3), NOT coordinates like tap(500, 200)!
 """
 
     @property
@@ -71,7 +75,8 @@ explain:explanation content\taction:action and parameters\tsummary:new history s
     
     @property
     def action_format(self) -> str:
-        return "coords"
+        # Changed from "coords" to "label"
+        return "label"
     
     def make_prompt(
         self,
@@ -82,9 +87,9 @@ explain:explanation content\taction:action and parameters\tsummary:new history s
         **kwargs
     ) -> str:
         """
-        Generate GELab-style prompt.
+        Generate label-based prompt for GELab model.
         
-        Note: ui_elements is ignored as GELab uses raw screenshots.
+        Note: Now expects labeled screenshots (same as DefaultConnector).
         """
         history_display = history if history.strip() else "No previous actions"
         
@@ -92,7 +97,7 @@ explain:explanation content\taction:action and parameters\tsummary:new history s
 
 User instruction: {task}
 Previously executed actions: {history_display}
-Current mobile screen screenshot:
+Current mobile screen screenshot (with numbered element labels):
 [IMAGE]
 
 {self.OUTPUT_INSTRUCTION}"""
@@ -101,13 +106,100 @@ Current mobile screen screenshot:
     
     def parse_response(self, response: str) -> Dict[str, Any]:
         """
-        Parse GELab format response.
+        Parse GELab response - now supports both legacy and new format.
         
-        Expected format:
+        New format (JSON with label-based actions):
+        {"Observation": "...", "Thought": "...", "Action": "tap(5)", "Summary": "..."}
+        
+        Legacy format (for backward compatibility):
+        <THINK>thinking</THINK>
+        explain:xxx\taction:CLICK\tpoint:500,300\tsummary:xxx
+        """
+        import json
+        response = response.strip()
+        
+        # Try JSON format first (new label-based format)
+        try:
+            data = self._extract_json(response)
+            return self._json_to_standard(data)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        
+        # Fallback to legacy coordinate format (for backward compatibility)
+        # This path will be removed once we confirm label-based works
+        return self._parse_legacy_format(response)
+    
+    def _extract_json(self, response: str) -> Dict:
+        """Extract JSON from response."""
+        import json
+        start = response.find('{')
+        end = response.rfind('}') + 1
+        if start >= 0 and end > start:
+            return json.loads(response[start:end])
+        raise ValueError("No JSON found")
+    
+    def _json_to_standard(self, data: Dict) -> Dict[str, Any]:
+        """Convert JSON response to standard format."""
+        observation = data.get('Observation') or data.get('observation', '')
+        thought = data.get('Thought') or data.get('thought', '')
+        action = data.get('Action') or data.get('action', '')
+        summary = data.get('Summary') or data.get('summary', 'No summary')
+        
+        result = {
+            'observation': observation,
+            'thought': thought,
+            'summary': summary,
+            'raw_action': action,
+        }
+        
+        # Parse label-based action
+        action_parsed = self._parse_label_action(action)
+        result.update(action_parsed)
+        
+        return result
+    
+    def _parse_label_action(self, action: str) -> Dict[str, Any]:
+        """Parse label-based action string like 'tap(5)'."""
+        action = action.strip()
+        
+        if "FINISH" in action.upper():
+            return {'action_type': 'FINISH'}
+        
+        action_name = action.split("(")[0].strip().lower()
+        
+        try:
+            if action_name == "tap":
+                element = int(re.findall(r"tap\((\d+)\)", action)[0])
+                return {'action_type': 'tap', 'target': element}
+            elif action_name == "text":
+                text = re.findall(r'text\(["\'](.+?)["\']\)', action)[0]
+                return {'action_type': 'text', 'value': text}
+            elif action_name == "long_press":
+                element = int(re.findall(r"long_press\((\d+)\)", action)[0])
+                return {'action_type': 'long_press', 'target': element}
+            elif action_name == "swipe":
+                params = re.findall(r"swipe\((.+?)\)", action)[0]
+                parts = [p.strip().strip('"\'') for p in params.split(",")]
+                return {
+                    'action_type': 'swipe',
+                    'target': int(parts[0]),
+                    'direction': parts[1],
+                    'distance': parts[2]
+                }
+            else:
+                return {'action_type': 'ERROR', 'value': f'Unknown action: {action_name}'}
+        except (IndexError, ValueError) as e:
+            return {'action_type': 'ERROR', 'value': str(e)}
+    
+    def _parse_legacy_format(self, response: str) -> Dict[str, Any]:
+        """
+        Parse legacy GELab coordinate format (for backward compatibility).
+        
+        Format:
         <THINK>thinking content</THINK>
         explain:xxx\taction:CLICK\tpoint:500,300\tsummary:xxx
         """
-        response = response.strip()
+        from collections import OrderedDict
         
         # Normalize THINK tags
         response = self._normalize_think_tags(response)
@@ -117,7 +209,6 @@ Current mobile screen screenshot:
             cot_part = response.split("<THINK>")[1].split("</THINK>")[0].strip()
             kv_part = response.split("</THINK>")[1].strip()
         except IndexError:
-            # No THINK tags, treat entire response as kv
             kv_part = response
             cot_part = ""
         
@@ -141,7 +232,6 @@ Current mobile screen screenshot:
             elif key == "explain":
                 action['explain'] = value
             elif "point" in key:
-                # Parse point format: "x,y" or "x y"
                 try:
                     coords = value.replace(",", " ").split()
                     if len(coords) >= 2:
@@ -152,8 +242,7 @@ Current mobile screen screenshot:
             elif key == "value" or key == "return":
                 action[key] = value
         
-        # Convert to standardized format
-        return self._to_standard_format(action)
+        return self._legacy_to_standard(action)
     
     def _normalize_think_tags(self, text: str) -> str:
         """Normalize various THINK tag formats."""
@@ -170,8 +259,8 @@ Current mobile screen screenshot:
         )
         return text
     
-    def _to_standard_format(self, parsed: Dict) -> Dict[str, Any]:
-        """Convert parsed GELab action to standardized AppAgent format."""
+    def _legacy_to_standard(self, parsed: Dict) -> Dict[str, Any]:
+        """Convert parsed legacy GELab action to standardized format."""
         action_type = parsed.get('action', '').upper()
         
         result = {
@@ -181,6 +270,7 @@ Current mobile screen screenshot:
             'raw_action': f"action:{action_type}",
         }
         
+        # Legacy format uses coordinates - convert to tap_coords for compatibility
         if action_type == 'CLICK':
             result['action_type'] = 'tap_coords'
             result['target'] = parsed.get('point', [0, 0])
