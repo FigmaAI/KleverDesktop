@@ -1139,3 +1139,278 @@ def check_google_login_status() -> Dict[str, Any]:
         'emulators': emulators,
         'ready': len(devices) > 0 or len(emulators) > 0
     }
+
+
+# ============================================
+# YADB (Yet Another ADB) Utilities
+# ============================================
+
+# YADB binary path and device path
+YADB_BINARY_PATH = os.path.join(os.path.dirname(__file__), 'assets', 'yadb')
+YADB_DEVICE_PATH = '/data/local/tmp/yadb'
+
+
+def ensure_yadb_on_device(device_serial: str = None) -> bool:
+    """
+    Push YADB binary to device if not present or outdated.
+    
+    Checks if YADB exists on device and compares checksum.
+    If missing or different, pushes the binary.
+    
+    Args:
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        True if YADB is ready on device, False otherwise
+    """
+    if not os.path.exists(YADB_BINARY_PATH):
+        print_with_color(f"ERROR: YADB binary not found at {YADB_BINARY_PATH}", "red")
+        return False
+    
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            print_with_color("ERROR: No devices connected", "red")
+            return False
+        device_serial = devices[0]
+    
+    # Check if YADB already exists on device with correct checksum
+    # Get local file checksum (simple size check for now)
+    local_size = os.path.getsize(YADB_BINARY_PATH)
+    
+    # Check remote file size
+    check_cmd = f"adb -s {device_serial} shell ls -l {YADB_DEVICE_PATH} 2>/dev/null | awk '{{print $5}}'"
+    result = execute_adb(check_cmd)
+    
+    if result != "ERROR" and result.strip().isdigit():
+        remote_size = int(result.strip())
+        if remote_size == local_size:
+            # File exists and size matches, assume it's the same
+            return True
+    
+    # Push YADB binary to device
+    print_with_color(f"Pushing YADB binary to device {device_serial}...", "yellow")
+    push_cmd = f"adb -s {device_serial} push {YADB_BINARY_PATH} {YADB_DEVICE_PATH}"
+    result = execute_adb(push_cmd)
+    
+    if result == "ERROR":
+        print_with_color("ERROR: Failed to push YADB binary to device", "red")
+        return False
+    
+    # Make executable
+    chmod_cmd = f"adb -s {device_serial} shell chmod 755 {YADB_DEVICE_PATH}"
+    execute_adb(chmod_cmd)
+    
+    print_with_color("✓ YADB binary ready on device", "green")
+    return True
+
+
+def execute_yadb(command: str, device_serial: str = None) -> str:
+    """
+    Execute YADB command on device.
+    
+    YADB is executed via app_process:
+    adb shell app_process -Djava.class.path=/data/local/tmp/yadb /data/local/tmp com.ysbing.yadb.Main {command}
+    
+    Args:
+        command: YADB command (e.g., "-keyboard Hello", "-readClipboard")
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Command output or "ERROR"
+    """
+    # Ensure YADB is on device
+    if not ensure_yadb_on_device(device_serial):
+        return "ERROR"
+    
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    # Execute YADB command
+    yadb_cmd = f"adb -s {device_serial} shell app_process -Djava.class.path={YADB_DEVICE_PATH} /data/local/tmp com.ysbing.yadb.Main {command}"
+    result = execute_adb(yadb_cmd)
+    
+    return result
+
+
+def yadb_input_text(text: str, device_serial: str = None) -> str:
+    """
+    Input text using YADB keyboard (supports all languages including Korean, Chinese, Japanese).
+    
+    This is superior to ADBKeyboard as it doesn't require installing an IME app.
+    
+    Args:
+        text: Text to input (supports Unicode characters)
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Command result or "ERROR"
+    """
+    if not text:
+        return "ERROR"
+    
+    # Escape special characters for shell
+    # YADB handles Unicode natively, but we need to escape shell metacharacters
+    escaped_text = text.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+    
+    command = f'-keyboard "{escaped_text}"'
+    result = execute_yadb(command, device_serial)
+    
+    if result != "ERROR":
+        print_with_color(f"Text entered via YADB: {text[:50]}...", "green")
+    
+    return result
+
+
+def yadb_read_clipboard(device_serial: str = None) -> str:
+    """
+    Read clipboard content using YADB.
+    
+    Works on all Android versions, unlike cmd clipboard which requires API 26+.
+    
+    Args:
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Clipboard content or empty string on error
+    """
+    result = execute_yadb("-readClipboard", device_serial)
+    
+    if result == "ERROR":
+        return ""
+    
+    # YADB outputs clipboard content to stdout
+    return result.strip()
+
+
+def yadb_write_clipboard(text: str, device_serial: str = None) -> str:
+    """
+    Write text to device clipboard using YADB.
+    
+    Works on all Android versions, unlike cmd clipboard which requires API 26+.
+    
+    Args:
+        text: Text to write to clipboard
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Command result or "ERROR"
+    """
+    if not text:
+        return "ERROR"
+    
+    # Escape special characters for shell
+    escaped_text = text.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'")
+    
+    command = f'-writeClipboard "{escaped_text}"'
+    result = execute_yadb(command, device_serial)
+    
+    if result != "ERROR":
+        print_with_color(f"Clipboard set via YADB: {text[:50]}...", "green")
+    
+    return result
+
+
+def yadb_screenshot(output_path: str, device_serial: str = None) -> str:
+    """
+    Take screenshot using YADB (bypasses app-level screenshot restrictions).
+    
+    YADB can capture screenshots even when apps block standard screencap.
+    
+    Args:
+        output_path: Local path to save screenshot
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Path to saved screenshot or "ERROR"
+    """
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    # Ensure YADB is on device
+    if not ensure_yadb_on_device(device_serial):
+        return "ERROR"
+    
+    # YADB saves screenshot to /data/local/tmp/screenshot.png
+    device_screenshot_path = '/data/local/tmp/screenshot.png'
+    
+    # Take screenshot
+    result = execute_yadb("-screenshot", device_serial)
+    
+    if result == "ERROR":
+        return "ERROR"
+    
+    # Pull screenshot from device
+    pull_cmd = f"adb -s {device_serial} pull {device_screenshot_path} {output_path}"
+    pull_result = execute_adb(pull_cmd)
+    
+    if pull_result == "ERROR":
+        return "ERROR"
+    
+    # Clean up device screenshot
+    execute_adb(f"adb -s {device_serial} shell rm {device_screenshot_path}")
+    
+    if os.path.exists(output_path):
+        print_with_color(f"Screenshot saved: {output_path}", "green")
+        return output_path
+    
+    return "ERROR"
+
+
+def yadb_layout_dump(output_path: str, device_serial: str = None) -> str:
+    """
+    Dump UI layout using YADB (works where uiautomator fails).
+    
+    YADB provides an alternative to uiautomator dump that works on more screens.
+    
+    Args:
+        output_path: Local path to save XML layout dump
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        Path to saved XML file or "ERROR"
+    """
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            return "ERROR"
+        device_serial = devices[0]
+    
+    # Ensure YADB is on device
+    if not ensure_yadb_on_device(device_serial):
+        return "ERROR"
+    
+    # YADB saves layout to /data/local/tmp/layout.xml
+    device_layout_path = '/data/local/tmp/layout.xml'
+    
+    # Dump layout
+    result = execute_yadb("-layout", device_serial)
+    
+    if result == "ERROR":
+        return "ERROR"
+    
+    # Pull layout from device
+    pull_cmd = f"adb -s {device_serial} pull {device_layout_path} {output_path}"
+    pull_result = execute_adb(pull_cmd)
+    
+    if pull_result == "ERROR":
+        return "ERROR"
+    
+    # Clean up device layout file
+    execute_adb(f"adb -s {device_serial} shell rm {device_layout_path}")
+    
+    if os.path.exists(output_path):
+        print_with_color(f"Layout dump saved: {output_path}", "green")
+        return output_path
+    
+    return "ERROR"

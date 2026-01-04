@@ -53,6 +53,14 @@ from core.android import (
     start_google_login,
     check_google_login_status,
 
+    # YADB utilities
+    yadb_input_text,
+    yadb_read_clipboard,
+    yadb_write_clipboard,
+    yadb_screenshot,
+    yadb_layout_dump,
+    ensure_yadb_on_device,
+
     # Data classes
     AndroidElement,
 )
@@ -164,7 +172,26 @@ class AndroidController:
             return map(int, result.split(": ")[1].split("x"))
         return 0, 0
 
-    def get_screenshot(self, prefix, save_dir):
+    def get_screenshot(self, prefix, save_dir, force_yadb=False):
+        """
+        Take screenshot, optionally using YADB for restricted apps.
+        
+        Args:
+            prefix: Screenshot filename prefix
+            save_dir: Directory to save screenshot
+            force_yadb: If True, use YADB (bypasses app restrictions)
+        
+        Returns:
+            Path to saved screenshot or "ERROR"
+        """
+        output_path = os.path.join(save_dir, prefix + ".png")
+        
+        if force_yadb:
+            # Use YADB for screenshots (bypasses app-level restrictions)
+            ensure_yadb_on_device(self.device)
+            return yadb_screenshot(output_path, self.device)
+        
+        # Default: Use standard screencap
         cap_command = f"adb -s {self.device} shell screencap -p " \
                       f"{os.path.join(self.screenshot_dir, prefix + '.png').replace(self.backslash, '/')}"
         pull_command = f"adb -s {self.device} pull " \
@@ -178,7 +205,26 @@ class AndroidController:
             return result
         return result
 
-    def get_xml(self, prefix, save_dir):
+    def get_xml(self, prefix, save_dir, use_yadb=False):
+        """
+        Dump UI layout, optionally using YADB when uiautomator fails.
+        
+        Args:
+            prefix: XML filename prefix
+            save_dir: Directory to save XML dump
+            use_yadb: If True, use YADB layout dump (works where uiautomator fails)
+        
+        Returns:
+            Path to saved XML file or "ERROR"
+        """
+        output_path = os.path.join(save_dir, prefix + ".xml")
+        
+        if use_yadb:
+            # Use YADB for layout dump (works where uiautomator fails)
+            ensure_yadb_on_device(self.device)
+            return yadb_layout_dump(output_path, self.device)
+        
+        # Default: Use uiautomator dump
         dump_command = f"adb -s {self.device} shell uiautomator dump " \
                        f"{os.path.join(self.xml_dir, prefix + '.xml').replace(self.backslash, '/')}"
         pull_command = f"adb -s {self.device} pull " \
@@ -210,95 +256,53 @@ class AndroidController:
 
     def text(self, input_str):
         """
-        Input text to the device.
-
-        Supports UTF-8 characters (including Korean, Chinese, Japanese) by using
-        ADBKeyboard IME for non-ASCII text and direct input for ASCII text.
-
-        Method:
-        - ASCII text: Uses 'input text' command (fast)
-        - Non-ASCII text (Korean, etc.): Uses ADBKeyboard IME or clipboard fallback
+        Input text to the device using YADB (supports all languages including Korean, Chinese, Japanese).
+        
+        YADB provides superior keyboard input compared to ADBKeyboard as it doesn't require
+        installing an IME app and works reliably for all Unicode characters.
+        
+        Args:
+            input_str: Text to input (supports Unicode characters)
+        
+        Returns:
+            Command result or "ERROR"
         """
-        import base64
-        import time
-
         if not input_str:
             return "ERROR"
+        
+        # Use YADB for all text input (handles both ASCII and Unicode)
+        ensure_yadb_on_device(self.device)
+        return yadb_input_text(input_str, self.device)
 
-        # Check if input contains non-ASCII characters (e.g., Korean, Chinese, Japanese)
-        has_non_ascii = any(ord(char) > 127 for char in input_str)
+    def read_clipboard(self):
+        """
+        Read device clipboard using YADB.
+        
+        Works on all Android versions, unlike cmd clipboard which requires API 26+.
+        
+        Returns:
+            Clipboard content or empty string on error
+        """
+        ensure_yadb_on_device(self.device)
+        return yadb_read_clipboard(self.device)
 
-        if has_non_ascii:
-            # Method 1: Try ADBKeyboard IME (most reliable for non-ASCII)
-            # ADBKeyboard uses base64 encoding via broadcast
-            encoded = base64.b64encode(input_str.encode('utf-8')).decode('ascii')
-            broadcast_cmd = f'adb -s {self.device} shell am broadcast -a ADB_INPUT_B64 --es msg {encoded}'
-            result = execute_adb(broadcast_cmd)
-
-            # Check if ADBKeyboard received the broadcast successfully
-            if result != "ERROR" and "result=0" in result:
-                print_with_color(f"Text entered via ADBKeyboard: {input_str}", "green")
-                return result
-
-            # Method 2: Try clipboard + paste (works on most devices)
-            print_with_color(f"ADBKeyboard not available, trying clipboard method for: {input_str}", "yellow")
-
-            # Escape special shell characters in the input string
-            escaped_str = input_str.replace('\\', '\\\\').replace('"', '\\"').replace("'", "\\'").replace('$', '\\$').replace('`', '\\`')
-
-            # Set clipboard content (Android 8.0+ / API 26+)
-            # Note: Some emulators may not support cmd clipboard
-            clipboard_cmd = f'adb -s {self.device} shell "cmd clipboard set \\"{escaped_str}\\""'
-            clipboard_result = execute_adb(clipboard_cmd)
-
-            if clipboard_result == "ERROR":
-                # Try alternative clipboard method using settings
-                print_with_color("Clipboard cmd failed, trying am broadcast method...", "yellow")
-
-                # Method 3: Use am broadcast to set clipboard (works on more devices)
-                clip_broadcast = f'adb -s {self.device} shell am broadcast -a clipper.set -e text "{escaped_str}"'
-                clip_result = execute_adb(clip_broadcast)
-
-                if clip_result == "ERROR" or "result=-1" in clip_result:
-                    print_with_color(f"Failed to set clipboard for text: {input_str}", "red")
-                    print_with_color("Tip: Install ADBKeyboard for reliable non-ASCII input", "yellow")
-                    return "ERROR"
-
-            # Small delay to ensure clipboard is set
-            time.sleep(0.2)
-
-            # Send paste keyevent (Ctrl+V = KEYCODE_PASTE = 279)
-            paste_cmd = f"adb -s {self.device} shell input keyevent 279"
-            paste_result = execute_adb(paste_cmd)
-
-            if paste_result != "ERROR":
-                print_with_color(f"Text pasted from clipboard: {input_str}", "green")
-                return paste_result
-
-            # Method 4: Final fallback - type character by character using Unicode
-            print_with_color("Paste failed, trying Unicode input method...", "yellow")
-            for char in input_str:
-                # Use %s for space, Unicode code point for non-ASCII
-                if ord(char) > 127:
-                    # Input Unicode character using shell printf
-                    unicode_cmd = f"adb -s {self.device} shell input text $(printf '\\u{ord(char):04x}')"
-                    execute_adb(unicode_cmd)
-                    time.sleep(0.05)
-                elif char == ' ':
-                    execute_adb(f"adb -s {self.device} shell input text %s")
-                else:
-                    execute_adb(f"adb -s {self.device} shell input text {char}")
-                    time.sleep(0.01)
-
-            print_with_color(f"Text entered character by character: {input_str}", "yellow")
-            return "OK"
-        else:
-            # ASCII text - use standard input text command (fast and reliable)
-            input_str = input_str.replace(" ", "%s")
-            input_str = input_str.replace("'", "")
-            adb_command = f"adb -s {self.device} shell input text {input_str}"
-            ret = execute_adb(adb_command)
-            return ret
+    def write_clipboard(self, text):
+        """
+        Write text to device clipboard using YADB.
+        
+        Works on all Android versions, unlike cmd clipboard which requires API 26+.
+        
+        Args:
+            text: Text to write to clipboard
+        
+        Returns:
+            Command result or "ERROR"
+        """
+        if not text:
+            return "ERROR"
+        
+        ensure_yadb_on_device(self.device)
+        return yadb_write_clipboard(text, self.device)
 
     def long_press(self, x, y, duration=1000):
         adb_command = f"adb -s {self.device} shell input swipe {x} {y} {x} {y} {duration}"
