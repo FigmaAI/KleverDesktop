@@ -12,7 +12,7 @@ import {
   Circle,
   Brain,
   Sparkles,
-
+  BarChart3,
   AlertTriangle,
   FolderOpen,
   Trash2,
@@ -20,6 +20,8 @@ import {
   ChevronRight,
   Calendar,
   CheckCircle,
+  Cloud,
+  Cpu,
 } from "lucide-react"
 
 import {
@@ -40,9 +42,10 @@ import type { Project } from "@/types/project"
 import logoImg from "@/assets/logo.png"
 import { cn } from "@/lib/utils"
 
-export type AppView = 'projects' | 'settings' | 'schedules'
+export type AppView = 'projects' | 'settings' | 'schedules' | 'statistics'
 export type SettingsSection = 'model' | 'platform' | 'agent' | 'preferences' | 'danger'
 export type ScheduleSection = 'active' | 'history'
+export type StatisticsSection = 'api' | 'local'
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   projects: Project[]
@@ -62,6 +65,9 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   // Schedule specific
   activeScheduleSection?: ScheduleSection
   onScheduleSectionChange?: (section: ScheduleSection) => void
+  // Statistics specific
+  activeStatisticsSection?: StatisticsSection
+  onStatisticsSectionChange?: (section: StatisticsSection) => void
 }
 
 const settingsMenuItems: { id: SettingsSection; labelKey: string; icon: React.ElementType }[] = [
@@ -76,6 +82,11 @@ const settingsMenuItems: { id: SettingsSection; labelKey: string; icon: React.El
 const scheduleMenuItems: { id: ScheduleSection; labelKey: string; icon: React.ElementType }[] = [
   { id: 'active', labelKey: 'schedules.activeUpcoming', icon: Calendar },
   { id: 'history', labelKey: 'schedules.history', icon: CheckCircle },
+]
+
+const statisticsMenuItems: { id: StatisticsSection; labelKey: string; icon: React.ElementType }[] = [
+  { id: 'api', labelKey: 'statistics.apiModels', icon: Cloud },
+  { id: 'local', labelKey: 'statistics.localModels', icon: Cpu },
 ]
 
 export function AppSidebar({
@@ -93,6 +104,8 @@ export function AppSidebar({
   onSettingsSectionChange,
   activeScheduleSection = 'active',
   onScheduleSectionChange,
+  activeStatisticsSection = 'api',
+  onStatisticsSectionChange,
   ...props
 }: AppSidebarProps) {
   const { t } = useTranslation()
@@ -120,6 +133,13 @@ export function AppSidebar({
       isActive: currentView === 'schedules',
       onClick: () => onNavigate('schedules'),
       shortcut: `${modSymbol}2`,
+    },
+    {
+      title: t('nav.statistics'),
+      icon: BarChart3,
+      isActive: currentView === 'statistics',
+      onClick: () => onNavigate('statistics'),
+      shortcut: `${modSymbol}3`,
     },
     {
       title: t('nav.settings'),
@@ -448,6 +468,45 @@ export function AppSidebar({
                       <button
                         key={item.id}
                         onClick={() => onScheduleSectionChange?.(item.id)}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                            : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {t(item.labelKey)}
+                      </button>
+                    )
+                  })}
+                </nav>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+      )}
+
+      {/* Second sidebar - Statistics menu */}
+      {currentView === 'statistics' && (
+        <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+          <SidebarHeader className="gap-3.5 border-b p-4">
+            <div className="text-base font-medium text-foreground">
+              {t('nav.statistics')}
+            </div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup className="px-0">
+              <SidebarGroupContent>
+                <nav className="space-y-1 p-2">
+                  {statisticsMenuItems.map((item) => {
+                    const Icon = item.icon
+                    const isActive = activeStatisticsSection === item.id
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onStatisticsSectionChange?.(item.id)}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                           isActive

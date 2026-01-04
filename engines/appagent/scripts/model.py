@@ -486,9 +486,40 @@ def _parse_action_string(act: str) -> list:
     
     act_name = act.split("(")[0].strip()
     
-    if act_name == "tap":
-        area = int(re.findall(r"tap\((.*?)\)", act)[0])
-        return [act_name, area]
+    # Handle 'click' as alias for 'tap' (some models output click instead of tap)
+    if act_name == "click":
+        # Extract content from click() instead of tap()
+        click_match = re.findall(r"click\((.*?)\)", act)
+        if click_match:
+            click_content = click_match[0]
+            # Check if this is coordinate format (contains comma) instead of element label
+            if "," in click_content:
+                print_with_color(f"WARNING: click() contains coordinates '{click_content}' instead of element number", "yellow")
+                return ["RETRY_COORDINATE_FORMAT", click_content]
+            try:
+                area = int(click_content)
+                return ["tap", area]  # Return as 'tap' action
+            except ValueError:
+                print_with_color(f"WARNING: click() contains invalid value '{click_content}'", "yellow")
+                return ["RETRY_COORDINATE_FORMAT", click_content]
+        else:
+            # click() with no match - treat as error
+            print_with_color(f"WARNING: Could not parse click() action: {act}", "yellow")
+            return ["ERROR", "click"]
+    
+    elif act_name == "tap":
+        tap_content = re.findall(r"tap\((.*?)\)", act)[0]
+        # Check if this is coordinate format (contains comma) instead of element label
+        if "," in tap_content:
+            # Model returned coordinates like tap(919, 919) instead of element label tap(5)
+            print_with_color(f"WARNING: tap() contains coordinates '{tap_content}' instead of element number", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", tap_content]
+        try:
+            area = int(tap_content)
+            return [act_name, area]
+        except ValueError:
+            print_with_color(f"WARNING: tap() contains invalid value '{tap_content}'", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", tap_content]
     elif act_name == "text":
         input_str = re.findall(r"text\((.*?)\)", act)[0]
         # Remove quotes if present
@@ -498,8 +529,15 @@ def _parse_action_string(act: str) -> list:
             input_str = input_str[1:-1]
         return [act_name, input_str]
     elif act_name == "long_press":
-        area = int(re.findall(r"long_press\((.*?)\)", act)[0])
-        return [act_name, area]
+        lp_content = re.findall(r"long_press\((.*?)\)", act)[0]
+        if "," in lp_content:
+            print_with_color(f"WARNING: long_press() contains coordinates '{lp_content}' instead of element number", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", lp_content]
+        try:
+            area = int(lp_content)
+            return [act_name, area]
+        except ValueError:
+            return ["RETRY_COORDINATE_FORMAT", lp_content]
     elif act_name == "swipe":
         params = re.findall(r"swipe\((.*?)\)", act)[0]
         area, swipe_dir, dist = params.split(",")
@@ -511,6 +549,7 @@ def _parse_action_string(act: str) -> list:
         return [act_name]
     else:
         return ["ERROR", act_name]
+
 
 
 def _extract_valid_json(rsp: str) -> dict:
@@ -602,6 +641,9 @@ def parse_explore_rsp(rsp):
         action_result = _parse_action_string(act)
         if action_result[0] == "FINISH":
             return ["FINISH", observation, think, act, last_act]
+        elif action_result[0] == "RETRY_COORDINATE_FORMAT":
+            # Model output coordinates instead of element number - need retry
+            return ["RETRY_COORDINATE_FORMAT", action_result[1], observation, think, last_act]
         elif action_result[0] == "ERROR":
             print_with_color(f"ERROR: Undefined act {action_result[1]}!", "red")
             return ["ERROR"]
@@ -615,6 +657,7 @@ def parse_explore_rsp(rsp):
             return ["swipe", action_result[1], action_result[2], action_result[3], last_act, observation, think, act]
         elif action_result[0] == "grid":
             return ["grid", observation, think, act, last_act]
+
         
     except json.JSONDecodeError:
         print_with_color("JSON parse failed, trying regex fallback...", "yellow")
@@ -796,6 +839,12 @@ def parse_reflect_rsp(rsp):
         think = data.get("Thought") or data.get("thought", "")
         doc = data.get("Documentation") or data.get("documentation")
         
+    # Handle missing Decision field - infer from Thought content
+        if not decision:
+            print_with_color("WARNING: No 'Decision' in response, will retry...", "yellow")
+            # Return special value to trigger retry
+            return ["RETRY_MISSING_DECISION", think, doc]
+        
         print_with_color("✓ JSON parsed successfully", "green")
         print_with_color("Decision:", "yellow")
         print_with_color(decision, "magenta")
@@ -814,6 +863,7 @@ def parse_reflect_rsp(rsp):
         else:
             print_with_color(f"ERROR: Undefined decision {decision}!", "red")
             return ["ERROR"]
+
             
     except json.JSONDecodeError:
         print_with_color("JSON parse failed, trying regex fallback...", "yellow")
@@ -860,3 +910,261 @@ def parse_reflect_rsp(rsp):
         print_with_color(f"ERROR: an exception occurs while parsing the model response: {e}", "red")
         print_with_color(rsp, "red")
         return ["ERROR"]
+
+
+# =============================================================================
+# Generic Retry Functions
+# =============================================================================
+
+def _build_retry_prompt(error_type: str, error_details: str, elem_count: int, original_prompt: str) -> str:
+    """
+    Build a retry prompt based on the error type.
+    
+    Args:
+        error_type: Type of error (COORDINATE_FORMAT, PARSE_ERROR, etc.)
+        error_details: Details about the error
+        elem_count: Number of elements on screen
+        original_prompt: Original prompt to append
+    
+    Returns:
+        Retry prompt string
+    """
+    if error_type == "COORDINATE_FORMAT":
+        return f"""Your previous response used pixel coordinates in the Action field: {error_details}
+
+This is INCORRECT. You must use ELEMENT NUMBERS shown on the screenshot, NOT pixel coordinates.
+
+Look at the screenshot - each interactive element has a NUMBER label displayed on it.
+Use that number in your action.
+
+CORRECT format examples:
+- tap(5)  - where 5 is the number label on the element
+- text("search query")  - to type text
+- swipe(3, "up", "medium")  - to swipe on element 3
+
+INCORRECT format:
+- tap(919, 919) - pixel coordinates are WRONG
+- click(100, 200) - pixel coordinates are WRONG
+
+Available elements are numbered 1 to {elem_count}.
+
+{original_prompt}"""
+
+    elif error_type == "PARSE_ERROR":
+        return f"""Your previous response could not be parsed. Error: {error_details}
+
+Please respond with valid JSON in this exact format:
+{{
+    "Observation": "What you see on the screen",
+    "Thought": "Your reasoning about what to do next",
+    "Action": "The action to take (e.g., tap(5), text(\\"search query\\"), swipe(3, \\"up\\", \\"medium\\"), FINISH)",
+    "Summary": "Brief summary of this step"
+}}
+
+IMPORTANT:
+- Use element NUMBERS (1 to {elem_count}), not pixel coordinates
+- For text input, use: text("your text here")
+- Ensure your JSON is complete and properly formatted
+
+{original_prompt}"""
+
+    elif error_type == "UNKNOWN_ACTION":
+        return f"""Your previous response used an unknown action: {error_details}
+
+Available actions are:
+- tap(n) - tap on element number n
+- long_press(n) - long press on element number n  
+- text("string") - type text into the focused input field
+- swipe(n, "direction", "distance") - swipe on element n, direction is up/down/left/right, distance is short/medium/long
+- grid - request a grid overlay for precise tapping
+- FINISH - when the task is complete
+
+Please use one of these actions. Elements are numbered 1 to {elem_count}.
+
+{original_prompt}"""
+
+    else:
+        return f"""Your previous response had an error: {error_details}
+
+Please try again with valid JSON format and correct action syntax.
+Available elements are numbered 1 to {elem_count}.
+
+{original_prompt}"""
+
+
+def get_explore_response_with_retry(mllm, prompt: str, images: List[str], elem_count: int, 
+                                     max_retries: int = 2, log_file: str = None) -> tuple:
+    """
+    Get model response and parse it, with automatic retry on parsing errors.
+    
+    This provides a generic retry mechanism for all types of parsing errors:
+    - Coordinate format errors (model outputs pixel coords instead of element numbers)
+    - JSON parsing errors (malformed JSON)
+    - Unknown action errors
+    
+    Args:
+        mllm: Model instance
+        prompt: Original prompt
+        images: Image paths for the request
+        elem_count: Number of elements on screen (for retry prompts)
+        max_retries: Maximum retry attempts (default: 2)
+        log_file: Optional log file path for reporting
+    
+    Returns:
+        tuple: (success: bool, result: list or str, metadata: dict or None)
+        - On success: (True, parsed_result_list, metadata)
+        - On failure: (False, error_message, None)
+    """
+    current_prompt = prompt
+    total_metadata = None
+    
+    for attempt in range(max_retries + 1):
+        is_retry = attempt > 0
+        if is_retry:
+            print_with_color(f"[Retry {attempt}/{max_retries}] Attempting to get valid response...", "yellow")
+        
+        # Get model response
+        status, rsp, metadata = mllm.get_model_response(current_prompt, images)
+        
+        # Accumulate metadata
+        if metadata:
+            if total_metadata is None:
+                total_metadata = metadata.copy()
+            else:
+                # Accumulate tokens and time
+                total_metadata['prompt_tokens'] = total_metadata.get('prompt_tokens', 0) + metadata.get('prompt_tokens', 0)
+                total_metadata['completion_tokens'] = total_metadata.get('completion_tokens', 0) + metadata.get('completion_tokens', 0)
+                total_metadata['total_tokens'] = total_metadata.get('total_tokens', 0) + metadata.get('total_tokens', 0)
+                total_metadata['response_time'] = total_metadata.get('response_time', 0) + metadata.get('response_time', 0)
+        
+        if not status:
+            print_with_color(f"Model request failed: {rsp}", "red")
+            if attempt < max_retries:
+                continue
+            return False, f"Model request failed after {max_retries + 1} attempts: {rsp}", total_metadata
+        
+        # Parse response
+        res = parse_explore_rsp(rsp)
+        act_name = res[0]
+        
+        # Check for retry-able errors
+        if act_name == "RETRY_COORDINATE_FORMAT":
+            coords_value = res[1]
+            print_with_color(f"Model output coordinates ({coords_value}) instead of element number.", "yellow")
+            
+            if attempt < max_retries:
+                current_prompt = _build_retry_prompt("COORDINATE_FORMAT", coords_value, elem_count, prompt)
+                continue
+            else:
+                return False, f"Model keeps returning coordinates after {max_retries} retries", total_metadata
+        
+        elif act_name == "ERROR":
+            print_with_color("Parsing failed, will retry with clearer instructions.", "yellow")
+            
+            if attempt < max_retries:
+                current_prompt = _build_retry_prompt("PARSE_ERROR", "Could not parse response", elem_count, prompt)
+                continue
+            else:
+                return False, f"Failed to parse response after {max_retries} retries", total_metadata
+        
+        else:
+            # Success! Return the parsed result
+            return True, res, total_metadata
+    
+    # Should not reach here, but just in case
+    return False, "Unexpected error in retry loop", total_metadata
+
+
+def get_reflect_response_with_retry(mllm, prompt: str, images: List[str], 
+                                     max_retries: int = 2) -> tuple:
+    """
+    Get reflection response and parse it, with automatic retry on parsing errors.
+    
+    Args:
+        mllm: Model instance
+        prompt: Original prompt
+        images: Image paths for the request
+        max_retries: Maximum retry attempts (default: 2)
+    
+    Returns:
+        tuple: (success: bool, result: list or str, metadata: dict or None)
+    """
+    current_prompt = prompt
+    total_metadata = None
+    
+    for attempt in range(max_retries + 1):
+        is_retry = attempt > 0
+        if is_retry:
+            print_with_color(f"[Retry {attempt}/{max_retries}] Attempting to get valid reflection...", "yellow")
+        
+        # Get model response
+        status, rsp, metadata = mllm.get_model_response(current_prompt, images)
+        
+        # Accumulate metadata
+        if metadata:
+            if total_metadata is None:
+                total_metadata = metadata.copy()
+            else:
+                total_metadata['prompt_tokens'] = total_metadata.get('prompt_tokens', 0) + metadata.get('prompt_tokens', 0)
+                total_metadata['completion_tokens'] = total_metadata.get('completion_tokens', 0) + metadata.get('completion_tokens', 0)
+                total_metadata['total_tokens'] = total_metadata.get('total_tokens', 0) + metadata.get('total_tokens', 0)
+                total_metadata['response_time'] = total_metadata.get('response_time', 0) + metadata.get('response_time', 0)
+        
+        if not status:
+            print_with_color(f"Model request failed: {rsp}", "red")
+            if attempt < max_retries:
+                continue
+            return False, f"Model request failed after {max_retries + 1} attempts: {rsp}", total_metadata
+        
+        # Parse response
+        res = parse_reflect_rsp(rsp)
+        decision = res[0]
+        
+        # Check for retry-able errors
+        if decision == "RETRY_MISSING_DECISION":
+            print_with_color("Response missing Decision field, retrying...", "yellow")
+            
+            if attempt < max_retries:
+                current_prompt = f"""Your previous response was missing the required "Decision" field.
+
+You MUST include a "Decision" field with one of these values:
+- "INEFFECTIVE": The action did not help progress toward the goal
+- "BACK": Need to go back to previous screen
+- "CONTINUE": Action was successful, continue with the task  
+- "SUCCESS": The task is complete
+
+Please respond with valid JSON:
+{{
+    "Decision": "CONTINUE or INEFFECTIVE or BACK or SUCCESS",
+    "Thought": "Your reasoning about the action's effect",
+    "Documentation": "Description of this UI element's function"
+}}
+
+{prompt}"""
+                continue
+            else:
+                return False, f"Response missing Decision after {max_retries} retries", total_metadata
+        
+        elif decision == "ERROR":
+            print_with_color("Reflection parsing failed, will retry.", "yellow")
+            
+            if attempt < max_retries:
+                current_prompt = f"""Your previous response could not be parsed correctly.
+
+Please respond with valid JSON in this exact format:
+{{
+    "Decision": "CONTINUE or INEFFECTIVE or BACK or SUCCESS",
+    "Thought": "Your reasoning about the action's effect",
+    "Documentation": "Description of this UI element's function"
+}}
+
+{prompt}"""
+                continue
+            else:
+                return False, f"Failed to parse reflection after {max_retries} retries", total_metadata
+        
+        else:
+            # Success!
+            return True, res, total_metadata
+    
+    return False, "Unexpected error in retry loop", total_metadata

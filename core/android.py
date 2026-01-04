@@ -120,12 +120,13 @@ def get_adb_path() -> Optional[str]:
 # ADB Command Execution
 # ============================================
 
-def execute_adb(adb_command: str) -> str:
+def execute_adb(adb_command: str, verbose: bool = False) -> str:
     """
     Execute adb command using full path to adb executable
 
     Args:
         adb_command: Command string (e.g., "adb devices" or just "devices")
+        verbose: If True, print detailed execution info
 
     Returns:
         Command output or "ERROR"
@@ -144,12 +145,29 @@ def execute_adb(adb_command: str) -> str:
 
     # Replace 'adb' with full path in command
     # Handle both "adb devices" and "devices" formats
+    original_command = adb_command
     if adb_command.startswith('adb '):
         adb_command = adb_command.replace('adb ', f'{adb_path} ', 1)
     else:
         adb_command = f'{adb_path} {adb_command}'
 
+    # Log for tap/swipe commands (input commands)
+    is_input_command = 'shell input' in original_command
+    if is_input_command:
+        print_with_color(f"   🔧 [ADB] Executing: {original_command}", "cyan")
+
     result = subprocess.run(adb_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    if is_input_command:
+        if result.returncode == 0:
+            print_with_color(f"   ✅ [ADB] Success (return code: {result.returncode})", "green")
+            if result.stdout.strip():
+                print_with_color(f"   📤 [ADB] Output: {result.stdout.strip()[:100]}", "white")
+        else:
+            print_with_color(f"   ❌ [ADB] Failed (return code: {result.returncode})", "red")
+            if result.stderr.strip():
+                print_with_color(f"   📤 [ADB] Error: {result.stderr.strip()[:100]}", "red")
+    
     if result.returncode == 0:
         return result.stdout.strip()
     print_with_color(f"Command execution failed: {adb_command}", "red")
@@ -300,6 +318,48 @@ def wait_for_device(timeout: int = 120) -> bool:
     return False
 
 
+def restart_emulator_cold(device_serial: str = None, avd_name: str = None) -> bool:
+    """
+    Restart emulator with cold boot (stop existing + start fresh).
+    
+    This ensures a clean state for each task execution, which is critical
+    for fair benchmarking where each model should start from identical conditions.
+    
+    Args:
+        device_serial: Serial of emulator to restart (e.g., 'emulator-5554')
+        avd_name: AVD name to start (if None, uses first available)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    print_with_color("🔄 Cold restarting emulator for clean state...", "cyan")
+    
+    # Step 1: Stop existing emulator
+    if device_serial:
+        print_with_color(f"Stopping emulator: {device_serial}...", "yellow")
+        stop_emulator(device_serial)
+        # Wait for emulator to fully shut down
+        time.sleep(5)
+    else:
+        # Stop all running emulators
+        devices = list_all_devices()
+        emulators = [d for d in devices if d.startswith('emulator-')]
+        if emulators:
+            print_with_color(f"Stopping {len(emulators)} running emulator(s)...", "yellow")
+            for emu in emulators:
+                stop_emulator(emu)
+            time.sleep(5)
+    
+    # Step 2: Start emulator with cold boot
+    print_with_color("Starting emulator with cold boot...", "green")
+    if not start_emulator(avd_name, wait_for_boot=True):
+        print_with_color("ERROR: Failed to cold start emulator", "red")
+        return False
+    
+    print_with_color("✓ Emulator cold restarted successfully!", "green")
+    return True
+
+
 def stop_emulator(device_serial: str = None) -> bool:
     """
     Stop a running Android emulator
@@ -423,6 +483,54 @@ def find_app_package(app_name: str) -> Optional[str]:
     best_match = matching_packages[0]
     print_with_color(f"Found app package: {best_match} (from {len(matching_packages)} matches)", "green")
     return best_match
+
+
+def reset_app_state(package_name: str, device_serial: str = None) -> bool:
+    """
+    Reset app to clean state: force-stop, go home, then relaunch.
+    
+    This ensures each task starts from a consistent state, which is critical
+    for fair benchmarking where each model should start from identical conditions.
+    
+    Args:
+        package_name: Full package name (e.g., 'com.google.android.youtube')
+        device_serial: Device serial (optional, uses first device if not specified)
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    if not package_name:
+        print_with_color("ERROR: No package name provided", "red")
+        return False
+    
+    # Get device serial if not specified
+    if device_serial is None:
+        devices = list_all_devices()
+        if not devices:
+            print_with_color("ERROR: No devices connected", "red")
+            return False
+        device_serial = devices[0]
+    
+    print_with_color(f"🔄 Resetting app state: {package_name}...", "cyan")
+    
+    # Step 1: Force stop the app (kills all processes)
+    print_with_color("   Force stopping app...", "yellow")
+    force_stop_cmd = f"adb -s {device_serial} shell am force-stop {package_name}"
+    execute_adb(force_stop_cmd)
+    time.sleep(1)
+    
+    # Step 2: Go to home screen
+    print_with_color("   Going to home screen...", "yellow")
+    home_cmd = f"adb -s {device_serial} shell input keyevent KEYCODE_HOME"
+    execute_adb(home_cmd)
+    time.sleep(1)
+    
+    # Step 3: Clear recent apps (optional but helps ensure clean state)
+    # Press recent apps button, then clear all
+    # Note: This is optional and may not work on all devices
+    
+    print_with_color("✓ App state reset complete", "green")
+    return True
 
 
 def launch_app(package_name: str, device_serial: str = None) -> bool:
@@ -806,8 +914,10 @@ def prelaunch_app(apk_source: Dict[str, Any], device_serial: str = None, status_
                 'error': f'Please install {package_name} from Play Store manually, then try again'
             }
     
-    # Step 3: Launch app
+    # Step 3: Reset app state and launch app
+    # Always reset to ensure clean state between tasks (important for benchmarking)
     if package_name:
+        reset_app_state(package_name, target_device)
         launch_app(package_name, target_device)
     
     return {

@@ -11,6 +11,7 @@ import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 import { Badge } from '@/components/ui/badge'
 import { useLiteLLMProviders } from '@/hooks/useLiteLLMProviders'
 import { Monitor, Cloud } from 'lucide-react'
+import { formatModelName, removeProviderPrefix as modelUtilsRemoveProviderPrefix } from '@/lib/model-utils'
 
 export interface ModelSelection {
   provider: string   // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
@@ -136,9 +137,7 @@ export function ModelSelector({
 
   // Remove provider prefix from model name for cleaner display
   const removeProviderPrefix = useCallback((modelId: string) => {
-    // Remove common provider prefixes: ollama/, openai/, anthropic/, etc.
-    const prefixMatch = modelId.match(/^[^/]+\/(.+)$/)
-    return prefixMatch ? prefixMatch[1] : modelId
+    return modelUtilsRemoveProviderPrefix(modelId);
   }, [])
 
   // Notify parent of changes - only when user makes a selection (not on sync)
@@ -161,7 +160,7 @@ export function ModelSelector({
     return currentModels.map((m) => {
       const modelInfo = getModelInfo(m);
       const hasBadges = modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens);
-      const displayName = removeProviderPrefix(m);
+      const displayName = formatModelName(m);
 
       return {
         value: m,

@@ -55,8 +55,18 @@ src/
 └── hooks/                # 9 custom hooks
 
 core/                     # Python shared code
+├── llm_adapter.py        # LiteLLM wrapper for model testing
+├── android.py            # Android device management
+└── config.py             # Configuration loading
+
 engines/appagent/         # Automation engine
+└── scripts/
+    ├── model.py          # Unified model parsing (all providers)
+    ├── self_explorer.py  # Main agent loop
+    ├── prompts.py        # Prompt templates
+    └── and_controller.py # Android controller
 ```
+
 
 ## IPC Pattern
 

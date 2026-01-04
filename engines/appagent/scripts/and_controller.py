@@ -35,6 +35,7 @@ from core.android import (
     start_emulator,
     wait_for_device,
     stop_emulator,
+    restart_emulator_cold,
     cleanup_emulators,
 
     # App management

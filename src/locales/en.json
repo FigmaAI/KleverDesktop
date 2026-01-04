@@ -23,7 +23,8 @@
   "nav": {
     "projects": "Projects",
     "settings": "Settings",
-    "schedules": "Schedules"
+    "schedules": "Schedules",
+    "statistics": "Statistics"
   },
   "sidebar": {
     "projects": "Projects",
@@ -402,6 +403,7 @@
     "listNavigation": "List Navigation",
     "goToProjects": "Go to Projects",
     "goToScheduledTasks": "Go to Scheduled Tasks",
+    "goToStatistics": "Go to Statistics",
     "goToSettings": "Go to Settings",
     "goBack": "Go back",
     "newProject": "New Project",
@@ -458,5 +460,41 @@
     "openFileFailedGeneric": "Failed to open file in editor",
     "markdownNotFound": "Markdown file path not found",
     "markdownNotExist": "Markdown file does not exist yet"
+  },
+  "statistics": {
+    "apiModels": "API Models",
+    "localModels": "Local Models",
+    "empty": "No statistics yet",
+    "emptyApiDesc": "Run tasks with API models to see usage statistics here.",
+    "emptyLocalDesc": "Run tasks with local models (Ollama) to see usage statistics here.",
+    "best": {
+      "mostUsed": "Most Used",
+      "mostReliable": "Most Reliable",
+      "mostEfficient": "Most Efficient",
+      "cheapest": "Cheapest",
+      "fastest": "Fastest",
+      "tasks": "tasks",
+      "success": "success",
+      "avgRounds": "avg rounds",
+      "perTask": "per task"
+    },
+    "table": {
+      "model": "Model",
+      "tasks": "Tasks",
+      "successRate": "Success Rate",
+      "totalCost": "Total Cost",
+      "avgCost": "Avg Cost",
+      "avgSpeed": "Avg Speed",
+      "avgDuration": "Avg Duration",
+      "tokens": "Tokens",
+      "avgRounds": "Avg Rounds"
+    },
+    "pagination": {
+      "modelsTotal": "{{count}} model(s) total"
+    },
+    "tooltip": {
+      "completed": "Completed",
+      "failed": "Failed"
+    }
   }
 }

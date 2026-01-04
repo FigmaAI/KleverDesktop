@@ -54,6 +54,8 @@ export interface Task {
   // Scheduling
   scheduledAt?: string; // ISO datetime string for when the task should run
   isScheduled?: boolean; // Whether this task is scheduled
+  // Benchmarking
+  coldBoot?: boolean; // If true, cold restart emulator before this task (for fair benchmarking)
 }
 
 export type ProjectStatus = 'active' | 'archived';

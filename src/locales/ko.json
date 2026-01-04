@@ -23,7 +23,8 @@
   "nav": {
     "projects": "프로젝트",
     "settings": "설정",
-    "schedules": "예약"
+    "schedules": "예약",
+    "statistics": "통계"
   },
   "sidebar": {
     "projects": "프로젝트",
@@ -402,6 +403,7 @@
     "listNavigation": "목록 탐색",
     "goToProjects": "프로젝트로 이동",
     "goToScheduledTasks": "예약된 태스크로 이동",
+    "goToStatistics": "통계로 이동",
     "goToSettings": "설정으로 이동",
     "goBack": "뒤로 가기",
     "newProject": "새 프로젝트",
@@ -458,5 +460,41 @@
     "openFileFailedGeneric": "에디터에서 파일 열기 실패",
     "markdownNotFound": "마크다운 파일 경로를 찾을 수 없습니다",
     "markdownNotExist": "마크다운 파일이 아직 존재하지 않습니다"
+  },
+  "statistics": {
+    "apiModels": "API 모델",
+    "localModels": "로컬 모델",
+    "empty": "아직 통계가 없습니다",
+    "emptyApiDesc": "API 모델로 태스크를 실행하면 여기에 사용 통계가 표시됩니다.",
+    "emptyLocalDesc": "로컬 모델(Ollama)로 태스크를 실행하면 여기에 사용 통계가 표시됩니다.",
+    "best": {
+      "mostUsed": "가장 많이 사용",
+      "mostReliable": "가장 안정적",
+      "mostEfficient": "가장 효율적",
+      "cheapest": "가장 저렴",
+      "fastest": "가장 빠름",
+      "tasks": "태스크",
+      "success": "성공",
+      "avgRounds": "평균 라운드",
+      "perTask": "태스크당"
+    },
+    "table": {
+      "model": "모델",
+      "tasks": "태스크",
+      "successRate": "성공률",
+      "totalCost": "총 비용",
+      "avgCost": "평균 비용",
+      "avgSpeed": "평균 속도",
+      "avgDuration": "평균 시간",
+      "tokens": "토큰",
+      "avgRounds": "평균 라운드"
+    },
+    "pagination": {
+      "modelsTotal": "총 {{count}}개 모델"
+    },
+    "tooltip": {
+      "completed": "완료",
+      "failed": "실패"
+    }
   }
 }

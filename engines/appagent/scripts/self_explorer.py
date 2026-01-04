@@ -22,8 +22,11 @@ if _project_root not in sys.path:
 
 import prompts
 from config import load_config
-from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
-from model import parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel
+from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, restart_emulator_cold, find_app_package, launch_app
+from model import (
+    parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel,
+    get_explore_response_with_retry, get_reflect_response_with_retry
+)
 from utils import print_with_color, draw_bbox_multi, append_to_log, append_images_as_table, draw_grid
 
 # Global flag to track if we started an emulator
@@ -210,6 +213,8 @@ parser.add_argument("--model", default=None,
 parser.add_argument("--model_name", default=None,
                     help="Model name (e.g., ollama/llama3.2-vision, gpt-4o)")
 parser.add_argument("--task_dir", default=None, help="Directory to store task results")
+parser.add_argument("--cold-boot", action="store_true", 
+                    help="Force cold restart of emulator before task (ensures clean state for benchmarking)")
 
 args = vars(parser.parse_args())
 
@@ -286,6 +291,20 @@ report_log_path = os.path.join(task_dir, f"log_report_{task_name}.md")
 # Initialize controller based on platform
 if platform == "android":
     device_list = list_all_devices()
+    
+    # Cold boot option: restart emulator for clean state (important for benchmarking)
+    if args.get("cold_boot") and device_list:
+        print_with_color("🔄 Cold boot requested - restarting emulator for clean state...", "cyan")
+        # Find emulator device (starts with 'emulator-')
+        emulator_devices = [d for d in device_list if d.startswith('emulator-')]
+        if emulator_devices:
+            if restart_emulator_cold(emulator_devices[0]):
+                _emulator_started_by_script = True
+                device_list = list_all_devices()
+            else:
+                print_with_color("WARNING: Cold boot failed, continuing with existing emulator...", "yellow")
+        else:
+            print_with_color("No emulator found for cold boot (only physical devices connected)", "yellow")
     
     if not device_list:
         print_with_color("No Android device found.", "yellow")
@@ -369,64 +388,15 @@ else:
 # ============================================================================
 # Android Platform: Main Exploration Loop
 # ============================================================================
+# All models now use label-based approach (tap(n) format)
+# The previous coordinate-based runner has been removed for simplification
 
-# Check if using GELab model - use specialized runner
-try:
-    from core.model_connectors.gelab_task_runner import is_gelab_model, run_gelab_task
-    USE_GELAB_RUNNER = is_gelab_model(model_name)
-except ImportError:
-    USE_GELAB_RUNNER = False
-
-if USE_GELAB_RUNNER:
-    # GELab Mode: Use specialized task runner
-    print_with_color("=" * 60, "green")
-    print_with_color("🚀 GELab Model Detected - Using GELab Task Runner", "green")
-    print_with_color("=" * 60, "green")
-    
-    # Write report header
-    append_to_log(f"# User Testing Report for {app}", report_log_path)
-    append_to_log(task_name, report_log_path)
-    append_to_log(f"## Task Description", report_log_path)
-    append_to_log(task_desc, report_log_path)
-    append_to_log(f"\n## Execution Mode: GELab ({model_name})\n", report_log_path)
-    
-    # Run GELab task
-    gelab_result = run_gelab_task(
-        controller=controller,
-        task_desc=task_desc,
-        task_dir=task_dir,
-        model_name=model_name,
-        api_key=api_key,
-        base_url=base_url,
-        max_rounds=configs["MAX_ROUNDS"],
-        report_log_path=report_log_path,
-        emit_progress=emit_progress,
-        configs=configs
-    )
-    
-    # Write summary
-    append_to_log(f"\n## Execution Summary", report_log_path)
-    append_to_log(f"- **Platform:** Android (GELab)", report_log_path)
-    append_to_log(f"- **Model:** {model_name}", report_log_path)
-    append_to_log(f"- **Rounds:** {gelab_result['rounds']}", report_log_path)
-    append_to_log(f"- **Total Tokens:** {gelab_result['total_tokens']}", report_log_path)
-    append_to_log(f"- **Total Time:** {gelab_result['total_time']:.2f}s", report_log_path)
-    
-    if gelab_result["success"]:
-        append_to_log(f"- **Status:** ✅ Success", report_log_path)
-        print_with_color("✅ GELab task completed successfully!", "green")
-        sys.exit(0)
-    else:
-        append_to_log(f"- **Status:** ❌ Failed", report_log_path)
-        append_to_log(f"- **Error:** {gelab_result.get('error', 'Unknown')}", report_log_path)
-        print_with_color(f"❌ GELab task failed: {gelab_result.get('error')}", "red")
-        sys.exit(1)
-
-# Standard AppAgent Mode (non-GELab models)
+# Standard AppAgent Mode (all models)
 round_count = 0
 doc_count = 0
 useless_list = set()
 last_act = "None"
+
 task_complete = False
 
 # Write the report markdown file
@@ -488,10 +458,15 @@ while round_count < configs["MAX_ROUNDS"]:
     prompt = re.sub(r"<system_language>", system_language, prompt)
     base64_img_before = os.path.join(task_dir, f"{round_count}_before_labeled.png")
     print_with_color("Thinking about what to do in the next step...", "yellow")
-    status, rsp, metadata = mllm.get_model_response(prompt, [base64_img_before])
+    
+    # Use generic retry function for explore response
+    status, res, metadata = get_explore_response_with_retry(
+        mllm, prompt, [base64_img_before], len(elem_list), 
+        max_retries=configs.get("MAX_PARSE_RETRIES", 2)
+    )
 
     # Log performance metrics to report
-    if status and metadata:
+    if metadata:
         perf_info = f"\n**Performance:** {metadata['response_time']:.2f}s"
         if metadata.get('total_tokens', 0) > 0:
             perf_info += f" | Tokens: {metadata['prompt_tokens']} + {metadata['completion_tokens']} = {metadata['total_tokens']}"
@@ -506,17 +481,212 @@ while round_count < configs["MAX_ROUNDS"]:
                      metadata.get('prompt_tokens', 0),
                      metadata.get('completion_tokens', 0))
 
-    if status:
-        with open(explore_log_path, "a") as logfile:
-            log_item = {"step": round_count, "prompt": prompt, "image": f"{round_count}_before_labeled.png",
-                        "response": rsp}
-            logfile.write(json.dumps(log_item) + "\n")
-        res = parse_explore_rsp(rsp)
-        act_name = res[0]
+    if not status:
+        # All retries failed
+        print_with_color(f"Failed to get valid response: {res}", "red")
+        time.sleep(configs["REQUEST_INTERVAL"])
+        continue
 
-        # Extract reasoning information based on action type
-        if act_name == "FINISH":
-            observation, think, act, last_act = res[1], res[2], res[3], res[4]
+    # res is now the parsed result list
+    act_name = res[0]
+
+    # Extract reasoning information based on action type
+    if act_name == "FINISH":
+        observation, think, act, last_act = res[1], res[2], res[3], res[4]
+        # Write reasoning to report
+        append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+        append_to_log(f"**Thought:** {think}\n", report_log_path)
+        append_to_log(f"**Action:** {act}\n", report_log_path)
+        append_to_log(f"**Summary:** {last_act}\n", report_log_path)
+        task_complete = True
+        break
+    elif act_name == "grid":
+        observation, think, act, last_act = res[1], res[2], res[3], res[4]
+    elif act_name in ["tap", "long_press"]:
+        last_act = res[2]
+        observation, think, act = res[3], res[4], res[5]
+    elif act_name == "text":
+        last_act = res[2]
+        observation, think, act = res[3], res[4], res[5]
+    elif act_name == "swipe":
+        last_act = res[4]
+        observation, think, act = res[5], res[6], res[7]
+    else:
+        observation = think = act = last_act = "Unknown"
+
+    # Write reasoning to report
+    append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+    append_to_log(f"**Thought:** {think}\n", report_log_path)
+    append_to_log(f"**Action:** {act}\n", report_log_path)
+    append_to_log(f"**Summary:** {last_act}\n", report_log_path)
+    if act_name == "tap":
+        _, area, _, _, _, _ = res
+        
+        # Validate element index and retry if out of bounds
+        if not validate_element_area(area, elem_list, "tap"):
+            # Retry with corrected prompt
+            retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+            if retry_result[0]:
+                retry_res = parse_explore_rsp(retry_result[1])
+                if retry_res[0] == "tap":
+                    _, area, _, _, _, _ = retry_res
+                    if not validate_element_area(area, elem_list, "tap"):
+                        print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue  # Skip to next round
+                else:
+                    print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            else:
+                print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+                time.sleep(configs["REQUEST_INTERVAL"])
+                continue
+        
+        tl, br = elem_list[area - 1].bbox
+        x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
+
+        # Draw a bounding box on the canvas image and save it
+        screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
+        controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
+        controller.draw_circle(x, y, screenshot_before_actioned)
+
+        ret = controller.tap(x, y)
+        if ret == "ERROR":
+            print_with_color("ERROR: tap execution failed", "red")
+            break
+    elif act_name == "text":
+        _, input_str, _, _, _, _ = res
+
+        # For text action, just copy the screenshot (no bounding box since no specific element is targeted)
+        # Text is typed into the currently focused element from a previous tap action
+        screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
+        shutil.copy(screenshot_before, screenshot_before_actioned)
+
+        ret = controller.text(input_str)
+        if ret == "ERROR":
+            print_with_color("ERROR: text execution failed", "red")
+            break
+
+        # Auto-press Enter after text input (executes search in search fields)
+        # This makes text input more reliable since user doesn't need to manually tap search button
+        time.sleep(0.3)  # Small delay to ensure text is fully entered
+        controller.enter()
+        print_with_color("Auto-pressed Enter after text input", "cyan")
+    elif act_name == "long_press":
+        _, area, _, _, _, _ = res
+        
+        # Validate element index and retry if out of bounds
+        if not validate_element_area(area, elem_list, "long_press"):
+            retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+            if retry_result[0]:
+                retry_res = parse_explore_rsp(retry_result[1])
+                if retry_res[0] == "long_press":
+                    _, area, _, _, _, _ = retry_res
+                    if not validate_element_area(area, elem_list, "long_press"):
+                        print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue
+                else:
+                    print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            else:
+                print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+                time.sleep(configs["REQUEST_INTERVAL"])
+                continue
+        
+        tl, br = elem_list[area - 1].bbox
+        x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
+
+        # Draw a bounding box on the canvas image and save it
+        screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
+        controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
+        controller.draw_circle(x, y, screenshot_before_actioned)
+
+        ret = controller.long_press(x, y)
+        if ret == "ERROR":
+            print_with_color("ERROR: long press execution failed", "red")
+            break
+    elif act_name == "swipe":
+        _, area, swipe_dir, dist, _, _, _, _ = res
+        
+        # Validate element index and retry if out of bounds
+        if not validate_element_area(area, elem_list, "swipe"):
+            retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
+            if retry_result[0]:
+                retry_res = parse_explore_rsp(retry_result[1])
+                if retry_res[0] == "swipe":
+                    _, area, swipe_dir, dist, _, _, _, _ = retry_res
+                    if not validate_element_area(area, elem_list, "swipe"):
+                        print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
+                        time.sleep(configs["REQUEST_INTERVAL"])
+                        continue
+                else:
+                    print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+        else:
+            print_with_color("ERROR: Retry failed. Skipping this round.", "red")
+            time.sleep(configs["REQUEST_INTERVAL"])
+            continue
+        
+        tl, br = elem_list[area - 1].bbox
+        x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
+
+        # Draw a bounding box on the canvas image and save it
+        screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
+        controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
+        controller.draw_arrow(x, y, swipe_dir, dist, screenshot_before_actioned)
+
+        ret = controller.swipe(x, y, swipe_dir, dist)
+        if ret == "ERROR":
+            print_with_color("ERROR: swipe execution failed", "red")
+            break
+    elif act_name == "grid":
+        # Grid mode - re-label the screen with grid overlay
+        grid_screenshot = os.path.join(task_dir, f"{round_count}_grid.png")
+        rows, cols = draw_grid(screenshot_before, grid_screenshot)
+        print_with_color("Grid mode activated. Waiting for grid-based action...", "yellow")
+
+        # Add grid screenshot to report
+        append_to_log(
+            f"![Grid overlay](./{round_count}_grid.png)",
+            report_log_path,
+        )
+
+        # Ask model for grid-based action
+        prompt = re.sub(r"<task_description>", task_desc, prompts.task_template_grid)
+        prompt = re.sub(r"<last_act>", last_act, prompt)
+        prompt = re.sub(r"<system_language>", system_language, prompt)
+
+        status, grid_rsp, grid_metadata = mllm.get_model_response(prompt, [grid_screenshot])
+
+        # Log grid performance metrics
+        if status and grid_metadata:
+            perf_info = f"\n**Grid Performance:** {grid_metadata['response_time']:.2f}s"
+            if grid_metadata.get('total_tokens', 0) > 0:
+                perf_info += f" | Tokens: {grid_metadata['prompt_tokens']} + {grid_metadata['completion_tokens']} = {grid_metadata['total_tokens']}"
+            if grid_metadata.get('cpu_usage', 0) > 0:
+                perf_info += f" | CPU: {grid_metadata['cpu_usage']:.1f}% | Memory: {grid_metadata['memory_usage']:.1f}%"
+            perf_info += f" | Provider: {grid_metadata['provider']} ({grid_metadata['model']})\n"
+            append_to_log(perf_info, report_log_path)
+            # Emit progress with token count from grid step
+            emit_progress(round_count, configs["MAX_ROUNDS"],
+                         grid_metadata.get('total_tokens', 0),
+                         grid_metadata.get('response_time', 0),
+                         grid_metadata.get('prompt_tokens', 0),
+                         grid_metadata.get('completion_tokens', 0))
+
+        if not status:
+            print_with_color(f"ERROR: {grid_rsp}", "red")
+            break
+
+        grid_res = parse_grid_rsp(grid_rsp)
+        grid_act_name = grid_res[0]
+
+        if grid_act_name == "FINISH":
+            observation, think, act, last_act = grid_res[1], grid_res[2], grid_res[3], grid_res[4]
             # Write reasoning to report
             append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
             append_to_log(f"**Thought:** {think}\n", report_log_path)
@@ -524,302 +694,105 @@ while round_count < configs["MAX_ROUNDS"]:
             append_to_log(f"**Summary:** {last_act}\n", report_log_path)
             task_complete = True
             break
-        elif act_name == "grid":
-            observation, think, act, last_act = res[1], res[2], res[3], res[4]
-        elif act_name in ["tap", "long_press"]:
-            last_act = res[2]
-            observation, think, act = res[3], res[4], res[5]
-        elif act_name == "text":
-            last_act = res[2]
-            observation, think, act = res[3], res[4], res[5]
-        elif act_name == "swipe":
-            last_act = res[4]
-            observation, think, act = res[5], res[6], res[7]
-        else:
-            observation = think = act = last_act = "Unknown"
+        elif grid_act_name == "tap_grid":
+            _, area, subarea, last_act, observation, think, act = grid_res
+            # Write reasoning to report
+            append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+            append_to_log(f"**Thought:** {think}\n", report_log_path)
+            append_to_log(f"**Action:** {act}\n", report_log_path)
+            append_to_log(f"**Summary:** {last_act}\n", report_log_path)
+            x, y = calculate_grid_coordinates(area, subarea, width, height, rows, cols)
+            print_with_color(f"Grid tap: area {area}, subarea {subarea} -> ({x}, {y})", "yellow")
 
-        # Write reasoning to report
-        append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
-        append_to_log(f"**Thought:** {think}\n", report_log_path)
-        append_to_log(f"**Action:** {act}\n", report_log_path)
-        append_to_log(f"**Summary:** {last_act}\n", report_log_path)
-        if act_name == "tap":
-            _, area, _, _, _, _ = res
-            
-            # Validate element index and retry if out of bounds
-            if not validate_element_area(area, elem_list, "tap"):
-                # Retry with corrected prompt
-                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
-                if retry_result[0]:
-                    retry_res = parse_explore_rsp(retry_result[1])
-                    if retry_res[0] == "tap":
-                        _, area, _, _, _, _ = retry_res
-                        if not validate_element_area(area, elem_list, "tap"):
-                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
-                            time.sleep(configs["REQUEST_INTERVAL"])
-                            continue  # Skip to next round
-                    else:
-                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
-                        time.sleep(configs["REQUEST_INTERVAL"])
-                        continue
-                else:
-                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
-                    time.sleep(configs["REQUEST_INTERVAL"])
-                    continue
-            
-            tl, br = elem_list[area - 1].bbox
-            x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
-
-            # Draw a bounding box on the canvas image and save it
-            screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
-            controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
-            controller.draw_circle(x, y, screenshot_before_actioned)
+            # Draw circle on the grid screenshot and save
+            screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
+            controller.get_screenshot_with_bbox(grid_screenshot, screenshot_grid_actioned, (x-5, y-5), (x+5, y+5))
+            controller.draw_circle(x, y, screenshot_grid_actioned)
 
             ret = controller.tap(x, y)
             if ret == "ERROR":
-                print_with_color("ERROR: tap execution failed", "red")
-                break
-        elif act_name == "text":
-            _, input_str, _, _, _, _ = res
-
-            # For text action, just copy the screenshot (no bounding box since no specific element is targeted)
-            # Text is typed into the currently focused element from a previous tap action
-            screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
-            shutil.copy(screenshot_before, screenshot_before_actioned)
-
-            ret = controller.text(input_str)
-            if ret == "ERROR":
-                print_with_color("ERROR: text execution failed", "red")
+                print_with_color("ERROR: grid tap execution failed", "red")
                 break
 
-            # Auto-press Enter after text input (executes search in search fields)
-            # This makes text input more reliable since user doesn't need to manually tap search button
-            time.sleep(0.3)  # Small delay to ensure text is fully entered
-            controller.enter()
-            print_with_color("Auto-pressed Enter after text input", "cyan")
-        elif act_name == "long_press":
-            _, area, _, _, _, _ = res
-            
-            # Validate element index and retry if out of bounds
-            if not validate_element_area(area, elem_list, "long_press"):
-                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
-                if retry_result[0]:
-                    retry_res = parse_explore_rsp(retry_result[1])
-                    if retry_res[0] == "long_press":
-                        _, area, _, _, _, _ = retry_res
-                        if not validate_element_area(area, elem_list, "long_press"):
-                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
-                            time.sleep(configs["REQUEST_INTERVAL"])
-                            continue
-                    else:
-                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
-                        time.sleep(configs["REQUEST_INTERVAL"])
-                        continue
-                else:
-                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
-                    time.sleep(configs["REQUEST_INTERVAL"])
-                    continue
-            
-            tl, br = elem_list[area - 1].bbox
-            x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
+            # Add actioned image to report
+            append_to_log(
+                f"![Grid action](./{round_count}_grid_action.png)",
+                report_log_path,
+            )
+        elif grid_act_name == "long_press_grid":
+            _, area, subarea, last_act, observation, think, act = grid_res
+            # Write reasoning to report
+            append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+            append_to_log(f"**Thought:** {think}\n", report_log_path)
+            append_to_log(f"**Action:** {act}\n", report_log_path)
+            append_to_log(f"**Summary:** {last_act}\n", report_log_path)
+            x, y = calculate_grid_coordinates(area, subarea, width, height, rows, cols)
+            print_with_color(f"Grid long press: area {area}, subarea {subarea} -> ({x}, {y})", "yellow")
 
-            # Draw a bounding box on the canvas image and save it
-            screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
-            controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
-            controller.draw_circle(x, y, screenshot_before_actioned)
+            # Draw circle on the grid screenshot and save
+            screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
+            controller.get_screenshot_with_bbox(grid_screenshot, screenshot_grid_actioned, (x-5, y-5), (x+5, y+5))
+            controller.draw_circle(x, y, screenshot_grid_actioned)
 
             ret = controller.long_press(x, y)
             if ret == "ERROR":
-                print_with_color("ERROR: long press execution failed", "red")
+                print_with_color("ERROR: grid long press execution failed", "red")
                 break
-        elif act_name == "swipe":
-            _, area, swipe_dir, dist, _, _, _, _ = res
-            
-            # Validate element index and retry if out of bounds
-            if not validate_element_area(area, elem_list, "swipe"):
-                retry_result = retry_with_valid_range(mllm, prompt, [base64_img_before], len(elem_list), area)
-                if retry_result[0]:
-                    retry_res = parse_explore_rsp(retry_result[1])
-                    if retry_res[0] == "swipe":
-                        _, area, swipe_dir, dist, _, _, _, _ = retry_res
-                        if not validate_element_area(area, elem_list, "swipe"):
-                            print_with_color(f"ERROR: Retry still returned invalid element {area}. Skipping this round.", "red")
-                            time.sleep(configs["REQUEST_INTERVAL"])
-                            continue
-                    else:
-                        print_with_color(f"Retry returned different action: {retry_res[0]}. Skipping this round.", "yellow")
-                        time.sleep(configs["REQUEST_INTERVAL"])
-                        continue
-                else:
-                    print_with_color("ERROR: Retry failed. Skipping this round.", "red")
-                    time.sleep(configs["REQUEST_INTERVAL"])
-                    continue
-            
-            tl, br = elem_list[area - 1].bbox
-            x, y = (tl[0] + br[0]) // 2, (tl[1] + br[1]) // 2
 
-            # Draw a bounding box on the canvas image and save it
-            screenshot_before_actioned = os.path.join(task_dir, f"{round_count}_before_labeled_action.png")
-            controller.get_screenshot_with_bbox(screenshot_before, screenshot_before_actioned, tl, br)
-            controller.draw_arrow(x, y, swipe_dir, dist, screenshot_before_actioned)
-
-            ret = controller.swipe(x, y, swipe_dir, dist)
-            if ret == "ERROR":
-                print_with_color("ERROR: swipe execution failed", "red")
-                break
-        elif act_name == "grid":
-            # Grid mode - re-label the screen with grid overlay
-            grid_screenshot = os.path.join(task_dir, f"{round_count}_grid.png")
-            rows, cols = draw_grid(screenshot_before, grid_screenshot)
-            print_with_color("Grid mode activated. Waiting for grid-based action...", "yellow")
-
-            # Add grid screenshot to report
+            # Add actioned image to report
             append_to_log(
-                f"![Grid overlay](./{round_count}_grid.png)",
+                f"![Grid action](./{round_count}_grid_action.png)",
                 report_log_path,
             )
+        elif grid_act_name == "swipe_grid":
+            _, start_area, start_subarea, end_area, end_subarea, last_act, observation, think, act = grid_res
+            # Write reasoning to report
+            append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+            append_to_log(f"**Thought:** {think}\n", report_log_path)
+            append_to_log(f"**Action:** {act}\n", report_log_path)
+            append_to_log(f"**Summary:** {last_act}\n", report_log_path)
+            start_x, start_y = calculate_grid_coordinates(start_area, start_subarea, width, height, rows, cols)
+            end_x, end_y = calculate_grid_coordinates(end_area, end_subarea, width, height, rows, cols)
+            print_with_color(f"Grid swipe: from area {start_area}/{start_subarea} ({start_x},{start_y}) to area {end_area}/{end_subarea} ({end_x},{end_y})", "yellow")
 
-            # Ask model for grid-based action
-            prompt = re.sub(r"<task_description>", task_desc, prompts.task_template_grid)
-            prompt = re.sub(r"<last_act>", last_act, prompt)
-            prompt = re.sub(r"<system_language>", system_language, prompt)
+            # Draw arrow on the grid screenshot and save
+            screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
+            shutil.copy(grid_screenshot, screenshot_grid_actioned)
+            img = cv2.imread(screenshot_grid_actioned)
+            cv2.arrowedLine(img, (start_x, start_y), (end_x, end_y), (0, 0, 255), 3, tipLength=0.3)
+            cv2.imwrite(screenshot_grid_actioned, img)
 
-            status, grid_rsp, grid_metadata = mllm.get_model_response(prompt, [grid_screenshot])
-
-            # Log grid performance metrics
-            if status and grid_metadata:
-                perf_info = f"\n**Grid Performance:** {grid_metadata['response_time']:.2f}s"
-                if grid_metadata.get('total_tokens', 0) > 0:
-                    perf_info += f" | Tokens: {grid_metadata['prompt_tokens']} + {grid_metadata['completion_tokens']} = {grid_metadata['total_tokens']}"
-                if grid_metadata.get('cpu_usage', 0) > 0:
-                    perf_info += f" | CPU: {grid_metadata['cpu_usage']:.1f}% | Memory: {grid_metadata['memory_usage']:.1f}%"
-                perf_info += f" | Provider: {grid_metadata['provider']} ({grid_metadata['model']})\n"
-                append_to_log(perf_info, report_log_path)
-                # Emit progress with token count from grid step
-                emit_progress(round_count, configs["MAX_ROUNDS"],
-                             grid_metadata.get('total_tokens', 0),
-                             grid_metadata.get('response_time', 0),
-                             grid_metadata.get('prompt_tokens', 0),
-                             grid_metadata.get('completion_tokens', 0))
-
-            if not status:
-                print_with_color(f"ERROR: {grid_rsp}", "red")
-                break
-
-            grid_res = parse_grid_rsp(grid_rsp)
-            grid_act_name = grid_res[0]
-
-            if grid_act_name == "FINISH":
-                observation, think, act, last_act = grid_res[1], grid_res[2], grid_res[3], grid_res[4]
-                # Write reasoning to report
-                append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
-                append_to_log(f"**Thought:** {think}\n", report_log_path)
-                append_to_log(f"**Action:** {act}\n", report_log_path)
-                append_to_log(f"**Summary:** {last_act}\n", report_log_path)
-                task_complete = True
-                break
-            elif grid_act_name == "tap_grid":
-                _, area, subarea, last_act, observation, think, act = grid_res
-                # Write reasoning to report
-                append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
-                append_to_log(f"**Thought:** {think}\n", report_log_path)
-                append_to_log(f"**Action:** {act}\n", report_log_path)
-                append_to_log(f"**Summary:** {last_act}\n", report_log_path)
-                x, y = calculate_grid_coordinates(area, subarea, width, height, rows, cols)
-                print_with_color(f"Grid tap: area {area}, subarea {subarea} -> ({x}, {y})", "yellow")
-
-                # Draw circle on the grid screenshot and save
-                screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
-                controller.get_screenshot_with_bbox(grid_screenshot, screenshot_grid_actioned, (x-5, y-5), (x+5, y+5))
-                controller.draw_circle(x, y, screenshot_grid_actioned)
-
-                ret = controller.tap(x, y)
-                if ret == "ERROR":
-                    print_with_color("ERROR: grid tap execution failed", "red")
-                    break
-
-                # Add actioned image to report
-                append_to_log(
-                    f"![Grid action](./{round_count}_grid_action.png)",
-                    report_log_path,
-                )
-            elif grid_act_name == "long_press_grid":
-                _, area, subarea, last_act, observation, think, act = grid_res
-                # Write reasoning to report
-                append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
-                append_to_log(f"**Thought:** {think}\n", report_log_path)
-                append_to_log(f"**Action:** {act}\n", report_log_path)
-                append_to_log(f"**Summary:** {last_act}\n", report_log_path)
-                x, y = calculate_grid_coordinates(area, subarea, width, height, rows, cols)
-                print_with_color(f"Grid long press: area {area}, subarea {subarea} -> ({x}, {y})", "yellow")
-
-                # Draw circle on the grid screenshot and save
-                screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
-                controller.get_screenshot_with_bbox(grid_screenshot, screenshot_grid_actioned, (x-5, y-5), (x+5, y+5))
-                controller.draw_circle(x, y, screenshot_grid_actioned)
-
-                ret = controller.long_press(x, y)
-                if ret == "ERROR":
-                    print_with_color("ERROR: grid long press execution failed", "red")
-                    break
-
-                # Add actioned image to report
-                append_to_log(
-                    f"![Grid action](./{round_count}_grid_action.png)",
-                    report_log_path,
-                )
-            elif grid_act_name == "swipe_grid":
-                _, start_area, start_subarea, end_area, end_subarea, last_act, observation, think, act = grid_res
-                # Write reasoning to report
-                append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
-                append_to_log(f"**Thought:** {think}\n", report_log_path)
-                append_to_log(f"**Action:** {act}\n", report_log_path)
-                append_to_log(f"**Summary:** {last_act}\n", report_log_path)
-                start_x, start_y = calculate_grid_coordinates(start_area, start_subarea, width, height, rows, cols)
-                end_x, end_y = calculate_grid_coordinates(end_area, end_subarea, width, height, rows, cols)
-                print_with_color(f"Grid swipe: from area {start_area}/{start_subarea} ({start_x},{start_y}) to area {end_area}/{end_subarea} ({end_x},{end_y})", "yellow")
-
-                # Draw arrow on the grid screenshot and save
-                screenshot_grid_actioned = os.path.join(task_dir, f"{round_count}_grid_action.png")
-                shutil.copy(grid_screenshot, screenshot_grid_actioned)
-                img = cv2.imread(screenshot_grid_actioned)
-                cv2.arrowedLine(img, (start_x, start_y), (end_x, end_y), (0, 0, 255), 3, tipLength=0.3)
-                cv2.imwrite(screenshot_grid_actioned, img)
-
-                # Calculate swipe direction from coordinates
-                dx = end_x - start_x
-                dy = end_y - start_y
-                if abs(dy) > abs(dx):
-                    direction = "down" if dy > 0 else "up"
-                else:
-                    direction = "right" if dx > 0 else "left"
-                dist = "long"  # Grid swipes are typically longer
-                ret = controller.swipe(start_x, start_y, direction, dist)
-
-                if ret == "ERROR":
-                    print_with_color("ERROR: grid swipe execution failed", "red")
-                    break
-
-                # Add actioned image to report
-                append_to_log(
-                    f"![Grid action](./{round_count}_grid_action.png)",
-                    report_log_path,
-                )
+            # Calculate swipe direction from coordinates
+            dx = end_x - start_x
+            dy = end_y - start_y
+            if abs(dy) > abs(dx):
+                direction = "down" if dy > 0 else "up"
             else:
-                print_with_color(f"ERROR: Undefined grid action {grid_act_name}!", "red")
-                break
-        else:
-            break
-        time.sleep(configs["REQUEST_INTERVAL"])
+                direction = "right" if dx > 0 else "left"
+            dist = "long"  # Grid swipes are typically longer
+            ret = controller.swipe(start_x, start_y, direction, dist)
 
-        # Add the actioned image to the report markdown file
-        append_to_log(
-            f"![Before action labeled action](./{round_count}_before_labeled_action.png)",
-            report_log_path,
-        )
+            if ret == "ERROR":
+                print_with_color("ERROR: grid swipe execution failed", "red")
+                break
+
+            # Add actioned image to report
+            append_to_log(
+                f"![Grid action](./{round_count}_grid_action.png)",
+                report_log_path,
+            )
+        else:
+            print_with_color(f"ERROR: Undefined grid action {grid_act_name}!", "red")
+            break
     else:
-        print_with_color(rsp, "red")
         break
+    time.sleep(configs["REQUEST_INTERVAL"])
+
+    # Add the actioned image to the report markdown file
+    append_to_log(
+        f"![Before action labeled action](./{round_count}_before_labeled_action.png)",
+        report_log_path,
+    )
 
     screenshot_after = controller.get_screenshot(f"{round_count}_after", task_dir)
     if screenshot_after == "ERROR":
@@ -850,10 +823,15 @@ while round_count < configs["MAX_ROUNDS"]:
     prompt = re.sub(r"<system_language>", system_language, prompt)
 
     print_with_color("Reflecting on my previous action...", "yellow")
-    status, rsp, reflect_metadata = mllm.get_model_response(prompt, [base64_img_before, base64_img_after])
+    
+    # Use generic retry function for reflection response
+    status, res, reflect_metadata = get_reflect_response_with_retry(
+        mllm, prompt, [base64_img_before, base64_img_after],
+        max_retries=configs.get("MAX_PARSE_RETRIES", 2)
+    )
 
     # Log reflection performance metrics
-    if status and reflect_metadata:
+    if reflect_metadata:
         perf_info = f"\n**Reflection Performance:** {reflect_metadata['response_time']:.2f}s"
         if reflect_metadata.get('total_tokens', 0) > 0:
             perf_info += f" | Tokens: {reflect_metadata['prompt_tokens']} + {reflect_metadata['completion_tokens']} = {reflect_metadata['total_tokens']}"
@@ -867,63 +845,63 @@ while round_count < configs["MAX_ROUNDS"]:
                      reflect_metadata.get('response_time', 0),
                      reflect_metadata.get('prompt_tokens', 0),
                      reflect_metadata.get('completion_tokens', 0))
-    if status:
-        resource_id = elem_list[int(area) - 1].uid
-        with open(reflect_log_path, "a") as logfile:
-            log_item = {"step": round_count, "prompt": prompt, "image_before": f"{round_count}_before_labeled.png",
-                        "image_after": f"{round_count}_after.png", "response": rsp}
-            logfile.write(json.dumps(log_item) + "\n")
-        res = parse_reflect_rsp(rsp)
-        decision = res[0]
-        reflect_think = res[1]
-        reflect_doc = res[2]
+    
+    if not status:
+        # All retries failed for reflection
+        print_with_color(f"Failed to get valid reflection: {res}", "red")
+        time.sleep(configs["REQUEST_INTERVAL"])
+        continue
+    
+    # res is now the parsed result list
+    resource_id = elem_list[int(area) - 1].uid
+    decision = res[0]
+    reflect_think = res[1]
+    reflect_doc = res[2]
 
-        # Write reflection results to report
-        append_to_log(f"\n### Reflection\n", report_log_path)
-        append_to_log(f"**Decision:** {decision}\n", report_log_path)
-        append_to_log(f"**Thought:** {reflect_think}\n", report_log_path)
-        if reflect_doc:
-            append_to_log(f"**Documentation:** {reflect_doc}\n", report_log_path)
-        if decision == "ERROR":
-            break
-        if decision == "INEFFECTIVE":
+    # Write reflection results to report
+    append_to_log(f"\n### Reflection\n", report_log_path)
+    append_to_log(f"**Decision:** {decision}\n", report_log_path)
+    append_to_log(f"**Thought:** {reflect_think}\n", report_log_path)
+    if reflect_doc:
+        append_to_log(f"**Documentation:** {reflect_doc}\n", report_log_path)
+    if decision == "ERROR":
+        break
+
+    if decision == "INEFFECTIVE":
+        useless_list.add(resource_id)
+        last_act = "None"
+    elif decision == "BACK" or decision == "CONTINUE" or decision == "SUCCESS":
+        if decision == "BACK" or decision == "CONTINUE":
             useless_list.add(resource_id)
             last_act = "None"
-        elif decision == "BACK" or decision == "CONTINUE" or decision == "SUCCESS":
-            if decision == "BACK" or decision == "CONTINUE":
-                useless_list.add(resource_id)
-                last_act = "None"
-                if decision == "BACK":
-                    ret = controller.back()
-                    if ret == "ERROR":
-                        print_with_color("ERROR: back execution failed", "red")
-                        break
-            doc = res[-1]
-            doc_name = resource_id + ".txt"
-            doc_path = os.path.join(docs_dir, doc_name)
-            if os.path.exists(doc_path):
-                doc_content = ast.literal_eval(open(doc_path).read())
-                if doc_content[act_name]:
-                    print_with_color(f"Documentation for the element {resource_id} already exists.", "yellow")
-                    continue
-            else:
-                doc_content = {
-                    "tap": "",
-                    "text": "",
-                    "v_swipe": "",
-                    "h_swipe": "",
-                    "long_press": ""
-                }
-            doc_content[act_name] = doc
-            with open(doc_path, "w") as outfile:
-                outfile.write(str(doc_content))
-            doc_count += 1
-            print_with_color(f"Documentation generated and saved to {doc_path}", "yellow")
+            if decision == "BACK":
+                ret = controller.back()
+                if ret == "ERROR":
+                    print_with_color("ERROR: back execution failed", "red")
+                    break
+        doc = res[-1]
+        doc_name = resource_id + ".txt"
+        doc_path = os.path.join(docs_dir, doc_name)
+        if os.path.exists(doc_path):
+            doc_content = ast.literal_eval(open(doc_path).read())
+            if doc_content[act_name]:
+                print_with_color(f"Documentation for the element {resource_id} already exists.", "yellow")
+                continue
         else:
-            print_with_color(f"ERROR: Undefined decision! {decision}", "red")
-            break
+            doc_content = {
+                "tap": "",
+                "text": "",
+                "v_swipe": "",
+                "h_swipe": "",
+                "long_press": ""
+            }
+        doc_content[act_name] = doc
+        with open(doc_path, "w") as outfile:
+            outfile.write(str(doc_content))
+        doc_count += 1
+        print_with_color(f"Documentation generated and saved to {doc_path}", "yellow")
     else:
-        print_with_color(f"ERROR: {rsp}", "red")
+        print_with_color(f"ERROR: Undefined decision! {decision}", "red")
         break
     time.sleep(configs["REQUEST_INTERVAL"])
 
