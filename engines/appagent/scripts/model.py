@@ -796,6 +796,12 @@ def parse_reflect_rsp(rsp):
         think = data.get("Thought") or data.get("thought", "")
         doc = data.get("Documentation") or data.get("documentation")
         
+    # Handle missing Decision field - infer from Thought content
+        if not decision:
+            print_with_color("WARNING: No 'Decision' in response, will retry...", "yellow")
+            # Return special value to trigger retry
+            return ["RETRY_MISSING_DECISION", think, doc]
+        
         print_with_color("✓ JSON parsed successfully", "green")
         print_with_color("Decision:", "yellow")
         print_with_color(decision, "magenta")
@@ -814,6 +820,7 @@ def parse_reflect_rsp(rsp):
         else:
             print_with_color(f"ERROR: Undefined decision {decision}!", "red")
             return ["ERROR"]
+
             
     except json.JSONDecodeError:
         print_with_color("JSON parse failed, trying regex fallback...", "yellow")

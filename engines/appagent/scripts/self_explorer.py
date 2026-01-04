@@ -842,6 +842,35 @@ while round_count < configs["MAX_ROUNDS"]:
             logfile.write(json.dumps(log_item) + "\n")
         res = parse_reflect_rsp(rsp)
         decision = res[0]
+        
+        # Handle retry for missing Decision field
+        if decision == "RETRY_MISSING_DECISION":
+            print_with_color("Retrying: asking model to provide Decision field...", "yellow")
+            retry_prompt = f"""Your previous response was missing the required "Decision" field.
+
+You MUST include a "Decision" field with one of these values:
+- "INEFFECTIVE": The action did not help progress toward the goal
+- "BACK": Need to go back to previous screen
+- "CONTINUE": Action was successful, continue with the task  
+- "SUCCESS": The task is complete
+
+Please respond again with the correct JSON format:
+{{
+    "Decision": "CONTINUE or INEFFECTIVE or BACK or SUCCESS",
+    "Thought": "Your reasoning",
+    "Documentation": "Description of this UI element"
+}}
+
+{prompt}"""
+            retry_status, retry_rsp, _ = mllm.get_model_response(retry_prompt, [base64_img_before, base64_img_after])
+            if retry_status:
+                res = parse_reflect_rsp(retry_rsp)
+                decision = res[0]
+            else:
+                print_with_color("Retry failed, skipping reflection", "yellow")
+                time.sleep(configs["REQUEST_INTERVAL"])
+                continue
+        
         reflect_think = res[1]
         reflect_doc = res[2]
 
@@ -853,6 +882,7 @@ while round_count < configs["MAX_ROUNDS"]:
             append_to_log(f"**Documentation:** {reflect_doc}\n", report_log_path)
         if decision == "ERROR":
             break
+
         if decision == "INEFFECTIVE":
             useless_list.add(resource_id)
             last_act = "None"
