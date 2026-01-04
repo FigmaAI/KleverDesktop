@@ -16,11 +16,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export interface ComboboxOption {
   value: string
   label: string
   itemLabel?: React.ReactNode  // Custom label for dropdown item (defaults to label)
+  tooltip?: string  // Optional tooltip for the selected value
 }
 
 interface ComboboxProps {
@@ -45,53 +52,110 @@ export function Combobox({
   className,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
+  const [isTruncated, setIsTruncated] = React.useState(false)
+  const buttonTextRef = React.useRef<HTMLSpanElement>(null)
+  const listRef = React.useRef<HTMLDivElement>(null)
 
   const selectedOption = options.find((option) => option.value === value)
 
+  // Check if text is truncated
+  React.useEffect(() => {
+    const checkTruncation = () => {
+      if (buttonTextRef.current) {
+        const isTrunc = buttonTextRef.current.scrollWidth > buttonTextRef.current.clientWidth
+        setIsTruncated(isTrunc)
+      }
+    }
+
+    checkTruncation()
+    window.addEventListener('resize', checkTruncation)
+    return () => window.removeEventListener('resize', checkTruncation)
+  }, [selectedOption])
+
+  // Enable wheel scrolling on the list
+  React.useEffect(() => {
+    const listElement = listRef.current
+    if (!listElement) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.stopPropagation()
+      listElement.scrollTop += e.deltaY
+    }
+
+    listElement.addEventListener('wheel', handleWheel, { passive: true })
+    return () => listElement.removeEventListener('wheel', handleWheel)
+  }, [open])
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn("justify-between", className)}
-          disabled={disabled}
-        >
-          <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={(currentValue) => {
-                    onValueChange?.(currentValue === value ? "" : currentValue)
-                    setOpen(false)
-                  }}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      value === option.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {option.itemLabel ?? option.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip open={selectedOption?.tooltip && isTruncated && !open ? undefined : false}>
+        <Popover open={open} onOpenChange={setOpen} modal={false}>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className={cn("justify-between", className)}
+                disabled={disabled}
+              >
+                <span ref={buttonTextRef} className="truncate">
+                  {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <PopoverContent
+            className="w-[380px] p-0"
+            align="start"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
+            <Command className="overflow-hidden" loop={false}>
+              <CommandInput placeholder={searchPlaceholder} />
+              <CommandList
+                ref={listRef}
+                className="max-h-[300px] overflow-y-auto overflow-x-hidden scroll-smooth"
+                style={{ overscrollBehavior: 'contain' }}
+              >
+                <CommandEmpty>{emptyText}</CommandEmpty>
+                <CommandGroup className="p-1">
+                  {options.map((option) => {
+                    // Use full value for tooltip if available, otherwise use label
+                    const tooltipText = option.tooltip || option.value
+                    const displayContent = option.itemLabel ?? option.label
+
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        onSelect={(currentValue) => {
+                          onValueChange?.(currentValue === value ? "" : currentValue)
+                          setOpen(false)
+                        }}
+                        title={tooltipText}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            value === option.value ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {displayContent}
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {selectedOption?.tooltip && (
+          <TooltipContent side="top" align="start">
+            <p>{selectedOption.tooltip}</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   )
 }
