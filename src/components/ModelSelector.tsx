@@ -134,6 +134,13 @@ export function ModelSelector({
     return models.find(m => m.id === modelId)
   }, [provider, getProviderModels])
 
+  // Remove provider prefix from model name for cleaner display
+  const removeProviderPrefix = useCallback((modelId: string) => {
+    // Remove common provider prefixes: ollama/, openai/, anthropic/, etc.
+    const prefixMatch = modelId.match(/^[^/]+\/(.+)$/)
+    return prefixMatch ? prefixMatch[1] : modelId
+  }, [])
+
   // Notify parent of changes - only when user makes a selection (not on sync)
   const notifyChange = useCallback((p: string, m: string) => {
     if (onChange && p && m) {
@@ -154,10 +161,12 @@ export function ModelSelector({
     return currentModels.map((m) => {
       const modelInfo = getModelInfo(m);
       const hasBadges = modelInfo && (modelInfo.supportsVision || modelInfo.maxInputTokens);
+      const displayName = removeProviderPrefix(m);
 
       return {
         value: m,
-        label: m, // Simple label for selected display
+        label: displayName, // Clean label without provider prefix
+        tooltip: m, // Full model name in tooltip
         itemLabel: hasBadges ? (
           <div className="flex items-center justify-between w-full gap-2">
             <span className="truncate">{m}</span>
@@ -172,10 +181,10 @@ export function ModelSelector({
               )}
             </div>
           </div>
-        ) : m, // Just the model name if no badges
+        ) : m, // Full model name in dropdown if no badges
       };
     });
-  }, [currentModels, getModelInfo, t]);
+  }, [currentModels, getModelInfo, removeProviderPrefix, t]);
 
   // Handle provider change
   const handleProviderChange = (newProvider: string) => {
@@ -230,7 +239,7 @@ export function ModelSelector({
 
       {/* Model Selection */}
       {provider && (
-        <div className="min-w-[220px] max-w-[320px] flex-1">
+        <div className="min-w-[240px] max-w-[400px] flex-1">
           {ollamaLoading ? (
             <div className="flex items-center justify-center h-10 px-3 border rounded-md bg-muted/50">
               <span className="text-sm text-muted-foreground">{t('modelSelector.loadingModels')}</span>
