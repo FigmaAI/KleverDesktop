@@ -22,7 +22,7 @@ if _project_root not in sys.path:
 
 import prompts
 from config import load_config
-from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, find_app_package, launch_app
+from and_controller import list_all_devices, AndroidController, traverse_tree, start_emulator, start_emulator_with_app, list_available_emulators, stop_emulator, restart_emulator_cold, find_app_package, launch_app
 from model import parse_explore_rsp, parse_reflect_rsp, parse_grid_rsp, OpenAIModel
 from utils import print_with_color, draw_bbox_multi, append_to_log, append_images_as_table, draw_grid
 
@@ -210,6 +210,8 @@ parser.add_argument("--model", default=None,
 parser.add_argument("--model_name", default=None,
                     help="Model name (e.g., ollama/llama3.2-vision, gpt-4o)")
 parser.add_argument("--task_dir", default=None, help="Directory to store task results")
+parser.add_argument("--cold-boot", action="store_true", 
+                    help="Force cold restart of emulator before task (ensures clean state for benchmarking)")
 
 args = vars(parser.parse_args())
 
@@ -286,6 +288,20 @@ report_log_path = os.path.join(task_dir, f"log_report_{task_name}.md")
 # Initialize controller based on platform
 if platform == "android":
     device_list = list_all_devices()
+    
+    # Cold boot option: restart emulator for clean state (important for benchmarking)
+    if args.get("cold_boot") and device_list:
+        print_with_color("🔄 Cold boot requested - restarting emulator for clean state...", "cyan")
+        # Find emulator device (starts with 'emulator-')
+        emulator_devices = [d for d in device_list if d.startswith('emulator-')]
+        if emulator_devices:
+            if restart_emulator_cold(emulator_devices[0]):
+                _emulator_started_by_script = True
+                device_list = list_all_devices()
+            else:
+                print_with_color("WARNING: Cold boot failed, continuing with existing emulator...", "yellow")
+        else:
+            print_with_color("No emulator found for cold boot (only physical devices connected)", "yellow")
     
     if not device_list:
         print_with_color("No Android device found.", "yellow")

@@ -289,6 +289,7 @@ export function TaskContentArea({
         categoryKey: 'keyboard.navigation', items: [
           { keys: [modKey, '1'], descriptionKey: 'keyboard.goToProjects' },
           { keys: [modKey, '2'], descriptionKey: 'keyboard.goToScheduledTasks' },
+          { keys: [modKey, '3'], descriptionKey: 'keyboard.goToStatistics' },
           { keys: [modKey, ','], descriptionKey: 'keyboard.goToSettings' },
           { keys: ['Esc'], descriptionKey: 'keyboard.goBack' },
         ]

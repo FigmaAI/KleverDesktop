@@ -321,8 +321,10 @@ def run_gelab_round(
         app_name = parsed.get("value", "")
         print_with_color(f"🚀 [GELab] Launch app: {app_name}", "green")
         from engines.appagent.scripts.and_controller import find_app_package, launch_app
+        from core.android import reset_app_state
         package = find_app_package(app_name)
         if package:
+            reset_app_state(package, device_serial)
             launch_app(package, device_serial)
     
     elif action_type == "ask_user":

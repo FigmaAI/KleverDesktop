@@ -27,7 +27,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from '@/components/ui/drawer'
-import { AppSidebar, type SettingsSection } from '@/components/app-sidebar'
+import { AppSidebar, type SettingsSection, type StatisticsSection } from '@/components/app-sidebar'
 import { CommandMenu } from '@/components/CommandMenu'
 import { TerminalHeader } from '@/components/UniversalTerminal/TerminalHeader'
 import { TerminalOutput } from '@/components/UniversalTerminal/TerminalOutput'
@@ -36,6 +36,7 @@ import { TaskCreateDialog } from '@/components/TaskCreateDialog'
 import { SetupWizard } from './pages/SetupWizard'
 import { Settings } from './pages/Settings'
 import { ScheduledTasks } from './pages/ScheduledTasks'
+import { Statistics } from './pages/Statistics'
 import { useTerminal } from '@/hooks/useTerminal'
 import { TaskContentArea } from '@/components/TaskContentArea'
 import { TaskDetail } from '@/components/TaskDetail'
@@ -43,7 +44,7 @@ import { GitHubLink } from '@/components/GitHubLink'
 import type { Project, Task } from '@/types/project'
 import { Analytics } from '@/utils/analytics'
 
-type AppView = 'projects' | 'settings' | 'schedules'
+type AppView = 'projects' | 'settings' | 'schedules' | 'statistics'
 type ScheduleSection = 'active' | 'history'
 
 // Settings section labels translation keys
@@ -53,6 +54,12 @@ const settingsSectionLabelKeys: Record<SettingsSection, string> = {
   agent: 'settings.agent',
   preferences: 'settings.preferences',
   danger: 'settings.dangerZone',
+}
+
+// Statistics section labels translation keys
+const statisticsSectionLabelKeys: Record<StatisticsSection, string> = {
+  api: 'statistics.apiModels',
+  local: 'statistics.localModels',
 }
 
 function MainApp() {
@@ -81,6 +88,9 @@ function MainApp() {
 
   // Schedule state
   const [activeScheduleSection, setActiveScheduleSection] = useState<ScheduleSection>('active')
+
+  // Statistics state
+  const [activeStatisticsSection, setActiveStatisticsSection] = useState<StatisticsSection>('api')
 
   // Detect platform for keyboard shortcuts
   const isMac = typeof window !== 'undefined' && window.navigator.platform.toUpperCase().indexOf('MAC') >= 0
@@ -239,6 +249,9 @@ function MainApp() {
       },
       onSchedules: () => {
         setCurrentView('schedules')
+      },
+      onStatistics: () => {
+        setCurrentView('statistics')
       },
       onSettings: () => {
         setCurrentView('settings')
@@ -399,6 +412,12 @@ function MainApp() {
         onClick: () => setActiveSettingsSection('model')
       })
       items.push({ label: t(settingsSectionLabelKeys[activeSettingsSection]) })
+    } else if (currentView === 'statistics') {
+      items.push({
+        label: t('nav.statistics'),
+        onClick: () => setActiveStatisticsSection('api')
+      })
+      items.push({ label: t(statisticsSectionLabelKeys[activeStatisticsSection]) })
     }
 
     return items
@@ -430,6 +449,8 @@ function MainApp() {
         onSettingsSectionChange={setActiveSettingsSection}
         activeScheduleSection={activeScheduleSection}
         onScheduleSectionChange={setActiveScheduleSection}
+        activeStatisticsSection={activeStatisticsSection}
+        onStatisticsSectionChange={setActiveStatisticsSection}
       />
       <SidebarInset>
         <header className="bg-background sticky top-0 z-10 flex h-[57px] shrink-0 items-center gap-2 border-b px-4">
@@ -541,6 +562,11 @@ function MainApp() {
                   }
                 }
               }}
+            />
+          ) : currentView === 'statistics' ? (
+            <Statistics
+              projects={projects}
+              section={activeStatisticsSection}
             />
           ) : selectedTask && selectedProject ? (
             <TaskDetail

@@ -23,7 +23,8 @@
   "nav": {
     "projects": "项目",
     "settings": "设置",
-    "schedules": "计划任务"
+    "schedules": "计划任务",
+    "statistics": "统计"
   },
   "sidebar": {
     "projects": "项目",
@@ -402,6 +403,7 @@
     "listNavigation": "列表导航",
     "goToProjects": "转到项目",
     "goToScheduledTasks": "转到计划任务",
+    "goToStatistics": "转到统计",
     "goToSettings": "转到设置",
     "goBack": "返回",
     "newProject": "新建项目",
@@ -458,5 +460,41 @@
     "openFileFailedGeneric": "在编辑器中打开文件失败",
     "markdownNotFound": "未找到 Markdown 文件路径",
     "markdownNotExist": "Markdown 文件尚不存在"
+  },
+  "statistics": {
+    "apiModels": "API 模型",
+    "localModels": "本地模型",
+    "empty": "暂无统计数据",
+    "emptyApiDesc": "使用 API 模型运行任务后，使用统计将显示在此处。",
+    "emptyLocalDesc": "使用本地模型（Ollama）运行任务后，使用统计将显示在此处。",
+    "best": {
+      "mostUsed": "最常用",
+      "mostReliable": "最可靠",
+      "mostEfficient": "最高效",
+      "cheapest": "最便宜",
+      "fastest": "最快",
+      "tasks": "任务",
+      "success": "成功",
+      "avgRounds": "平均轮数",
+      "perTask": "每任务"
+    },
+    "table": {
+      "model": "模型",
+      "tasks": "任务",
+      "successRate": "成功率",
+      "totalCost": "总成本",
+      "avgCost": "平均成本",
+      "avgSpeed": "平均速度",
+      "avgDuration": "平均时长",
+      "tokens": "令牌",
+      "avgRounds": "平均轮数"
+    },
+    "pagination": {
+      "modelsTotal": "共 {{count}} 个模型"
+    },
+    "tooltip": {
+      "completed": "已完成",
+      "failed": "失败"
+    }
   }
 }

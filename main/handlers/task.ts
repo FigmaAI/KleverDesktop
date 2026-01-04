@@ -259,7 +259,6 @@ print('SETUP_RESULT:' + json.dumps(result))
       // Pass device and package info from prelaunch_app for GELab to use
       device: androidSetupResult?.device,
       package_name: androidSetupResult?.package_name,
-      // Add other necessary params here
     };
 
     // Select engine based on platform

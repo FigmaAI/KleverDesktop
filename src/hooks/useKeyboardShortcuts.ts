@@ -23,6 +23,7 @@ export interface KeyboardShortcutHandlers {
   onSearch?: () => void
   onProjects?: () => void
   onSchedules?: () => void
+  onStatistics?: () => void
   onSettings?: () => void
   onNewProject?: () => void
   onNewTask?: () => void
@@ -83,8 +84,15 @@ export function useKeyboardShortcuts({
       return
     }
 
-    // Settings: ⌘3 / Ctrl+3 OR ⌘, / Ctrl+,
-    if ((e.key === '3' || e.key === ',') && modKey) {
+    // Statistics: ⌘3 / Ctrl+3
+    if (e.key === '3' && modKey) {
+      e.preventDefault()
+      handlers.onStatistics?.()
+      return
+    }
+
+    // Settings: ⌘, / Ctrl+,
+    if (e.key === ',' && modKey) {
       e.preventDefault()
       handlers.onSettings?.()
       return
@@ -192,6 +200,7 @@ export const SHORTCUTS = {
   search: { keys: ['⌘', 'K'], description: 'Search' },
   projects: { keys: ['⌘', '1'], description: 'Projects' },
   schedules: { keys: ['⌘', '2'], description: 'Schedules' },
+  statistics: { keys: ['⌘', '3'], description: 'Statistics' },
   settings: { keys: ['⌘', ','], description: 'Settings' },
   newProject: { keys: ['⌘', 'N'], description: 'New Project' },
   newTask: { keys: ['⌘', 'T'], description: 'New Task' },
