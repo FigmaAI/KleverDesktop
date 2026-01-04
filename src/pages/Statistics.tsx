@@ -406,11 +406,11 @@ export function Statistics({ projects, section }: StatisticsProps) {
 
       {/* Statistics Table */}
       <div className="rounded-md border flex-1 overflow-auto">
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[140px]">{t('statistics.table.model')}</TableHead>
-              <TableHead className="w-[70px]">
+              <TableHead className="w-full">{t('statistics.table.model')}</TableHead>
+              <TableHead className="w-[70px] whitespace-nowrap">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -421,7 +421,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="taskCount" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              <TableHead className="w-[90px]">
+              <TableHead className="w-[100px] whitespace-nowrap">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -434,7 +434,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
               </TableHead>
               {section === 'api' ? (
                 <>
-                  <TableHead className="w-[90px]">
+                  <TableHead className="w-[100px] whitespace-nowrap">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -445,11 +445,11 @@ export function Statistics({ projects, section }: StatisticsProps) {
                       <SortIcon field="totalCost" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[80px]">{t('statistics.table.avgCost')}</TableHead>
+                  <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgCost')}</TableHead>
                 </>
               ) : (
                 <>
-                  <TableHead className="w-[90px]">
+                  <TableHead className="w-[100px] whitespace-nowrap">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -460,10 +460,10 @@ export function Statistics({ projects, section }: StatisticsProps) {
                       <SortIcon field="avgTokensPerSecond" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[80px]">{t('statistics.table.avgDuration')}</TableHead>
+                  <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgDuration')}</TableHead>
                 </>
               )}
-              <TableHead className="w-[70px]">
+              <TableHead className="w-[80px] whitespace-nowrap">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -474,7 +474,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              <TableHead className="w-[80px]">
+              <TableHead className="w-[100px] whitespace-nowrap">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -491,11 +491,11 @@ export function Statistics({ projects, section }: StatisticsProps) {
             {paginatedStats.map((stats) => (
               <TableRow key={stats.modelKey}>
                 <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium truncate max-w-[130px]" title={stats.modelName}>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium truncate" title={stats.modelName}>
                       {stats.modelName}
                     </span>
-                    <span className="text-xs text-muted-foreground capitalize">
+                    <span className="text-xs text-muted-foreground capitalize truncate">
                       {stats.modelProvider}
                     </span>
                   </div>

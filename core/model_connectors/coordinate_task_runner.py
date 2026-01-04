@@ -1,12 +1,17 @@
 """
-GELab Task Runner - Main execution loop for GELab-based automation.
+Coordinate-Based Task Runner - Execution loop for coordinate-based models.
 
-This module provides the main execution loop for running tasks with GELab models.
-It's designed to be called from self_explorer.py when a GELab model is detected.
+This module provides the main execution loop for running tasks with models
+that naturally output pixel coordinates rather than UI element labels.
+
+Supported models:
+- GELab-Zero (action:CLICK format)
+- Claude Sonnet/Haiku (tap(x, y) format)
+- Grok Vision (tap(x, y) format)
 
 Key differences from standard AppAgent flow:
 - Uses raw screenshots (no UI element labeling)
-- Uses GELabConnector for prompt generation and response parsing
+- Uses model-specific Connector for prompt generation and response parsing
 - Uses coordinate-based actions (tap_coords, swipe_coords, etc.)
 """
 
@@ -23,23 +28,28 @@ project_root = os.path.dirname(core_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from core.model_connectors.gelab import GELabConnector
+from core.model_connectors.base import BaseConnector, get_connector, is_coordinate_based_model
 from core.llm_adapter import LLMAdapter
 
 
-def is_gelab_model(model_name: str) -> bool:
+def should_use_coordinate_runner(model_name: str) -> bool:
     """
-    Check if the model is a GELab-family model.
+    Check if the model should use coordinate-based task runner.
+    
+    This includes:
+    - GELab models (native coordinate-based)
+    - Claude Sonnet/Haiku models (prefer coordinates over labels)
+    - Grok Vision models (coordinate-based)
     
     Args:
-        model_name: Model name (e.g., 'ollama/gelab-zero-4b-preview')
+        model_name: Model name (e.g., 'openrouter/anthropic/claude-sonnet-4.5')
         
     Returns:
-        True if GELab model, False otherwise
+        True if model should use coordinate-based runner, False otherwise
     """
     if not model_name:
         return False
-    return "gelab" in model_name.lower()
+    return is_coordinate_based_model(model_name)
 
 
 def draw_action_highlight(
@@ -115,8 +125,8 @@ def draw_action_highlight(
         return output_path
 
 
-def run_gelab_round(
-    connector: GELabConnector,
+def run_coordinate_round(
+    connector: BaseConnector,
     llm_adapter: LLMAdapter,
     controller,  # AndroidController instance
     task_desc: str,
@@ -128,17 +138,17 @@ def run_gelab_round(
     configs: Optional[Dict] = None
 ) -> Dict[str, Any]:
     """
-    Execute a single round of GELab-based automation.
+    Execute a single round of coordinate-based automation.
     
     This is the core function that handles:
     1. Take screenshot (raw, no labeling)
-    2. Generate GELab prompt
+    2. Generate model-specific prompt via connector
     3. Call LLM
-    4. Parse response
+    4. Parse response via connector
     5. Execute action
     
     Args:
-        connector: GELabConnector instance
+        connector: Model-specific connector (GELabConnector, ClaudeConnector, etc.)
         llm_adapter: LLMAdapter instance for LLM calls
         controller: AndroidController instance
         task_desc: Task description
@@ -180,7 +190,8 @@ def run_gelab_round(
     # Get device size for coordinate conversion
     device_size = (controller.width, controller.height)
     
-    # Step 2: Generate GELab prompt
+    # Step 2: Generate prompt
+    # Note: Claude uses 0-1000 normalized coordinates (independent of image size)
     prompt = connector.make_prompt(
         task=task_desc,
         image_path=screenshot_path,
@@ -188,7 +199,7 @@ def run_gelab_round(
     )
     
     # Step 3: Call LLM via LLMAdapter
-    print_with_color("🤖 [GELab] Thinking about what to do...", "yellow")
+    print_with_color("🤖 Thinking about what to do...", "yellow")
     
     start_time = time.time()
     response = llm_adapter.chat(
@@ -213,21 +224,44 @@ def run_gelab_round(
         "prompt_tokens": response.get("usage", {}).get("prompt_tokens", 0),
         "completion_tokens": response.get("usage", {}).get("completion_tokens", 0),
         "model": llm_adapter.model,
-        "provider": "gelab"
+        "provider": connector.name
     }
     
+    # Log raw response for debugging
+    print_with_color(f"📝 Raw LLM response ({len(raw_response)} chars):", "white")
+    # Show first 500 chars of response
+    response_preview = raw_response[:500] + ("..." if len(raw_response) > 500 else "")
+    print_with_color(f"   {response_preview}", "white")
+    
     # Step 4: Parse response using connector
+    print_with_color(f"🔍 Parsing response with {connector.name} connector...", "white")
     parsed = connector.parse_response(raw_response)
     action_type = parsed.get("action_type", "ERROR")
     
+    print_with_color(f"📦 Parsed result:", "white")
+    print_with_color(f"   action_type: {action_type}", "white")
+    print_with_color(f"   target: {parsed.get('target', 'N/A')}", "white")
+    
+    # Log model's reasoning to console
+    observation = parsed.get('observation', '')
+    thought = parsed.get('thought', '')
+    summary = parsed.get('summary', '')
+    
+    if observation:
+        print_with_color(f"👁️ Observation:", "yellow")
+        print_with_color(f"   {observation[:200]}{'...' if len(observation) > 200 else ''}", "white")
+    if thought:
+        print_with_color(f"💭 Thought:", "yellow")
+        print_with_color(f"   {thought[:200]}{'...' if len(thought) > 200 else ''}", "white")
+    
     # Log to report
     if report_log_path:
-        append_to_log(f"\n**Observation:** {parsed.get('observation', '')}\n", report_log_path)
-        append_to_log(f"**Thought:** {parsed.get('thought', '')}\n", report_log_path)
+        append_to_log(f"\n**Observation:** {observation}\n", report_log_path)
+        append_to_log(f"**Thought:** {thought}\n", report_log_path)
         append_to_log(f"**Action:** {action_type}\n", report_log_path)
-        append_to_log(f"**Summary:** {parsed.get('summary', '')}\n", report_log_path)
+        append_to_log(f"**Summary:** {summary}\n", report_log_path)
     
-    print_with_color(f"🎯 [GELab] Action: {action_type}", "cyan")
+    print_with_color(f"🎯 Action: {action_type}", "cyan")
     
     # Variables for highlight
     highlight_coords = None
@@ -251,10 +285,18 @@ def run_gelab_round(
         target = parsed.get("target", [0, 0])
         x, y = connector.convert_coords_to_pixels(target, device_size)
         highlight_coords = (x, y)
-        print_with_color(f"👆 [GELab] Tap at ({x}, {y}) [normalized: {target}]", "green")
+        
+        print_with_color(f"👆 Tap at ({x}, {y}) [normalized: {target}]", "green")
+        print_with_color(f"   📱 Device: {device_serial}", "white")
+        print_with_color(f"   📐 Screen size: {device_size}", "white")
+        print_with_color(f"   🎯 Executing: adb -s {device_serial} shell input tap {x} {y}", "cyan")
         
         result = tap_coords(x, y, device_serial)
+        
+        print_with_color(f"   ✅ Tap result: {result}", "green" if result != "ERROR" else "red")
+        
         if result == "ERROR":
+            print_with_color(f"   ❌ Tap execution FAILED!", "red")
             return {
                 "success": False,
                 "action_type": action_type,
@@ -262,10 +304,14 @@ def run_gelab_round(
                 "metadata": metadata,
                 "error": "tap_coords execution failed"
             }
+        
+        # Add small delay after tap to let UI update
+        time.sleep(0.5)
+        print_with_color(f"   ⏳ Waited 0.5s for UI to update", "white")
     
     elif action_type == "text":
         input_text = parsed.get("value", "")
-        print_with_color(f"⌨️ [GELab] Type: '{input_text}'", "green")
+        print_with_color(f"⌨️  Type: '{input_text}'", "green")
         
         result = controller.text(input_text)
         if result == "ERROR":
@@ -284,7 +330,7 @@ def run_gelab_round(
         x2, y2 = connector.convert_coords_to_pixels(end, device_size)
         highlight_coords = (x1, y1)
         highlight_end_coords = (x2, y2)
-        print_with_color(f"👆 [GELab] Swipe from ({x1}, {y1}) to ({x2}, {y2})", "green")
+        print_with_color(f"👆  Swipe from ({x1}, {y1}) to ({x2}, {y2})", "green")
         
         result = swipe_coords(x1, y1, x2, y2, 300, device_serial)
         if result == "ERROR":
@@ -300,7 +346,7 @@ def run_gelab_round(
         target = parsed.get("target", [0, 0])
         x, y = connector.convert_coords_to_pixels(target, device_size)
         highlight_coords = (x, y)
-        print_with_color(f"👆 [GELab] Long press at ({x}, {y})", "green")
+        print_with_color(f"👆  Long press at ({x}, {y})", "green")
         
         result = long_press_coords(x, y, 1000, device_serial)
         if result == "ERROR":
@@ -314,12 +360,12 @@ def run_gelab_round(
     
     elif action_type == "wait":
         wait_time = int(parsed.get("value", 1))
-        print_with_color(f"⏳ [GELab] Wait {wait_time}s", "green")
+        print_with_color(f"⏳  Wait {wait_time}s", "green")
         time.sleep(wait_time)
     
     elif action_type == "launch_app":
         app_name = parsed.get("value", "")
-        print_with_color(f"🚀 [GELab] Launch app: {app_name}", "green")
+        print_with_color(f"🚀  Launch app: {app_name}", "green")
         from engines.appagent.scripts.and_controller import find_app_package, launch_app
         from core.android import reset_app_state
         package = find_app_package(app_name)
@@ -329,11 +375,11 @@ def run_gelab_round(
     
     elif action_type == "ask_user":
         question = parsed.get("value", "")
-        print_with_color(f"❓ [GELab] Question for user: {question}", "blue")
+        print_with_color(f"❓  Question for user: {question}", "blue")
         # For now, just log and continue - could be enhanced to pause for input
     
     else:
-        print_with_color(f"⚠️ [GELab] Unknown action: {action_type}", "yellow")
+        print_with_color(f"⚠️  Unknown action: {action_type}", "yellow")
     
     # Step 6: Save highlighted screenshot and add to report
     if highlight_coords and report_log_path:
@@ -379,7 +425,7 @@ def run_gelab_round(
     }
 
 
-def run_gelab_task(
+def run_coordinate_task(
     controller,
     task_desc: str,
     task_dir: str,
@@ -392,10 +438,10 @@ def run_gelab_task(
     configs: Optional[Dict] = None
 ) -> Dict[str, Any]:
     """
-    Run a complete task using GELab model.
+    Run a complete task using coordinate-based model.
     
     This is the main entry point called from self_explorer.py
-    when a GELab model is detected.
+    when a coordinate-based model is detected (GELab, Claude, Grok, etc.).
     
     Args:
         controller: AndroidController instance
@@ -417,7 +463,8 @@ def run_gelab_task(
     configs = configs or {}
     
     # Initialize connector and LLM adapter
-    connector = GELabConnector()
+    # Use model-specific connector (GELab, Claude, etc.)
+    connector = get_connector(model_name)
     llm_adapter = LLMAdapter(
         model=model_name,
         api_base=base_url if base_url else None,
@@ -427,7 +474,7 @@ def run_gelab_task(
     )
     
     print_with_color("=" * 60, "green")
-    print_with_color("🚀 GELab Mode Activated", "green")
+    print_with_color(f"🚀 Coordinate-Based Mode ({connector.name.upper()})", "green")
     print_with_color(f"   Model: {model_name}", "green")
     print_with_color(f"   Task: {task_desc}", "green")
     print_with_color("=" * 60, "green")
@@ -441,7 +488,7 @@ def run_gelab_task(
         round_count += 1
         print_with_color(f"\n--- Round {round_count}/{max_rounds} ---", "yellow")
         
-        result = run_gelab_round(
+        result = run_coordinate_round(
             connector=connector,
             llm_adapter=llm_adapter,
             controller=controller,

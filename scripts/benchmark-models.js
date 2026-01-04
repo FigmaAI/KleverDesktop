@@ -41,8 +41,8 @@ const BENCHMARK_MODELS = [
 
 // Pilot models (cheap and fast for testing)
 const PILOT_MODEL_IDS = [
-  'openrouter/openai/gpt-4.1-mini',
-  'openrouter/google/gemini-2.5-flash',
+  'openrouter/anthropic/claude-sonnet-4.5',
+  'xai/grok-4-1-fast',
 ];
 
 // Task configuration

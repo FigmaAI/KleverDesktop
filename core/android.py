@@ -120,12 +120,13 @@ def get_adb_path() -> Optional[str]:
 # ADB Command Execution
 # ============================================
 
-def execute_adb(adb_command: str) -> str:
+def execute_adb(adb_command: str, verbose: bool = False) -> str:
     """
     Execute adb command using full path to adb executable
 
     Args:
         adb_command: Command string (e.g., "adb devices" or just "devices")
+        verbose: If True, print detailed execution info
 
     Returns:
         Command output or "ERROR"
@@ -144,12 +145,29 @@ def execute_adb(adb_command: str) -> str:
 
     # Replace 'adb' with full path in command
     # Handle both "adb devices" and "devices" formats
+    original_command = adb_command
     if adb_command.startswith('adb '):
         adb_command = adb_command.replace('adb ', f'{adb_path} ', 1)
     else:
         adb_command = f'{adb_path} {adb_command}'
 
+    # Log for tap/swipe commands (input commands)
+    is_input_command = 'shell input' in original_command
+    if is_input_command:
+        print_with_color(f"   🔧 [ADB] Executing: {original_command}", "cyan")
+
     result = subprocess.run(adb_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    if is_input_command:
+        if result.returncode == 0:
+            print_with_color(f"   ✅ [ADB] Success (return code: {result.returncode})", "green")
+            if result.stdout.strip():
+                print_with_color(f"   📤 [ADB] Output: {result.stdout.strip()[:100]}", "white")
+        else:
+            print_with_color(f"   ❌ [ADB] Failed (return code: {result.returncode})", "red")
+            if result.stderr.strip():
+                print_with_color(f"   📤 [ADB] Error: {result.stderr.strip()[:100]}", "red")
+    
     if result.returncode == 0:
         return result.stdout.strip()
     print_with_color(f"Command execution failed: {adb_command}", "red")

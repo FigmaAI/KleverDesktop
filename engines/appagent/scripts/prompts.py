@@ -194,7 +194,11 @@ You must respond in <system_language>."""
 
 self_explore_task_template = """You are an agent that is trained to complete certain tasks on a smartphone. You will be 
 given a screenshot of a smartphone app. The interactive UI elements on the screenshot are labeled with numeric tags 
-starting from 1. 
+starting from 1. Each numeric label is displayed at the CENTER of its corresponding UI element.
+
+IMPORTANT: You MUST use the NUMERIC LABELS shown on the screenshot, NOT pixel coordinates!
+- Look at the screenshot and find the numeric labels (1, 2, 3, etc.) displayed on UI elements
+- Use these numbers in your function calls like tap(3), not coordinates like tap(500, 200)
 
 You can call the following functions to interact with those labeled elements to control the smartphone:
 
@@ -202,6 +206,8 @@ You can call the following functions to interact with those labeled elements to 
 This function is used to tap an UI element shown on the smartphone screen.
 "element" is a numeric tag assigned to an UI element shown on the smartphone screen.
 A simple use case can be tap(5), which taps the UI element labeled with the number 5.
+CORRECT: tap(3) - taps the element with label 3
+WRONG: tap(500, 200) - DO NOT use coordinates!
 
 2. text(text_input: str)
 This function is used to insert text input in an input field/box. text_input is the string you want to insert and must 
@@ -227,11 +233,11 @@ The task you need to complete is to <task_description>. Your past actions to pro
 follows: <last_act>
 Now, given the following labeled screenshot, you need to think and call the function needed to proceed with the task. 
 Your output should include three parts in the given format:
-Observation: <Describe what you observe in the image>
-Thought: <To complete the given task, what is the next step I should do>
-Action: <The function call with the correct parameters to proceed with the task. If you believe the task is completed or 
-there is nothing to be done, you should output FINISH. You cannot output anything else except a function call or FINISH 
-in this field.>
+Observation: <Describe what you observe in the image, including the numeric labels you see on UI elements>
+Thought: <To complete the given task, what is the next step I should do. Identify which labeled element to interact with.>
+Action: <The function call with the correct parameters to proceed with the task. Use ELEMENT NUMBERS like tap(3), NOT 
+coordinates. If you believe the task is completed or there is nothing to be done, you should output FINISH. You cannot 
+output anything else except a function call or FINISH in this field.>
 Summary: <Summarize your past actions along with your latest action in one or two sentences. Do not include the numeric 
 tag in your summary>
 You can only take one action at a time, so please directly call the function.
