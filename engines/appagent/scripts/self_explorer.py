@@ -491,6 +491,50 @@ while round_count < configs["MAX_ROUNDS"]:
             append_to_log(f"**Summary:** {last_act}\n", report_log_path)
             task_complete = True
             break
+        elif act_name == "RETRY_COORDINATE_FORMAT":
+            # Model output coordinates instead of element number - retry with clear instructions
+            coords_value = res[1]
+            observation, think, last_act = res[2], res[3], res[4]
+            print_with_color(f"Model output coordinates ({coords_value}) instead of element number. Retrying...", "yellow")
+            
+            retry_prompt = f"""Your previous response used pixel coordinates in the Action field: tap({coords_value})
+
+This is INCORRECT. You must use ELEMENT NUMBERS shown on the screenshot, NOT pixel coordinates.
+
+Look at the screenshot - each interactive element has a NUMBER label displayed on it.
+Use that number in your action.
+
+CORRECT format: tap(5)  - where 5 is the number label on the element
+INCORRECT format: tap(919, 919) - this uses pixel coordinates which is wrong
+
+Please respond again with the correct format. Available elements are numbered 1 to {len(elem_list)}.
+
+{prompt}"""
+            retry_status, retry_rsp, _ = mllm.get_model_response(retry_prompt, [base64_img_before])
+            if retry_status:
+                res = parse_explore_rsp(retry_rsp)
+                act_name = res[0]
+                if act_name == "RETRY_COORDINATE_FORMAT":
+                    print_with_color("Retry still returned coordinates. Skipping this round.", "red")
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+                # Process the new action
+                if act_name in ["tap", "long_press"]:
+                    last_act = res[2]
+                    observation, think, act = res[3], res[4], res[5]
+                elif act_name == "text":
+                    last_act = res[2]
+                    observation, think, act = res[3], res[4], res[5]
+                elif act_name == "swipe":
+                    last_act = res[4]
+                    observation, think, act = res[5], res[6], res[7]
+                else:
+                    time.sleep(configs["REQUEST_INTERVAL"])
+                    continue
+            else:
+                print_with_color("Retry failed, skipping this round", "yellow")
+                time.sleep(configs["REQUEST_INTERVAL"])
+                continue
         elif act_name == "grid":
             observation, think, act, last_act = res[1], res[2], res[3], res[4]
         elif act_name in ["tap", "long_press"]:
@@ -504,6 +548,7 @@ while round_count < configs["MAX_ROUNDS"]:
             observation, think, act = res[5], res[6], res[7]
         else:
             observation = think = act = last_act = "Unknown"
+
 
         # Write reasoning to report
         append_to_log(f"\n**Observation:** {observation}\n", report_log_path)

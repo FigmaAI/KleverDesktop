@@ -487,8 +487,18 @@ def _parse_action_string(act: str) -> list:
     act_name = act.split("(")[0].strip()
     
     if act_name == "tap":
-        area = int(re.findall(r"tap\((.*?)\)", act)[0])
-        return [act_name, area]
+        tap_content = re.findall(r"tap\((.*?)\)", act)[0]
+        # Check if this is coordinate format (contains comma) instead of element label
+        if "," in tap_content:
+            # Model returned coordinates like tap(919, 919) instead of element label tap(5)
+            print_with_color(f"WARNING: tap() contains coordinates '{tap_content}' instead of element number", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", tap_content]
+        try:
+            area = int(tap_content)
+            return [act_name, area]
+        except ValueError:
+            print_with_color(f"WARNING: tap() contains invalid value '{tap_content}'", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", tap_content]
     elif act_name == "text":
         input_str = re.findall(r"text\((.*?)\)", act)[0]
         # Remove quotes if present
@@ -498,8 +508,15 @@ def _parse_action_string(act: str) -> list:
             input_str = input_str[1:-1]
         return [act_name, input_str]
     elif act_name == "long_press":
-        area = int(re.findall(r"long_press\((.*?)\)", act)[0])
-        return [act_name, area]
+        lp_content = re.findall(r"long_press\((.*?)\)", act)[0]
+        if "," in lp_content:
+            print_with_color(f"WARNING: long_press() contains coordinates '{lp_content}' instead of element number", "yellow")
+            return ["RETRY_COORDINATE_FORMAT", lp_content]
+        try:
+            area = int(lp_content)
+            return [act_name, area]
+        except ValueError:
+            return ["RETRY_COORDINATE_FORMAT", lp_content]
     elif act_name == "swipe":
         params = re.findall(r"swipe\((.*?)\)", act)[0]
         area, swipe_dir, dist = params.split(",")
@@ -511,6 +528,7 @@ def _parse_action_string(act: str) -> list:
         return [act_name]
     else:
         return ["ERROR", act_name]
+
 
 
 def _extract_valid_json(rsp: str) -> dict:
@@ -602,6 +620,9 @@ def parse_explore_rsp(rsp):
         action_result = _parse_action_string(act)
         if action_result[0] == "FINISH":
             return ["FINISH", observation, think, act, last_act]
+        elif action_result[0] == "RETRY_COORDINATE_FORMAT":
+            # Model output coordinates instead of element number - need retry
+            return ["RETRY_COORDINATE_FORMAT", action_result[1], observation, think, last_act]
         elif action_result[0] == "ERROR":
             print_with_color(f"ERROR: Undefined act {action_result[1]}!", "red")
             return ["ERROR"]
@@ -615,6 +636,7 @@ def parse_explore_rsp(rsp):
             return ["swipe", action_result[1], action_result[2], action_result[3], last_act, observation, think, act]
         elif action_result[0] == "grid":
             return ["grid", observation, think, act, last_act]
+
         
     except json.JSONDecodeError:
         print_with_color("JSON parse failed, trying regex fallback...", "yellow")
