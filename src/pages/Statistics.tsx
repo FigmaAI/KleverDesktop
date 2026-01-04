@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  BarChart3,
   Cloud,
   Cpu,
   Zap,
@@ -18,6 +17,7 @@ import {
   Target,
   Clock,
 } from 'lucide-react'
+import { formatModelName } from '@/lib/model-utils'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -52,6 +52,7 @@ interface StatisticsProps {
 interface ModelStatistics {
   modelKey: string
   modelName: string
+  modelDisplayName: string
   modelProvider: string
   isLocal: boolean
   taskCount: number
@@ -150,6 +151,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
           stats = {
             modelKey,
             modelName: task.modelName,
+            modelDisplayName: formatModelName(task.modelName),
             modelProvider: provider,
             isLocal,
             taskCount: 0,
@@ -329,7 +331,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                 <span className="text-sm">{t('statistics.best.mostUsed')}</span>
               </div>
               <p className="text-lg font-bold truncate" title={bestModels.mostUsed?.modelName}>
-                {bestModels.mostUsed?.modelName || '-'}
+                {bestModels.mostUsed?.modelDisplayName || '-'}
               </p>
               <p className="text-xs text-muted-foreground">
                 {bestModels.mostUsed ? `${bestModels.mostUsed.taskCount} ${t('statistics.best.tasks')}` : ''}
@@ -345,7 +347,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                 <span className="text-sm">{t('statistics.best.mostReliable')}</span>
               </div>
               <p className="text-lg font-bold truncate" title={bestModels.mostReliable?.modelName}>
-                {bestModels.mostReliable?.modelName || '-'}
+                {bestModels.mostReliable?.modelDisplayName || '-'}
               </p>
               <p className="text-xs text-muted-foreground">
                 {bestModels.mostReliable ? `${bestModels.mostReliable.successRate.toFixed(1)}% ${t('statistics.best.success')}` : ''}
@@ -361,7 +363,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                 <span className="text-sm">{t('statistics.best.mostEfficient')}</span>
               </div>
               <p className="text-lg font-bold truncate" title={bestModels.mostEfficient?.modelName}>
-                {bestModels.mostEfficient?.modelName || '-'}
+                {bestModels.mostEfficient?.modelDisplayName || '-'}
               </p>
               <p className="text-xs text-muted-foreground">
                 {bestModels.mostEfficient ? `${bestModels.mostEfficient.averageRounds.toFixed(1)} ${t('statistics.best.avgRounds')}` : ''}
@@ -378,7 +380,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <span className="text-sm">{t('statistics.best.cheapest')}</span>
                 </div>
                 <p className="text-lg font-bold truncate" title={bestModels.cheapest?.modelName}>
-                  {bestModels.cheapest?.modelName || '-'}
+                  {bestModels.cheapest?.modelDisplayName || '-'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {bestModels.cheapest ? `${formatCost(bestModels.cheapest.averageCost)} ${t('statistics.best.perTask')}` : ''}
@@ -393,7 +395,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <span className="text-sm">{t('statistics.best.fastest')}</span>
                 </div>
                 <p className="text-lg font-bold truncate" title={bestModels.fastest?.modelName}>
-                  {bestModels.fastest?.modelName || '-'}
+                  {bestModels.fastest?.modelDisplayName || '-'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {bestModels.fastest ? `${Math.round(bestModels.fastest.avgTokensPerSecond)} tok/s` : ''}
@@ -493,7 +495,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                 <TableCell>
                   <div className="flex flex-col min-w-0">
                     <span className="font-medium truncate" title={stats.modelName}>
-                      {stats.modelName}
+                      {stats.modelDisplayName}
                     </span>
                     <span className="text-xs text-muted-foreground capitalize truncate">
                       {stats.modelProvider}
@@ -519,8 +521,8 @@ export function Statistics({ projects, section }: StatisticsProps) {
                       stats.successRate >= 80
                         ? 'text-green-500'
                         : stats.successRate >= 50
-                        ? 'text-amber-500'
-                        : 'text-red-500'
+                          ? 'text-amber-500'
+                          : 'text-red-500'
                     }
                   >
                     {stats.successRate.toFixed(1)}%
