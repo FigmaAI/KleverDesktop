@@ -401,11 +401,11 @@ export function Statistics({ projects, section }: StatisticsProps) {
 
       {/* Statistics Table */}
       <div className="rounded-md border flex-1 overflow-auto">
-        <Table className="table-fixed w-full">
+        <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-full">{t('statistics.table.model')}</TableHead>
-              <TableHead className="w-[70px] whitespace-nowrap">
+              <TableHead className="min-w-[200px]">{t('statistics.table.model')}</TableHead>
+              <TableHead className="w-[100px]">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -416,7 +416,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="taskCount" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              <TableHead className="w-[100px] whitespace-nowrap">
+              <TableHead className="w-[130px]">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -427,7 +427,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="successRate" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              <TableHead className="w-[100px] whitespace-nowrap">
+              <TableHead className="w-[100px]">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -440,7 +440,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
               </TableHead>
               {section === 'local' && (
                 <>
-                  <TableHead className="w-[100px] whitespace-nowrap">
+                  <TableHead className="w-[120px]">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -451,10 +451,10 @@ export function Statistics({ projects, section }: StatisticsProps) {
                       <SortIcon field="avgTokensPerSecond" sortField={sortField} sortDirection={sortDirection} />
                     </Button>
                   </TableHead>
-                  <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgDuration')}</TableHead>
+                  <TableHead className="w-[110px]">{t('statistics.table.avgDuration')}</TableHead>
                 </>
               )}
-              <TableHead className="w-[100px] whitespace-nowrap">
+              <TableHead className="w-[120px]">
                 <Button
                   variant="ghost"
                   size="sm"
