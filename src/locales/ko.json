@@ -496,7 +496,11 @@
     },
     "tooltip": {
       "completed": "완료",
-      "failed": "실패"
+      "failed": "실패",
+      "inputTokens": "입력 토큰",
+      "outputTokens": "출력 토큰",
+      "estimatedCost": "예상 비용",
+      "costDisclaimer": "비용은 예상치이며 실제와 다를 수 있습니다"
     }
   }
 }

@@ -496,7 +496,11 @@
     },
     "tooltip": {
       "completed": "Completed",
-      "failed": "Failed"
+      "failed": "Failed",
+      "inputTokens": "Input Tokens",
+      "outputTokens": "Output Tokens",
+      "estimatedCost": "Estimated Cost",
+      "costDisclaimer": "Cost is estimated and may vary"
     }
   }
 }

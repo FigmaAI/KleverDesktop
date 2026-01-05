@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Target,
   Clock,
+  HelpCircle,
 } from 'lucide-react'
 import { formatModelName } from '@/lib/model-utils'
 import { Button } from '@/components/ui/button'
@@ -524,7 +525,10 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="font-medium cursor-help">{formatTokens(stats.totalTokens)}</span>
+                          <span className="font-medium cursor-help inline-flex items-center gap-1 justify-center">
+                            {formatTokens(stats.totalTokens)}
+                            <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                          </span>
                         </TooltipTrigger>
                         <TooltipContent>
                           <div className="text-xs space-y-1">
