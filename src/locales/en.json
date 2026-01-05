@@ -471,11 +471,13 @@
       "mostUsed": "Most Used",
       "mostReliable": "Most Reliable",
       "mostEfficient": "Most Efficient",
+      "mostTokens": "Most Tokens",
       "cheapest": "Cheapest",
       "fastest": "Fastest",
       "tasks": "tasks",
       "success": "success",
       "avgRounds": "avg rounds",
+      "totalTokens": "total tokens",
       "perTask": "per task"
     },
     "table": {

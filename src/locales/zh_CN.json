@@ -471,11 +471,13 @@
       "mostUsed": "最常用",
       "mostReliable": "最可靠",
       "mostEfficient": "最高效",
+      "mostTokens": "最多令牌",
       "cheapest": "最便宜",
       "fastest": "最快",
       "tasks": "任务",
       "success": "成功",
       "avgRounds": "平均轮数",
+      "totalTokens": "总令牌数",
       "perTask": "每任务"
     },
     "table": {

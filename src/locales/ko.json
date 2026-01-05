@@ -471,11 +471,13 @@
       "mostUsed": "가장 많이 사용",
       "mostReliable": "가장 안정적",
       "mostEfficient": "가장 효율적",
+      "mostTokens": "최다 토큰",
       "cheapest": "가장 저렴",
       "fastest": "가장 빠름",
       "tasks": "태스크",
       "success": "성공",
       "avgRounds": "평균 라운드",
+      "totalTokens": "총 토큰",
       "perTask": "태스크당"
     },
     "table": {
