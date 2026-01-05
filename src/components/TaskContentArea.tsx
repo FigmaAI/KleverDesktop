@@ -69,15 +69,6 @@ interface TaskContentAreaProps {
 type SortField = 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
 
-// Utility function to format cost for display
-function formatCost(cost: number | null | undefined): string {
-  if (cost === null || cost === undefined) return '';
-  if (cost === 0) return '$0.00';
-  if (cost < 0.01) return '< $0.01';
-  if (cost < 1) return `$${cost.toFixed(4)}`;
-  return `$${cost.toFixed(2)}`;
-}
-
 // Sort icon component - declared outside to avoid recreating during render
 function SortIcon({
   field,
@@ -611,16 +602,15 @@ export function TaskContentArea({
                               )
                             }
                           } else {
-                            // For paid API models: show estimated cost
-                            if (metrics.estimatedCost !== undefined && metrics.estimatedCost !== null) {
-                              const costText = formatCost(metrics.estimatedCost)
+                            // For API models: show input/output tokens
+                            if (metrics.inputTokens !== undefined && metrics.outputTokens !== undefined) {
                               secondaryMetric = (
-                                <span className="text-amber-500">
-                                  {costText}
+                                <span className="text-blue-500 text-xs">
+                                  {metrics.inputTokens.toLocaleString()} in / {metrics.outputTokens.toLocaleString()} out
                                 </span>
                               )
                             } else if (metrics.tokens) {
-                              // Fallback: show tokens if cost calculation not available
+                              // Fallback: show total tokens
                               secondaryMetric = (
                                 <span className="text-muted-foreground">
                                   {metrics.tokens.toLocaleString()} {t('tasks.table.tokens')}
