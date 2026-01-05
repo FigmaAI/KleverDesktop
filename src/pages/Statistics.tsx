@@ -59,33 +59,32 @@ interface ModelStatistics {
   completedCount: number
   failedCount: number
   successRate: number
-  totalCost: number
-  averageCost: number
   totalTokens: number
   inputTokens: number
   outputTokens: number
+  estimatedCost: number  // For tooltip display
   totalRounds: number
   averageRounds: number
   avgTokensPerSecond: number
   avgDurationMs: number
 }
 
-type SortField = 'taskCount' | 'successRate' | 'totalCost' | 'averageRounds' | 'totalTokens' | 'avgTokensPerSecond'
+type SortField = 'taskCount' | 'successRate' | 'averageRounds' | 'totalTokens' | 'avgTokensPerSecond'
 type SortDirection = 'asc' | 'desc'
-
-// Utility function to format cost for display
-function formatCost(cost: number): string {
-  if (cost === 0) return '$0.00'
-  if (cost < 0.01) return '< $0.01'
-  if (cost < 1) return `$${cost.toFixed(4)}`
-  return `$${cost.toFixed(2)}`
-}
 
 // Utility function to format token count
 function formatTokens(tokens: number): string {
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
   if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`
   return tokens.toString()
+}
+
+// Utility function to format cost for display (tooltip only)
+function formatCost(cost: number): string {
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return '< $0.01'
+  if (cost < 1) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
 }
 
 // Utility function to format duration
@@ -158,11 +157,10 @@ export function Statistics({ projects, section }: StatisticsProps) {
             completedCount: 0,
             failedCount: 0,
             successRate: 0,
-            totalCost: 0,
-            averageCost: 0,
             totalTokens: 0,
             inputTokens: 0,
             outputTokens: 0,
+            estimatedCost: 0,
             totalRounds: 0,
             averageRounds: 0,
             avgTokensPerSecond: 0,
@@ -182,7 +180,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
           stats.inputTokens += task.metrics.inputTokens || 0
           stats.outputTokens += task.metrics.outputTokens || 0
           stats.totalRounds += task.metrics.rounds || 0
-          stats.totalCost += task.metrics.estimatedCost || 0
+          stats.estimatedCost += task.metrics.estimatedCost || 0
 
           // Track duration and speed for averaging
           if (task.metrics.durationMs) {
@@ -202,7 +200,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
         stats.successRate = (stats.completedCount / finishedTasks) * 100
       }
       if (stats.taskCount > 0) {
-        stats.averageCost = stats.totalCost / stats.taskCount
         stats.averageRounds = stats.totalRounds / stats.taskCount
         stats.avgDurationMs = stats.avgDurationMs / stats.taskCount
         stats.avgTokensPerSecond = stats.avgTokensPerSecond / stats.taskCount
@@ -235,10 +232,9 @@ export function Statistics({ projects, section }: StatisticsProps) {
       ? [...modelsWithRounds].sort((a, b) => a.averageRounds - b.averageRounds)[0]
       : null
 
-    // Cheapest (lowest average cost, for API models)
-    const modelsWithCost = modelsWithData.filter(m => m.averageCost > 0)
-    const cheapest = modelsWithCost.length > 0
-      ? [...modelsWithCost].sort((a, b) => a.averageCost - b.averageCost)[0]
+    // Most tokens (highest total token usage)
+    const mostTokens = modelsWithData.length > 0
+      ? [...modelsWithData].sort((a, b) => b.totalTokens - a.totalTokens)[0]
       : null
 
     // Fastest (highest tokens per second, for local models)
@@ -247,7 +243,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
       ? [...modelsWithSpeed].sort((a, b) => b.avgTokensPerSecond - a.avgTokensPerSecond)[0]
       : null
 
-    return { mostUsed, mostReliable, mostEfficient, cheapest, fastest }
+    return { mostUsed, mostReliable, mostEfficient, mostTokens, fastest }
   }, [modelStats])
 
   // Sort and paginate
@@ -260,9 +256,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
           break
         case 'successRate':
           comparison = a.successRate - b.successRate
-          break
-        case 'totalCost':
-          comparison = a.totalCost - b.totalCost
           break
         case 'averageRounds':
           comparison = a.averageRounds - b.averageRounds
@@ -371,19 +364,19 @@ export function Statistics({ projects, section }: StatisticsProps) {
             </div>
           </BlurFade>
 
-          {/* Cheapest (API) or Fastest (Local) */}
+          {/* Most Tokens (API) or Fastest (Local) */}
           {section === 'api' ? (
             <BlurFade delay={0.25}>
               <div className="rounded-lg border bg-card p-4">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
                   <DollarSign className="h-4 w-4" />
-                  <span className="text-sm">{t('statistics.best.cheapest')}</span>
+                  <span className="text-sm">{t('statistics.best.mostTokens')}</span>
                 </div>
-                <p className="text-lg font-bold truncate" title={bestModels.cheapest?.modelName}>
-                  {bestModels.cheapest?.modelDisplayName || '-'}
+                <p className="text-lg font-bold truncate" title={bestModels.mostTokens?.modelName}>
+                  {bestModels.mostTokens?.modelDisplayName || '-'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {bestModels.cheapest ? `${formatCost(bestModels.cheapest.averageCost)} ${t('statistics.best.perTask')}` : ''}
+                  {bestModels.mostTokens ? `${formatTokens(bestModels.mostTokens.totalTokens)} ${t('statistics.best.totalTokens')}` : ''}
                 </p>
               </div>
             </BlurFade>
@@ -434,22 +427,18 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="successRate" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              {section === 'api' ? (
-                <>
-                  <TableHead className="w-[100px] whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-8"
-                      onClick={() => handleSort('totalCost')}
-                    >
-                      {t('statistics.table.totalCost')}
-                      <SortIcon field="totalCost" sortField={sortField} sortDirection={sortDirection} />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgCost')}</TableHead>
-                </>
-              ) : (
+              <TableHead className="w-[100px] whitespace-nowrap">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-3 h-8"
+                  onClick={() => handleSort('totalTokens')}
+                >
+                  {t('statistics.table.tokens')}
+                  <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
+                </Button>
+              </TableHead>
+              {section === 'local' && (
                 <>
                   <TableHead className="w-[100px] whitespace-nowrap">
                     <Button
@@ -465,17 +454,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgDuration')}</TableHead>
                 </>
               )}
-              <TableHead className="w-[80px] whitespace-nowrap">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="-ml-3 h-8"
-                  onClick={() => handleSort('totalTokens')}
-                >
-                  {t('statistics.table.tokens')}
-                  <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
-                </Button>
-              </TableHead>
               <TableHead className="w-[100px] whitespace-nowrap">
                 <Button
                   variant="ghost"
@@ -528,16 +506,34 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     {stats.successRate.toFixed(1)}%
                   </span>
                 </TableCell>
-                {section === 'api' ? (
-                  <>
-                    <TableCell className="text-sm font-medium">
-                      {formatCost(stats.totalCost)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatCost(stats.averageCost)}
-                    </TableCell>
-                  </>
-                ) : (
+                <TableCell className="text-sm">
+                  {section === 'api' ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="font-medium cursor-help">{formatTokens(stats.totalTokens)}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="text-xs space-y-1">
+                            <p className="text-blue-400">{t('statistics.tooltip.inputTokens')}: {formatTokens(stats.inputTokens)}</p>
+                            <p className="text-purple-400">{t('statistics.tooltip.outputTokens')}: {formatTokens(stats.outputTokens)}</p>
+                            {stats.estimatedCost > 0 && (
+                              <p className="text-amber-400 border-t border-muted pt-1">
+                                {t('statistics.tooltip.estimatedCost')}: {formatCost(stats.estimatedCost)}
+                              </p>
+                            )}
+                            <p className="text-muted-foreground text-[10px] italic">
+                              {t('statistics.tooltip.costDisclaimer')}
+                            </p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span>{formatTokens(stats.totalTokens)}</span>
+                  )}
+                </TableCell>
+                {section === 'local' && (
                   <>
                     <TableCell className="text-sm">
                       {stats.avgTokensPerSecond > 0 ? (
@@ -561,7 +557,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     </TableCell>
                   </>
                 )}
-                <TableCell className="text-sm">{formatTokens(stats.totalTokens)}</TableCell>
                 <TableCell className="text-sm">{stats.averageRounds.toFixed(1)}</TableCell>
               </TableRow>
             ))}
