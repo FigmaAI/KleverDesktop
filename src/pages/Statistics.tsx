@@ -104,16 +104,19 @@ function SortIcon({
   field,
   sortField,
   sortDirection,
+  className = '',
 }: {
   field: SortField
   sortField: SortField
   sortDirection: SortDirection
+  className?: string
 }) {
-  if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4" />
+  const iconClass = `h-4 w-4 ${className}`
+  if (sortField !== field) return <ArrowUpDown className={iconClass} />
   return sortDirection === 'asc' ? (
-    <ArrowUp className="ml-2 h-4 w-4" />
+    <ArrowUp className={iconClass} />
   ) : (
-    <ArrowDown className="ml-2 h-4 w-4" />
+    <ArrowDown className={iconClass} />
   )
 }
 
@@ -401,68 +404,78 @@ export function Statistics({ projects, section }: StatisticsProps) {
 
       {/* Statistics Table */}
       <div className="rounded-md border flex-1 overflow-auto">
-        <Table>
+        <Table className="table-fixed w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[200px]">{t('statistics.table.model')}</TableHead>
-              <TableHead>
+              <TableHead className="w-full">{t('statistics.table.model')}</TableHead>
+              <TableHead className="w-[90px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 w-full px-1 flex items-center justify-between gap-1 shrink-0"
                   onClick={() => handleSort('taskCount')}
                 >
-                  {t('statistics.table.tasks')}
-                  <SortIcon field="taskCount" sortField={sortField} sortDirection={sortDirection} />
+                  <span className="truncate text-xs flex-1 min-w-0">{t('statistics.table.tasks')}</span>
+                  <div className="shrink-0">
+                    <SortIcon field="taskCount" sortField={sortField} sortDirection={sortDirection} className="ml-0" />
+                  </div>
                 </Button>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[140px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 w-full px-1 flex items-center justify-between gap-1 shrink-0"
                   onClick={() => handleSort('successRate')}
                 >
-                  {t('statistics.table.successRate')}
-                  <SortIcon field="successRate" sortField={sortField} sortDirection={sortDirection} />
+                  <span className="truncate text-xs flex-1 min-w-0">{t('statistics.table.successRate')}</span>
+                  <div className="shrink-0">
+                    <SortIcon field="successRate" sortField={sortField} sortDirection={sortDirection} className="ml-0" />
+                  </div>
                 </Button>
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[110px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 w-full px-1 flex items-center justify-between gap-1 shrink-0"
                   onClick={() => handleSort('totalTokens')}
                 >
-                  {t('statistics.table.tokens')}
-                  <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
+                  <span className="truncate text-xs flex-1 min-w-0">{t('statistics.table.tokens')}</span>
+                  <div className="shrink-0">
+                    <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} className="ml-0" />
+                  </div>
                 </Button>
               </TableHead>
               {section === 'local' && (
                 <>
-                  <TableHead>
+                  <TableHead className="w-[130px]">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2"
+                      className="h-8 w-full px-1 flex items-center justify-between gap-1 shrink-0"
                       onClick={() => handleSort('avgTokensPerSecond')}
                     >
-                      {t('statistics.table.avgSpeed')}
-                      <SortIcon field="avgTokensPerSecond" sortField={sortField} sortDirection={sortDirection} />
+                      <span className="truncate text-xs flex-1 min-w-0">{t('statistics.table.avgSpeed')}</span>
+                      <div className="shrink-0">
+                        <SortIcon field="avgTokensPerSecond" sortField={sortField} sortDirection={sortDirection} className="ml-0" />
+                      </div>
                     </Button>
                   </TableHead>
-                  <TableHead>{t('statistics.table.avgDuration')}</TableHead>
+                  <TableHead className="w-[110px]">{t('statistics.table.avgDuration')}</TableHead>
                 </>
               )}
-              <TableHead>
+              <TableHead className="w-[120px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2"
+                  className="h-8 w-full px-1 flex items-center justify-between gap-1 shrink-0"
                   onClick={() => handleSort('averageRounds')}
                 >
-                  {t('statistics.table.avgRounds')}
-                  <SortIcon field="averageRounds" sortField={sortField} sortDirection={sortDirection} />
+                  <span className="truncate text-xs flex-1 min-w-0">{t('statistics.table.avgRounds')}</span>
+                  <div className="shrink-0">
+                    <SortIcon field="averageRounds" sortField={sortField} sortDirection={sortDirection} className="ml-0" />
+                  </div>
                 </Button>
               </TableHead>
             </TableRow>
@@ -470,7 +483,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
           <TableBody>
             {paginatedStats.map((stats) => (
               <TableRow key={stats.modelKey}>
-                <TableCell>
+                <TableCell className="w-full">
                   <div className="flex flex-col min-w-0">
                     <span className="font-medium truncate" title={stats.modelName}>
                       {stats.modelDisplayName}
@@ -480,7 +493,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="w-[90px] text-sm text-center">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -493,7 +506,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     </Tooltip>
                   </TooltipProvider>
                 </TableCell>
-                <TableCell>
+                <TableCell className="w-[140px] text-center">
                   <span
                     className={
                       stats.successRate >= 80
@@ -506,7 +519,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     {stats.successRate.toFixed(1)}%
                   </span>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="w-[110px] text-sm text-center">
                   {section === 'api' ? (
                     <TooltipProvider>
                       <Tooltip>
@@ -535,9 +548,9 @@ export function Statistics({ projects, section }: StatisticsProps) {
                 </TableCell>
                 {section === 'local' && (
                   <>
-                    <TableCell className="text-sm">
+                    <TableCell className="w-[130px] text-sm text-center">
                       {stats.avgTokensPerSecond > 0 ? (
-                        <span className="text-emerald-500 flex items-center gap-1">
+                        <span className="text-emerald-500 flex items-center justify-center gap-1">
                           <Zap className="h-3 w-3" />
                           {Math.round(stats.avgTokensPerSecond)} tok/s
                         </span>
@@ -545,9 +558,9 @@ export function Statistics({ projects, section }: StatisticsProps) {
                         '-'
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="w-[110px] text-sm text-muted-foreground text-center">
                       {stats.avgDurationMs > 0 ? (
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center justify-center gap-1">
                           <Clock className="h-3 w-3" />
                           {formatDuration(stats.avgDurationMs)}
                         </span>
@@ -557,7 +570,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     </TableCell>
                   </>
                 )}
-                <TableCell className="text-sm">{stats.averageRounds.toFixed(1)}</TableCell>
+                <TableCell className="w-[120px] text-sm text-center">{stats.averageRounds.toFixed(1)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
