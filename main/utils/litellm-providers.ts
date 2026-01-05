@@ -677,6 +677,11 @@ export function clearCache(): void {
 /**
  * Calculate estimated cost based on token usage and model pricing
  * Returns null for local models (Ollama) or unknown models
+ *
+ * Matching strategy (in priority order):
+ * 1. Exact match (highest priority)
+ * 2. Suffix match after removing provider prefix (e.g., "openrouter/openai/gpt-4o-mini" matches "gpt-4o-mini")
+ * 3. Prefer longer matches to avoid partial matches (e.g., "gpt-4o-mini" over "gpt-4o")
  */
 export function calculateEstimatedCost(
   modelId: string,
@@ -690,14 +695,43 @@ export function calculateEstimatedCost(
     return null;
   }
 
-  // Find the model in providers
+  // Find the model in providers with improved matching
+  let bestMatch: LiteLLMModel | null = null;
+  let bestMatchLength = 0;
+
   for (const p of providers) {
-    const model = p.models.find(m => m.id === modelId || modelId.includes(m.id));
-    if (model && model.inputCostPerToken !== undefined && model.outputCostPerToken !== undefined) {
-      const inputCost = inputTokens * model.inputCostPerToken;
-      const outputCost = outputTokens * model.outputCostPerToken;
-      return inputCost + outputCost;
+    for (const model of p.models) {
+      // 1. Exact match (highest priority)
+      if (model.id === modelId) {
+        bestMatch = model;
+        bestMatchLength = modelId.length;
+        break; // Found exact match
+      }
+
+      // 2. Try to match by suffix (last part after splitting by '/')
+      // e.g., "openrouter/openai/gpt-4o-mini" -> "gpt-4o-mini"
+      const modelIdParts = modelId.split('/');
+      const modelParts = model.id.split('/');
+      const modelIdSuffix = modelIdParts[modelIdParts.length - 1];
+      const modelSuffix = modelParts[modelParts.length - 1];
+
+      // Match suffix and prefer longer matches
+      if (modelIdSuffix === modelSuffix && model.id.length > bestMatchLength) {
+        bestMatch = model;
+        bestMatchLength = model.id.length;
+      }
     }
+
+    // If we found an exact match, stop searching
+    if (bestMatch && bestMatchLength === modelId.length) {
+      break;
+    }
+  }
+
+  if (bestMatch && bestMatch.inputCostPerToken !== undefined && bestMatch.outputCostPerToken !== undefined) {
+    const inputCost = inputTokens * bestMatch.inputCostPerToken;
+    const outputCost = outputTokens * bestMatch.outputCostPerToken;
+    return inputCost + outputCost;
   }
 
   return null;

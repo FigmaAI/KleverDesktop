@@ -55,6 +55,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import type { Project, Task, TaskMetrics } from '@/types/project'
 import { cn } from '@/lib/utils'
 
@@ -68,6 +74,14 @@ interface TaskContentAreaProps {
 
 type SortField = 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
+
+// Utility function to format cost for display (tooltip only)
+function formatCost(cost: number): string {
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return '< $0.01'
+  if (cost < 1) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
+}
 
 // Sort icon component - declared outside to avoid recreating during render
 function SortIcon({
@@ -602,12 +616,33 @@ export function TaskContentArea({
                               )
                             }
                           } else {
-                            // For API models: show input/output tokens
+                            // For API models: show input/output tokens with cost tooltip
                             if (metrics.inputTokens !== undefined && metrics.outputTokens !== undefined) {
+                              const totalTokens = metrics.inputTokens + metrics.outputTokens
                               secondaryMetric = (
-                                <span className="text-blue-500 text-xs">
-                                  {metrics.inputTokens.toLocaleString()} in / {metrics.outputTokens.toLocaleString()} out
-                                </span>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-blue-500 text-xs cursor-help">
+                                        {totalTokens.toLocaleString()} {t('tasks.table.tokens')}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="text-xs space-y-1">
+                                        <p className="text-blue-400">{t('statistics.tooltip.inputTokens')}: {metrics.inputTokens.toLocaleString()}</p>
+                                        <p className="text-purple-400">{t('statistics.tooltip.outputTokens')}: {metrics.outputTokens.toLocaleString()}</p>
+                                        {metrics.estimatedCost !== undefined && metrics.estimatedCost > 0 && (
+                                          <p className="text-amber-400 border-t border-muted pt-1">
+                                            {t('statistics.tooltip.estimatedCost')}: {formatCost(metrics.estimatedCost)}
+                                          </p>
+                                        )}
+                                        <p className="text-muted-foreground text-[10px] italic">
+                                          {t('statistics.tooltip.costDisclaimer')}
+                                        </p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               )
                             } else if (metrics.tokens) {
                               // Fallback: show total tokens

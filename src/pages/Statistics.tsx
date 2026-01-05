@@ -62,6 +62,7 @@ interface ModelStatistics {
   totalTokens: number
   inputTokens: number
   outputTokens: number
+  estimatedCost: number  // For tooltip display
   totalRounds: number
   averageRounds: number
   avgTokensPerSecond: number
@@ -76,6 +77,14 @@ function formatTokens(tokens: number): string {
   if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
   if (tokens >= 1_000) return `${(tokens / 1_000).toFixed(1)}K`
   return tokens.toString()
+}
+
+// Utility function to format cost for display (tooltip only)
+function formatCost(cost: number): string {
+  if (cost === 0) return '$0.00'
+  if (cost < 0.01) return '< $0.01'
+  if (cost < 1) return `$${cost.toFixed(4)}`
+  return `$${cost.toFixed(2)}`
 }
 
 // Utility function to format duration
@@ -151,6 +160,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
             totalTokens: 0,
             inputTokens: 0,
             outputTokens: 0,
+            estimatedCost: 0,
             totalRounds: 0,
             averageRounds: 0,
             avgTokensPerSecond: 0,
@@ -170,6 +180,7 @@ export function Statistics({ projects, section }: StatisticsProps) {
           stats.inputTokens += task.metrics.inputTokens || 0
           stats.outputTokens += task.metrics.outputTokens || 0
           stats.totalRounds += task.metrics.rounds || 0
+          stats.estimatedCost += task.metrics.estimatedCost || 0
 
           // Track duration and speed for averaging
           if (task.metrics.durationMs) {
@@ -416,12 +427,18 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <SortIcon field="successRate" sortField={sortField} sortDirection={sortDirection} />
                 </Button>
               </TableHead>
-              {section === 'api' ? (
-                <>
-                  <TableHead className="w-[100px] whitespace-nowrap">{t('statistics.table.inputTokens')}</TableHead>
-                  <TableHead className="w-[100px] whitespace-nowrap">{t('statistics.table.outputTokens')}</TableHead>
-                </>
-              ) : (
+              <TableHead className="w-[100px] whitespace-nowrap">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-3 h-8"
+                  onClick={() => handleSort('totalTokens')}
+                >
+                  {t('statistics.table.tokens')}
+                  <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
+                </Button>
+              </TableHead>
+              {section === 'local' && (
                 <>
                   <TableHead className="w-[100px] whitespace-nowrap">
                     <Button
@@ -437,17 +454,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
                   <TableHead className="w-[90px] whitespace-nowrap">{t('statistics.table.avgDuration')}</TableHead>
                 </>
               )}
-              <TableHead className="w-[80px] whitespace-nowrap">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="-ml-3 h-8"
-                  onClick={() => handleSort('totalTokens')}
-                >
-                  {t('statistics.table.tokens')}
-                  <SortIcon field="totalTokens" sortField={sortField} sortDirection={sortDirection} />
-                </Button>
-              </TableHead>
               <TableHead className="w-[100px] whitespace-nowrap">
                 <Button
                   variant="ghost"
@@ -500,16 +506,34 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     {stats.successRate.toFixed(1)}%
                   </span>
                 </TableCell>
-                {section === 'api' ? (
-                  <>
-                    <TableCell className="text-sm text-blue-500">
-                      {formatTokens(stats.inputTokens)}
-                    </TableCell>
-                    <TableCell className="text-sm text-purple-500">
-                      {formatTokens(stats.outputTokens)}
-                    </TableCell>
-                  </>
-                ) : (
+                <TableCell className="text-sm">
+                  {section === 'api' ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="font-medium cursor-help">{formatTokens(stats.totalTokens)}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="text-xs space-y-1">
+                            <p className="text-blue-400">{t('statistics.tooltip.inputTokens')}: {formatTokens(stats.inputTokens)}</p>
+                            <p className="text-purple-400">{t('statistics.tooltip.outputTokens')}: {formatTokens(stats.outputTokens)}</p>
+                            {stats.estimatedCost > 0 && (
+                              <p className="text-amber-400 border-t border-muted pt-1">
+                                {t('statistics.tooltip.estimatedCost')}: {formatCost(stats.estimatedCost)}
+                              </p>
+                            )}
+                            <p className="text-muted-foreground text-[10px] italic">
+                              {t('statistics.tooltip.costDisclaimer')}
+                            </p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span>{formatTokens(stats.totalTokens)}</span>
+                  )}
+                </TableCell>
+                {section === 'local' && (
                   <>
                     <TableCell className="text-sm">
                       {stats.avgTokensPerSecond > 0 ? (
@@ -533,7 +557,6 @@ export function Statistics({ projects, section }: StatisticsProps) {
                     </TableCell>
                   </>
                 )}
-                <TableCell className="text-sm">{formatTokens(stats.totalTokens)}</TableCell>
                 <TableCell className="text-sm">{stats.averageRounds.toFixed(1)}</TableCell>
               </TableRow>
             ))}
