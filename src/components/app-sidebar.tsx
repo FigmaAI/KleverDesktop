@@ -206,7 +206,7 @@ export function AppSidebar({
                         children: (
                           <span className="flex items-center gap-2">
                             {item.title}
-                            <kbd className="ml-1 inline-flex h-5 select-none items-center rounded border border-primary/20 bg-primary/10 text-primary-foreground px-1.5 font-mono text-[10px] font-medium">
+                            <kbd className="ml-1 inline-flex h-5 select-none items-center rounded border border-primary/20 bg-primary/10 text-foreground px-1.5 font-mono text-[10px] font-medium">
                               {item.shortcut}
                             </kbd>
                           </span>
@@ -237,7 +237,7 @@ export function AppSidebar({
                   children: (
                     <span className="flex items-center gap-2">
                       {t('terminal.title')}
-                      <kbd className="ml-1 inline-flex h-5 select-none items-center rounded border border-primary/20 bg-primary/10 text-primary-foreground px-1.5 font-mono text-[10px] font-medium">
+                      <kbd className="ml-1 inline-flex h-5 select-none items-center rounded border border-primary/20 bg-primary/10 text-foreground px-1.5 font-mono text-[10px] font-medium">
                         Ctrl+Shift+`
                       </kbd>
                     </span>
