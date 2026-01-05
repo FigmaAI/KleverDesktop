@@ -74,16 +74,47 @@ export function Combobox({
 
   // Enable wheel scrolling on the list
   React.useEffect(() => {
-    const listElement = listRef.current
-    if (!listElement) return
+    if (!open) return
+    
+    // Wait for DOM to be ready
+    const timeoutId = setTimeout(() => {
+      const listElement = listRef.current
+      if (!listElement) return
 
-    const handleWheel = (e: WheelEvent) => {
-      e.stopPropagation()
-      listElement.scrollTop += e.deltaY
+      // Find the actual scrollable element (cmdk uses a div with cmdk-list attribute)
+      const scrollableElement = listElement.querySelector('[cmdk-list]') as HTMLElement || listElement
+      
+      const handleWheel = (e: globalThis.WheelEvent) => {
+        const target = e.target as HTMLElement
+        // Only handle if the event is on the list or its children
+        if (!scrollableElement.contains(target)) return
+        
+        const { scrollTop, scrollHeight, clientHeight } = scrollableElement
+        const isAtTop = scrollTop <= 0
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1
+        
+        // If scrolling would go beyond bounds, prevent default to stop page scroll
+        if ((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0)) {
+          e.preventDefault()
+          e.stopPropagation()
+        } else {
+          // Allow normal scrolling within bounds
+          e.stopPropagation()
+        }
+      }
+
+      // Add event listener with capture to catch events early
+      const options = { passive: false, capture: true }
+      document.addEventListener('wheel', handleWheel, options)
+      
+      return () => {
+        document.removeEventListener('wheel', handleWheel, options)
+      }
+    }, 0)
+    
+    return () => {
+      clearTimeout(timeoutId)
     }
-
-    listElement.addEventListener('wheel', handleWheel, { passive: true })
-    return () => listElement.removeEventListener('wheel', handleWheel)
   }, [open])
 
   return (
@@ -116,7 +147,10 @@ export function Combobox({
               <CommandList
                 ref={listRef}
                 className="max-h-[300px] overflow-y-auto overflow-x-hidden scroll-smooth"
-                style={{ overscrollBehavior: 'contain' }}
+                style={{ 
+                  overscrollBehavior: 'contain',
+                  WebkitOverflowScrolling: 'touch',
+                }}
               >
                 <CommandEmpty>{emptyText}</CommandEmpty>
                 <CommandGroup className="p-1">
