@@ -3,6 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { PlatformToolsStep } from '@/components/PlatformToolsStep'
 import { PlatformConfigStep } from '@/components/PlatformConfigStep'
 import { ModelConfigStep } from '@/components/ModelConfigStep'
@@ -23,6 +31,8 @@ export function SetupWizard() {
   const [currentStep, setCurrentStep] = useState(0)
   const [isModelVerified, setIsModelVerified] = useState(false)
   const [onboardingStartTime] = useState(Date.now())
+  const [showAutoInstallDialog, setShowAutoInstallDialog] = useState(true)
+  const [autoInstallEnabled, setAutoInstallEnabled] = useState(false)
 
   const steps: StepConfig[] = [
     { label: t('setup.steps.platformTools'), description: t('setup.steps.platformToolsDesc') },
@@ -206,6 +216,39 @@ export function SetupWizard() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      {/* Auto-Install Dialog */}
+      <Dialog open={showAutoInstallDialog && currentStep === 0} onOpenChange={setShowAutoInstallDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('setup.autoInstall.title')}</DialogTitle>
+            <DialogDescription>
+              {t('setup.autoInstall.description')}
+              <br /><br />
+              {t('setup.autoInstall.description2')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAutoInstallEnabled(false)
+                setShowAutoInstallDialog(false)
+              }}
+            >
+              {t('setup.autoInstall.manualButton')}
+            </Button>
+            <Button
+              onClick={() => {
+                setAutoInstallEnabled(true)
+                setShowAutoInstallDialog(false)
+              }}
+            >
+              {t('setup.autoInstall.enableButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PageHeader
         logo={<img src={logoImg} alt="Klever Desktop" className="h-8 w-8" />}
         title="Setup Wizard"
@@ -268,6 +311,7 @@ export function SetupWizard() {
                   toolsStatus={toolsStatus}
                   setToolsStatus={setToolsStatus}
                   checkPlatformTools={checkPlatformTools}
+                  autoInstallEnabled={autoInstallEnabled}
                 />
               )}
 

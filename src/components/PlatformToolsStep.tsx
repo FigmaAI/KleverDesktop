@@ -1,8 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RefreshCw, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { BlurFade } from '@/components/magicui/blur-fade'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { PythonInstallCard } from './PythonInstallCard'
 import { EnvironmentSetup } from './EnvironmentSetup'
 import { ToolStatusCard } from './ToolStatusCard'
@@ -16,15 +19,22 @@ interface PlatformToolsStepProps {
   toolsStatus: PlatformToolsState
   setToolsStatus: React.Dispatch<React.SetStateAction<PlatformToolsState>>
   checkPlatformTools: () => Promise<void>
+  autoInstallEnabled?: boolean
 }
 
 export function PlatformToolsStep({
   toolsStatus,
   setToolsStatus,
   checkPlatformTools,
+  autoInstallEnabled = false,
 }: PlatformToolsStepProps) {
+  const { t } = useTranslation()
   const { lines } = useTerminal()
   const outputRef = useRef<HTMLDivElement>(null)
+  const [autoInstallInProgress, setAutoInstallInProgress] = useState(false)
+  const [autoInstallProgress, setAutoInstallProgress] = useState(0)
+  const [currentInstallStep, setCurrentInstallStep] = useState('')
+  const hasStartedAutoInstall = useRef(false)
 
   // Filter lines for environment setup logs
   const envLines = lines.filter((line) => line.source === 'env')
@@ -59,6 +69,182 @@ export function PlatformToolsStep({
     }
   }
 
+  const setupEnvironment = async () => {
+    setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: true, error: undefined } }))
+    try {
+      const result = await window.electronAPI.envSetup()
+      if (result && result.success) {
+        await checkPlatformTools()
+      } else {
+        setToolsStatus((prev) => ({
+          ...prev,
+          pythonEnv: {
+            ...prev.pythonEnv,
+            installing: false,
+            error: result?.error || 'Setup failed. Check Installation Logs for details.'
+          }
+        }))
+        throw new Error(result?.error || 'Setup failed')
+      }
+    } finally {
+      setToolsStatus((prev) => ({ ...prev, pythonEnv: { ...prev.pythonEnv, installing: false } }))
+    }
+  }
+
+  const installAndroidStudio = async () => {
+    setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, installing: true, error: undefined } }))
+    try {
+      const result = await window.electronAPI.installAndroidStudio()
+      if (result.success) {
+        await checkPlatformTools()
+      } else {
+        setToolsStatus((prev) => ({
+          ...prev,
+          androidStudio: {
+            ...prev.androidStudio,
+            installing: false,
+            error: result.error || 'Installation failed'
+          }
+        }))
+        throw new Error(result.error || 'Installation failed')
+      }
+    } finally {
+      setToolsStatus((prev) => ({ ...prev, androidStudio: { ...prev.androidStudio, installing: false } }))
+    }
+  }
+
+  const retryWithBackoff = async <T,>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    stepName: string
+  ): Promise<T> => {
+    let lastError: Error | undefined
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn()
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error')
+
+        if (attempt < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000) // Exponential backoff: 1s, 2s, 4s
+          setCurrentInstallStep(`${stepName} (Retry ${attempt}/${maxRetries - 1} in ${delay/1000}s...)`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          setCurrentInstallStep(`${stepName} (Retrying ${attempt}/${maxRetries - 1}...)`)
+        }
+      }
+    }
+
+    throw lastError
+  }
+
+  const runAutoInstall = useCallback(async () => {
+    if (hasStartedAutoInstall.current) return
+    hasStartedAutoInstall.current = true
+
+    setAutoInstallInProgress(true)
+    setAutoInstallProgress(0)
+
+    try {
+      // Step 1: Install Python (33% progress)
+      if (!toolsStatus.python.installed) {
+        setCurrentInstallStep('Installing Python runtime...')
+        setAutoInstallProgress(10)
+
+        try {
+          await retryWithBackoff(downloadPython, 3, 'Installing Python runtime')
+          setAutoInstallProgress(33)
+          toast.success(t('setup.autoInstall.pythonSuccess'))
+
+          // Wait a bit for the installation to settle
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Unknown error'
+          toast.error(t('setup.autoInstall.pythonFailed', { error: msg }), {
+            description: t('setup.autoInstall.pythonFailedDesc')
+          })
+          setAutoInstallInProgress(false)
+          return
+        }
+      } else {
+        setAutoInstallProgress(33)
+      }
+
+      // Step 2: Setup Python Environment (66% progress)
+      if (!toolsStatus.pythonEnv.installed) {
+        setCurrentInstallStep('Setting up Python environment...')
+        setAutoInstallProgress(40)
+
+        try {
+          await retryWithBackoff(setupEnvironment, 3, 'Setting up Python environment')
+          setAutoInstallProgress(66)
+          toast.success(t('setup.autoInstall.envSuccess'))
+
+          // Wait a bit for the installation to settle
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Unknown error'
+          toast.error(t('setup.autoInstall.envFailed', { error: msg }), {
+            description: t('setup.autoInstall.envFailedDesc')
+          })
+          setAutoInstallInProgress(false)
+          return
+        }
+      } else {
+        setAutoInstallProgress(66)
+      }
+
+      // Step 3: Install Android SDK (100% progress)
+      if (!toolsStatus.androidStudio.installed) {
+        setCurrentInstallStep('Installing Android SDK...')
+        setAutoInstallProgress(70)
+
+        try {
+          await retryWithBackoff(installAndroidStudio, 2, 'Installing Android SDK')
+          setAutoInstallProgress(100)
+          toast.success(t('setup.autoInstall.sdkSuccess'))
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Installation failed'
+          if (msg.includes('needsManualInstall') || msg.includes('Homebrew') || msg.includes('Chocolatey')) {
+            toast.warning(t('setup.autoInstall.sdkWarning'), {
+              description: t('setup.autoInstall.sdkWarningDesc')
+            })
+          } else {
+            toast.error(t('setup.autoInstall.sdkFailed', { error: msg }), {
+              description: t('setup.autoInstall.sdkFailedDesc')
+            })
+          }
+          // Don't return here - Android SDK is less critical, we can continue
+        }
+      } else {
+        setAutoInstallProgress(100)
+      }
+
+      setCurrentInstallStep(t('setup.autoInstall.complete'))
+      toast.success(t('setup.autoInstall.allComplete'), {
+        description: t('setup.autoInstall.allCompleteDesc')
+      })
+
+    } finally {
+      setAutoInstallInProgress(false)
+      await checkPlatformTools()
+    }
+  }, [toolsStatus.python.installed, toolsStatus.pythonEnv.installed, toolsStatus.androidStudio.installed, checkPlatformTools])
+
+  // Auto-install effect
+  useEffect(() => {
+    if (autoInstallEnabled && !autoInstallInProgress && !hasStartedAutoInstall.current) {
+      // Check if any installation is needed
+      const needsInstall = !toolsStatus.python.installed ||
+                          !toolsStatus.pythonEnv.installed ||
+                          !toolsStatus.androidStudio.installed
+
+      if (needsInstall && !toolsStatus.python.checking && !toolsStatus.pythonEnv.checking && !toolsStatus.androidStudio.checking) {
+        runAutoInstall()
+      }
+    }
+  }, [autoInstallEnabled, autoInstallInProgress, toolsStatus, runAutoInstall])
+
   const isMac = window.navigator.platform.toLowerCase().includes('mac')
   const isWindows = window.navigator.platform.toLowerCase().includes('win')
 
@@ -69,6 +255,22 @@ export function PlatformToolsStep({
           <div className="grid grid-cols-8 gap-6 h-full">
             {/* Left: Tools List */}
             <div className="col-span-3 space-y-4">
+              {/* Auto-Install Progress */}
+              {autoInstallInProgress && (
+                <BlurFade delay={0.1}>
+                  <div className="rounded-lg border bg-primary/5 p-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold">{t('setup.autoInstall.inProgress')}</h4>
+                        <span className="text-xs text-muted-foreground">{autoInstallProgress}%</span>
+                      </div>
+                      <Progress value={autoInstallProgress} className="h-2" />
+                      <p className="text-xs text-muted-foreground">{currentInstallStep}</p>
+                    </div>
+                  </div>
+                </BlurFade>
+              )}
+
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">Platform Tools</h3>
@@ -122,14 +324,20 @@ export function PlatformToolsStep({
                 
                 {/* Python 3.11.9 (Post-Install Download) */}
                 <PythonInstallCard
-                  status={toolsStatus.python}
+                  status={{
+                    ...toolsStatus.python,
+                    installing: toolsStatus.python.installing || autoInstallInProgress
+                  }}
                   onInstall={downloadPython}
                   delay={0.1}
                 />
 
                 {/* Playwright Browsers (Chromium for web automation) */}
                 <EnvironmentSetup
-                  status={toolsStatus.pythonEnv}
+                  status={{
+                    ...toolsStatus.pythonEnv,
+                    installing: toolsStatus.pythonEnv.installing || autoInstallInProgress
+                  }}
                   setToolsStatus={setToolsStatus}
                   checkPlatformTools={checkPlatformTools}
                 />
@@ -138,7 +346,10 @@ export function PlatformToolsStep({
                 <ToolStatusCard
                   name="Android SDK"
                   subtitle="ADB & Emulator"
-                  status={toolsStatus.androidStudio}
+                  status={{
+                    ...toolsStatus.androidStudio,
+                    installing: toolsStatus.androidStudio.installing || autoInstallInProgress
+                  }}
                   delay={0.3}
                   onInstall={() => window.electronAPI.installAndroidStudio()}
                   installLabel="Install"
