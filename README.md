@@ -14,6 +14,22 @@
 
 ---
 
+## Demos
+
+<div align="center">
+
+[![Klever Desktop Demo 1](https://img.youtube.com/vi/QAmjenOd7is/maxresdefault.jpg)](https://youtu.be/QAmjenOd7is)
+
+**Android Automation Demo**
+
+[![Klever Desktop Demo 2](https://img.youtube.com/vi/jFBtuNuDk8A/maxresdefault.jpg)](https://youtu.be/jFBtuNuDk8A)
+
+**Web Automation Demo**
+
+</div>
+
+---
+
 ## What is Klever Desktop?
 
 Klever Desktop is a cross-platform application that enables AI-driven UI automation without writing code. Describe what you want to do in plain language, and watch the AI execute it.
@@ -23,8 +39,8 @@ Klever Desktop is a cross-platform application that enables AI-driven UI automat
 - **Web** - Via Playwright (Chromium, Firefox, WebKit)
 
 **AI Providers:**
-- **Local** - Ollama (Llama 3.2 Vision, Qwen 2.5-VL)
-- **Cloud** - OpenAI, Anthropic, OpenRouter, Grok
+- **Local** - Ollama (Llama 3.2 Vision, Qwen 2.5-VL, and more)
+- **Cloud** - OpenAI, Anthropic Claude, Google Gemini, xAI Grok, OpenRouter, Mistral, DeepSeek, and 90+ more via LiteLLM
 
 ---
 
@@ -103,7 +119,7 @@ npm run make         # Create installers
 | Frontend | React 18, TypeScript, Tailwind CSS, shadcn/ui |
 | Desktop | Electron 33, Vite 5, Electron Forge |
 | Backend | Python 3.11+, Playwright, ADB |
-| AI | LiteLLM, Ollama, OpenAI, Anthropic |
+| AI | LiteLLM, Ollama, OpenAI, Anthropic, and more |
 
 ### Project Structure
 
