@@ -12,6 +12,7 @@ export default [
       'dist-electron',
       'node_modules',
       'resources',
+      'vendor/sign-in-with-chatgpt-devkit/**',
       'appagent',
       'scripts',
       'build',
@@ -24,6 +25,25 @@ export default [
     ],
   },
   js.configs.recommended,
+  {
+    files: ['tests/**/*.cjs'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: Object.fromEntries([
+        'Buffer', 'URL', 'URLSearchParams', 'TextDecoder', 'TextEncoder',
+        'AbortController', 'AbortSignal', 'Request', 'Response', 'Headers',
+        'ReadableStream', 'fetch', 'structuredClone', 'console', 'process',
+        '__dirname', '__filename', 'setTimeout', 'clearTimeout',
+        'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate',
+        'queueMicrotask',
+      ].map((name) => [name, 'readonly'])),
+    },
+  },
+  {
+    // TypeScript validates identifiers and type-only globals itself.
+    files: ['**/*.{ts,tsx}'],
+    rules: { 'no-undef': 'off' },
+  },
   {
     files: ['**/*.{ts,tsx,js,jsx}'],
     languageOptions: {

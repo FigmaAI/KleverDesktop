@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { StopCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { getTaskStatusConfig } from '@/lib/task-status'
@@ -22,6 +23,7 @@ export function TaskStatusBadge({
   onStop,
   className = '',
 }: TaskStatusBadgeProps) {
+  const { t } = useTranslation()
   const config = getTaskStatusConfig(status)
   const StatusIcon = config.icon
   const isRunning = status === 'running'
@@ -36,8 +38,8 @@ export function TaskStatusBadge({
       >
         <StatusIcon className="h-3 w-3 shrink-0 group-hover:hidden" />
         <StopCircle className="h-3 w-3 shrink-0 hidden group-hover:block" />
-        <span className="group-hover:hidden">{config.label}</span>
-        <span className="hidden group-hover:inline">Stop</span>
+        <span className="group-hover:hidden">{t('tasks.status.' + status)}</span>
+        <span className="hidden group-hover:inline">{t('tasks.stop')}</span>
       </Badge>
     )
   }
@@ -48,7 +50,7 @@ export function TaskStatusBadge({
       className={`inline-flex items-center gap-1.5 ${config.className || ''} ${className}`}
     >
       <StatusIcon className="h-3 w-3 shrink-0" />
-      <span>{config.label}</span>
+      <span>{t('tasks.status.' + status)}</span>
     </Badge>
   )
 }

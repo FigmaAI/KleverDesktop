@@ -1,0 +1,22 @@
+{
+  "name": "@siwc/react",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./styles.css": "./dist/styles.css",
+    "./tokens.css": "./dist/tokens.css"
+  },
+  "sideEffects": ["**/*.css"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/copy-styles.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
+  "devDependencies": { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "react": "^19.3.0", "react-dom": "^19.3.0" }
+}

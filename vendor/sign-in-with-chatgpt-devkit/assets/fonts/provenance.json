@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "source": "Google Fonts CSS API and Google Fonts versioned CDN",
+  "cssRequestUrl": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Open+Sans:wght@300..800&display=swap",
+  "cssRequestUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+  "cssSelectionSnapshot": "assets/fonts/google-fonts-latin.css",
+  "verification": "Both WOFF2 files were downloaded from the recorded URLs and SHA-256 checked. Licence and family metadata URLs pin a Google Fonts Git commit. CDN distribution versions and internal font versions are distinct. Future downloads must match the recorded SHA-256 values.",
+  "fonts": [
+    {
+      "name": "Inter",
+      "path": "assets/fonts/inter-latin.woff2",
+      "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
+      "bytes": 48432,
+      "downloadUrl": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "distributionVersion": "v20",
+      "fontVersion": "Version 4.001;git-66647c0bb",
+      "postScriptName": "Inter-Regular",
+      "copyrightFromFont": "Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)",
+      "subset": "latin",
+      "unicodeRangeFromCss": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "unicodeCodepointCount": 230,
+      "style": "normal",
+      "axes": [
+        {
+          "tag": "wght",
+          "minimum": 100.0,
+          "default": 400.0,
+          "maximum": 900.0
+        }
+      ],
+      "declaredLicense": "OFL-1.1",
+      "licensePath": "assets/fonts/inter-OFL.txt",
+      "licenseSha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/inter/OFL.txt",
+      "googleFontsRevision": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
+      "googleFontsMetadataUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/inter/METADATA.pb",
+      "upstreamRepositoryFromGoogleFontsMetadata": "https://www.github.com/rsms/inter",
+      "upstreamCommitFromGoogleFontsMetadata": "66647c0bbbe41a850d79d9c76fb13add3378940f",
+      "modifications": "None. Downloaded WOFF2 and OFL bytes are stored unchanged; local filenames differ from upstream URLs.",
+      "downloadedOn": "2026-09-28"
+    },
+    {
+      "name": "Open Sans",
+      "path": "assets/fonts/open-sans-latin.woff2",
+      "sha256": "441af0def989ebfdbd6ad85ffaed85e967ab21a05f1dd342f16259464a206dd0",
+      "bytes": 42964,
+      "downloadUrl": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-mu0SC55I.woff2",
+      "distributionVersion": "v44",
+      "fontVersion": "Version 3.003",
+      "postScriptName": "OpenSans-Regular",
+      "copyrightFromFont": "Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)",
+      "subset": "latin",
+      "unicodeRangeFromCss": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "unicodeCodepointCount": 231,
+      "style": "normal",
+      "axes": [
+        {
+          "tag": "wght",
+          "minimum": 300.0,
+          "default": 400.0,
+          "maximum": 800.0
+        }
+      ],
+      "declaredLicense": "OFL-1.1",
+      "licensePath": "assets/fonts/open-sans-OFL.txt",
+      "licenseSha256": "fbbbcfef55318de350562559b671360de6d597112ecc5c73881b05092db89602",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/opensans/OFL.txt",
+      "googleFontsRevision": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
+      "googleFontsMetadataUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/opensans/METADATA.pb",
+      "upstreamRepositoryFromGoogleFontsMetadata": "https://github.com/googlefonts/opensans",
+      "upstreamCommitFromGoogleFontsMetadata": "bd7e37632246368c60fdcbd374dbf9bad11969b6",
+      "modifications": "None. Downloaded WOFF2 and OFL bytes are stored unchanged; local filenames differ from upstream URLs.",
+      "downloadedOn": "2026-09-28"
+    }
+  ],
+  "cssSelectionSha256": "7d7b8b19933311c4cb9e1330bcb3e6de622baf4093ece8235488e00f479a73c7"
+}

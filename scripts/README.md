@@ -1,97 +1,13 @@
-# Scripts
+# Utility scripts
 
-This directory contains utility scripts for the Klever Desktop project.
+- build-local.cjs builds the renderer, Electron main process, and preload without packaging or signing.
+- electron-runtime.cjs verifies the official Electron archive and prepares a cached, ad-hoc sealed macOS development copy on the internal temporary volume. Existing security metadata is retained; no private certificates or account settings are accessed.
+- electron-launch.cjs uses that development runtime for npm start and npm run electron. Windows/Linux retain the standard Electron executable.
+- test-account-ui.cjs verifies official ChatGPT component callbacks against mock IPC in a disposable renderer.
+- test-desktop.cjs runs actual preload/renderer IPC against isolated disposable data, with network and native execution blocked.
+- verify-bundle.js checks generated application files before packaging.
+- Icon, cask, and release scripts support distribution.
 
-## appagent-sync.js
+Run npm run build:local, npm run test:desktop, npm run test:account-ui, and npm run verify:bundle. Electron is downloaded and verified automatically when the development cache is first prepared; no additional interpreter setup is required.
 
-Synchronizes changes from the local `appagent/` folder to the original [AppAgent repository](https://github.com/FigmaAI/AppAgent).
-
-### Usage
-
-**Interactive mode** (prompts for commit message):
-```bash
-npm run appagent:sync
-```
-
-**With commit message as argument**:
-```bash
-npm run appagent:sync -- --message "fix: update llm_service.py"
-# or
-npm run appagent:sync -- -m "feat: add new feature"
-```
-
-### How it works
-
-1. Checks if git is installed
-2. Creates a temporary directory
-3. Clones the AppAgent repository
-4. Copies `appagent/` folder contents (excluding `.git`, `__pycache__`, etc.)
-5. Checks for changes with `git status`
-6. If changes exist:
-   - Prompts for commit message (if not provided)
-   - Stages all changes
-   - Creates a commit
-   - Pushes to `origin/main`
-7. Cleans up temporary directory
-
-### Excluded files/directories
-
-The following patterns are excluded from sync:
-- `.git`
-- `__pycache__`
-- `*.pyc`
-- `.DS_Store`
-- `.pytest_cache`
-- `*.egg-info`
-- `node_modules`
-- `.venv`
-- `venv`
-
-### Requirements
-
-- Git must be installed and configured with credentials
-- Write access to the AppAgent repository
-- Git credentials (SSH key or credential helper) must be configured
-
-### Error handling
-
-- If git is not installed, the script will exit with instructions
-- If no changes are detected, the script will exit gracefully
-- If the push fails (e.g., network error, permission denied), the script will show the error
-- Temporary directory is always cleaned up, even on errors
-
----
-
-## python-sync.js
-
-Synchronizes Python dependencies by installing packages from `appagent/requirements.txt` into the virtual environment.
-
-### Usage
-
-```bash
-npm run python:sync
-```
-
----
-
-## python-refresh.js
-
-Recreates the Python virtual environment and installs all dependencies from scratch.
-
-### Usage
-
-```bash
-npm run python:sync:all
-```
-
----
-
-## verify-bundle.js
-
-Verifies that all required files are properly bundled in the production build.
-
-### Usage
-
-```bash
-npm run python:verify
-```
+On macOS, npm start, npm run electron and both desktop regressions share the verified development runtime. npm run prepare:electron-runtime performs only archive/signature preparation and verification, without launching a GUI. Set ELECTRON_OVERRIDE_DIST_PATH to reuse a previously prepared copy; its version and complete bundle signature must validate. Packaging/make/publish keep Forge's existing production signing flow.

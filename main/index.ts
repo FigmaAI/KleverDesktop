@@ -7,7 +7,6 @@
 /// <reference path="./vite-env.d.ts" />
 
 import squirrelStartup from 'electron-squirrel-startup';
-import { initialize } from '@aptabase/electron/main';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (squirrelStartup) {
@@ -21,7 +20,7 @@ import { registerAllHandlers, cleanupAllProcesses } from './handlers';
 import { cleanupZombieTasks } from './utils/project-storage';
 import { createMenu } from './menu';
 import { initializeUpdater } from './handlers/updater';
-import { checkSyncNeeded } from './utils/python-sync';
+import { isChatGPTCredentialRotationActive } from './utils/chatgpt-auth';
 
 /**
  * Enable crash reporting for debugging (Build 13+)
@@ -34,84 +33,91 @@ crashReporter.start({
   compress: true,
 });
 
-/**
- * V8 Crash Workarounds for macOS Sequoia (Build 13+)
- * Fixes DNS-related crash at ~6.6s after launch
- * See: CRASH_ANALYSIS.md
- */
-// Disable V8 optimizations that trigger crashes on macOS Sequoia beta
-app.commandLine.appendSwitch('js-flags', '--no-opt');
-// Disable macOS-specific features causing crashes
-app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,Fontations');
-// Reduce DNS/network complexity to prevent ares_dns_rr crashes
-app.commandLine.appendSwitch('disable-http-cache');
-
-// Enable verbose logging in development
-if (!app.isPackaged) {
-  // app.commandLine.appendSwitch('enable-logging');
-  // app.commandLine.appendSwitch('v', '1');
-}
-
-/**
- * Initialize Aptabase analytics
- */
-initialize('A-US-5848273087');
-
 let mainWindow: BrowserWindow | null = null;
+let windowCreationQueued = false;
+let creatingWindow = false;
+let quitCleanupStarted = false;
+
+// A single process owns the shared run index, scheduler, and rotating account credentials.
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', () => {
+  void app.whenReady().then(() => {
+    if (!mainWindow) createWindow();
+    else {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+});
 
 /**
  * Create the browser window
  */
 function createWindow(): void {
-  // Debug logging for startup
-  console.log('=== Klever Desktop Starting ===');
-  console.log('App Version:', app.getVersion());
-  console.log('Electron Version:', process.versions.electron);
-  console.log('Platform:', process.platform);
-  console.log('Architecture:', process.arch);
-  console.log('App Path:', app.getAppPath());
-  console.log('Exe Path:', app.getPath('exe'));
-  console.log('Resources Path:', process.resourcesPath);
-  console.log('User Data:', app.getPath('userData'));
-  console.log('Is Packaged:', app.isPackaged);
-  console.log('================================');
-
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 1000,
-    minHeight: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-
-  // Create application menu
-  createMenu(mainWindow);
-
-  // Load the app
-  // Electron Forge provides these environment variables
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    // Development mode - load from Vite dev server
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
-  } else {
-    // Production mode - load from extraResource dist/
-    // Use process.resourcesPath which points to app/Contents/Resources/
-    const distPath = path.join(process.resourcesPath, 'dist', 'index.html');
-    console.log('Loading renderer from:', distPath);
-    mainWindow.loadFile(distPath);
-  }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    // Cleanup processes on window close (async, but don't wait)
-    cleanupAllProcesses().catch((err) => {
-      console.error('Error during cleanup:', err);
+  if (quitCleanupStarted) return;
+  if (!app.isReady()) {
+    if (windowCreationQueued) return;
+    windowCreationQueued = true;
+    void app.whenReady().then(() => {
+      windowCreationQueued = false;
+      createWindow();
     });
-  });
+    return;
+  }
+  if (creatingWindow || (mainWindow && !mainWindow.isDestroyed())) return;
+  creatingWindow = true;
+  try {
+    // Debug logging for startup
+    console.log('=== Klever Desktop Starting ===');
+    console.log('App Version:', app.getVersion());
+    console.log('Process:', process.pid);
+    console.log('Electron Version:', process.versions.electron);
+    console.log('Platform:', process.platform);
+    console.log('Architecture:', process.arch);
+    console.log('App Path:', app.getAppPath());
+    console.log('Exe Path:', app.getPath('exe'));
+    console.log('Resources Path:', process.resourcesPath);
+    console.log('User Data:', app.getPath('userData'));
+    console.log('Is Packaged:', app.isPackaged);
+    console.log('================================');
+
+    mainWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      minWidth: 1000,
+      minHeight: 600,
+      webPreferences: {
+        preload: path.join(__dirname, 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    // Create application menu
+    createMenu(mainWindow);
+
+    // Load the app
+    // Electron Forge provides these environment variables
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      // Development mode - load from Vite dev server
+      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+      mainWindow.webContents.openDevTools();
+    } else {
+      // Production mode - load from extraResource dist/
+      // Use process.resourcesPath which points to app/Contents/Resources/
+      const distPath = path.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), 'dist', 'index.html');
+      console.log('Loading renderer from:', distPath);
+      mainWindow.loadFile(distPath);
+    }
+
+    const ownedWindow = mainWindow;
+    ownedWindow.on('closed', () => {
+      if (mainWindow === ownedWindow) mainWindow = null;
+      // Keep scheduled tests active while the application remains running.
+      // Process cleanup belongs to before-quit, including on macOS window close.
+    });
+  } finally { creatingWindow = false; }
 }
 
 /**
@@ -125,6 +131,7 @@ function getMainWindow(): BrowserWindow | null {
  * App lifecycle
  */
 app.whenReady().then(() => {
+  if (quitCleanupStarted) return;
   // Set Content Security Policy
   // In development mode, we need 'unsafe-eval' for Vite HMR
   // In production, we use a stricter policy
@@ -163,56 +170,7 @@ app.whenReady().then(() => {
   createWindow();
   registerAllHandlers(ipcMain, getMainWindow);
   
-  // Check Python environment sync after window is ready
-  // This runs asynchronously and notifies the renderer if sync is needed
-  checkPythonSync();
 });
-
-/**
- * Check if Python environment needs synchronization after app update
- * Runs asynchronously after app startup
- */
-async function checkPythonSync(): Promise<void> {
-  try {
-    const syncCheck = checkSyncNeeded();
-    
-    if (syncCheck.needsSync) {
-      console.log('[Python Sync] Environment sync needed:', syncCheck.reason);
-      console.log('[Python Sync] App version:', syncCheck.currentAppVersion, '/', syncCheck.manifestAppVersion);
-      
-      // Notify the renderer process that sync is needed
-      // The renderer can then show a dialog or progress indicator
-      const window = getMainWindow();
-      if (window) {
-        window.webContents.on('did-finish-load', () => {
-          window.webContents.send('python:sync-needed', {
-            reason: syncCheck.reason,
-            currentVersion: syncCheck.currentAppVersion,
-            previousVersion: syncCheck.manifestAppVersion,
-          });
-        });
-      }
-      
-      // Auto-sync in background (optional - can be disabled for user control)
-      // Uncomment the following lines to enable auto-sync:
-      /*
-      console.log('[Python Sync] Starting automatic sync...');
-      const result = await syncPythonEnvironment((msg) => {
-        console.log('[Python Sync]', msg);
-      });
-      if (result.success) {
-        console.log('[Python Sync] Environment synchronized successfully');
-      } else {
-        console.error('[Python Sync] Failed to sync environment:', result.error);
-      }
-      */
-    } else {
-      console.log('[Python Sync] Environment is up to date');
-    }
-  } catch (error) {
-    console.error('[Python Sync] Error checking sync status:', error);
-  }
-}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -226,9 +184,24 @@ app.on('activate', () => {
   }
 });
 
-// Cleanup on app quit
-app.on('before-quit', async (event) => {
+// Keep normal exits fast; a received token rotation must reach its durable checkpoint first.
+app.on('before-quit', (event) => {
   event.preventDefault();
-  await cleanupAllProcesses();
-  app.exit(0);
+  if (quitCleanupStarted) return;
+  quitCleanupStarted = true;
+  // No async boundary separates this snapshot from aborting the owned jobs. SDK
+  // queued refreshes check cancellation before beginning a protected rotation.
+  const graceMs = isChatGPTCredentialRotationActive() ? 90000 : 6000;
+  let exited = false;
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const exit = () => {
+    if (exited) return;
+    exited = true;
+    if (deadline) clearTimeout(deadline);
+    app.exit(0);
+  };
+  deadline = setTimeout(exit, graceMs);
+  void cleanupAllProcesses(graceMs).catch((error) => {
+    console.error('Unable to finish shutdown cleanup:', error);
+  }).finally(exit);
 });

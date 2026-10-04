@@ -15,6 +15,7 @@ export default defineConfig({
       external: [
         'electron',
         ...builtinModules,
+        ...builtinModules.map((name) => `node:${name}`),
       ],
     },
   },

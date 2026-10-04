@@ -17,7 +17,7 @@ export function getTaskStatusConfig(status: TaskStatus): TaskStatusConfig {
   switch (status) {
     case 'pending':
       return {
-        label: 'Scheduled',
+        label: 'Pending',
         icon: Clock,
         variant: 'secondary',
         priority: 2,

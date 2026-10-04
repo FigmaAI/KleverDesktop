@@ -1,12 +1,6 @@
-/**
- * Project management IPC handlers
- * Handles CRUD operations for projects and project execution
- *
- * IMPORTANT: Project execution now uses config.json environment variables
- */
-
-import { IpcMain, BrowserWindow } from 'electron';
-import { ChildProcess } from 'child_process';
+/** Native project storage. Every execution goes through the recorded task runner. */
+import { IpcMain } from 'electron';
+import { randomUUID } from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
@@ -16,17 +10,14 @@ import {
   ensureDirectoryExists,
   sanitizeAppName,
 } from '../utils/project-storage';
-import { loadAppConfig } from '../utils/config-storage';
-import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getCorePath } from '../utils/python-runtime';
 import { Project, CreateProjectInput, UpdateProjectInput } from '../types';
+import { isProjectExecutionActive } from './task';
 
-let pythonProcess: ChildProcess | null = null;
 
 /**
  * Register all project management handlers
  */
-export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
+export function registerProjectHandlers(ipcMain: IpcMain): void {
   // List all projects
   ipcMain.handle('project:list', async () => {
     try {
@@ -54,18 +45,23 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
   // Create new project
   ipcMain.handle('project:create', async (_event, projectInput: CreateProjectInput) => {
     try {
+      if (projectInput.platform !== 'android') return { success: false, error: 'Only Android projects are supported.' };
+      if (typeof projectInput.name !== 'string' || !projectInput.name.trim() || /[\\/]/.test(projectInput.name) || ['.', '..'].includes(projectInput.name.trim())) {
+        return { success: false, error: 'Enter a project name without path separators.' };
+      }
       const data = loadProjects();
 
-      const workspaceDir = projectInput.workspaceDir || getProjectWorkspaceDir(projectInput.name);
+      const workspaceDir = projectInput.workspaceDir || getProjectWorkspaceDir(projectInput.name.trim());
 
       const newProject: Project = {
-        id: `proj_${Date.now()}`,
-        name: projectInput.name,
+        id: `proj_${randomUUID()}`,
+        name: projectInput.name.trim(),
         platform: projectInput.platform,
         status: 'active' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         tasks: [],
+        testCases: [],
         workspaceDir: workspaceDir,
       };
 
@@ -78,7 +74,7 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
         };
       }
 
-      // Create the work_dir structure that gelab engine expects
+      // Keep native test captures beneath the project workspace
       // Structure: {workspaceDir}/apps/{sanitized_app_name}
       const appsDir = path.join(newProject.workspaceDir, 'apps');
       const appsDirCreated = ensureDirectoryExists(appsDir);
@@ -124,7 +120,8 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
 
       data.projects[projectIndex] = {
         ...data.projects[projectIndex],
-        ...updates,
+        ...(typeof updates.name === 'string' && updates.name.trim() && !/[\\/]/.test(updates.name) && !['.', '..'].includes(updates.name.trim()) ? { name: updates.name.trim() } : {}),
+        ...(updates.status === 'active' || updates.status === 'archived' ? { status: updates.status } : {}),
         updatedAt: new Date().toISOString(),
       };
 
@@ -146,11 +143,19 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
       }
 
       const project = data.projects[projectIndex];
+      if (isProjectExecutionActive(projectId) || project.tasks.some(task => task.status === 'running')) {
+        return { success: false, error: 'Wait for the test to stop and finish saving before deleting its project.' };
+      }
 
       // Delete work directory: {workspaceDir}/apps/{sanitized_app_name}
       try {
         const sanitizedAppName = sanitizeAppName(project.name);
-        const workDir = path.join(project.workspaceDir, 'apps', sanitizedAppName);
+        const appsDir = path.resolve(project.workspaceDir, 'apps');
+        const workDir = path.resolve(appsDir, sanitizedAppName);
+        const relative = path.relative(appsDir, workDir);
+        if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) {
+          return { success: false, error: 'The stored project directory is invalid.' };
+        }
 
         if (fs.existsSync(workDir)) {
           fs.rmSync(workDir, { recursive: true, force: true });
@@ -171,102 +176,4 @@ export function registerProjectHandlers(ipcMain: IpcMain, getMainWindow: () => B
     }
   });
 
-  // Start project execution via core/controller.py with gelab engine
-  ipcMain.handle('project:start', async (_event, projectConfig: {
-    platform: string;
-    name: string;
-    url?: string;
-    device?: string;
-    workspaceDir: string;
-  }) => {
-    try {
-      const mainWindow = getMainWindow();
-
-      // Load global config from config.json
-      const appConfig = loadAppConfig();
-
-      // Build 23 environment variables from config.json
-      const configEnvVars = buildEnvFromConfig(appConfig);
-
-      // Phase C Migration: Use core/controller.py with gelab engine
-      const corePath = getCorePath();
-      const controllerPath = path.join(corePath, 'controller.py');
-      const projectRoot = path.dirname(corePath);
-
-      // Sanitize app name (remove spaces) to match learn.py behavior
-      const sanitizedAppName = sanitizeAppName(projectConfig.name);
-
-      // Build parameters for the controller
-      const taskParams = {
-        platform: projectConfig.platform,
-        app: sanitizedAppName,
-        root_dir: projectConfig.workspaceDir,
-        url: projectConfig.platform === 'web' ? projectConfig.url : undefined,
-        device: projectConfig.device,
-      };
-
-      // Select engine based on platform
-      // - web: browser_use (independent web automation engine)
-      // - android: gelab (multi-platform engine)
-      const engineName = projectConfig.platform === 'web' ? 'browser_use' : 'gelab';
-
-      const args = [
-        '-u',  // Unbuffered output for real-time logging
-        controllerPath,
-        '--engine', engineName,
-        '--action', 'execute',
-        '--task', `Explore ${projectConfig.name}`,
-        '--params', JSON.stringify(taskParams),
-      ];
-
-      // Get Python environment and merge with config environment variables
-      const pythonEnv = getPythonEnv();
-
-      pythonProcess = spawnBundledPython(args, {
-        cwd: projectRoot,  // Run from project root
-        env: {
-          ...pythonEnv,         // Python bundled environment variables
-          ...configEnvVars,     // 23 config settings from config.json
-          PYTHONPATH: projectRoot,
-        }
-      });
-
-      pythonProcess.stdout?.on('data', (data) => {
-        mainWindow?.webContents.send('project:output', data.toString());
-      });
-
-      pythonProcess.stderr?.on('data', (data) => {
-        mainWindow?.webContents.send('project:error', data.toString());
-      });
-
-      pythonProcess.on('close', (code) => {
-        mainWindow?.webContents.send('project:exit', code);
-        pythonProcess = null;
-      });
-
-      return { success: true, pid: pythonProcess.pid };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-    }
-  });
-
-  // Stop project execution
-  ipcMain.handle('project:stop', async () => {
-    if (pythonProcess) {
-      pythonProcess.kill('SIGTERM');
-      pythonProcess = null;
-      return { success: true };
-    }
-    return { success: false, error: 'No running process' };
-  });
-}
-
-/**
- * Cleanup function to kill python process on app exit
- */
-export function cleanupProjectProcesses(): void {
-  if (pythonProcess && !pythonProcess.killed) {
-    pythonProcess.kill('SIGTERM');
-    pythonProcess = null;
-  }
 }

@@ -30,7 +30,7 @@ export function initializeUpdater() {
   // For macOS universal builds, always use 'darwin-universal' regardless of actual arch
   const platform = process.platform === 'darwin' ? 'darwin-universal' : `${process.platform}-${process.arch}`;
   const feedURL = `https://update.electronjs.org/FigmaAI/KleverDesktop/${platform}/${app.getVersion()}`;
-  const userAgent = `update-electron-app/manual (${process.platform}: ${process.arch})`;
+  const userAgent = `klever-desktop (${process.platform}: ${process.arch})`;
 
   log.info('feedURL:', feedURL);
   log.info('requestHeaders:', { 'User-Agent': userAgent });

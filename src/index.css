@@ -162,3 +162,9 @@
     }
   }
 }
+
+/* Keep official ChatGPT component styling, sizing it to the settings column. */
+.klever-chatgpt-connection {
+  --siwc-card-width: 100%;
+  --siwc-card-setup-width: 100%;
+}

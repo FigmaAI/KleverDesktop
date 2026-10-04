@@ -1,0 +1,24 @@
+{
+  "_kleverModificationNotice": "Modified by KleverDesktop on 2026-10-04: vendor only local/react workspaces; remove example app commands. Modifications are under the bundled SIGN-IN WITH CHATGPT DEVKIT NONCOMMERCIAL LICENSE Version 1.0.",
+  "name": "sign-in-with-chatgpt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/local",
+    "packages/react"
+  ],
+  "scripts": {
+    "build": "npm run build -w @siwc/local && npm run build -w @siwc/react",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run build -w @siwc/local && node --experimental-strip-types --test packages/local/test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}

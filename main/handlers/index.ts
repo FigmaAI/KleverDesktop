@@ -1,53 +1,39 @@
-/**
- * Central export and registration for all IPC handlers
- */
-
 import { IpcMain, BrowserWindow } from 'electron';
-import { registerSystemCheckHandlers } from './system-checks';
-import { registerInstallationHandlers } from './installations';
-import { registerOllamaHandlers } from './ollama';
+import { registerAndroidHandlers, cleanupAndroidSetup } from './android';
 import { registerConfigHandlers } from './config';
-import { registerModelHandlers } from './model';
 import { registerUtilityHandlers } from './utilities';
-import { registerIntegrationHandlers } from './integration';
-import { registerProjectHandlers, cleanupProjectProcesses } from './project';
+import { registerProjectHandlers } from './project';
 import { registerTaskHandlers, cleanupTaskProcesses } from './task';
 import { registerDialogHandlers } from './dialogs';
 import { registerGitHubHandlers } from './github';
-import { registerGoogleLoginHandlers, cleanupGoogleLoginProcesses } from './google-login';
 import { registerScheduleHandlers } from './schedule';
+import { registerTestCaseHandlers } from './testcase';
+import { registerChatGPTHandlers } from './chatgpt';
+import { cleanupChatGPTAuth, isChatGPTCredentialRotationActive } from '../utils/chatgpt-auth';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
 
-/**
- * Register all IPC handlers
- * @param ipcMain - Electron IPC main instance
- * @param getMainWindow - Function to get the main window
- */
 export function registerAllHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
-  registerSystemCheckHandlers(ipcMain);
-  registerInstallationHandlers(ipcMain, getMainWindow);
-  registerOllamaHandlers(ipcMain, getMainWindow);
+  registerAndroidHandlers(ipcMain, getMainWindow);
   registerConfigHandlers(ipcMain);
-  registerModelHandlers(ipcMain);
   registerUtilityHandlers(ipcMain);
-  registerIntegrationHandlers(ipcMain, getMainWindow);
-  registerProjectHandlers(ipcMain, getMainWindow);
+  registerProjectHandlers(ipcMain);
   registerTaskHandlers(ipcMain, getMainWindow);
+  registerTestCaseHandlers(ipcMain);
   registerDialogHandlers(ipcMain, getMainWindow);
   registerGitHubHandlers(ipcMain);
-  registerGoogleLoginHandlers(ipcMain, getMainWindow);
+  registerChatGPTHandlers(ipcMain, getMainWindow);
   registerScheduleHandlers(ipcMain);
-
-  // Initialize schedule queue manager
   scheduleQueueManager.initialize(getMainWindow);
 }
 
-/**
- * Cleanup all processes on app exit
- */
-export async function cleanupAllProcesses(): Promise<void> {
-  cleanupProjectProcesses();
-  await cleanupTaskProcesses();
-  cleanupGoogleLoginProcesses();
+export async function cleanupAllProcesses(graceMs = isChatGPTCredentialRotationActive() ? 90000 : 6000): Promise<void> {
   scheduleQueueManager.shutdown();
+  cleanupAndroidSetup();
+  // Abort both owners synchronously, then allow credential checkpoints and run evidence to settle together.
+  const results = await Promise.allSettled([
+    cleanupTaskProcesses(Math.max(1, graceMs - 250)),
+    cleanupChatGPTAuth(),
+  ]);
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
 }

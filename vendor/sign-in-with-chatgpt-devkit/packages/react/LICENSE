@@ -1,0 +1,54 @@
+SIGN-IN WITH CHATGPT DEVKIT NONCOMMERCIAL LICENSE
+Version 1.0
+
+Copyright 2026 OpenAI
+
+1. Definitions
+
+“Work” means the OpenAI-authored code and documentation distributed with this License, in source or compiled form. It excludes separately licensed third-party materials and OpenAI names, marks, logos, and branded visual assets.
+
+“Modified Work” means a work containing modifications to the Work. Independently authored software does not become a Modified Work merely by calling, linking to, or communicating with the Work through an interface.
+
+“Contribution” means the Work as OpenAI distributed it or copyrightable modifications that another person or entity first distributes in a Modified Work under this License. “Contributor” means OpenAI or a person or entity distributing such modifications under Section 4.
+
+“You” means the person or entity exercising rights under this License. A person working for an employer, client, or other organization acts on that organization’s behalf when using the Work for its purposes.
+
+“Noncommercial Purpose” means personal learning, experimentation, or development without an intended or reasonably anticipated commercial application. It excludes development, testing, distribution, or operation of a product or service by or for a business, employer, or client in connection with its operations or commercial advantage, whether or not a fee is currently charged. Nonprofit status alone does not make a purpose noncommercial.
+
+2. Copyright License
+
+Subject to this License, each Contributor grants You a perpetual, worldwide, nonexclusive, no-charge, royalty-free license to use, reproduce, modify, publicly display, publicly perform, and distribute its Contribution, including in Modified Works, in source or compiled form, solely for Noncommercial Purposes. The grant is irrevocable while You comply with this License.
+
+You retain ownership of Your modifications, but You may distribute a Modified Work only under Section 4. This License grants no commercial-use rights in any Contribution. Commercial use of OpenAI’s Contribution requires a separate written agreement with OpenAI.
+
+3. Patent License and Defensive Termination
+
+Subject to this License, each Contributor grants You a perpetual, worldwide, nonexclusive, no-charge, royalty-free patent license, irrevocable except as stated below, to make, have made, use, import, and transfer the Work and Modified Works solely for the Noncommercial Purposes permitted by Section 2.
+
+Each grant covers only patent claims the Contributor can license that are necessarily infringed by its Contribution alone or by its Contribution in the Work or Modified Work in which it first distributed that Contribution. The grant continues to cover those claims when that Contribution is included in a later Modified Work. It does not cover claims infringed only because of later modifications or combinations with other material. No patent license is granted for commercial use.
+
+If You file a patent claim against any person or entity, including a cross-claim or counterclaim, alleging that the Work or a Contribution incorporated in a Modified Work directly or contributorily infringes a patent, all patent licenses granted to You under this License for the Work and Modified Works terminate when that claim is filed. The copyright licenses do not terminate solely because of that filing.
+
+4. Redistribution and Modifications
+
+You may distribute the Work or a Modified Work only for a Noncommercial Purpose, provided You:
+
+(a) give recipients a copy of this License;
+
+(b) mark files You changed with prominent change notices;
+
+(c) preserve applicable copyright, patent, trademark, attribution, and third-party license notices; and
+
+(d) license every modification You own or have authority to license in a distributed Modified Work under this same License, including its copyright and patent grants, without imposing additional restrictions on the rights it grants.
+
+Each recipient receives rights in each Contribution directly from its Contributor under this License. You cannot expand the rights granted in another Contributor’s Contribution. If the Work has a NOTICE file, preserve its applicable attribution notices in a NOTICE file, accompanying documentation, or another customary location.
+
+5. Trademarks, Assets, and Services
+
+This License grants no rights to OpenAI names, trademarks, logos, or branded visual assets, except to identify the Work’s origin and reproduce required notices. It grants no access to ChatGPT, the OpenAI API, or any other OpenAI service. Separate terms govern those assets and services.
+
+6. Warranty Disclaimer and Liability
+
+To the extent permitted by law, the Work and each Contribution are provided “AS IS,” without warranties or conditions of any kind, including title, noninfringement, merchantability, or fitness for a particular purpose. You are responsible for deciding whether to use or distribute them. No Contributor is liable under any legal theory for damages arising from this License or the use or inability to use the Work or a Contribution, including direct, indirect, incidental, special, or consequential damages, even if advised of their possibility, except as required by law or agreed in writing.
+
+END OF TERMS AND CONDITIONS

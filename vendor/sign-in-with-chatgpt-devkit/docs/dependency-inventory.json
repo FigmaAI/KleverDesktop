@@ -1,0 +1,3097 @@
+{
+  "schemaVersion": 1,
+  "source": "package-lock.json",
+  "lockfileVersion": 3,
+  "lockfileSha256": "adf9305f9965b00a3ec5c1398410fbcc461b7b6b259419515ceaffd40fb2cd0d",
+  "scope": "All lockfile entries, including workspaces and platform-specific optional dependencies. Declared licences are upstream metadata, not legal clearance. Full notice text is included for runtime dependencies, Vite, the Electron npm package, and bundled fonts.",
+  "electronBinaryScope": "The Electron npm package MIT licence does not cover all code in an Electron/Chromium binary. Before distributing a packaged desktop application, preserve the licences shipped in that exact Electron distribution, including LICENSE and LICENSES.chromium.html, and review any additional bundled components.",
+  "packages": [
+    {
+      "path": "",
+      "name": "sign-in-with-chatgpt",
+      "version": "0.1.0",
+      "declaredLicense": "SEE LICENSE IN LICENSE",
+      "resolved": null,
+      "integrity": null,
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "examples/component-gallery",
+      "name": "@siwc/component-gallery",
+      "version": "0.1.0",
+      "declaredLicense": "SEE LICENSE IN LICENSE",
+      "resolved": null,
+      "integrity": null,
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@siwc/react": "0.1.0",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "examples/paste-perfect",
+      "name": "@siwc/paste-perfect",
+      "version": "0.1.0",
+      "declaredLicense": "SEE LICENSE IN LICENSE",
+      "resolved": null,
+      "integrity": null,
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@siwc/local": "0.1.0",
+        "@siwc/react": "0.1.0",
+        "lucide-react": "^0.577.0",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@electron-internal/extract-zip",
+      "name": "@electron-internal/extract-zip",
+      "version": "1.0.5",
+      "declaredLicense": "BSD-2-Clause",
+      "resolved": "https://registry.npmjs.org/@electron-internal/extract-zip/-/extract-zip-1.0.5.tgz",
+      "integrity": "sha512-+bqFCP98pLI0Tt0XQo1TmlXtwjWchISndDOxCkEcIuUgXWpBnLyRI+2DU+mesvnMMX6L1XDqYNA0lXNDHd/yiA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@electron/asar",
+      "name": "@electron/asar",
+      "version": "4.0.1",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@electron/asar/-/asar-4.0.1.tgz",
+      "integrity": "sha512-F4Ykm1jiBGY1WV/o8Q8oFW8Nq0u+S2/vPujzNJtdSJ6C4LHC4CiGLn7c17s7SolZ23gcvCebMncmZtNc+MkxPQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "commander": "^13.1.0",
+        "glob": "^11.0.1",
+        "minimatch": "^10.0.1"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@electron/fuses",
+      "name": "@electron/fuses",
+      "version": "2.1.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@electron/fuses/-/fuses-2.1.2.tgz",
+      "integrity": "sha512-x083OSf4xO9CKUKmJFYW+Egua9y/v2XOCcCIuWnM4RlpMj8xHwKICezlVN6vZyI2cZTr/ysZXRU5AKtYPJivBQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@electron/get",
+      "name": "@electron/get",
+      "version": "5.1.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@electron/get/-/get-5.1.0.tgz",
+      "integrity": "sha512-3kSBtG8ObcTVfXanm5vVJ6UnBLEVmVsRk1M+vGqCuMBV+XLCbJYuWQful+yIy0GQDsSlK0kHEriEHn7SPk4EnA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "debug": "^4.1.1",
+        "env-paths": "^3.0.0",
+        "graceful-fs": "^4.2.11",
+        "progress": "^2.0.3",
+        "semver": "^7.6.3",
+        "sumchecker": "^3.0.1"
+      },
+      "optionalDependencies": {
+        "undici": "^7.24.4"
+      },
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/aix-ppc64",
+      "name": "@esbuild/aix-ppc64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.28.2.tgz",
+      "integrity": "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "aix"
+      ],
+      "cpu": [
+        "ppc64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/android-arm",
+      "name": "@esbuild/android-arm",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.28.2.tgz",
+      "integrity": "sha512-kXXoiPVVGQcnIYGOeaovwOURpniDBpSq4A03qkQ+BMQqtGG6HYap3xne9C1O1yo4TR3qxlCX5IqqmX6fFo2Lqg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/android-arm64",
+      "name": "@esbuild/android-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.28.2.tgz",
+      "integrity": "sha512-5YfKeeI8qWfBZIX+u2xZC3Zlb3Os/gLS2sbEKM+I4ZOcsWmHS2WLysCcQZDAFRslDUU5Oiq44gf6PYN1vGwG5A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/android-x64",
+      "name": "@esbuild/android-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.28.2.tgz",
+      "integrity": "sha512-O387ite7SzUyCcy3JQX4P4bLtEA7bLLkx+esve5JHnyYfNTxcVpXZo9jhdB0lTKN44gztELTdU7nS8Nr16Fs1Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/darwin-arm64",
+      "name": "@esbuild/darwin-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.28.2.tgz",
+      "integrity": "sha512-n4KqkOQrraxHJcgjM1RvwbigfQKIKJVpM7xp+KsxiyUSrRdIXnt73VhrPAx0fV44hgfmIVKjxMN9J1t5jySVkw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/darwin-x64",
+      "name": "@esbuild/darwin-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.28.2.tgz",
+      "integrity": "sha512-uq6suIWYP37qzGddBKPw5QEQPi6HiLGsO7UmkpfyaYNQ3D+rN6w6WfwH+nuqcGXWvawGwxOEroO4YGnFh95azw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/freebsd-arm64",
+      "name": "@esbuild/freebsd-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.28.2.tgz",
+      "integrity": "sha512-n+I0BTSRIoy+d6RPKnEVwql5UwBJolytvY4mAOIEJorKlqgPII8ix6slVVrfZ5Tnj7glIZvloylbB/EJPMWEXw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/freebsd-x64",
+      "name": "@esbuild/freebsd-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.28.2.tgz",
+      "integrity": "sha512-78XJTJkvPs0kz2w61301PJjXl4g7q3JqiYMZ/M/yVI73EHBrCRTgkhu9oqG7vPqq+a/yadEW8aD+agKlk5xrmg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-arm",
+      "name": "@esbuild/linux-arm",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.28.2.tgz",
+      "integrity": "sha512-XlDnu2q5yoqems+xay6wSAcg9DDD7K9RLKZEBOMZm3ckNpJBvOX20tSfby8KfrrhINDyv9V2YVZKY/SpoGJI8w==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-arm64",
+      "name": "@esbuild/linux-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.28.2.tgz",
+      "integrity": "sha512-pW4AC0P3it8c7do9MVM4p51FzHzdM/TZrerurgRcHJ2WTa1VQ1CIq18xncfpBJw4ojkiZZrKW2yIBWBP92j6Ug==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-ia32",
+      "name": "@esbuild/linux-ia32",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.28.2.tgz",
+      "integrity": "sha512-CYbnj78HsIeA+DhgUKgFCfvNsTHFhMMrinUrMZpDXJXKN8T3XViTZ/+wtHeVxEWY8ewSzTFN+nRmSwO2tZaLUQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "ia32"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-loong64",
+      "name": "@esbuild/linux-loong64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.28.2.tgz",
+      "integrity": "sha512-buwkd8nsph4R+ajRvw0qM5Hja/TXQow3ptzWO2EbG/cqcIkHloRrdlBtQlshyYGTNFvfkfJ5tpPLVkY4DtsPfQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "loong64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-mips64el",
+      "name": "@esbuild/linux-mips64el",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.28.2.tgz",
+      "integrity": "sha512-ZVykbDyk7519VwiNb9Lcj9m8XM6v5V9uKPvrEMkkEedVewf+0itkhahp4HDpgERXhwLRpWFypsGbG/J8s0QjJA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "mips64el"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-ppc64",
+      "name": "@esbuild/linux-ppc64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.28.2.tgz",
+      "integrity": "sha512-CAXl+Dtd9UUuJd8pKKdwh6MLm3MUMiqMPmhZ3tTSXPqfyQ3vDl6R5hZdZ/kYojK4ofXtdfSv1tFq8XzWx3heNQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "ppc64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-riscv64",
+      "name": "@esbuild/linux-riscv64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.28.2.tgz",
+      "integrity": "sha512-GeXCej4IQtU1B+QlDV8W/RRvbzI3O/Stss+/bCXv4lZls5WGRtu2a+3JkA3i4qIUlMXpcHebWpF8AkJhATowuA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "riscv64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-s390x",
+      "name": "@esbuild/linux-s390x",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.28.2.tgz",
+      "integrity": "sha512-3H1weTYZPxt/WOhByszQZybS9w5lKzUn1FDMsgEChbHWQwHYQQRfBxgCcZvPhjHfKyJjIievvMmEUawJrdY9Dg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "s390x"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/linux-x64",
+      "name": "@esbuild/linux-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.28.2.tgz",
+      "integrity": "sha512-4xTZr1FUmSoQW4XIWmit3tzQrUTZM+N3P0XV8xROKYF50XfI7xeO90+1bZvNwxIufQ9hDQVRJH5YhgPVF8A/HQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/netbsd-arm64",
+      "name": "@esbuild/netbsd-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.28.2.tgz",
+      "integrity": "sha512-sSATRjPeDBg3pdgHoQfoYBob11Kk1FGa9lui5RIHZCoCkJa9QKlvl3/vKz2usCmYYjs7ymJR/2Nnsqe+Hjt5nw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "netbsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/netbsd-x64",
+      "name": "@esbuild/netbsd-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.28.2.tgz",
+      "integrity": "sha512-lqnzCV+mM0gIADaKihiCg6ifgfU2L3h5E33rNQBN1Y4MaVGnzryzmvvf7UHxprpQdE8hpqLolJ9Rl+SkIRDpyw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "netbsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/openbsd-arm64",
+      "name": "@esbuild/openbsd-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.28.2.tgz",
+      "integrity": "sha512-AL2qJILH7lNjrDmCQDvdxMfAUIv8KMNZOvrwAQ8i8//ntL9FflhOyMJ8OZSMBb8/AWXe3/5v5S20y3zCoZWKoQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openbsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/openbsd-x64",
+      "name": "@esbuild/openbsd-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.28.2.tgz",
+      "integrity": "sha512-QtiuPytchRyC4rwUKhexJdQKvDuZ6hWloi3igqPQNUJCS1/v9EiO3UTOXR6A3FoMo4fnAKbWJdqaIwhOzh8qEw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openbsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/openharmony-arm64",
+      "name": "@esbuild/openharmony-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.28.2.tgz",
+      "integrity": "sha512-WkhYDmpTjLvGlScA1rwjRUmhl4k8oXR3cIbtqWmELgU/dFeHHlEllxDvdWcNJV9rbzCexB5vz8gtNewWLgCT7Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openharmony"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/sunos-x64",
+      "name": "@esbuild/sunos-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.28.2.tgz",
+      "integrity": "sha512-GPMSkTOtMnv2U2F8gxe4Io6qmVs+YKyp832Etqqxr0hFngmXQ3rzwytelm3GIn7T4VviRUlf3sOgBOiTdvaf7g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "sunos"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/win32-arm64",
+      "name": "@esbuild/win32-arm64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.28.2.tgz",
+      "integrity": "sha512-PIhhEkE9uPBleRBrQEJpUn7MBnibZzbGzYWPmY3x+YoVg/95zbjB4CxPPOQ8l5tYYM4mMaCthF8/1DIfBQQyWQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/win32-ia32",
+      "name": "@esbuild/win32-ia32",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.28.2.tgz",
+      "integrity": "sha512-YmJbfTlvU7Sdn9BB+4PRES4oB6pxgS37MAONj+hBr/cpXS1aBPKXxNnDbu+QCWPj0o9dgyxeq79g6c5P8KeuYA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "ia32"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@esbuild/win32-x64",
+      "name": "@esbuild/win32-x64",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.28.2.tgz",
+      "integrity": "sha512-5ebpxr3nWMzrL/rnUI755Jkuee0bHL/Gq0WTF9lvcpv73wAp5eu8MfBUgWK9bhWvZjj7yX8etf/8tI8Ney695g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@isaacs/cliui",
+      "name": "@isaacs/cliui",
+      "version": "9.0.0",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/@isaacs/cliui/-/cliui-9.0.0.tgz",
+      "integrity": "sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@oxc-project/types",
+      "name": "@oxc-project/types",
+      "version": "0.149.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@oxc-project/types/-/types-0.149.0.tgz",
+      "integrity": "sha512-Efcc+iF0j3Bf67YjEqIqWXbX5XddXoK/Mw4K1/JuXwRCZ8N16VR7iT23nlCc9XrveFVh/E5Rqs2StT0V8v9LdA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-android-arm-eabi",
+      "name": "@rolldown/binding-android-arm-eabi",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm-eabi/-/binding-android-arm-eabi-1.2.8.tgz",
+      "integrity": "sha512-tN5aztYkKCte4i5SIrrz5yK/HMjEuCqCSCJa418jOV8tZ1cBY3YF2otxB1ktPxzsLA1BeTqwapK0bfjxNvHJVw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-android-arm64",
+      "name": "@rolldown/binding-android-arm64",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-android-arm64/-/binding-android-arm64-1.2.8.tgz",
+      "integrity": "sha512-dIYTWl9XprMUiQFoc55KUyk/oS8SKYH3zFl0LTR7RT0Xj4hgSVyuJcroH8JUu8RcpF8fTB6E0aOwCkZoYPcDSQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-darwin-arm64",
+      "name": "@rolldown/binding-darwin-arm64",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.2.8.tgz",
+      "integrity": "sha512-PCSDQGXD2IyTEFrcgPyBM8jJuGmrbCMuoIOXdbEGVemruKACXoLQJrb+A45Z0L5t1RQkdfJprAYPkikbh7dzdA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-darwin-x64",
+      "name": "@rolldown/binding-darwin-x64",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-darwin-x64/-/binding-darwin-x64-1.2.8.tgz",
+      "integrity": "sha512-Uk7lRsGhPFHVX/sAUC6D5H9Ol30dFHd6iquokll2th3LpdJ3F5CzQB+7DHn0Ri2mG+U7k2zXiPHDrwZenXhwSA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-freebsd-x64",
+      "name": "@rolldown/binding-freebsd-x64",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-freebsd-x64/-/binding-freebsd-x64-1.2.8.tgz",
+      "integrity": "sha512-DjszaTEVogPqA5bYzsEeqDCQxbcp2fexQwKcRspYji2yzR68fCf+e4fx6kBSRDwX5/brZaHw/hWS9+A/+/w9sQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-arm-gnueabihf",
+      "name": "@rolldown/binding-linux-arm-gnueabihf",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm-gnueabihf/-/binding-linux-arm-gnueabihf-1.2.8.tgz",
+      "integrity": "sha512-zmwa7FTmdzB6aaEEuuls18H6Ap5JmJPSoPTuXixeJZV6tG40SyLkApQtz1g8ptZtiEKqj9OM0oNLPh1AgvE31Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-arm64-gnu",
+      "name": "@rolldown/binding-linux-arm64-gnu",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-1.2.8.tgz",
+      "integrity": "sha512-KdYQDPHwJVnbFwdTGMgxsI9SqblBlz6STGM+w1We/d5B8OWWidYH0MwkU/uA1wM5fIpO2MkOVxXrNzzuZhw9ew==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-arm64-musl",
+      "name": "@rolldown/binding-linux-arm64-musl",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-arm64-musl/-/binding-linux-arm64-musl-1.2.8.tgz",
+      "integrity": "sha512-jFJTifHnNPY+yzOoNZQfSIysrVyXzEQPhPnOUjmD1bcQGHH6s7c8cViKWar8YplQImE5N9JRqMCLrM2CdxOrZA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-ppc64-gnu",
+      "name": "@rolldown/binding-linux-ppc64-gnu",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-ppc64-gnu/-/binding-linux-ppc64-gnu-1.2.8.tgz",
+      "integrity": "sha512-FhiOziBDWPBjbcmRzfLyIJnaP7AVMFXT7YCXPjXxj7wKU3vx24RjrCNN/zjvVa+N2vVoHJwCoUBvsrN/DG3zIA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "ppc64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-s390x-gnu",
+      "name": "@rolldown/binding-linux-s390x-gnu",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-s390x-gnu/-/binding-linux-s390x-gnu-1.2.8.tgz",
+      "integrity": "sha512-WnHfADMzOV2Y55wlx1hzzQnar/wDt/VdvWSD99r18Mz9ylNieIGOkRx3UV21h7m/eJvjySYJkO26VvGNFkwsIQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "s390x"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-x64-gnu",
+      "name": "@rolldown/binding-linux-x64-gnu",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-1.2.8.tgz",
+      "integrity": "sha512-H9tRr5ibfXFVLxbPOseVewewFpl28zcEdjRDt2FTUZU7odxP0gEv1ki4/kGmcGOh78oRwZuuQllGLZ9zTJp84g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-linux-x64-musl",
+      "name": "@rolldown/binding-linux-x64-musl",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-linux-x64-musl/-/binding-linux-x64-musl-1.2.8.tgz",
+      "integrity": "sha512-UefiqfM3D6IVNlZ8tSGs9+Ejjud2T+oxO0IHADU45Y+lyEjD2dVFyZHbkfX0LUb5Zugo/oIv1eCO/KVYhgYJYA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-openharmony-arm64",
+      "name": "@rolldown/binding-openharmony-arm64",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-openharmony-arm64/-/binding-openharmony-arm64-1.2.8.tgz",
+      "integrity": "sha512-637Ke4kWSy6rp9cxQ9gMOXlxPgIw/c1beASV4M//3+9I4uwBVOOl74G+e3zyU3u19U7RkRl/HuewixZ/Z6+Rjg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openharmony"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-win32-arm64-msvc",
+      "name": "@rolldown/binding-win32-arm64-msvc",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-arm64-msvc/-/binding-win32-arm64-msvc-1.2.8.tgz",
+      "integrity": "sha512-xWBkPOF1Q9k/Gv1nQXnVdLxKu74jXppuOM4Z3mnypVUJJJwLsMl7hNJGRAUJoG8A5MgOI1ACKM+wBFxSJzKy4A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/binding-win32-x64-msvc",
+      "name": "@rolldown/binding-win32-x64-msvc",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/binding-win32-x64-msvc/-/binding-win32-x64-msvc-1.2.8.tgz",
+      "integrity": "sha512-uz2ZvfgXbxqNwijjjbxrnvALwpyODDcgc1T1N8N3rf/DXKQmaFwmB4LX4yyjggpwN2obdQLb2rgirX5ffCWYng==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@rolldown/pluginutils",
+      "name": "@rolldown/pluginutils",
+      "version": "1.0.1",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz",
+      "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@siwc/component-gallery",
+      "name": "@siwc/component-gallery",
+      "version": null,
+      "declaredLicense": null,
+      "resolved": "examples/component-gallery",
+      "integrity": null,
+      "workspaceLink": true,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@siwc/local",
+      "name": "@siwc/local",
+      "version": null,
+      "declaredLicense": null,
+      "resolved": "packages/local",
+      "integrity": null,
+      "workspaceLink": true,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@siwc/paste-perfect",
+      "name": "@siwc/paste-perfect",
+      "version": null,
+      "declaredLicense": null,
+      "resolved": "examples/paste-perfect",
+      "integrity": null,
+      "workspaceLink": true,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@siwc/react",
+      "name": "@siwc/react",
+      "version": null,
+      "declaredLicense": null,
+      "resolved": "packages/react",
+      "integrity": null,
+      "workspaceLink": true,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@types/node",
+      "name": "@types/node",
+      "version": "24.13.5",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-24.13.5.tgz",
+      "integrity": "sha512-TXyindR+lBr22aJIdMQzCFHPHR6cR4js838mRDCSz5hOKWZvZwsXSSiXDmjRj4iJmgl+sR9O+1mkoVBSMadNug==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "undici-types": "~7.18.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@types/proper-lockfile",
+      "name": "@types/proper-lockfile",
+      "version": "4.1.4",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@types/proper-lockfile/-/proper-lockfile-4.1.4.tgz",
+      "integrity": "sha512-uo2ABllncSqg9F1D4nugVl9v93RmjxF6LJzQLMLDdPaXCUIDPeOJ21Gbqi43xNKzBi/WQ0Q0dICqufzQbMjipQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@types/retry": "*"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@types/react",
+      "name": "@types/react",
+      "version": "19.3.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@types/react/-/react-19.3.0.tgz",
+      "integrity": "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "csstype": "^3.2.2"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@types/react-dom",
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@types/react-dom/-/react-dom-19.3.0.tgz",
+      "integrity": "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "@types/react": "^19.3.0"
+      },
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@types/retry",
+      "name": "@types/retry",
+      "version": "0.12.5",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@types/retry/-/retry-0.12.5.tgz",
+      "integrity": "sha512-3xSjTp3v03X/lSQLkczaN9UIEwJMoMCA1+Nb5HfbJEQWogdeQIyVtTvxPXDQjZ5zws8rFQfVfRdz03ARihPJgw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-aix-ppc64",
+      "name": "@typescript/typescript-aix-ppc64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-aix-ppc64/-/typescript-aix-ppc64-7.0.2.tgz",
+      "integrity": "sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "aix"
+      ],
+      "cpu": [
+        "ppc64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-darwin-arm64",
+      "name": "@typescript/typescript-darwin-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-darwin-arm64/-/typescript-darwin-arm64-7.0.2.tgz",
+      "integrity": "sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-darwin-x64",
+      "name": "@typescript/typescript-darwin-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-darwin-x64/-/typescript-darwin-x64-7.0.2.tgz",
+      "integrity": "sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-freebsd-arm64",
+      "name": "@typescript/typescript-freebsd-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-freebsd-arm64/-/typescript-freebsd-arm64-7.0.2.tgz",
+      "integrity": "sha512-W5NH4y/J0plIIS5b2xvTEkU7JFxyqdMAOgf+Ilhl0vHQXKO5dZoxd+C/jEtq56c4F3wk71RB4BMRQ2XdI+bwYQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-freebsd-x64",
+      "name": "@typescript/typescript-freebsd-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-freebsd-x64/-/typescript-freebsd-x64-7.0.2.tgz",
+      "integrity": "sha512-UMGDx5sTpzNw3WiPebH7l90IWfJggEd+egHt/q6p7/Cm3zqoV7VxkGXt+3DxPIw8CcmvAB0j3sVVfbhX+M4Tpw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-arm",
+      "name": "@typescript/typescript-linux-arm",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-arm/-/typescript-linux-arm-7.0.2.tgz",
+      "integrity": "sha512-gffT3xPz9sR7j/YJExkyPntrI0P2EP9XbOyWzth2/Gs0RstK+90RBcO0ncXoXy/beYll1SXw846Nf2zdnEz0QQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-arm64",
+      "name": "@typescript/typescript-linux-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-arm64/-/typescript-linux-arm64-7.0.2.tgz",
+      "integrity": "sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-loong64",
+      "name": "@typescript/typescript-linux-loong64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-loong64/-/typescript-linux-loong64-7.0.2.tgz",
+      "integrity": "sha512-uEHck9i8hoAzXPiYRib1O7miOnz23SxIeVl6F4LXox+qov1K35jHcEW6VHKvZI+pyvl7fZEP4MCU5LYvIq1GuQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "loong64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-mips64el",
+      "name": "@typescript/typescript-linux-mips64el",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-mips64el/-/typescript-linux-mips64el-7.0.2.tgz",
+      "integrity": "sha512-R4KvAMnE43W5Qeqb0Ly56O3mWMWIAgsMyz36DCaycd5nbg/9kzm0liw3JocfRqyJY0KPmzFjbswozXyW0DnIYA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "mips64el"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-ppc64",
+      "name": "@typescript/typescript-linux-ppc64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-ppc64/-/typescript-linux-ppc64-7.0.2.tgz",
+      "integrity": "sha512-DORx5b3sd/4S7eayxm4FQv+A7CrkUIGRaHiwI8oiHTAI1fAPWhF4J0vAlkC8biAlHSVVwxMQ3tjZ2/DVbnQiiA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "ppc64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-riscv64",
+      "name": "@typescript/typescript-linux-riscv64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-riscv64/-/typescript-linux-riscv64-7.0.2.tgz",
+      "integrity": "sha512-wf0jqEDOjrPRnKwYRyyJDRo11KMbvMFrU+q4zqKyChODBzvlkbhNQfKvLxQCcwTpdDaXSHZTVuh0JoCrKCUMHQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "riscv64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-s390x",
+      "name": "@typescript/typescript-linux-s390x",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-s390x/-/typescript-linux-s390x-7.0.2.tgz",
+      "integrity": "sha512-IkwJc3L7yhytWd/ewjyxNDfOmswCm9GWMJT/ue/dU4aZNbwZeYAetq42VyLmsmSjvoX7z74X6ZaYCtzAr0EuGw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "s390x"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-linux-x64",
+      "name": "@typescript/typescript-linux-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-linux-x64/-/typescript-linux-x64-7.0.2.tgz",
+      "integrity": "sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-netbsd-arm64",
+      "name": "@typescript/typescript-netbsd-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-netbsd-arm64/-/typescript-netbsd-arm64-7.0.2.tgz",
+      "integrity": "sha512-+polYF4MF04aPpO5FTkHran9yUQDSXqy5GiSDKpsll5jy3l3+g9QLhpf39T+ePtefhXLOGrLl0QIjkQP6VnelA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "netbsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-netbsd-x64",
+      "name": "@typescript/typescript-netbsd-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-netbsd-x64/-/typescript-netbsd-x64-7.0.2.tgz",
+      "integrity": "sha512-8YIT0EHM/3dq10ZOVF/A7pc/YSMtbcecct4rWtexrnSCHOPcpC2KTLXfTCR6vDpnSiY12heNb1GiN/wu+T/FyA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "netbsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-openbsd-arm64",
+      "name": "@typescript/typescript-openbsd-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-openbsd-arm64/-/typescript-openbsd-arm64-7.0.2.tgz",
+      "integrity": "sha512-APT8+ClYnuYm1u9+kgGXoMj2VzWzcymwh2gNSQVySHfkRDGOTVkoWLjCmOQSaO+PoqQ57B0flRp9SA+7GnnkzQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openbsd"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-openbsd-x64",
+      "name": "@typescript/typescript-openbsd-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-openbsd-x64/-/typescript-openbsd-x64-7.0.2.tgz",
+      "integrity": "sha512-yX7s+Q0Dln0Dt9tEzZsAjXXR/+ytBM7AlglaqyeMPxQszJ1JhlJdZ6jLA+IzldHtflX81em7lDao1xXu+aRRkg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "openbsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-sunos-x64",
+      "name": "@typescript/typescript-sunos-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-sunos-x64/-/typescript-sunos-x64-7.0.2.tgz",
+      "integrity": "sha512-dLJDGaLZ1D4HPQn62u1n8mBDkJREwMsAkCdkwd4Ieqw+x3TUyTsqY0YiBCtE6H6OzzgGk3iuZ3vFWRS+E8/d1g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "sunos"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-win32-arm64",
+      "name": "@typescript/typescript-win32-arm64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-win32-arm64/-/typescript-win32-arm64-7.0.2.tgz",
+      "integrity": "sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@typescript/typescript-win32-x64",
+      "name": "@typescript/typescript-win32-x64",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/@typescript/typescript-win32-x64/-/typescript-win32-x64-7.0.2.tgz",
+      "integrity": "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/@vitejs/plugin-react",
+      "name": "@vitejs/plugin-react",
+      "version": "6.1.1",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.1.1.tgz",
+      "integrity": "sha512-yxLaQV9gkhS8ezJqCM6+ndU7mDY6gqAg75NQ+0IjwEI8IYOmQCgkRwHKVSfWXW076DsqMo0Dk+0FK1U+M5RgFw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@rolldown/pluginutils": "^1.0.1"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+        "babel-plugin-react-compiler": "^1.0.0",
+        "oxc-transform-react": "^0.145.0",
+        "vite": "^8.0.0"
+      },
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/balanced-match",
+      "name": "balanced-match",
+      "version": "4.0.4",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/balanced-match/-/balanced-match-4.0.4.tgz",
+      "integrity": "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/brace-expansion",
+      "name": "brace-expansion",
+      "version": "5.0.12",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-5.0.12.tgz",
+      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "balanced-match": "^4.0.2"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/commander",
+      "name": "commander",
+      "version": "13.1.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/commander/-/commander-13.1.0.tgz",
+      "integrity": "sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/cross-spawn",
+      "name": "cross-spawn",
+      "version": "7.0.6",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
+      "integrity": "sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "path-key": "^3.1.0",
+        "shebang-command": "^2.0.0",
+        "which": "^2.0.1"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/csstype",
+      "name": "csstype",
+      "version": "3.2.3",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
+      "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/debug",
+      "name": "debug",
+      "version": "4.4.3",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/debug/-/debug-4.4.3.tgz",
+      "integrity": "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "ms": "^2.1.3"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/detect-libc",
+      "name": "detect-libc",
+      "version": "2.1.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-2.1.2.tgz",
+      "integrity": "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/electron",
+      "name": "electron",
+      "version": "42.11.4",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/electron/-/electron-42.11.4.tgz",
+      "integrity": "sha512-8J8yNehAZ+x5LkDVvZWUsPbRTYK1z/CmQ6RndX8MKLgzQuaB0MC3fWfHCudF4ApFC3vYB/lO/NdhufarY0CWTA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@electron-internal/extract-zip": "^1.0.1",
+        "@electron/get": "^5.0.0",
+        "@types/node": "^24.9.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/electron/LICENSE",
+          "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/env-paths",
+      "name": "env-paths",
+      "version": "3.0.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/env-paths/-/env-paths-3.0.0.tgz",
+      "integrity": "sha512-dtJUTepzMW3Lm/NPxRf3wP4642UWhjL2sQxc+ym2YMj1m/H2zDNQOlezafzkHwn6sMstjHTwG6iQQsctDW/b1A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/esbuild",
+      "name": "esbuild",
+      "version": "0.28.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.28.2.tgz",
+      "integrity": "sha512-HKVLS8dvII+xoKW9kmqxbRKrnWEXfJJr/FZhhJmiqIB0e053QNYFqOBouTMO/k5sID4MvCiUCvv8b9M4h32wIA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {
+        "@esbuild/aix-ppc64": "0.28.2",
+        "@esbuild/android-arm": "0.28.2",
+        "@esbuild/android-arm64": "0.28.2",
+        "@esbuild/android-x64": "0.28.2",
+        "@esbuild/darwin-arm64": "0.28.2",
+        "@esbuild/darwin-x64": "0.28.2",
+        "@esbuild/freebsd-arm64": "0.28.2",
+        "@esbuild/freebsd-x64": "0.28.2",
+        "@esbuild/linux-arm": "0.28.2",
+        "@esbuild/linux-arm64": "0.28.2",
+        "@esbuild/linux-ia32": "0.28.2",
+        "@esbuild/linux-loong64": "0.28.2",
+        "@esbuild/linux-mips64el": "0.28.2",
+        "@esbuild/linux-ppc64": "0.28.2",
+        "@esbuild/linux-riscv64": "0.28.2",
+        "@esbuild/linux-s390x": "0.28.2",
+        "@esbuild/linux-x64": "0.28.2",
+        "@esbuild/netbsd-arm64": "0.28.2",
+        "@esbuild/netbsd-x64": "0.28.2",
+        "@esbuild/openbsd-arm64": "0.28.2",
+        "@esbuild/openbsd-x64": "0.28.2",
+        "@esbuild/openharmony-arm64": "0.28.2",
+        "@esbuild/sunos-x64": "0.28.2",
+        "@esbuild/win32-arm64": "0.28.2",
+        "@esbuild/win32-ia32": "0.28.2",
+        "@esbuild/win32-x64": "0.28.2"
+      },
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/fdir",
+      "name": "fdir",
+      "version": "6.5.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+      "integrity": "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "picomatch": "^3 || ^4"
+      },
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/foreground-child",
+      "name": "foreground-child",
+      "version": "3.3.1",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/foreground-child/-/foreground-child-3.3.1.tgz",
+      "integrity": "sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "cross-spawn": "^7.0.6",
+        "signal-exit": "^4.0.1"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/foreground-child/node_modules/signal-exit",
+      "name": "signal-exit",
+      "version": "4.1.0",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/signal-exit/-/signal-exit-4.1.0.tgz",
+      "integrity": "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/fsevents",
+      "name": "fsevents",
+      "version": "2.3.3",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+      "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/glob",
+      "name": "glob",
+      "version": "11.1.0",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/glob/-/glob-11.1.0.tgz",
+      "integrity": "sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "foreground-child": "^3.3.1",
+        "jackspeak": "^4.1.1",
+        "minimatch": "^10.1.1",
+        "minipass": "^7.1.2",
+        "package-json-from-dist": "^1.0.0",
+        "path-scurry": "^2.0.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/graceful-fs",
+      "name": "graceful-fs",
+      "version": "4.2.11",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz",
+      "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/graceful-fs/LICENSE",
+          "sha256": "f65c5d9f22a317b2a10803bd1868461ce6499c2ed7217bc80c0cc772a748789c"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/isexe",
+      "name": "isexe",
+      "version": "2.0.0",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
+      "integrity": "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/jackspeak",
+      "name": "jackspeak",
+      "version": "4.2.3",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/jackspeak/-/jackspeak-4.2.3.tgz",
+      "integrity": "sha512-ykkVRwrYvFm1nb2AJfKKYPr0emF6IiXDYUaFx4Zn9ZuIH7MrzEZ3sD5RlqGXNRpHtvUHJyOnCEFxOlNDtGo7wg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@isaacs/cliui": "^9.0.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/jose",
+      "name": "jose",
+      "version": "6.2.12",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/jose/-/jose-6.2.12.tgz",
+      "integrity": "sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/jose/LICENSE.md",
+          "sha256": "8078b0829d6c3e9ecde2f003e1966e4cad3efc6e7a640efbab0313cc166b1af1"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/lightningcss",
+      "name": "lightningcss",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.33.0.tgz",
+      "integrity": "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "detect-libc": "^2.0.3"
+      },
+      "optionalDependencies": {
+        "lightningcss-android-arm64": "1.33.0",
+        "lightningcss-darwin-arm64": "1.33.0",
+        "lightningcss-darwin-x64": "1.33.0",
+        "lightningcss-freebsd-x64": "1.33.0",
+        "lightningcss-linux-arm-gnueabihf": "1.33.0",
+        "lightningcss-linux-arm64-gnu": "1.33.0",
+        "lightningcss-linux-arm64-musl": "1.33.0",
+        "lightningcss-linux-x64-gnu": "1.33.0",
+        "lightningcss-linux-x64-musl": "1.33.0",
+        "lightningcss-win32-arm64-msvc": "1.33.0",
+        "lightningcss-win32-x64-msvc": "1.33.0"
+      },
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-android-arm64",
+      "name": "lightningcss-android-arm64",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-android-arm64/-/lightningcss-android-arm64-1.33.0.tgz",
+      "integrity": "sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-darwin-arm64",
+      "name": "lightningcss-darwin-arm64",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.33.0.tgz",
+      "integrity": "sha512-Sciaz8eenNTKn9b3t7+xr0ipTp9YxKQY4npwQ3mrRuL0BAVHBLyZxofhaKBAVtzmtRZ/zTyo0/to4B1uWG/Djg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-darwin-x64",
+      "name": "lightningcss-darwin-x64",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.33.0.tgz",
+      "integrity": "sha512-Z5UPAxzrjlWNNyGy6i65cJzzvgJ5D3T6wMvs+gWpY9d7qRhANrxqAp6LhxIgZhWEw18RfJTGcRxjuLIBr+m8XQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-freebsd-x64",
+      "name": "lightningcss-freebsd-x64",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-freebsd-x64/-/lightningcss-freebsd-x64-1.33.0.tgz",
+      "integrity": "sha512-QQM/Ti/hQajJwCY+RiWuCZ9sdtI/XQk7nDK5vC8kkdwixezOlDgvDx7+RT+QjK6FcFT4MpsuoBnHIo/O3StRRg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-linux-arm-gnueabihf",
+      "name": "lightningcss-linux-arm-gnueabihf",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm-gnueabihf/-/lightningcss-linux-arm-gnueabihf-1.33.0.tgz",
+      "integrity": "sha512-N7FVBe6iS24MlM6R/4RBTxGhQheZGs7tiQ9U32UtF75NzP5Q7xWPRqLBCKxlRQRk3rY1jCIPLzx7WzOhuUIRLQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-linux-arm64-gnu",
+      "name": "lightningcss-linux-arm64-gnu",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.33.0.tgz",
+      "integrity": "sha512-j2v/itmy4HlNxlc6voKXYgBqNi0Ng2LShg4z7GufpEgs05P+2suBVyi9I6YHq5uoVFx9ETin3eCEhLVyXGQnKg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-linux-arm64-musl",
+      "name": "lightningcss-linux-arm64-musl",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-musl/-/lightningcss-linux-arm64-musl-1.33.0.tgz",
+      "integrity": "sha512-yiO5ROMuYQgXbC60yjZU5CYSFZGKXL0HFATXt9mHJn1+zW55oCtMI9NfcVhYLMFDL7gV7oBPon/EmMMGg2OvtQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-linux-x64-gnu",
+      "name": "lightningcss-linux-x64-gnu",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.33.0.tgz",
+      "integrity": "sha512-ar+Ju7LmcN0Jo4FpL4hpFybwNG9/3A/Br5KW2n2jyODg3MEZXaDYADdemoNS+BDNfMgKvylJLj4S5tyRActuAg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-linux-x64-musl",
+      "name": "lightningcss-linux-x64-musl",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.33.0.tgz",
+      "integrity": "sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-win32-arm64-msvc",
+      "name": "lightningcss-win32-arm64-msvc",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-arm64-msvc/-/lightningcss-win32-arm64-msvc-1.33.0.tgz",
+      "integrity": "sha512-1K+MPfLSFVpphzpdbfkhlWk6wBrTObBzS2T6db10PNOZgR9GoVsAWzwNyuhUYYbTp23j+4RrncfujZ4uAzXvwA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "arm64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lightningcss-win32-x64-msvc",
+      "name": "lightningcss-win32-x64-msvc",
+      "version": "1.33.0",
+      "declaredLicense": "MPL-2.0",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.33.0.tgz",
+      "integrity": "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "cpu": [
+        "x64"
+      ],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lru-cache",
+      "name": "lru-cache",
+      "version": "11.5.3",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/lru-cache/-/lru-cache-11.5.3.tgz",
+      "integrity": "sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/lucide-react",
+      "name": "lucide-react",
+      "version": "0.577.0",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.577.0.tgz",
+      "integrity": "sha512-4LjoFv2eEPwYDPg/CUdBJQSDfPyzXCRrVW1X7jrx/trgxnxkHFjnVZINbzvzxjN70dxychOfg+FTYwBiS3pQ5A==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+      },
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/lucide-react/LICENSE",
+          "sha256": "668dcc52803480e0a026b31140a4cae668772663cd764e5991d252eef03f98db"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/minimatch",
+      "name": "minimatch",
+      "version": "10.2.6",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.6.tgz",
+      "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "brace-expansion": "^5.0.8"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/minipass",
+      "name": "minipass",
+      "version": "7.1.3",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.3.tgz",
+      "integrity": "sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/ms",
+      "name": "ms",
+      "version": "2.1.3",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/nanoid",
+      "name": "nanoid",
+      "version": "3.3.19",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-3.3.19.tgz",
+      "integrity": "sha512-Y2tUNy4ouw6tq5oDSKeQYGOyhkUBhNOcGV/02KC+6kd9eDGqdZd++mjMiIDilrBYvjEnCYvVtsuHCuP+okSfug==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/package-json-from-dist",
+      "name": "package-json-from-dist",
+      "version": "1.0.1",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/package-json-from-dist/-/package-json-from-dist-1.0.1.tgz",
+      "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/path-key",
+      "name": "path-key",
+      "version": "3.1.1",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz",
+      "integrity": "sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/path-scurry",
+      "name": "path-scurry",
+      "version": "2.0.2",
+      "declaredLicense": "BlueOak-1.0.0",
+      "resolved": "https://registry.npmjs.org/path-scurry/-/path-scurry-2.0.2.tgz",
+      "integrity": "sha512-3O/iVVsJAPsOnpwWIeD+d6z/7PmqApyQePUtCndjatj/9I5LylHvt5qluFaBT3I5h3r1ejfR056c+FCv+NnNXg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "lru-cache": "^11.0.0",
+        "minipass": "^7.1.2"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/picocolors",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+      "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/picomatch",
+      "name": "picomatch",
+      "version": "4.0.7",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/picomatch/-/picomatch-4.0.7.tgz",
+      "integrity": "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/postcss",
+      "name": "postcss",
+      "version": "8.5.28",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.28.tgz",
+      "integrity": "sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "nanoid": "^3.3.18",
+        "picocolors": "^1.1.1",
+        "source-map-js": "^1.2.1"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/progress",
+      "name": "progress",
+      "version": "2.0.3",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/progress/-/progress-2.0.3.tgz",
+      "integrity": "sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/proper-lockfile",
+      "name": "proper-lockfile",
+      "version": "4.1.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/proper-lockfile/-/proper-lockfile-4.1.2.tgz",
+      "integrity": "sha512-TjNPblN4BwAWMXU8s9AEz4JmQxnD1NNL7bNOY/AKUzyamc379FWASUhc/K1pL2noVb+XmZKLL68cjzLsiOAMaA==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "graceful-fs": "^4.2.4",
+        "retry": "^0.12.0",
+        "signal-exit": "^3.0.2"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/proper-lockfile/LICENSE",
+          "sha256": "aaa78451b6fecd1b9c4594c796c133c0e90cad100372ff8bc6de615e9ef9adf1"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react",
+      "name": "react",
+      "version": "19.3.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/react/-/react-19.3.0.tgz",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/react/LICENSE",
+          "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/react-dom",
+      "name": "react-dom",
+      "version": "19.3.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-19.3.0.tgz",
+      "integrity": "sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "scheduler": "^0.28.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "react": "^19.3.0"
+      },
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/react-dom/LICENSE",
+          "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/retry",
+      "name": "retry",
+      "version": "0.12.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/retry/-/retry-0.12.0.tgz",
+      "integrity": "sha512-9LkiTwjUh6rT555DtE9rTX+BKByPfrMzEAtnlEtdEwr3Nkffwiihqe2bWADg+OQRjt9gl6ICdmB/ZFDCGAtSow==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/retry/License",
+          "sha256": "01ad164273e8e095abc9dbd1c21e194594a671af7d528cb43ee7b4c903ba7da3"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/rolldown",
+      "name": "rolldown",
+      "version": "1.2.8",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/rolldown/-/rolldown-1.2.8.tgz",
+      "integrity": "sha512-Z67nTmhZe7anqnM/EjI392w5i/ANUinjip7QYsOyN37oayduxt3ksdX0hf5OOamkAd53BiIHfbfSzfUmzKFQqQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "@oxc-project/types": "=0.149.0",
+        "@rolldown/pluginutils": "^1.0.0"
+      },
+      "optionalDependencies": {
+        "@rolldown/binding-android-arm-eabi": "1.2.8",
+        "@rolldown/binding-android-arm64": "1.2.8",
+        "@rolldown/binding-darwin-arm64": "1.2.8",
+        "@rolldown/binding-darwin-x64": "1.2.8",
+        "@rolldown/binding-freebsd-x64": "1.2.8",
+        "@rolldown/binding-linux-arm-gnueabihf": "1.2.8",
+        "@rolldown/binding-linux-arm64-gnu": "1.2.8",
+        "@rolldown/binding-linux-arm64-musl": "1.2.8",
+        "@rolldown/binding-linux-ppc64-gnu": "1.2.8",
+        "@rolldown/binding-linux-s390x-gnu": "1.2.8",
+        "@rolldown/binding-linux-x64-gnu": "1.2.8",
+        "@rolldown/binding-linux-x64-musl": "1.2.8",
+        "@rolldown/binding-openharmony-arm64": "1.2.8",
+        "@rolldown/binding-win32-arm64-msvc": "1.2.8",
+        "@rolldown/binding-win32-x64-msvc": "1.2.8"
+      },
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/scheduler",
+      "name": "scheduler",
+      "version": "0.28.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.28.0.tgz",
+      "integrity": "sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/scheduler/LICENSE",
+          "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/semver",
+      "name": "semver",
+      "version": "7.8.5",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/semver/-/semver-7.8.5.tgz",
+      "integrity": "sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/shebang-command",
+      "name": "shebang-command",
+      "version": "2.0.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+      "integrity": "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "shebang-regex": "^3.0.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/shebang-regex",
+      "name": "shebang-regex",
+      "version": "3.0.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz",
+      "integrity": "sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/signal-exit",
+      "name": "signal-exit",
+      "version": "3.0.7",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/signal-exit/-/signal-exit-3.0.7.tgz",
+      "integrity": "sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==",
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/signal-exit/LICENSE.txt",
+          "sha256": "e05b1eaf5b5f99b7ad75cd1f38858ff9a311780b97715ead67936d60bf96aa7e"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/source-map-js",
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "declaredLicense": "BSD-3-Clause",
+      "resolved": "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz",
+      "integrity": "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/sumchecker",
+      "name": "sumchecker",
+      "version": "3.0.1",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/sumchecker/-/sumchecker-3.0.1.tgz",
+      "integrity": "sha512-MvjXzkz/BOfyVDkG0oFOtBxHX2u3gKbMHIF/dXblZsgD3BWOFLmHovIpZY7BykJdAjcqRCBi1WYBNdEC9yI7vg==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "debug": "^4.1.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/tinyglobby",
+      "name": "tinyglobby",
+      "version": "0.2.17",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
+      "integrity": "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "fdir": "^6.5.0",
+        "picomatch": "^4.0.4"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/typescript",
+      "name": "typescript",
+      "version": "7.0.2",
+      "declaredLicense": "Apache-2.0",
+      "resolved": "https://registry.npmjs.org/typescript/-/typescript-7.0.2.tgz",
+      "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {
+        "@typescript/typescript-aix-ppc64": "7.0.2",
+        "@typescript/typescript-darwin-arm64": "7.0.2",
+        "@typescript/typescript-darwin-x64": "7.0.2",
+        "@typescript/typescript-freebsd-arm64": "7.0.2",
+        "@typescript/typescript-freebsd-x64": "7.0.2",
+        "@typescript/typescript-linux-arm": "7.0.2",
+        "@typescript/typescript-linux-arm64": "7.0.2",
+        "@typescript/typescript-linux-loong64": "7.0.2",
+        "@typescript/typescript-linux-mips64el": "7.0.2",
+        "@typescript/typescript-linux-ppc64": "7.0.2",
+        "@typescript/typescript-linux-riscv64": "7.0.2",
+        "@typescript/typescript-linux-s390x": "7.0.2",
+        "@typescript/typescript-linux-x64": "7.0.2",
+        "@typescript/typescript-netbsd-arm64": "7.0.2",
+        "@typescript/typescript-netbsd-x64": "7.0.2",
+        "@typescript/typescript-openbsd-arm64": "7.0.2",
+        "@typescript/typescript-openbsd-x64": "7.0.2",
+        "@typescript/typescript-sunos-x64": "7.0.2",
+        "@typescript/typescript-win32-arm64": "7.0.2",
+        "@typescript/typescript-win32-x64": "7.0.2"
+      },
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/undici",
+      "name": "undici",
+      "version": "7.29.1",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/undici/-/undici-7.29.1.tgz",
+      "integrity": "sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": true,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/undici-types",
+      "name": "undici-types",
+      "version": "7.18.2",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.18.2.tgz",
+      "integrity": "sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "node_modules/vite",
+      "name": "vite",
+      "version": "8.3.0",
+      "declaredLicense": "MIT",
+      "resolved": "https://registry.npmjs.org/vite/-/vite-8.3.0.tgz",
+      "integrity": "sha512-lhZBVvEHefgE+HQZC9O7EBJgCU/nVzFNl7vkS4RE0APtWLP02/8QVIkQtzBxPquh7lq5/78NHipTj7ODQ6XuyQ==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "lightningcss": "^1.33.0",
+        "picomatch": "^4.0.7",
+        "postcss": "^8.5.28",
+        "rolldown": "~1.2.6",
+        "tinyglobby": "^0.2.17"
+      },
+      "optionalDependencies": {
+        "fsevents": "~2.3.3"
+      },
+      "peerDependencies": {
+        "@types/node": "^20.19.0 || >=22.12.0",
+        "@vitejs/devtools": "^0.7.1",
+        "esbuild": "^0.27.0 || ^0.28.0",
+        "jiti": ">=1.21.0",
+        "less": "^4.0.0",
+        "sass": "^1.70.0",
+        "sass-embedded": "^1.70.0",
+        "stylus": ">=0.54.8",
+        "sugarss": "^5.0.0",
+        "terser": "^5.16.0",
+        "tsx": "^4.8.1",
+        "yaml": "^2.4.2"
+      },
+      "includedNoticeFiles": [
+        {
+          "path": "node_modules/vite/LICENSE.md",
+          "sha256": "387dd7baa307083401a27c58c362c30832f5ba1dba84f10cc22c33401523f45c"
+        }
+      ]
+    },
+    {
+      "path": "node_modules/which",
+      "name": "which",
+      "version": "2.0.2",
+      "declaredLicense": "ISC",
+      "resolved": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
+      "integrity": "sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==",
+      "workspaceLink": false,
+      "developmentOnly": true,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "isexe": "^2.0.0"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "packages/local",
+      "name": "@siwc/local",
+      "version": "0.1.0",
+      "declaredLicense": "SEE LICENSE IN LICENSE",
+      "resolved": null,
+      "integrity": null,
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {
+        "jose": "^6.1.0",
+        "proper-lockfile": "^4.1.2"
+      },
+      "optionalDependencies": {},
+      "peerDependencies": {},
+      "includedNoticeFiles": []
+    },
+    {
+      "path": "packages/react",
+      "name": "@siwc/react",
+      "version": "0.1.0",
+      "declaredLicense": "SEE LICENSE IN LICENSE",
+      "resolved": null,
+      "integrity": null,
+      "workspaceLink": false,
+      "developmentOnly": false,
+      "optional": false,
+      "os": [],
+      "cpu": [],
+      "dependencies": {},
+      "optionalDependencies": {},
+      "peerDependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0"
+      },
+      "includedNoticeFiles": []
+    }
+  ],
+  "fontSource": {
+    "schemaVersion": 1,
+    "source": "Google Fonts CSS API and Google Fonts versioned CDN",
+    "cssRequestUrl": "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Open+Sans:wght@300..800&display=swap",
+    "cssRequestUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "cssSelectionSnapshot": "assets/fonts/google-fonts-latin.css",
+    "verification": "Both WOFF2 files were downloaded from the recorded URLs and SHA-256 checked. Licence and family metadata URLs pin a Google Fonts Git commit. CDN distribution versions and internal font versions are distinct. Future downloads must match the recorded SHA-256 values.",
+    "cssSelectionSha256": "7d7b8b19933311c4cb9e1330bcb3e6de622baf4093ece8235488e00f479a73c7"
+  },
+  "fonts": [
+    {
+      "name": "Inter",
+      "path": "assets/fonts/inter-latin.woff2",
+      "sha256": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
+      "bytes": 48432,
+      "downloadUrl": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+      "distributionVersion": "v20",
+      "fontVersion": "Version 4.001;git-66647c0bb",
+      "postScriptName": "Inter-Regular",
+      "copyrightFromFont": "Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter)",
+      "subset": "latin",
+      "unicodeRangeFromCss": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "unicodeCodepointCount": 230,
+      "style": "normal",
+      "axes": [
+        {
+          "tag": "wght",
+          "minimum": 100,
+          "default": 400,
+          "maximum": 900
+        }
+      ],
+      "declaredLicense": "OFL-1.1",
+      "licensePath": "assets/fonts/inter-OFL.txt",
+      "licenseSha256": "5b9321a4298cfeb6b34354164a1c3afc3db114569984c502b9b35d988fd58c57",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/inter/OFL.txt",
+      "googleFontsRevision": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
+      "googleFontsMetadataUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/inter/METADATA.pb",
+      "upstreamRepositoryFromGoogleFontsMetadata": "https://www.github.com/rsms/inter",
+      "upstreamCommitFromGoogleFontsMetadata": "66647c0bbbe41a850d79d9c76fb13add3378940f",
+      "modifications": "None. Downloaded WOFF2 and OFL bytes are stored unchanged; local filenames differ from upstream URLs.",
+      "downloadedOn": "2026-09-28"
+    },
+    {
+      "name": "Open Sans",
+      "path": "assets/fonts/open-sans-latin.woff2",
+      "sha256": "441af0def989ebfdbd6ad85ffaed85e967ab21a05f1dd342f16259464a206dd0",
+      "bytes": 42964,
+      "downloadUrl": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-mu0SC55I.woff2",
+      "distributionVersion": "v44",
+      "fontVersion": "Version 3.003",
+      "postScriptName": "OpenSans-Regular",
+      "copyrightFromFont": "Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)",
+      "subset": "latin",
+      "unicodeRangeFromCss": "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD",
+      "unicodeCodepointCount": 231,
+      "style": "normal",
+      "axes": [
+        {
+          "tag": "wght",
+          "minimum": 300,
+          "default": 400,
+          "maximum": 800
+        }
+      ],
+      "declaredLicense": "OFL-1.1",
+      "licensePath": "assets/fonts/open-sans-OFL.txt",
+      "licenseSha256": "fbbbcfef55318de350562559b671360de6d597112ecc5c73881b05092db89602",
+      "licenseUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/opensans/OFL.txt",
+      "googleFontsRevision": "23e54b51ddffbc7713c583748e3bd86f62b1fa4a",
+      "googleFontsMetadataUrl": "https://raw.githubusercontent.com/google/fonts/23e54b51ddffbc7713c583748e3bd86f62b1fa4a/ofl/opensans/METADATA.pb",
+      "upstreamRepositoryFromGoogleFontsMetadata": "https://github.com/googlefonts/opensans",
+      "upstreamCommitFromGoogleFontsMetadata": "bd7e37632246368c60fdcbd374dbf9bad11969b6",
+      "modifications": "None. Downloaded WOFF2 and OFL bytes are stored unchanged; local filenames differ from upstream URLs.",
+      "downloadedOn": "2026-09-28"
+    }
+  ]
+}

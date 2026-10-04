@@ -11,9 +11,8 @@ module.exports = {
     asar: true, // Enable asar for performance and security
     arch: 'universal', // Universal binary for macOS (Intel + Apple Silicon)
     extraResource: [
-      'core',    // Core shared infrastructure (formerly 'common')
-      'engines', // Engine implementations (gelab, browser_use, legacy)
-      'dist'     // Renderer build output (Vite builds to dist/)
+      'dist',    // Renderer build output (Vite builds to dist/)
+      'vendor/sign-in-with-chatgpt-devkit' // Preserve upstream source, license, notices and modification provenance.
     ],
     extendInfo: {
       ITSAppUsesNonExemptEncryption: false
@@ -59,7 +58,7 @@ module.exports = {
       platforms: ['darwin'],
     },
 
-    // ZIP - Required for auto-updates (macOS needs .zip, per update-electron-app docs)
+    // ZIP - Required for auto-updates (macOS needs .zip, native autoUpdater requires .zip)
     {
       name: '@electron-forge/maker-zip',
       platforms: ['darwin'], // macOS only; Windows uses Squirrel .nupkg

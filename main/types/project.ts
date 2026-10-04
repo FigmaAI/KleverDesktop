@@ -1,42 +1,41 @@
-/**
- * Project and Task type definitions
- */
-
-export type PlatformType = 'android' | 'web';
-
+/** Native app tests and their persisted results. */
+export type PlatformType = 'android';
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-
-export type ApkSourceType = 'apk_file' | 'play_store_url';
-
+export type ApkSourceType = 'apk_file' | 'play_store_url' | 'installed_package';
 export interface ApkSource {
   type: ApkSourceType;
-  path?: string;        // APK file path (for apk_file type)
-  url?: string;         // Play Store URL (for play_store_url type)
-  packageName?: string; // Extracted or detected package name
+  path?: string;
+  url?: string;
+  packageName?: string;
 }
-
 export interface Task {
   id: string;
   projectId: string;
+  testCaseId?: string;
+  caseSnapshot?: TestCaseSnapshot;
+  caseRevision?: number;
+  buildLabel?: string;
+  deviceSerial?: string;
+  referenceRunId?: string;
+  manifestPath?: string;
+  app?: AppBuildMetadata;
+  device?: DeviceMetadata;
+  recordingPath?: string;
+  recordingError?: string;
+  finalVerification?: FinalVerification;
+  legacyMetadata?: Record<string, unknown>;
   name: string;
   description?: string;
-  goal: string; // Task goal/objective (passed as --task_desc CLI parameter)
+  goal: string;
   status: TaskStatus;
-  // Model selection for this task
-  modelProvider?: string; // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
-  modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-  // Legacy fields (deprecated)
-  model?: string; // [DEPRECATED] No longer used
-  maxRounds?: number; // Per-task max rounds override (if not specified, uses global config)
+  maxRounds?: number;
   output?: string;
-  resultPath?: string; // Task result directory path (e.g., {workspaceDir}/apps/{app}/demos/self_explore_{timestamp})
+  resultPath?: string;
   createdAt: string;
   updatedAt: string;
   startedAt?: string;
   completedAt?: string;
-  url?: string; // Web platform only - passed as --url CLI parameter
-  apkSource?: ApkSource; // Android only: APK file path or Play Store URL
-  // Metrics
+  apkSource?: ApkSource;
   metrics?: {
     startTime?: number;
     endTime?: number;
@@ -44,22 +43,14 @@ export interface Task {
     tokens?: number;
     inputTokens?: number;
     outputTokens?: number;
-    tokensPerSecond?: number;
-    estimatedCost?: number;
     rounds?: number;
     maxRounds?: number;
-    isLocalModel?: boolean;
   };
-  error?: string; // Error message if status is 'failed'
-  // Scheduling
-  scheduledAt?: string; // ISO datetime string for when the task should run
-  isScheduled?: boolean; // Whether this task is scheduled
-  // Benchmarking
-  coldBoot?: boolean; // If true, cold restart emulator before this task (for fair benchmarking)
+  error?: string;
+  scheduledAt?: string;
+  isScheduled?: boolean;
 }
-
 export type ProjectStatus = 'active' | 'archived';
-
 export interface Project {
   id: string;
   name: string;
@@ -68,43 +59,153 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   tasks: Task[];
+  testCases?: TestCase[];
   workspaceDir: string;
-  lastApkSource?: ApkSource; // Last used APK source for this project (Android only)
+  lastApkSource?: ApkSource;
 }
-
 export interface ProjectsData {
   projects: Project[];
+  /** Removed-platform records retained for recovery; never dispatched by the scheduler. */
+  legacyProjects?: unknown[];
 }
-
 export interface CreateProjectInput {
   name: string;
   platform: PlatformType;
   workspaceDir?: string;
 }
-
 export interface UpdateProjectInput {
   name?: string;
-  platform?: PlatformType;
   status?: ProjectStatus;
 }
-
 export interface CreateTaskInput {
   projectId: string;
   name: string;
   description?: string;
   goal: string;
-  modelProvider?: string; // Provider ID (e.g., 'ollama', 'openai', 'anthropic')
-  modelName?: string; // Full model identifier (e.g., "ollama/llama3.2-vision", "gpt-4o")
-  maxRounds?: number; // Per-task max rounds override (if not specified, uses global config)
-  url?: string; // Web platform only
-  apkSource?: ApkSource; // Android only: APK file path or Play Store URL
-  scheduledAt?: string; // ISO datetime string for when the task should run
-  isScheduled?: boolean; // Whether this task is scheduled
+  maxRounds?: number;
+  apkSource?: ApkSource;
+  scheduledAt?: string;
+  isScheduled?: boolean;
+  buildLabel?: string;
+  deviceSerial?: string;
 }
-
 export interface UpdateTaskInput {
   name?: string;
   description?: string;
   goal?: string;
   status?: TaskStatus;
+}
+
+/** A reusable course. Editing it never changes a previously created run. */
+export interface TestCase {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  goal: string;
+  apkSource?: ApkSource;
+  maxRounds?: number;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+  archived?: boolean;
+}
+export interface TestCaseSnapshot {
+  id: string;
+  revision: number;
+  name: string;
+  description?: string;
+  goal: string;
+  apkSource?: ApkSource;
+  maxRounds?: number;
+}
+export interface CreateTestCaseInput {
+  projectId: string;
+  name: string;
+  description?: string;
+  goal: string;
+  apkSource?: ApkSource;
+  maxRounds?: number;
+}
+export interface UpdateTestCaseInput {
+  name?: string;
+  description?: string;
+  goal?: string;
+  apkSource?: ApkSource;
+  maxRounds?: number;
+}
+export interface CreateTestRunInput {
+  apkSource?: ApkSource;
+  buildLabel?: string;
+  deviceSerial?: string;
+  scheduledAt?: string;
+  referenceRunId?: string;
+}
+export interface AppBuildMetadata {
+  packageName?: string;
+  versionName?: string;
+  versionCode?: string;
+}
+export interface DeviceMetadata {
+  serial?: string;
+  manufacturer?: string;
+  model?: string;
+  androidVersion?: string;
+  apiLevel?: string;
+}
+/** Stable run record independent of the project index. */
+export interface RunManifest {
+  schemaVersion: 1;
+  project: { id: string; name: string; platform: PlatformType };
+  run: Task;
+  finalizedAt?: string;
+}
+export interface RecordedAction {
+  type: 'tap' | 'long_press' | 'text' | 'swipe' | 'back' | 'enter' | 'wait';
+  intent: string;
+  x?: number;
+  y?: number;
+  endX?: number;
+  endY?: number;
+  durationMs?: number;
+  target?: { resourceId?: string; text?: string; contentDescription?: string; className?: string };
+  text?: string;
+  direction?: string;
+  distance?: string;
+}
+export interface RecordedStep {
+  index: number;
+  round: number;
+  startedAt: string;
+  finishedAt?: string;
+  screen?: { width: number; height: number };
+  action: RecordedAction;
+  observationBefore: string;
+  observationAfter?: string;
+  result: 'executed' | 'failed';
+  error?: string;
+  evidence: { before: string; after?: string; xml?: string };
+  verification?: { source: 'agent_visual'; decision: string; detail: string };
+}
+export interface FinalVerification {
+  source: 'agent_visual';
+  goal: string;
+  outcome: 'passed' | 'failed' | 'unverified';
+  evidence?: string;
+  detail: string;
+}
+export interface RunRecording {
+  schemaVersion: 1;
+  model?: string;
+  testCaseId?: string;
+  testCaseRevision?: number;
+  runId?: string;
+  goal: string;
+  startedAt: string;
+  finishedAt?: string;
+  status: 'running' | 'completed' | 'failed' | 'cancelled';
+  reason?: string;
+  context: { app: AppBuildMetadata; device: DeviceMetadata };
+  steps: RecordedStep[];
+  finalVerification?: FinalVerification;
 }

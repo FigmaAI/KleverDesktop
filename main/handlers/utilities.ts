@@ -95,7 +95,7 @@ export function registerUtilityHandlers(ipcMain: IpcMain): void {
   // Write text to clipboard
   ipcMain.handle('clipboard:writeText', async (_event, text: string) => {
     try {
-      clipboard.writeText(text);
+      await clipboard.writeText(text);
       return { success: true };
     } catch (error: unknown) {
       return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };

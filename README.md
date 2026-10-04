@@ -1,147 +1,58 @@
-<div align="center">
-  <img src="src/assets/logo.png" alt="Klever Desktop" width="128" height="128">
+# Klever Desktop
 
-  # Klever Desktop
+Native Android QA with ChatGPT: save a test course, run it against app builds, and keep the evidence.
 
-  AI-powered UI automation for Android and Web
+## Use the app
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-  [![Electron](https://img.shields.io/badge/Electron-33-47848F?logo=electron)](https://www.electronjs.org/)
-  [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://reactjs.org/)
-  [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
+1. Open Settings and sign in with ChatGPT.
+2. Connect an Android device or start an existing emulator from Settings. The Android SDK is detected automatically; its folder can be supplied when needed.
+3. Save a short test goal and choose an installed app, APK, or Play Store package.
+4. Run or schedule the test. Open its result to read the familiar round-by-round Markdown report, or select Terminal for its progress and saved output.
+5. Repeat a test against a new build. Earlier verified intentions guide the next run, while every action is chosen from the current screen.
 
-</div>
+AI access uses [Sign in with ChatGPT for local open-source apps](https://developers.openai.com/siwc/token-sharing-open-source), through OpenAI's official local DevKit. Its React components supply the sign-in, account connection and usage interface. Screenshots and the goal go directly to OpenAI using the account's available models and limits. No Platform API key is required.
 
----
+The app executes ADB and the emulator directly from Electron. The official OpenAI Node SDK sends screenshots and requests one strict function call with JSON Schema parameters. The app validates the decision before issuing a native command. Python, AppAgent, local models, third-party model providers, and browser automation are not part of the runtime.
 
-## Demos
+## Records and schedules
 
-<div align="center">
+Saved definitions and run snapshots are separate internally. Each run retains the actual installed app version, device metadata, structured actions, screenshots, final visual assessment, and a readable Markdown report. The interface keeps the task list and Markdown result experience. Report and Terminal are two tabs on the result page. App failures and unverified execution errors are recorded separately.
 
-[![Klever Desktop Demo 1](https://img.youtube.com/vi/QAmjenOd7is/maxresdefault.jpg)](https://youtu.be/QAmjenOd7is)
+Completed snapshots stay unchanged. Explicitly deleting a test removes its result files, run manifest and list entry while preserving other tests' shared data.
 
-**Android Automation Demo**
+Projects and canonical run manifests are stored under `~/.klever-desktop/`. Evidence is kept in the project workspace. Existing Android results remain available, and legacy browser records are retained as inactive data.
 
-[![Klever Desktop Demo 2](https://img.youtube.com/vi/jFBtuNuDk8A/maxresdefault.jpg)](https://youtu.be/jFBtuNuDk8A)
+The app must remain running for schedules to execute. OS wake/launch, iOS adapters, and a desktop MCP transport are separate follow-ups to the shared course/run API.
 
-**Web Automation Demo**
+## Development
 
-</div>
-
----
-
-## What is Klever Desktop?
-
-Klever Desktop is a cross-platform application that enables AI-driven UI automation without writing code. Describe what you want to do in plain language, and watch the AI execute it.
-
-**Supported Platforms:**
-- **Android** - Via USB debugging (ADB)
-- **Web** - Via Playwright (Chromium, Firefox, WebKit)
-
-**AI Providers:**
-- **Local** - Ollama (Llama 3.2 Vision, Qwen 2.5-VL, and more)
-- **Cloud** - OpenAI, Anthropic Claude, Google Gemini, xAI Grok, OpenRouter, Mistral, DeepSeek, and 90+ more via LiteLLM
-
----
-
-## Download
-
-Get the latest release from [GitHub Releases](https://github.com/FigmaAI/KleverDesktop/releases):
-
-| Platform | File |
-|----------|------|
-| macOS | `Klever.Desktop-{version}-universal.dmg` |
-| Windows | `klever-desktop-{version} Setup.exe` |
-
-### Installation
-
-**macOS:**
-1. Open the `.dmg` file
-2. Drag to Applications
-3. Launch (notarized by Apple)
-
-**Windows:**
-1. Run the installer
-2. If SmartScreen blocks: Click "More info" → "Run anyway"
-
----
-
-## Quick Start
-
-### 1. Setup
-On first launch, the Setup Wizard will:
-- Install Python 3.11+ runtime
-- Install Playwright browsers
-- Connect to your AI provider
-
-### 2. Create Project
-- Click "New Project"
-- Choose Android or Web
-- Name your project
-
-### 3. Run Task
-- Add a new task
-- Describe your goal:
-  > "Open settings and enable dark mode"
-- Click Start
-
----
-
-## For Developers
-
-### Prerequisites
-- Node.js 18+
-- Git
-
-### Setup
-
-```bash
-git clone https://github.com/FigmaAI/KleverDesktop.git
-cd KleverDesktop
+```sh
 npm install
-npm run start
+npm run typecheck
+npm run lint
+npm test
+npm run build:local
+npm run test:desktop
+npm run electron
 ```
 
-### Commands
+Use `npm run start` for development with hot reload, or `npm run package` / `npm run make` for distribution builds. Node.js 22.12 or later is required to build the app; the app uses current Electron and React 19. Native execution requires Android SDK tools and an eligible ChatGPT account.
 
-```bash
-npm run start        # Dev server with hot reload
-npm run typecheck    # TypeScript check
-npm run lint:fix     # Fix linting errors
-npm run package      # Build package
-npm run make         # Create installers
+The current Electron build requires macOS 13 or later. Windows distribution targets 64-bit systems.
+
+On macOS, development launch and isolated desktop tests automatically use a cached, locally sealed copy of the official Electron runtime on the internal temporary volume. The helper verifies the release archive checksum and preserves the runtime's identifiers, entitlements and security settings. It does not use personal signing certificates or change Keychain/TCC. The original download stays untouched; production packaging continues to use the existing Forge signing/notarization configuration. `npm run prepare:electron-runtime` prepares or verifies this development copy without opening the app. An explicitly supplied `ELECTRON_OVERRIDE_DIST_PATH` is verified and reused.
+
+```text
+src/        Projects, courses, run history, schedules, account/Android setup
+main/       ChatGPT OAuth, strict JSON inference, direct ADB driver, run storage
+scripts/    Build, isolated Electron regression, bundle verification, distribution
+tests/      Offline transport, agent, storage, scheduling, and authentication tests
 ```
 
-### Tech Stack
+See [the harness design](docs/NATIVE_QA_HARNESS.md), [next stages](docs/SIMPLIFICATION_PLAN.md), and [privacy policy](PRIVACY.md).
 
-| Layer | Technologies |
-|-------|--------------|
-| Frontend | React 18, TypeScript, Tailwind CSS, shadcn/ui |
-| Desktop | Electron 33, Vite 5, Electron Forge |
-| Backend | Python 3.11+, Playwright, ADB |
-| AI | LiteLLM, Ollama, OpenAI, Anthropic, and more |
+## License and official DevKit
 
-### Project Structure
+Klever's independently authored code retains its [MIT license](LICENSE). The bundled [OpenAI Sign in with ChatGPT DevKit](https://github.com/openai/sign-in-with-chatgpt-devkit) has a separate [Noncommercial License](vendor/sign-in-with-chatgpt-devkit/LICENSE). This build is for personal noncommercial experimentation. The DevKit license excludes development, testing or operation for a business, employer or client, even when no fee is charged. Upstream attribution, third-party notices and local modification records are retained in the vendor directory.
 
-```
-main/           # Electron main process
-src/            # React renderer
-core/           # Python shared code
-engines/        # Automation engines
-```
-
-See [CLAUDE.md](CLAUDE.md) for development details.
-
----
-
-## License
-
-MIT - See [LICENSE](LICENSE)
-
----
-
-<div align="center">
-
-**[FigmaAI](https://github.com/FigmaAI)**
-
-</div>
+The [official component gallery](https://github.com/openai/sign-in-with-chatgpt-devkit/blob/main/examples/component-gallery/src/Gallery.tsx) demonstrates sign-in buttons, account connection cards, composer usage indicators and usage management. It does not contain a general chat transcript interface; Klever keeps the saved test goal and run history as its work interface.

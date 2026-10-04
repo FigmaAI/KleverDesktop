@@ -16,19 +16,16 @@ import { useEffect, useCallback } from 'react'
  * - ⌘S / Ctrl+S: Save (in settings)
  * - ⌘G / Ctrl+G: Open GitHub
  * - ⌘\ / Ctrl+\: Toggle theme
- * - Ctrl+Shift+`: Toggle Terminal
  */
 
 export interface KeyboardShortcutHandlers {
   onSearch?: () => void
   onProjects?: () => void
   onSchedules?: () => void
-  onStatistics?: () => void
   onSettings?: () => void
   onNewProject?: () => void
   onNewTask?: () => void
   onSave?: () => void
-  onToggleTerminal?: () => void
   onToggleTheme?: () => void
   onOpenGitHub?: () => void
   onEscape?: () => void
@@ -59,6 +56,7 @@ export function useKeyboardShortcuts({
 
     // Skip if in input/textarea (except Escape)
     const target = e.target as HTMLElement
+    if (target.closest?.('[role="dialog"]')) return
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
       if (e.key !== 'Escape') return
     }
@@ -84,10 +82,10 @@ export function useKeyboardShortcuts({
       return
     }
 
-    // Statistics: ⌘3 / Ctrl+3
+    // Settings: ⌘3 / Ctrl+3
     if (e.key === '3' && modKey) {
       e.preventDefault()
-      handlers.onStatistics?.()
+      handlers.onSettings?.()
       return
     }
 
@@ -119,13 +117,6 @@ export function useKeyboardShortcuts({
       return
     }
 
-    // Terminal: Ctrl+Shift+`
-    if (e.key === '`' && e.ctrlKey && e.shiftKey) {
-      e.preventDefault()
-      handlers.onToggleTerminal?.()
-      return
-    }
-
     // GitHub: ⌘G / Ctrl+G
     if (e.key === 'g' && modKey) {
       e.preventDefault()
@@ -149,22 +140,22 @@ export function useKeyboardShortcuts({
 
     // Arrow navigation (only when not in dialogs)
     if (!target.closest('[role="dialog"]')) {
-      if (e.key === 'ArrowDown') {
+      if (e.key === 'ArrowDown' && handlers.onArrowDown) {
         e.preventDefault()
         handlers.onArrowDown?.()
         return
       }
-      if (e.key === 'ArrowUp') {
+      if (e.key === 'ArrowUp' && handlers.onArrowUp) {
         e.preventDefault()
         handlers.onArrowUp?.()
         return
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && handlers.onEnter) {
         e.preventDefault()
         handlers.onEnter?.()
         return
       }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && handlers.onDelete) {
         e.preventDefault()
         handlers.onDelete?.()
         return
@@ -200,12 +191,10 @@ export const SHORTCUTS = {
   search: { keys: ['⌘', 'K'], description: 'Search' },
   projects: { keys: ['⌘', '1'], description: 'Projects' },
   schedules: { keys: ['⌘', '2'], description: 'Schedules' },
-  statistics: { keys: ['⌘', '3'], description: 'Statistics' },
   settings: { keys: ['⌘', ','], description: 'Settings' },
   newProject: { keys: ['⌘', 'N'], description: 'New Project' },
   newTask: { keys: ['⌘', 'T'], description: 'New Task' },
   save: { keys: ['⌘', 'S'], description: 'Save' },
-  terminal: { keys: ['⌃', '⇧', '`'], description: 'Terminal' },
   github: { keys: ['⌘', 'G'], description: 'GitHub' },
   theme: { keys: ['⌘', '\\'], description: 'Toggle Theme' },
   escape: { keys: ['Esc'], description: 'Go Back' },

@@ -1,761 +1,270 @@
-/**
- * Task management IPC handlers
- * Handles CRUD operations for tasks and task execution
- *
- * IMPORTANT: Task execution now passes data via:
- * - CLI parameters: Project info (app, platform, root_dir) + Task info (task_desc, url, model, model_name)
- * - Environment variables: 22 config settings from config.json
- */
-
+/** Native Android runs execute directly in the Electron main process. */
 import { IpcMain, BrowserWindow } from 'electron';
-import { ChildProcess, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
 import { loadProjects, saveProjects, sanitizeAppName } from '../utils/project-storage';
 import { loadAppConfig } from '../utils/config-storage';
-import { buildEnvFromConfig } from '../utils/config-env-builder';
-import { spawnBundledPython, getPythonEnv, getLegacyScriptsPath, getCorePath, checkVenvStatus, isPythonInstalled } from '../utils/python-runtime';
-import { calculateEstimatedCost, isLocalModel, fetchLiteLLMModels } from '../utils/litellm-providers';
-import { Task, CreateTaskInput, UpdateTaskInput } from '../types';
+import { startAndroidTest } from '../utils/android-agent';
+import { Task, RunRecording, CreateTaskInput } from '../types';
+import { createTestCase, createTestRun } from '../utils/testcase-storage';
+import { persistRunRecord, readRunManifest, collectRunRecording, getRunManifestPath } from '../utils/run-records';
 import { scheduleQueueManager } from '../utils/schedule-queue-manager';
-import { trackTaskEvent } from '../utils/analytics';
 
-const taskProcesses = new Map<string, ChildProcess>();
-
-/**
- * Check if there are any pending or running Android tasks across all projects
- * If not, stop the emulator to save resources
- */
-async function cleanupEmulatorIfIdle(projectsData: ReturnType<typeof loadProjects>): Promise<void> {
-  // Check all projects for pending/running Android tasks
-  const hasActiveAndroidTasks = projectsData.projects.some((project) => {
-    if (project.platform !== 'android') return false;
-    return project.tasks.some((task) => task.status === 'pending' || task.status === 'running');
-  });
-
-  if (!hasActiveAndroidTasks) {
-    try {
-      // Check if python environment is valid before trying to run cleanup
-      const status = checkVenvStatus();
-      if (!status.valid) {
-        return;
-      }
-
-      // Phase C Migration: Use core.android instead of legacy and_controller
-      const corePath = getCorePath();
-      const pythonEnv = getPythonEnv();
-      const projectRoot = path.dirname(corePath);
-
-      // Run cleanup script using Python -c with inline code
-      const cleanupCode = `
-import sys
-sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
-from core.android import stop_emulator
-stop_emulator()
-`;
-
-      const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-        cwd: projectRoot,
-        env: pythonEnv,
-      });
-
-      cleanupProcess.on('close', (code) => {
-        if (code !== 0) {
-          console.error('[emulator-cleanup] Failed to stop emulator (exit code:', code, ')');
-        }
-      });
-    } catch (error) {
-      console.error('[emulator-cleanup] Error stopping emulator:', error);
-    }
-  }
+interface RunningTest {
+  projectId: string;
+  taskId: string;
+  controller: AbortController;
+  completion?: Promise<void>;
+  cancelled: boolean;
+  finalized: boolean;
+  terminalNotified?: boolean;
+  notify: (channel: string, data: unknown) => void;
 }
-
-/**
- * Execute a task
- */
-export async function startTaskExecution(
-  projectId: string,
-  taskId: string,
-  getMainWindow: () => BrowserWindow | null
-): Promise<{ success: boolean; pid?: number; error?: string }> {
-  try {
-    const mainWindow = getMainWindow();
-    const data = loadProjects();
-    const project = data.projects.find((p) => p.id === projectId);
-
-    if (!project) {
-      return { success: false, error: 'Project not found' };
-    }
-
-    const task = project.tasks.find((t) => t.id === taskId);
-    if (!task) {
-      return { success: false, error: 'Task not found' };
-    }
-
-    // Check if Python environment is valid
-    if (!isPythonInstalled()) {
-      return { success: false, error: 'Python runtime not found. Please run the Setup Wizard.' };
-    }
-
-    const venvStatus = checkVenvStatus();
-    if (!venvStatus.valid) {
-      return { success: false, error: 'Python virtual environment is invalid. Please run the Setup Wizard.' };
-    }
-
-    // Common Python environment variables (Phase C: use core path for Android utilities)
-    const corePath = getCorePath();
-    const legacyScriptsDir = getLegacyScriptsPath();
-    const pythonEnv = getPythonEnv();
-    const scriptsDir = path.join(legacyScriptsDir, 'scripts');
-    const projectRoot = path.dirname(corePath);
-
-    // Store prelaunch result to pass to GELab
-    let androidSetupResult: { success: boolean; device?: string; package_name?: string; error?: string } | undefined;
-
-    // Load global config from config.json BEFORE setup
-    const appConfig = loadAppConfig();
-
-    // Build environment variables from config.json with task-specific model selection and max rounds
-    const taskModel = task.modelProvider && task.modelName
-      ? { provider: task.modelProvider, model: task.modelName }
-      : undefined;
-    const configEnvVars = buildEnvFromConfig(appConfig, taskModel, task.maxRounds);
-
-    // For Android platform with APK source, install/prepare app before running task
-    if (project.platform === 'android' && task.apkSource) {
-      mainWindow?.webContents.send('task:output', {
-        projectId,
-        taskId,
-        output: '[Setup] Preparing Android device and app...\n'
-      });
-
-      // Phase C Migration: Use core.android for prelaunch_app
-      const apkSourceJson = JSON.stringify(task.apkSource);
-      const setupCode = `
-import sys
-import json
-sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
-from core.android import prelaunch_app
-
-apk_source = json.loads('${apkSourceJson.replace(/'/g, "\\'")}')
-result = prelaunch_app(apk_source)
-print('SETUP_RESULT:' + json.dumps(result))
-`;
-
-      androidSetupResult = await new Promise<{ success: boolean; device?: string; package_name?: string; error?: string }>((resolve) => {
-        const setupProcess = spawnBundledPython(['-u', '-c', setupCode], {
-          cwd: projectRoot,
-          env: {
-            ...pythonEnv,
-            ...configEnvVars,  // ← Add config env vars (includes ANDROID_SDK_PATH)
-            PYTHONPATH: projectRoot,
-            PYTHONUNBUFFERED: '1'
-          }
-        });
-
-        let stdout = '';
-
-        setupProcess.stdout?.on('data', (data) => {
-          const output = data.toString();
-          stdout += output;
-          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-        });
-
-        setupProcess.stderr?.on('data', (data) => {
-          const output = data.toString();
-          mainWindow?.webContents.send('task:output', { projectId, taskId, output: `[Setup] ${output}` });
-        });
-
-        setupProcess.on('close', (code) => {
-          const resultMatch = stdout.match(/SETUP_RESULT:(.+)/);
-          if (resultMatch) {
-            try {
-              resolve(JSON.parse(resultMatch[1]));
-            } catch {
-              resolve({ success: code === 0, error: 'Failed to parse setup result' });
-            }
-          } else {
-            resolve({ success: code === 0, error: code !== 0 ? 'App setup failed' : undefined });
-          }
-        });
-
-        setupProcess.on('error', (error) => {
-          resolve({ success: false, error: error.message });
-        });
-      });
-
-      if (!androidSetupResult.success) {
-        // Update task status to failed
-        task.status = 'failed';
-        task.output = `App setup failed: ${androidSetupResult.error}`;
-        task.completedAt = new Date().toISOString();
-        saveProjects(data);
-
-        mainWindow?.webContents.send('task:error', {
-          projectId,
-          taskId,
-          error: `App setup failed: ${androidSetupResult.error}`
-        });
-
-        return { success: false, error: `App setup failed: ${androidSetupResult.error}` };
-      }
-
-      mainWindow?.webContents.send('task:output', {
-        projectId,
-        taskId,
-        output: `[Setup] Device ready: ${androidSetupResult.device}, Package: ${androidSetupResult.package_name}\n`
-      });
-    }
-
-    // Sanitize app name (remove spaces) to match learn.py behavior
-    const sanitizedAppName = sanitizeAppName(project.name);
-
-    // Calculate task directory path (matches Python script's logic)
-    // {workspaceDir}/apps/{sanitizedAppName}/demos/self_explore_{timestamp}
-    const appsDir = path.join(project.workspaceDir, 'apps', sanitizedAppName, 'demos');
-    const timestamp = new Date().toISOString().replace(/[-:]/g, '-').replace(/\..+/, '').replace('T', '_');
-    const taskDirName = `self_explore_${timestamp}`;
-    const taskDir = path.join(appsDir, taskDirName);
-
-    // Update task status
-    task.status = 'running';
-    task.startedAt = new Date().toISOString();
-    task.output = '';
-    task.resultPath = taskDir;  // Store task directory path
-
-    // Initialize metrics with start time
-    task.metrics = {
-      startTime: Date.now(),
-      isLocalModel: task.modelName ? isLocalModel(task.modelName) : undefined,
-    };
-
-    saveProjects(data);
-
-    // Track task started event
-    trackTaskEvent('task_started', {
-      platform: project.platform,
-      modelProvider: task.modelProvider || 'default',
-      modelName: task.modelName || 'default',
-      maxRounds: task.maxRounds || appConfig.execution.maxRounds,
-      isScheduled: !!task.scheduledAt,
-    });
-
-    // Note: appConfig and configEnvVars already loaded above before setup
-
-    // Start Python process via Core Controller (corePath already declared above)
-    const controllerPath = path.join(corePath, 'controller.py');
-
-    // Build parameters for the new controller
-    const taskParams = {
-      platform: project.platform,
-      app: sanitizedAppName,
-      root_dir: project.workspaceDir,
-      task_dir: taskDir,
-      task_desc: task.goal || task.description,
-      url: project.platform === 'web' ? task.url : undefined,
-      model_name: task.modelName,
-      max_rounds: task.maxRounds,
-      // Pass device and package info from prelaunch_app for GELab to use
-      device: androidSetupResult?.device,
-      package_name: androidSetupResult?.package_name,
-    };
-
-    // Select engine based on platform
-    // - web: browser_use (independent web automation engine)
-    // - android: appagent (legacy AppAgent engine)
-    const engineName = project.platform === 'web' ? 'browser_use' : 'appagent';
-
-    // Build CLI parameters for controller
-    const args = [
-      '-u',  // Unbuffered output
-      controllerPath,
-      '--engine', engineName,
-      '--action', 'execute',
-      '--task', task.goal || task.description || 'No description',
-      '--params', JSON.stringify(taskParams)
-    ];
-
-    // Add Android SDK default paths to PATH for adb/emulator detection
-    const androidSdkPath = path.join(os.homedir(), 'Library', 'Android', 'sdk');
-    const androidPaths = `${path.join(androidSdkPath, 'platform-tools')}:${path.join(androidSdkPath, 'emulator')}`;
-    const updatedPath = `${androidPaths}:${pythonEnv.PATH || process.env.PATH}`;
-
-    console.log(`[task:${taskId}] Starting Python Controller with args:`, args);
-
-    // Set PYTHONPATH to include project root so core and engines modules are resolvable
-    // We assume the structure is:
-    // root/
-    //   core/
-    //   engines/
-    //   resources/engines/appagent_legacy/scripts/ (legacy)
-
-    // In dev, corePath is .../core. In prod, it's resources/core.
-    // We want the parent of corePath to be in PYTHONPATH.
-    // projectRoot already declared at the top of this function
-
-    const extendedPythonPath = [
-      projectRoot,
-      legacyScriptsDir,
-      scriptsDir,
-      pythonEnv.PYTHONPATH
-    ].filter(Boolean).join(path.delimiter);
-
-    const taskProcess = spawnBundledPython(args, {
-      cwd: projectRoot,  // Run from project root
-      env: {
-        ...pythonEnv,         // Python bundled environment variables
-        ...configEnvVars,     // 22 config settings from config.json
-        PYTHONPATH: extendedPythonPath, // Extended PYTHONPATH
-        PATH: updatedPath,    // Add Android SDK tools to PATH
-        PYTHONUNBUFFERED: '1', // Force unbuffered output
-        PYTHONIOENCODING: 'utf-8' // Fix Unicode encoding issues on Windows
-      }
-    });
-
-    console.log(`[task:${taskId}] Process spawned with PID:`, taskProcess.pid);
-    taskProcesses.set(taskId, taskProcess);
-
-    taskProcess.stdout?.on('data', (data) => {
-      const output = data.toString();
-      mainWindow?.webContents.send('task:output', { projectId, taskId, output });
-
-      // Append to task output
-      const currentData = loadProjects();
-      const currentProject = currentData.projects.find((p) => p.id === projectId);
-      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-      if (currentTask) {
-        currentTask.output = (currentTask.output || '') + output;
-
-        // Parse PROGRESS JSON from output and update task metrics
-        const progressMatch = output.match(/PROGRESS:(\{.*\})/);
-        if (progressMatch) {
-          try {
-            const progress = JSON.parse(progressMatch[1]);
-
-            // Update metrics with new data
-            currentTask.metrics = {
-              ...currentTask.metrics,
-              rounds: progress.round,
-              maxRounds: progress.maxRounds,
-              tokens: progress.totalTokens,
-              inputTokens: progress.inputTokens || 0,
-              outputTokens: progress.outputTokens || 0,
-            };
-
-            // Calculate cost if using paid API model
-            if (currentTask.modelName && !isLocalModel(currentTask.modelName)) {
-              // Fetch pricing data and calculate cost
-              fetchLiteLLMModels().then((result) => {
-                if (result.success && result.providers && currentTask.metrics) {
-                  const cost = calculateEstimatedCost(
-                    currentTask.modelName!,
-                    currentTask.metrics.inputTokens || 0,
-                    currentTask.metrics.outputTokens || 0,
-                    result.providers
-                  );
-                  if (cost !== null && currentTask.metrics) {
-                    currentTask.metrics.estimatedCost = cost;
-                    // Re-send progress with updated cost
-                    mainWindow?.webContents.send('task:progress', {
-                      projectId,
-                      taskId,
-                      metrics: currentTask.metrics
-                    });
-                    // Save updated metrics
-                    const latestData = loadProjects();
-                    const latestProject = latestData.projects.find((p) => p.id === projectId);
-                    const latestTask = latestProject?.tasks.find((t) => t.id === taskId);
-                    if (latestTask) {
-                      latestTask.metrics = currentTask.metrics;
-                      saveProjects(latestData);
-                    }
-                  }
-                }
-              }).catch((error) => {
-                console.warn('[task:progress] Failed to fetch pricing data:', error);
-              });
-            }
-
-            // Send progress event to renderer
-            mainWindow?.webContents.send('task:progress', {
-              projectId,
-              taskId,
-              metrics: currentTask.metrics
-            });
-          } catch (parseError) {
-            console.warn('[task:progress] Failed to parse progress JSON:', parseError);
-          }
-        }
-
-        saveProjects(currentData);
-      }
-    });
-
-    taskProcess.stderr?.on('data', (data) => {
-      const error = data.toString();
-      // Log stderr to console for debugging
-      console.error(`[task:${taskId}] stderr:`, error);
-
-      mainWindow?.webContents.send('task:error', { projectId, taskId, error });
-
-      // Append to task output (stderr also goes to output)
-      const currentData = loadProjects();
-      const currentProject = currentData.projects.find((p) => p.id === projectId);
-      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-      if (currentTask) {
-        currentTask.output = (currentTask.output || '') + error;
-        saveProjects(currentData);
-      }
-    });
-
-    taskProcess.on('close', async (code) => {
-      console.log(`[task:${taskId}] Process closed with exit code:`, code);
-
-      const currentData = loadProjects();
-      const currentProject = currentData.projects.find((p) => p.id === projectId);
-      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-
-      if (currentTask) {
-        // Only update if still in 'running' status
-        // Don't overwrite 'cancelled', 'completed', or 'failed' (may be set by stop or error handler)
-        if (currentTask.status === 'running') {
-          const newStatus = code === 0 ? 'completed' : 'failed';
-          currentTask.status = newStatus;
-          currentTask.completedAt = new Date().toISOString();
-          currentTask.updatedAt = new Date().toISOString();
-
-          // Calculate final execution metrics
-          if (currentTask.metrics?.startTime) {
-            currentTask.metrics.endTime = Date.now();
-            currentTask.metrics.durationMs = currentTask.metrics.endTime - currentTask.metrics.startTime;
-
-            // Calculate tokens per second for local models
-            if (currentTask.metrics.isLocalModel &&
-              currentTask.metrics.tokens &&
-              currentTask.metrics.durationMs > 0) {
-              currentTask.metrics.tokensPerSecond = Math.round(
-                currentTask.metrics.tokens / (currentTask.metrics.durationMs / 1000)
-              );
-            }
-          }
-
-          saveProjects(currentData);
-
-          // Send complete event
-          console.log(`[task:${taskId}] Task completed with status: ${newStatus}, sending task:complete event`);
-          mainWindow?.webContents.send('task:complete', { projectId, taskId, code, status: newStatus });
-
-          // Trigger schedule queue to check for next pending scheduled task
-          scheduleQueueManager.triggerCheck();
-        }
-
-        // IMPORTANT: Track task completion for ALL cases (completed, failed, cancelled)
-        // This must be outside the 'running' check to capture user stops and errors
-        trackTaskEvent('task_completed', {
-          platform: currentProject.platform,
-          status: currentTask.status, // Will be 'completed', 'failed', or 'cancelled'
-          modelProvider: currentTask.modelProvider || 'unknown',
-          modelName: currentTask.modelName || 'unknown',
-          rounds: currentTask.metrics?.rounds || 0,
-          tokens: currentTask.metrics?.tokens || 0,
-          inputTokens: currentTask.metrics?.inputTokens || 0,
-          outputTokens: currentTask.metrics?.outputTokens || 0,
-          estimatedCost: currentTask.metrics?.estimatedCost || 0,
-          durationMs: currentTask.metrics?.durationMs || 0,
-          tokensPerSecond: currentTask.metrics?.tokensPerSecond || 0,
-          exitCode: code,
-        });
-      }
-
-      taskProcesses.delete(taskId);
-
-      // Auto-cleanup emulator if no more pending Android tasks
-      if (currentProject?.platform === 'android') {
-        await cleanupEmulatorIfIdle(currentData);
-      }
-    });
-
-    taskProcess.on('error', (error) => {
-      console.error(`[task:${taskId}] Process error:`, error);
-
-      // Track error event
-      const errorData = loadProjects();
-      const errorProject = errorData.projects.find((p) => p.id === projectId);
-      trackTaskEvent('error_occurred', {
-        errorType: 'task_process_error',
-        errorMessage: error.message.substring(0, 100), // First 100 chars only
-        context: 'task_execution',
-        platform: errorProject?.platform || 'unknown',
-      });
-
-      mainWindow?.webContents.send('task:error', {
-        projectId,
-        taskId,
-        error: `Process error: ${error.message}`
-      });
-
-      // Update task status to failed on process error
-      const currentData = loadProjects();
-      const currentProject = currentData.projects.find((p) => p.id === projectId);
-      const currentTask = currentProject?.tasks.find((t) => t.id === taskId);
-
-      if (currentTask && currentTask.status === 'running') {
-        currentTask.status = 'failed';
-        currentTask.error = error.message;
-        currentTask.completedAt = new Date().toISOString();
-        currentTask.updatedAt = new Date().toISOString();
-        saveProjects(currentData);
-
-        mainWindow?.webContents.send('task:complete', { projectId, taskId, code: 1 });
-
-        // Trigger schedule queue to check for next pending scheduled task
-        scheduleQueueManager.triggerCheck();
-      }
-
-      taskProcesses.delete(taskId);
-    });
-
-    return { success: true, pid: taskProcess.pid };
-  } catch (error: unknown) {
-    return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-  }
-}
-
-
-/**
- * Register all task management handlers
- */
-export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
-  // Create new task
-  ipcMain.handle('task:create', async (_event, taskInput: CreateTaskInput) => {
-    try {
-      const data = loadProjects();
-      const project = data.projects.find((p) => p.id === taskInput.projectId);
-
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      const newTask: Task = {
-        id: `task_${Date.now()}`,
-        projectId: taskInput.projectId,
-        name: taskInput.name,
-        description: taskInput.description,
-        goal: taskInput.goal,
-        modelProvider: taskInput.modelProvider,
-        modelName: taskInput.modelName,
-        maxRounds: taskInput.maxRounds,
-        url: taskInput.url,
-        apkSource: taskInput.apkSource,
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        scheduledAt: taskInput.scheduledAt,
-        isScheduled: taskInput.isScheduled,
-      };
-
-      project.tasks.push(newTask);
-      project.updatedAt = new Date().toISOString();
-
-      // Save last used APK source for this project (Android only)
-      if (taskInput.apkSource) {
-        project.lastApkSource = taskInput.apkSource;
-      }
-
-      saveProjects(data);
-
-      return { success: true, task: newTask };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-    }
-  });
-
-  // Update task
-  ipcMain.handle('task:update', async (_event, projectId: string, taskId: string, updates: UpdateTaskInput) => {
-    try {
-      const data = loadProjects();
-      const project = data.projects.find((p) => p.id === projectId);
-
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      const taskIndex = project.tasks.findIndex((t) => t.id === taskId);
-      if (taskIndex === -1) {
-        return { success: false, error: 'Task not found' };
-      }
-
-      project.tasks[taskIndex] = {
-        ...project.tasks[taskIndex],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-
-      project.updatedAt = new Date().toISOString();
-      saveProjects(data);
-
-      return { success: true, task: project.tasks[taskIndex] };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-    }
-  });
-
-  // Delete task
-  ipcMain.handle('task:delete', async (_event, projectId: string, taskId: string) => {
-    try {
-      const data = loadProjects();
-      const project = data.projects.find((p) => p.id === projectId);
-
-      if (!project) {
-        return { success: false, error: 'Project not found' };
-      }
-
-      const taskIndex = project.tasks.findIndex((t) => t.id === taskId);
-      if (taskIndex === -1) {
-        return { success: false, error: 'Task not found' };
-      }
-
-      const task = project.tasks[taskIndex];
-
-      // Delete task result folder if it exists
-      if (task.resultPath) {
-        try {
-          if (fs.existsSync(task.resultPath)) {
-            fs.rmSync(task.resultPath, { recursive: true, force: true });
-          }
-        } catch (fsError) {
-          console.warn(`[task:delete] Failed to delete result folder: ${fsError}`);
-          // Continue with task deletion even if folder deletion fails
-        }
-      }
-
-      project.tasks.splice(taskIndex, 1);
-      project.updatedAt = new Date().toISOString();
-      saveProjects(data);
-
-      return { success: true };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
-    }
-  });
-
-  // Start task execution
-  ipcMain.handle('task:start', async (_event, projectId: string, taskId: string) => {
-    return startTaskExecution(projectId, taskId, getMainWindow);
-  });
-
-  // Stop task execution
-  ipcMain.handle('task:stop', async (_event, projectId: string, taskId: string) => {
-    try {
-      const mainWindow = getMainWindow();
-      const taskProcess = taskProcesses.get(taskId);
-
-      if (!taskProcess) {
-        return { success: false, error: 'Task not running' };
-      }
-
-      taskProcess.kill('SIGTERM');
-      taskProcesses.delete(taskId);
-
-      // Cleanup browser processes spawned by Browser-Use
-      // Browser-Use's internal signal handler uses os._exit(0) which bypasses our Python cleanup
-      // So we need to kill Chromium processes from Electron side
-
+const runningTests = new Map<string, RunningTest>();
+let shuttingDown = false;
+
+function updateTask(projectId: string, taskId: string, update: (task: Task) => void, options: { finalize?: boolean; collect?: boolean } = { finalize: false }): Task | undefined {
+  const data = loadProjects();
+  const project = data.projects.find(item => item.id === projectId);
+  const task = project?.tasks.find(item => item.id === taskId);
+  if (task && project) {
+    update(task);
+    if (options.collect) {
       try {
-        // Kill Chrome for Testing processes (cross-platform)
-        if (process.platform === 'darwin' || process.platform === 'linux') {
-          execSync('pkill -f "Google Chrome for Testing" 2>/dev/null || true');
-        } else if (process.platform === 'win32') {
-          execSync('taskkill /F /IM "Google Chrome for Testing.exe" /T 2>nul || exit 0', { shell: 'cmd.exe' });
-        }
-        console.log(`[task:${taskId}] Browser processes cleaned up`);
-      } catch {
-        // Ignore errors - browser may already be closed
+        const recording = collectRunRecording(task);
+        if (recording) task.metrics = { ...task.metrics, rounds: recording.steps.length };
       }
-
-      // Update task status to 'cancelled' (user-initiated stop)
-      const data = loadProjects();
-      const project = data.projects.find((p) => p.id === projectId);
-      const task = project?.tasks.find((t) => t.id === taskId);
-
-      if (task) {
-        task.status = 'cancelled';
-        task.completedAt = new Date().toISOString();
-        task.updatedAt = new Date().toISOString();
-        saveProjects(data);
-      }
-
-      // Emit task:complete event to notify frontend immediately
-      // Using special code -1 to indicate user-initiated cancellation
-      mainWindow?.webContents.send('task:complete', { projectId, taskId, code: -1 });
-
-      // Trigger schedule queue to check for next pending scheduled task
-      scheduleQueueManager.triggerCheck();
-
-      // Auto-cleanup emulator if no more pending Android tasks
-      if (project?.platform === 'android') {
-        await cleanupEmulatorIfIdle(data);
-      }
-
-      return { success: true };
-    } catch (error: unknown) {
-      return { success: false, error: (error instanceof Error ? error.message : 'Unknown error') };
+      catch (error) { task.recordingError = error instanceof Error ? error.message : 'Unable to read run recording.'; }
     }
+    persistRunRecord(project, task, { finalize: options.finalize ?? false });
+    project.updatedAt = new Date().toISOString();
+    saveProjects(data);
+  }
+  return task;
+}
+
+function appendOutput(run: RunningTest, output: string, isError = false): void {
+  if (run.finalized || run.cancelled) return;
+  updateTask(run.projectId, run.taskId, task => { task.output = (task.output || '') + output; });
+  run.notify(isError ? 'task:error' : 'task:output', {
+    projectId: run.projectId, taskId: run.taskId, ...(isError ? { error: output } : { output }),
   });
 }
 
-/**
- * Cleanup function to kill all task processes on app exit
- */
-export async function cleanupTaskProcesses(): Promise<void> {
-  taskProcesses.forEach((process) => {
-    if (!process.killed) {
-      process.kill('SIGTERM');
-    }
-  });
-  taskProcesses.clear();
-
-  // Always cleanup emulators on app exit
+function finishTest(run: RunningTest, status: Task['status'], code: number, error?: string, release = true): void {
+  if (run.finalized) return;
+  if (release) {
+    runningTests.delete(run.taskId);
+    run.finalized = true;
+  }
   try {
-    // Check if python environment is valid before trying to run cleanup
-    const status = checkVenvStatus();
-    if (!status.valid) {
-      console.log('[app-exit] Python environment not valid, skipping emulator cleanup');
-      return;
-    }
-
-    // Phase C Migration: Use core.android for cleanup_emulators
-    const corePath = getCorePath();
-    const pythonEnv = getPythonEnv();
-    const projectRoot = path.dirname(corePath);
-
-    const cleanupCode = `
-import sys
-sys.path.insert(0, '${projectRoot.replace(/\\/g, '/')}')
-from core.android import cleanup_emulators
-cleanup_emulators()
-`;
-
-    const cleanupProcess = spawnBundledPython(['-u', '-c', cleanupCode], {
-      cwd: projectRoot,
-      env: pythonEnv,
-    });
-
-    // Wait for cleanup to complete
-    await new Promise<void>((resolve) => {
-      cleanupProcess.on('close', () => resolve());
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        if (!cleanupProcess.killed) {
-          cleanupProcess.kill('SIGTERM');
-        }
-        resolve();
-      }, 5000);
-    });
+    updateTask(run.projectId, run.taskId, current => {
+      current.status = status;
+      current.updatedAt = new Date().toISOString();
+      current.completedAt = current.updatedAt;
+      if (error) current.error = error;
+      if (current.metrics?.startTime) {
+        current.metrics.endTime = Date.now();
+        current.metrics.durationMs = current.metrics.endTime - current.metrics.startTime;
+      }
+    }, { finalize: release, collect: release });
   } catch (error) {
-    console.error('[app-exit] Error cleaning up emulators:', error);
+    // A storage failure cannot be hidden as a successful recording or crash the desktop process.
+    run.notify('task:error', { projectId: run.projectId, taskId: run.taskId,
+      error: `Unable to save the run record: ${error instanceof Error ? error.message : 'storage unavailable'}` });
+    if (release) { status = 'failed'; code = 1; }
+  }
+  if (!run.terminalNotified) {
+    run.notify('task:complete', { projectId: run.projectId, taskId: run.taskId, code, status });
+    run.terminalNotified = true;
+  } else if (release) {
+    run.notify('task:recorded', { projectId: run.projectId, taskId: run.taskId });
+  }
+  if (release && !shuttingDown) scheduleQueueManager.triggerCheck();
+}
+
+export function isTaskExecutionActive(): boolean { return runningTests.size > 0; }
+export function isProjectExecutionActive(projectId: string): boolean {
+  return [...runningTests.values()].some(run => run.projectId === projectId);
+}
+export { validateApkSource } from '../utils/native-source';
+
+export async function startTaskExecution(projectId: string, taskId: string, getMainWindow: () => BrowserWindow | null): Promise<{ success: boolean; error?: string }> {
+  let run: RunningTest | undefined;
+  try {
+    if (shuttingDown) return { success: false, error: 'The application is shutting down.' };
+    if (isTaskExecutionActive()) return { success: false, error: 'Another native test is already running.' };
+    const data = loadProjects();
+    const project = data.projects.find(item => item.id === projectId);
+    const task = project?.tasks.find(item => item.id === taskId);
+    if (!project || !task) return { success: false, error: 'Test or project not found.' };
+    if (project.platform !== 'android' || project.status !== 'active') return { success: false, error: 'Only active Android projects can run tests.' };
+    if (task.status !== 'pending') return { success: false, error: 'Create a new test from the previous test to keep its recording.' };
+
+    const appConfig = loadAppConfig();
+    const taskDir = path.join(project.workspaceDir, 'apps', sanitizeAppName(project.name), 'runs', `test_${Date.now()}_${task.id}`);
+    fs.mkdirSync(taskDir, { recursive: true });
+    run = {
+      projectId, taskId, controller: new AbortController(), cancelled: false, finalized: false,
+      notify: (channel, payload) => { const window = getMainWindow(); if (window && !window.isDestroyed()) window.webContents.send(channel, payload); },
+    };
+    const activeRun = run;
+    // Reserve native-device ownership before starting the asynchronous agent job.
+    runningTests.set(taskId, activeRun);
+    const startedTask = updateTask(projectId, taskId, current => {
+      current.status = 'running';
+      current.startedAt = new Date().toISOString();
+      current.updatedAt = current.startedAt;
+      delete current.completedAt;
+      delete current.error;
+      current.output = '';
+      current.resultPath = taskDir;
+      current.metrics = { startTime: Date.now(), maxRounds: task.maxRounds ?? appConfig.execution.maxRounds };
+    });
+    activeRun.notify('task:started', { projectId, taskId });
+    activeRun.notify('task:progress', { projectId, taskId, metrics: startedTask?.metrics });
+
+    let referenceRecording: RunRecording | undefined;
+    if (task.referenceRunId) {
+      const reference = project.tasks.find(previous => previous.id === task.referenceRunId && previous.testCaseId === task.testCaseId && previous.status === 'completed');
+      try {
+        const candidate = reference ? collectRunRecording(reference) : undefined;
+        if (candidate?.status === 'completed' && candidate.finalVerification?.outcome === 'passed' &&
+            candidate.testCaseId === task.testCaseId && candidate.steps.some(step => step.result === 'executed')) {
+          referenceRecording = candidate;
+        }
+      } catch (error) {
+        appendOutput(activeRun, `[Course] Earlier evidence is unavailable: ${error instanceof Error ? error.message : 'unable to read recording'}. Continuing with the saved instructions.\n`);
+      }
+      if (!referenceRecording) {
+        // A deleted/legacy reference must not break the saved test or claim that its course was used.
+        updateTask(projectId, taskId, current => { delete current.referenceRunId; });
+        appendOutput(activeRun, '[Course] No earlier recorded course is available; continuing with the saved instructions.\n');
+      }
+    }
+    const job = startAndroidTest({
+      projectId, taskId, testCaseId: task.testCaseId, testCaseRevision: task.caseSnapshot?.revision || task.caseRevision,
+      goal: task.goal, apkSource: task.apkSource, deviceSerial: task.deviceSerial,
+      resultPath: taskDir, maxSteps: task.maxRounds ?? appConfig.execution.maxRounds,
+      referenceRecording, signal: activeRun.controller.signal,
+      onOutput: output => appendOutput(activeRun, output),
+      onProgress: metrics => {
+        if (activeRun.finalized || activeRun.cancelled) return;
+        const updated = updateTask(projectId, taskId, current => { current.metrics = { ...current.metrics, ...metrics }; });
+        activeRun.notify('task:progress', { projectId, taskId, metrics: updated?.metrics });
+      },
+    });
+    activeRun.completion = job.then(recording => {
+      const status = activeRun.cancelled ? 'cancelled' : recording.status === 'completed' ? 'completed' : recording.status === 'cancelled' ? 'cancelled' : 'failed';
+      finishTest(activeRun, status, status === 'completed' ? 0 : status === 'cancelled' ? -1 : 1,
+        status === 'failed' ? recording.reason || recording.finalVerification?.detail || 'The test goal was not confirmed.' : undefined);
+    }).catch(error => {
+      const message = error instanceof Error ? error.message : 'Unable to execute the native test.';
+      if (!activeRun.cancelled) {
+        try { appendOutput(activeRun, `${message}\n`, true); }
+        catch { activeRun.notify('task:error', { projectId, taskId, error: message }); }
+      }
+      finishTest(activeRun, activeRun.cancelled ? 'cancelled' : 'failed', activeRun.cancelled ? -1 : 1, message);
+    });
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to start native test.';
+    if (run) {
+      run.controller.abort();
+      if (!run.finalized) {
+        try { appendOutput(run, `${message}\n`, true); }
+        catch { run.notify('task:error', { projectId, taskId, error: message }); }
+      }
+      finishTest(run, run.cancelled ? 'cancelled' : 'failed', run.cancelled ? -1 : 1, message);
+    }
+    return { success: false, error: message };
   }
 }
 
+export function registerTaskHandlers(ipcMain: IpcMain, getMainWindow: () => BrowserWindow | null): void {
+  ipcMain.handle('task:create', (_event, input: CreateTaskInput) => {
+    try {
+      const data = loadProjects();
+      const project = data.projects.find(item => item.id === input.projectId);
+      if (!project) throw new Error('Project not found.');
+      const testCase = createTestCase(project, input);
+      const task = createTestRun(project, testCase.id, { scheduledAt: input.scheduledAt, buildLabel: input.buildLabel, deviceSerial: input.deviceSerial });
+      persistRunRecord(project, task);
+      saveProjects(data);
+      if (task.scheduledAt) scheduleQueueManager.triggerCheck();
+      return { success: true, task, testCase };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Unable to create test run.' }; }
+  });
+  ipcMain.handle('task:recording:get', (_event, projectId: string, taskId: string) => {
+    try {
+      const project = loadProjects().projects.find(item => item.id === projectId);
+      const task = project?.tasks.find(item => item.id === taskId);
+      if (!project || !task) throw new Error('Test run not found.');
+      const recording = collectRunRecording(task);
+      const manifest = readRunManifest(task.id);
+      return { success: true, recording, manifest };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Unable to read run recording.' }; }
+  });
+  ipcMain.handle('task:delete', (_event, projectId: string, taskId: string) => {
+    try {
+      const data = loadProjects();
+      const project = data.projects.find(item => item.id === projectId);
+      const task = project?.tasks.find(item => item.id === taskId);
+      if (!project || !task) return { success: false, error: 'Test not found.' };
+      const owner = runningTests.get(taskId);
+      if (task.status === 'running' || owner?.projectId === projectId) {
+        return { success: false, error: 'Wait for the test to stop and finish saving before deleting it.' };
+      }
+      const manifest = readRunManifest(task.id);
+      if (manifest && manifest.project.id !== projectId) throw new Error('The stored run belongs to another project.');
+      const sharedResult = task.resultPath && data.projects.some(otherProject => otherProject.tasks.some(other =>
+        (otherProject.id !== projectId || other.id !== taskId) && other.resultPath &&
+        path.resolve(other.resultPath) === path.resolve(task.resultPath!),
+      ));
+      if (task.resultPath && !sharedResult && fs.existsSync(task.resultPath)) {
+        fs.rmSync(task.resultPath, { recursive: true, force: true });
+      }
+      // Explicit deletion purges this run's canonical record too; immutable does not mean undeletable.
+      fs.rmSync(getRunManifestPath(task.id), { force: true });
+      project.tasks = project.tasks.filter(item => item.id !== taskId);
+      if (task.testCaseId && !project.tasks.some(other => other.testCaseId === task.testCaseId)) {
+        project.testCases = project.testCases?.filter(testCase => testCase.id !== task.testCaseId);
+      }
+      project.updatedAt = new Date().toISOString();
+      saveProjects(data);
+      return { success: true };
+    } catch (error) { return { success: false, error: error instanceof Error ? error.message : 'Unable to delete test.' }; }
+  });
+  ipcMain.handle('task:start', (_event, projectId: string, taskId: string) => startTaskExecution(projectId, taskId, getMainWindow));
+  ipcMain.handle('task:stop', (_event, projectId: string, taskId: string) => {
+    const run = runningTests.get(taskId);
+    if (!run || run.projectId !== projectId) return { success: false, error: 'Test is not running.' };
+    run.cancelled = true;
+    run.controller.abort();
+    // Keep device ownership until preparation/execution actually closes.
+    finishTest(run, 'cancelled', -1, undefined, false);
+    return { success: true };
+  });
+}
+
+export async function cleanupTaskProcesses(timeoutMs = 6000): Promise<void> {
+  shuttingDown = true;
+  const jobs = [...runningTests.values()];
+  for (const run of jobs) {
+    run.cancelled = true;
+    run.controller.abort();
+    finishTest(run, 'cancelled', -1, 'Test interrupted by application shutdown.', false);
+  }
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    Promise.allSettled(jobs.map(run => run.completion)).then(() => undefined),
+    new Promise<void>(resolve => { timeout = setTimeout(resolve, timeoutMs); }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+  for (const run of jobs) {
+    if (run.finalized) continue;
+    // Unsettled jobs stay unsealed so startup recovery can read the last durable checkpoint.
+    try { updateTask(run.projectId, run.taskId, task => { task.recordingError = 'Agent shutdown was not confirmed before the application exited.'; }); }
+    catch (error) { run.notify('task:error', { projectId: run.projectId, taskId: run.taskId, error: error instanceof Error ? error.message : 'Unable to save shutdown checkpoint.' }); }
+  }
+}
